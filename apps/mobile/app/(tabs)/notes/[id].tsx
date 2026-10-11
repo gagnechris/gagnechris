@@ -274,6 +274,7 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
                 accessibilityLabel={`Tag ${tag}`}
                 accessibilityHint="Removes the tag"
                 onPress={() => void removeTag(tag)}
+                hitSlop={CHIP_SLOP}
                 style={styles.chip}
               >
                 <Text style={styles.chipText}>#{tag}</Text>
@@ -283,6 +284,7 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
               accessibilityRole="button"
               accessibilityLabel="Add tag"
               onPress={addTag}
+              hitSlop={CHIP_SLOP}
               style={[styles.chip, styles.addChip]}
             >
               <Text style={styles.addText}>+ tag</Text>
@@ -335,6 +337,10 @@ const NoteScreenRoute = () => {
 
 export default NoteScreenRoute;
 
+const CHIP_HEIGHT = 32;
+// Tag chips stay compact; the slop makes each a 44pt target.
+const CHIP_SLOP = (MIN_TARGET - CHIP_HEIGHT) / 2;
+
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: color.surface },
   content: {
@@ -373,7 +379,7 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 32,
+    minHeight: CHIP_HEIGHT,
     paddingHorizontal: tokens.space[3],
     borderRadius: tokens.radius.md,
     backgroundColor: color.fill,

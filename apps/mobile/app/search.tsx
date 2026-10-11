@@ -30,6 +30,7 @@ import {
   writeRecentSearches,
 } from '../src/notebook/recentSearches';
 import { color, font, MIN_TARGET } from '../src/theme';
+import { Excerpt } from '../src/ui/Excerpt';
 import { Icon } from '../src/ui/Icon';
 import { Section } from '../src/ui/Section';
 import { SegmentedControl } from '../src/ui/SegmentedControl';
@@ -52,19 +53,24 @@ const Highlighted = ({
   ranges: readonly TextRange[];
   style: object;
   lines?: number;
-}) => (
-  <Text style={style} numberOfLines={lines}>
-    {highlightParts(text, ranges).map((part, i) =>
-      part.match ? (
-        <Text key={i} style={styles.match}>
-          {part.text}
-        </Text>
-      ) : (
-        part.text
-      ),
-    )}
-  </Text>
-);
+}) => {
+  const parts = highlightParts(text, ranges).map((part, i) =>
+    part.match ? (
+      <Text key={i} style={styles.match}>
+        {part.text}
+      </Text>
+    ) : (
+      part.text
+    ),
+  );
+  return lines ? (
+    <Excerpt style={style} lines={lines}>
+      {parts}
+    </Excerpt>
+  ) : (
+    <Text style={style}>{parts}</Text>
+  );
+};
 
 const SearchScreen = () => {
   const router = useRouter();
@@ -169,7 +175,7 @@ const SearchScreen = () => {
           onPress={() => open(hit)}
           style={styles.hitText}
         >
-          <Text style={styles.hitTitle} numberOfLines={2}>
+          <Text style={styles.hitTitle}>
             <Highlighted
               text={hit.title}
               ranges={wordMatches(hit.title, query)}
@@ -350,6 +356,7 @@ const styles = StyleSheet.create({
   },
   hitText: {
     flex: 1,
+    minHeight: MIN_TARGET,
     gap: 2,
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[3],

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NoteScreen from '../app/(tabs)/notes/[id]';
 import TaskScreen from '../app/(tabs)/tasks/[id]';
 import ConflictsScreen from '../app/conflicts';
+import { expectAccessible } from '../test/accessible';
 import { databases } from '../test/expoSqlite';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import {
@@ -189,6 +190,7 @@ describe('the conflicts list', () => {
         allTextOf(node).includes('Phone title'),
     );
     expect(allTextOf(list)).toContain('Changed on another device (title)');
+    expectAccessible(renderer);
     const keepMine = list.find(
       (node) =>
         typeof node.type === 'string' &&
