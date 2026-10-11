@@ -7,14 +7,15 @@ import { pageTitle } from '@gagnechris/shared';
 import {
   fetchPrerender,
   fromPrerender,
-  prerenderedTitle,
+  prerenderedHead,
+  type PrerenderedHead,
 } from '../prerender/documentPrerender';
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 export type ResumeView = ResumeIntro & {
   /** The sections as the published page printed them. */
   body: { html: string };
-  headTitle: string;
+  head: PrerenderedHead;
   /** True when the publisher wrote the unpublish placeholder. */
   unavailable?: boolean;
 };
@@ -26,13 +27,16 @@ export const unavailableResumeView = (): ResumeView => ({
   summary: RESUME_UNAVAILABLE_TEXT,
   pdfPath: null,
   body: { html: '' },
-  headTitle: pageTitle('Resume'),
+  head: { title: pageTitle('Resume') },
   unavailable: true,
 });
 
 export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
   if (root.querySelector('.resume-page-unavailable')) {
-    return unavailableResumeView();
+    return {
+      ...unavailableResumeView(),
+      head: prerenderedHead(root, pageTitle('Resume')),
+    };
   }
 
   const page = root.querySelector('.resume-page-prerender');
@@ -48,7 +52,7 @@ export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
       page.querySelector('.resume-download')?.getAttribute('href') ||
       RESUME_PDF_PATH,
     body: { html: body.innerHTML },
-    headTitle: prerenderedTitle(root) ?? pageTitle('Resume'),
+    head: prerenderedHead(root, pageTitle('Resume')),
   };
 }
 

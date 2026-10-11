@@ -50,7 +50,7 @@ function Resume() {
 
   const head = (
     <PageHead
-      title={resume?.headTitle ?? pageTitle('Resume')}
+      {...(resume?.head ?? { title: pageTitle('Resume') })}
       url={siteUrl('/resume')}
     />
   );

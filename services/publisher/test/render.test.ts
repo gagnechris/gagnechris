@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderSitePageHtml } from '@gagnechris/public-ui/server';
+import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
 import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
@@ -15,6 +16,7 @@ import {
   renderPostsIndexPage,
   renderHomePage,
   renderPostPage,
+  renderProjectPage,
   renderResumePage,
   renderResumeUnavailablePage,
   resolveOgImage,
@@ -387,6 +389,28 @@ describe('publisher render', () => {
     expect(scriptMatch![1]).toContain('\\u003c/script>');
     // Title still renders (HTML-escaped) in the visible document.
     expect(html).toContain('Break &lt;/script&gt;');
+  });
+
+  it('lists every static public page in the sitemap', () => {
+    const sitemap = buildSitemapXml([]);
+    for (const path of [
+      '/contact',
+      '/dont-feed-the-bears',
+      '/dont-feed-the-bears/camp',
+      '/dont-feed-the-bears/wild',
+    ]) {
+      expect(sitemap).toContain(`<loc>https://gagnechris.com${path}</loc>`);
+    }
+  });
+
+  it('titles a project page apart from the section it shares a name with', () => {
+    const titleOf = (html: string) => html.match(/<title>(.*?)<\/title>/)?.[1];
+    const project = SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!;
+    expect(project.name).toBe('Posts');
+    const projectTitle = titleOf(renderProjectPage(shell, project));
+    const postsTitle = titleOf(renderPostsIndexPage(shell, [samplePost()]));
+    expect(postsTitle).toBe('Posts - Chris Gagne');
+    expect(projectTitle).toBe('Project: Posts - Chris Gagne');
   });
 
   it('builds sitemap and RSS for published posts', () => {

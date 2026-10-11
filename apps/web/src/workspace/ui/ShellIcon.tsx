@@ -23,6 +23,12 @@ const PATHS = {
       <path d="M8 17c1-2 2.5-3 4-3s3 1 4 3" />
     </>
   ),
+  pages: (
+    <>
+      <path d="M8 3h9l3 3v11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M4 7v13a1 1 0 0 0 1 1h11" />
+    </>
+  ),
   projects: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

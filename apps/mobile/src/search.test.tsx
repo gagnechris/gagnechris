@@ -30,6 +30,11 @@ const notes = [
   makeNote('01PASSPORTNOTE000000000000', `Trip prep\n{{task:${TASK}}}\n`, {
     title: 'Travel',
   }),
+  makeNote('01DAILYSTANDUP000000000000', 'Standup with Dana', {
+    type: 'daily',
+    date: '2026-10-01',
+    title: '',
+  }),
   makeNote('01PERSONALNOTE000000000000', 'Passport photos at the pharmacy', {
     title: 'Errands',
     area: 'personal',
@@ -129,6 +134,22 @@ describe('Search', () => {
       byLabel(again, 'Clear recent searches').props.onPress(),
     );
     expect(JSON.parse(data.get(RECENT_SEARCHES_KEY)!)).toEqual([]);
+  });
+
+  it('opens a daily note hit on Today, as web does', async () => {
+    const renderer = await launch();
+    await type(renderer, 'standup');
+    const note = renderer.root.find(
+      (node) =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityHint === 'Opens the note',
+    );
+    act(() => note.props.onPress());
+    expect(router.back).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(
+      '/today?date=2026-10-01&area=work',
+    );
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('completes a task from its hit', async () => {

@@ -1,5 +1,6 @@
 import {
   pageTitle,
+  SITE_AUTHOR_NAME,
   SITE_LINKEDIN_URL,
   SITE_PROJECTS_LIVE,
 } from './site-config.js';
@@ -30,6 +31,11 @@ export const NOT_FOUND_BEARS = {
   href: '/dont-feed-the-bears?from=404',
   after: ' while you’re here.',
 } as const;
+
+export const POSTS_INDEX_DESCRIPTION = `Posts by ${SITE_AUTHOR_NAME}.`;
+export const PROJECTS_INDEX_DESCRIPTION = `What ${SITE_AUTHOR_NAME} is building.`;
+export const CONTACT_DESCRIPTION =
+  'Contact Chris Gagne — engineering leadership, software collaboration, and speaking.';
 
 export const CONTACT_HEADING = 'Contact';
 export const CONTACT_INTRO = 'Say hello. I read everything and reply to most.';

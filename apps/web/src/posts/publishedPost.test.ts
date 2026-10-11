@@ -18,14 +18,26 @@ const parse = (head: string) =>
     ),
   );
 
-describe('postViewFromDocument head title', () => {
+describe('postViewFromDocument head', () => {
   test("keeps the publisher's SEO title", () => {
-    expect(parse('<title>A custom SEO title</title>')?.headTitle).toBe(
+    expect(parse('<title>A custom SEO title</title>')?.head.title).toBe(
       'A custom SEO title',
     );
   });
 
   test('falls back to the post title when the page has none', () => {
-    expect(parse('')?.headTitle).toBe('Hello - Chris Gagne');
+    expect(parse('')?.head).toEqual({ title: 'Hello - Chris Gagne' });
+  });
+
+  test("carries the publisher's description and image", () => {
+    expect(
+      parse(
+        '<meta name="description" content="About &amp; more" /><meta property="og:image" content="https://gagnechris.com/media/hello.png" />',
+      )?.head,
+    ).toEqual({
+      title: 'Hello - Chris Gagne',
+      description: 'About & more',
+      image: 'https://gagnechris.com/media/hello.png',
+    });
   });
 });

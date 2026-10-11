@@ -1,3 +1,4 @@
+import type { Note } from '@gagnechris/app-core';
 import { useRouter, useSegments } from 'expo-router';
 import { useMemo, useRef } from 'react';
 
@@ -12,6 +13,10 @@ export const taskPath = (tab: DetailTab | null, id: string) =>
 
 export const notePath = (tab: DetailTab | null, id: string) =>
   !tab || tab === 'notes' ? `/notes/${id}` : `/${tab}/note/${id}`;
+
+/** A daily note is written on Today, which keeps its date and area. */
+export const dailyNotePath = (date: string, area: string) =>
+  `/today?date=${date}&area=${area}`;
 
 export const detailTab = (segments: readonly string[]): DetailTab | null => {
   const tab = segments[0] === '(tabs)' ? segments[1] : undefined;
@@ -38,6 +43,11 @@ export const useDetailRoutes = () => {
       notePath: (id: string) => notePath(tab, id),
       openTask: (id: string) => open(taskPath(tab, id)),
       openNote: (id: string) => open(notePath(tab, id)),
+      /** Daily notes open on Today, as on web. */
+      openListedNote: (note: Pick<Note, 'id' | 'type' | 'date' | 'area'>) =>
+        note.type === 'daily' && note.date
+          ? router.navigate(dailyNotePath(note.date, note.area))
+          : open(notePath(tab, note.id)),
     };
   }, [router, tab]);
 };

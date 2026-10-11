@@ -1,5 +1,10 @@
-import type { ProjectPageView } from '@gagnechris/shared';
-import { fetchPrerender, fromPrerender } from '../prerender/documentPrerender';
+import { projectPageTitle, type ProjectPageView } from '@gagnechris/shared';
+import {
+  fetchPrerender,
+  fromPrerender,
+  prerenderedHead,
+  type PrerenderedHead,
+} from '../prerender/documentPrerender';
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 import {
   demoFrom,
@@ -10,10 +15,12 @@ import {
 const text = (root: ParentNode, selector: string): string =>
   root.querySelector(selector)?.textContent ?? '';
 
+export type PublishedProjectView = ProjectPageView & { head: PrerenderedHead };
+
 /** Reads back what public-ui's `ProjectPageBody` printed. */
 export function projectPageViewFromDocument(
   root: ParentNode,
-): ProjectPageView | null {
+): PublishedProjectView | null {
   const page = root.querySelector('.project-page');
   const body = page?.querySelector('.project-body');
   const stage = stageFromElement(
@@ -21,9 +28,11 @@ export function projectPageViewFromDocument(
   );
   if (!page || !body || !stage) return null;
   const demo = page.querySelector(':scope > .project-demo');
+  const name = text(page, '.project-header > h1');
   return {
     slug: page.getAttribute('data-slug') ?? '',
-    name: text(page, '.project-header > h1'),
+    name,
+    head: prerenderedHead(root, projectPageTitle(name)),
     pitch: text(page, '.project-header > .project-pitch'),
     ...stage,
     previewImage: demo ? previewImageFrom(demo) : null,
@@ -54,7 +63,7 @@ export function projectPageViewFromDocument(
 /** Only the slug the visitor cold-loaded; later navigations fetch. */
 export const documentProjectPageView = (
   slug: string,
-): ProjectPageView | null => {
+): PublishedProjectView | null => {
   const view = fromPrerender(projectPageViewFromDocument);
   return view?.slug === slug ? view : null;
 };
@@ -64,5 +73,5 @@ export const publishedProjectPageUrl = (slug: string): string =>
 
 export const loadPublishedProject = (
   slug: string,
-): Promise<ProjectPageView | null> =>
+): Promise<PublishedProjectView | null> =>
   fetchPrerender(publishedProjectPageUrl(slug), projectPageViewFromDocument);

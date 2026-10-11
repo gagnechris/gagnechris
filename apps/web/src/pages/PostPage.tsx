@@ -6,6 +6,7 @@ import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
 import './PostPage.css';
 import PageHead from '../components/PageHead';
+import { ReadingBar } from './ReadingBar';
 
 function PostPage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -30,8 +31,9 @@ function PostPage() {
   const post = published.view;
   return (
     <>
-      <PageHead title={post.headTitle} url={siteUrl(`/posts/${slug}`)} />
+      <PageHead {...post.head} url={siteUrl(`/posts/${slug}`)} />
       <PostPageBody post={post} />
+      <ReadingBar title={post.title} />
     </>
   );
 }

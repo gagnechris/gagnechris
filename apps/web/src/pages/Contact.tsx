@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { pageTitle, siteUrl } from '@gagnechris/shared';
 import { ContactPageBody } from '@gagnechris/public-ui';
+import { CONTACT_DESCRIPTION } from '@gagnechris/shared/public-pages';
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
@@ -197,7 +198,11 @@ function Contact() {
 
   return (
     <>
-      <PageHead title={pageTitle('Contact')} url={siteUrl('/contact')} />
+      <PageHead
+        title={pageTitle('Contact')}
+        url={siteUrl('/contact')}
+        description={CONTACT_DESCRIPTION}
+      />
       <ContactPageBody>
         {hydrated ? (
           <div className="contact-page__body">

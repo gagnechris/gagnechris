@@ -57,21 +57,9 @@ const label = "Post"
 
 var statuses = []string{store.StatusDraft, store.StatusPublished, store.StatusDeleted}
 
-func statusGSI1Pk(status string) string { return "STATUS#" + status }
-
-func statusGSI1Sk(sortTS, id string) string { return "TS#" + sortTS + "#POST#" + id }
-
-func tagPk(tag string) string { return "TAG#" + tag }
-
-func tagSk(publishedAt, id string) string { return "TS#" + publishedAt + "#POST#" + id }
-
-func slugClaimKey(slug string) data.Item { return data.Key("SLUG#"+slug, "POST") }
-
-func slugRedirectKey(slug string) data.Item { return data.Key("SLUG#"+slug, "REDIRECT") }
-
 var slugClaims = &store.SlugClaims{
-	ClaimKey:           slugClaimKey,
-	RedirectKey:        slugRedirectKey,
+	ClaimKey:           func(slug string) data.Item { return data.Key(keys.SlugPk(slug), keys.SlugPostSk()) },
+	RedirectKey:        func(slug string) data.Item { return data.Key(keys.SlugPk(slug), keys.SlugRedirectSk()) },
 	OwnerAttr:          "postId",
 	ClaimEntityType:    "slug",
 	RedirectEntityType: "slugRedirect",
@@ -166,8 +154,8 @@ func metaItem(p Post) data.Item {
 		sortTS = *p.PublishedAt
 	}
 	item["hasUnpublishedChanges"] = data.Bool(p.HasUnpublishedChanges)
-	item["gsi1pk"] = data.S(statusGSI1Pk(p.Status))
-	item["gsi1sk"] = data.S(statusGSI1Sk(sortTS, p.ID))
+	item["gsi1pk"] = data.S(keys.StatusGSI1Pk(p.Status))
+	item["gsi1sk"] = data.S(keys.StatusGSI1Sk(sortTS, p.ID))
 	return item
 }
 
