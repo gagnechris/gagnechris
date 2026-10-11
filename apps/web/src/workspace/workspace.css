@@ -1263,6 +1263,8 @@
 /* Home / Resume: form + live preview side by side on wide screens. */
 .admin-editor-split {
   display: grid;
+  /* The preview renders the public page, which must not widen the form. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
@@ -1739,12 +1741,14 @@
   }
 
   .notebook-today__area {
+    min-width: 0;
     max-width: 7.5rem;
   }
 
   .notebook-today__phone-tools {
     display: flex;
     gap: var(--space-2);
+    min-width: 0;
     margin-left: auto;
   }
 
