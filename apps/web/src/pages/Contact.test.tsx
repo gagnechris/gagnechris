@@ -64,7 +64,7 @@ describe('Contact form', () => {
 
     await user.click(submit);
 
-    expect(describedBy(name)).toBe('Name is required');
+    await waitFor(() => expect(describedBy(name)).toBe('Name is required'));
     expect(describedBy(email)).toBe('Enter a valid email address');
     expect(describedBy(message)).toBe('Message is required');
     for (const field of [name, email, message]) {
