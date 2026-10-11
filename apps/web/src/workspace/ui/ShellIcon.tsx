@@ -59,6 +59,12 @@ const PATHS = {
       <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </>
   ),
+  passkey: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.8 12.2 20 3M17 6l3 3M14.5 8.5l2.5 2.5" />
+    </>
+  ),
   close: <path d="M6 6l12 12M18 6 6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
   signOut: (

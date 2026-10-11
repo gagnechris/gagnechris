@@ -22,7 +22,13 @@ import {
   settle,
   signedInBackend,
 } from '../test/render';
+import { addPasskey } from './auth/passkey';
 import { MIN_TARGET } from './theme';
+
+vi.mock('./auth/passkey', () => ({
+  canAddPasskey: true,
+  addPasskey: vi.fn(async () => undefined),
+}));
 
 const flatStyle = (style: unknown): Record<string, unknown> =>
   Array.isArray(style)
@@ -144,6 +150,9 @@ describe('Notebook tab screens', () => {
     expect(byLabel(renderer, 'Notebook, current app')).toBeDefined();
     expect(text.split('\n')).not.toContain('Admin');
     expect(text).not.toContain('Public site');
+
+    act(() => byLabel(renderer, 'Add a passkey').props.onPress());
+    expect(addPasskey).toHaveBeenCalledOnce();
 
     act(() => byLabel(renderer, 'Sign out of Notebook').props.onPress());
     const buttons = vi.mocked(Alert.alert).mock.calls[0]![2]!;

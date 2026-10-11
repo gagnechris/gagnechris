@@ -5,7 +5,7 @@ import {
   signOut,
 } from 'aws-amplify/auth';
 import { isSitePath } from '@gagnechris/shared';
-import { ensureAmplifyConfigured } from './config';
+import { addPasskeyUrl, ensureAmplifyConfigured } from './config';
 
 export type AuthUser = {
   label: string;
@@ -126,6 +126,26 @@ export const takeReturnTo = (): string => {
   return safeReturnTo(stored);
 };
 
+const saveReturnTo = (): void => {
+  const { pathname, search, hash } = window.location;
+  try {
+    window.sessionStorage.setItem(
+      RETURN_TO_KEY,
+      safeReturnTo(`${pathname}${search}${hash}`),
+    );
+  } catch {
+    // Storage disabled: the callback lands on the app's home.
+  }
+};
+
+/** Local auth has no managed login, so nowhere to add a passkey. */
+export const canAddPasskey = (): boolean => !isLocalAuth();
+
+export const openAddPasskey = (): void => {
+  saveReturnTo();
+  window.location.assign(addPasskeyUrl());
+};
+
 /** `LOGIN` makes managed login ask again even with a live session. */
 export const redirectToSignIn = async (options?: {
   prompt?: 'LOGIN';
@@ -134,15 +154,7 @@ export const redirectToSignIn = async (options?: {
     return;
   }
   ensureAmplifyConfigured();
-  const { pathname, search, hash } = window.location;
-  try {
-    window.sessionStorage.setItem(
-      RETURN_TO_KEY,
-      safeReturnTo(`${pathname}${search}${hash}`),
-    );
-  } catch {
-    // Storage disabled: sign-in still works and lands on the app's home.
-  }
+  saveReturnTo();
   await (options?.prompt
     ? signInWithRedirect({ options: { prompt: options.prompt } })
     : signInWithRedirect());

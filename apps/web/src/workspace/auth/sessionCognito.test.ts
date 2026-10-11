@@ -11,12 +11,17 @@ vi.mock('aws-amplify/auth', () => ({
   signInWithRedirect,
   signOut,
 }));
-vi.mock('./config', () => ({ ensureAmplifyConfigured: vi.fn() }));
+vi.mock('./config', () => ({
+  addPasskeyUrl: () => 'https://auth.example.com/passkeys/add?client_id=c',
+  ensureAmplifyConfigured: vi.fn(),
+}));
 
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import {
+  canAddPasskey,
   getAuthTime,
   getAuthUser,
+  openAddPasskey,
   RETURN_TO_KEY,
   redirectToSignIn,
   safeReturnTo,
@@ -98,6 +103,23 @@ describe('Cognito session', () => {
     );
     expect(takeReturnTo()).toBe('/notes/01J9ZX?area=work#top');
     expect(takeReturnTo()).toBe('/');
+  });
+
+  test('opens the add-passkey page and comes back to the same page', () => {
+    const assign = vi.fn();
+    vi.stubGlobal('location', { ...window.location, assign });
+    try {
+      window.history.replaceState(null, '', '/notes/01J9ZX');
+      Object.assign(window.location, { pathname: '/notes/01J9ZX' });
+      expect(canAddPasskey()).toBe(true);
+      openAddPasskey();
+      expect(assign).toHaveBeenCalledWith(
+        'https://auth.example.com/passkeys/add?client_id=c',
+      );
+      expect(takeReturnTo()).toBe('/notes/01J9ZX');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   test.each([
