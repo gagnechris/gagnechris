@@ -7,8 +7,8 @@ import { tokens } from '@gagnechris/tokens';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
-import { postMeta } from '../../../src/admin/postLabels';
-import { PostRow } from '../../../src/admin/PostRow';
+import { postMeta } from '../../../src/admin/labels';
+import { ListRow } from '../../../src/admin/ListRow';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
 import { showError } from '../../../src/ui/confirm';
@@ -136,7 +136,7 @@ const PostsScreen = () => {
         <>
           <Section>
             {items.map((post, index) => (
-              <PostRow
+              <ListRow
                 key={post.id}
                 title={post.title}
                 meta={postMeta(post)}

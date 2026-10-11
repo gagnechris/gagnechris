@@ -9,18 +9,18 @@ import PostsScreen from '../app/admin/posts/index';
 import {
   makePost,
   makeProject,
-  postsServer,
+  adminServer,
   UPLOAD_URL,
-} from '../test/postsServer';
+} from '../test/adminServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
 import { router, searchParams } from '../test/router';
-import { insertImage, withTitle } from './admin/postEdits';
+import { insertImage, withSlugSource } from './admin/draftEdits';
 
-let server: ReturnType<typeof postsServer>;
+let server: ReturnType<typeof adminServer>;
 let mounted: ReactTestRenderer | null = null;
 
-const serve = (...args: Parameters<typeof postsServer>) => {
-  server = postsServer(...args);
+const serve = (...args: Parameters<typeof adminServer>) => {
+  server = adminServer(...args);
   vi.stubGlobal('fetch', server.fetch);
 };
 
@@ -265,7 +265,11 @@ describe('post edits', () => {
       seoTitle: '',
       seoDescription: '',
     };
-    expect(withTitle(draft, 'Hi there', true).slug).toBe('hi-there');
-    expect(withTitle(draft, 'Hi there', false).slug).toBe('untitled-abc123');
+    expect(withSlugSource(draft, 'title', 'Hi there', true).slug).toBe(
+      'hi-there',
+    );
+    expect(withSlugSource(draft, 'title', 'Hi there', false).slug).toBe(
+      'untitled-abc123',
+    );
   });
 });
