@@ -411,6 +411,10 @@
     align-items: stretch;
   }
 
+  .workspace--rail .workspace-sidebar {
+    align-items: stretch;
+  }
+
   .workspace-desktop,
   .workspace-nav__heading,
   .workspace-nav__count,
@@ -525,6 +529,42 @@
 
   .workspace-more__sheet .workspace-nav__heading {
     display: block;
+  }
+
+  .workspace-more__sheet .workspace-search-button {
+    min-height: 44px;
+  }
+
+  .workspace-more__sheet .workspace-account {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    padding: 0;
+  }
+
+  .workspace-more__sheet .workspace-account__avatar {
+    margin-left: 0.625rem;
+  }
+
+  .workspace-more__sheet .workspace-account__who {
+    flex: 1;
+  }
+
+  .workspace-more__sheet .workspace-icon-button {
+    flex: 1 0 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: auto;
+    height: 44px;
+    padding: 0 0.625rem;
+    color: var(--neutral-800);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .workspace-more__sheet .workspace-icon-button__label {
+    display: inline;
   }
 }
 
@@ -993,6 +1033,157 @@
   font-weight: 600;
 }
 
+.admin-actions__toggle,
+.workspace-icon-button__label {
+  display: none;
+}
+
+.admin-actions__more {
+  display: contents;
+}
+
+/* Phones: a 44px nav row (back, actions, Publish) over a 32px title. */
+@media (max-width: 767px) {
+  .admin-panel h1,
+  .users-page h1,
+  .admin-panel .admin-title-input,
+  .admin-panel .admin-post-editor .admin-title-input {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .admin-eyebrow,
+  .users-page .users-eyebrow,
+  .notebook-today__kicker {
+    display: none;
+  }
+
+  .admin-panel__header,
+  .users-page .users-header {
+    align-items: center;
+    gap: 0 var(--space-2);
+  }
+
+  .admin-panel__header > :first-child,
+  .users-page .users-header > :first-child {
+    flex: 1 0 100%;
+    order: 1;
+  }
+
+  .admin-panel__header > :nth-child(2),
+  .users-page .users-header > :nth-child(2) {
+    margin-left: auto;
+  }
+
+  .admin-action-bar {
+    justify-content: flex-start;
+    gap: 0 var(--space-2);
+    padding: 0 0 var(--space-2);
+  }
+
+  /* Ends the nav row, so the status always starts a line of its own. */
+  .admin-action-bar::after {
+    content: '';
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .admin-action-bar__status {
+    display: contents;
+  }
+
+  .admin-action-bar__status > * {
+    order: 3;
+  }
+
+  .admin-action-bar .admin-back {
+    order: 0;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .admin-action-bar .admin-actions,
+  .admin-action-bar .admin-toolbar {
+    order: 1;
+    position: relative;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  .admin-action-bar .admin-actions {
+    flex-wrap: nowrap;
+  }
+
+  .admin-action-bar__status > h1,
+  .admin-action-bar > .notebook-today__title {
+    order: 2;
+    flex-basis: 100%;
+    margin: 0 0 var(--space-1);
+  }
+
+  .admin-actions__toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--neutral-700);
+    font: inherit;
+    font-size: 1.25rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .admin-actions__toggle:hover,
+  .admin-actions__toggle[aria-expanded='true'] {
+    background: var(--neutral-100);
+  }
+
+  .admin-actions__more {
+    display: none;
+  }
+
+  .admin-actions__more[data-open] {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 12rem;
+    padding: 4px;
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    background: white;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  }
+
+  .admin-actions__more .admin-btn {
+    justify-content: flex-start;
+    min-height: 44px;
+    border: 0;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .admin-action-bar .admin-btn--primary {
+    min-height: 44px;
+    padding: 0 1.125rem;
+    border-radius: var(--radius-full);
+  }
+
+  .admin-action-bar .admin-kbd {
+    display: none;
+  }
+}
+
 .admin-title-input {
   display: block;
   width: 100%;
@@ -1074,6 +1265,7 @@
 
 .admin-post-editor {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
@@ -1258,6 +1450,8 @@
 /* Home / Resume: form + live preview side by side on wide screens. */
 .admin-editor-split {
   display: grid;
+  /* The preview renders the public page, which must not widen the form. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
@@ -1318,6 +1512,7 @@
 
 .admin-form-card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   padding: var(--space-4) 1.25rem;
   border: 1px solid var(--neutral-200);
@@ -1490,6 +1685,9 @@
 
 .admin-repeat {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* A fieldset is otherwise as wide as its widest content. */
+  min-inline-size: 0;
   gap: var(--space-4);
   border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
@@ -1505,6 +1703,7 @@
 
 .admin-repeat__item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--neutral-200);
@@ -1729,12 +1928,14 @@
   }
 
   .notebook-today__area {
+    min-width: 0;
     max-width: 7.5rem;
   }
 
   .notebook-today__phone-tools {
     display: flex;
     gap: var(--space-2);
+    min-width: 0;
     margin-left: auto;
   }
 
@@ -2061,4 +2262,60 @@
   color: var(--primary-600);
   font-size: var(--text-sm);
   font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .workspace-segmented {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .admin-status-filter {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .admin-panel__header > * {
+    min-width: 0;
+  }
+
+  .admin-panel h1 {
+    overflow-wrap: break-word;
+  }
+
+  .workspace-segmented__option,
+  .admin-status-filter .workspace-segmented__option {
+    min-height: 44px;
+  }
+
+  .workspace-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .admin-prefixed__input,
+  .admin-cover__url .admin-input {
+    font-size: max(16px, 1em);
+  }
+
+  .admin-input {
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .admin-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-seo > summary,
+  .admin-notebook-completed > summary,
+  .notebook-today__calendar > summary {
+    padding-block: 12px;
+  }
 }

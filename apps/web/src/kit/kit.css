@@ -3,6 +3,7 @@
   margin: 0;
   padding: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -22,12 +23,17 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
 }
 
 .admin-post-list__meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
   gap: var(--space-3);
   font-size: var(--text-sm);
   color: var(--neutral-500);
@@ -386,4 +392,33 @@ label.admin-btn:has(+ .admin-visually-hidden:focus-visible) {
   font-weight: 400;
   color: var(--neutral-800);
   background: transparent;
+}
+
+.task-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Phones: iOS Safari zooms into a focused field under 16px, and a finger
+   needs a 44px target. */
+@media (max-width: 767px) {
+  :where(input, select, textarea),
+  .admin-input,
+  .admin-chips__input {
+    font-size: max(16px, 1em);
+  }
+
+  .admin-btn,
+  .admin-check {
+    min-height: 44px;
+  }
+
+  /* The label is the hit area; negative margins keep the row's spacing. */
+  .task-check {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -12px;
+  }
 }

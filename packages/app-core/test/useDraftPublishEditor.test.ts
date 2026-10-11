@@ -28,7 +28,7 @@ function useTestHold(enabled = true): DraftPublishHold & { busy: boolean } {
         busyRef.current = false;
       }
     },
-    [enabled],
+    [enabled, setBusy],
   );
   return { withHold, isBusy: () => busyRef.current, busy };
 }

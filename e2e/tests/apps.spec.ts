@@ -174,17 +174,18 @@ test('on a phone the admin tabs are Posts, Pages, Projects, Users and More', asy
     /More/,
   ]);
 
-  await page.getByRole('link', { name: 'Pages' }).click();
+  const nav = page.getByRole('navigation', { name: 'Admin' });
+  await nav.getByRole('link', { name: 'Pages' }).click();
   await page.getByRole('link', { name: /Home page/ }).click();
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(
+  await expect(nav.getByRole('link', { name: 'Pages' })).toHaveClass(
     /workspace-nav__item--active/,
   );
 
   await page.goto(`${apps.admin}/pages`);
   await page.getByRole('link', { name: /Resume/ }).click();
   await expect(page).toHaveURL(/\/resume$/);
-  await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(
+  await expect(nav.getByRole('link', { name: 'Pages' })).toHaveClass(
     /workspace-nav__item--active/,
   );
 });

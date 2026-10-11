@@ -21,11 +21,11 @@ function App() {
   const published = usePublishedView('home', documentHome, loadPublishedHome);
   const recent = usePublishedView('home', documentRecentPosts, loadRecentPosts);
   const home = published.status === 'ready' ? published.view : null;
-  const { name, title, aboutHtml, headTitle } = home ?? fallbackHomeView();
+  const { name, title, aboutHtml, head } = home ?? fallbackHomeView();
 
   return (
     <>
-      <PageHead title={headTitle} url={siteUrl('/')} />
+      <PageHead {...head} url={siteUrl('/')} />
       <HomeBody
         name={name}
         title={title}

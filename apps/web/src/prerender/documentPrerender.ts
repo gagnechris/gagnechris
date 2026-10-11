@@ -2,21 +2,46 @@
  * `createRoot` throws away the prerendered `#root`, so it is copied when this
  * module is first imported (before `main.tsx` mounts). Pages seed their first
  * render from it instead of bundled defaults or a loading state, so a cold
- * load paints the same text twice. The head title goes with it, so a parser
- * sees the same document shape here as in fetched HTML.
+ * load paints the same text twice. The head title and metas go with it, so a
+ * parser sees the same document shape here as in fetched HTML.
  */
 const snapshot: Document | null = (() => {
   const root =
     typeof document === 'undefined' ? null : document.getElementById('root');
   if (!root) return null;
   const copy = document.implementation.createHTMLDocument(document.title);
+  for (const meta of document.head.querySelectorAll('meta')) {
+    copy.head.append(copy.importNode(meta, true));
+  }
   copy.body.append(copy.importNode(root, true));
   return copy;
 })();
 
 /** The publisher's `<title>`, which carries a page's SEO title when one is set. */
-export const prerenderedTitle = (root: ParentNode): string | null =>
+const prerenderedTitle = (root: ParentNode): string | null =>
   root.querySelector('head > title')?.textContent?.trim() || null;
+
+export type PrerenderedHead = {
+  title: string;
+  description?: string | undefined;
+  image?: string | undefined;
+};
+
+const headMeta = (root: ParentNode, selector: string): string | undefined =>
+  root
+    .querySelector(`head > meta[${selector}]`)
+    ?.getAttribute('content')
+    ?.trim() || undefined;
+
+/** What the publisher wrote into the head, so client navigation carries it too. */
+export const prerenderedHead = (
+  root: ParentNode,
+  fallbackTitle: string,
+): PrerenderedHead => ({
+  title: prerenderedTitle(root) ?? fallbackTitle,
+  description: headMeta(root, 'name="description"'),
+  image: headMeta(root, 'property="og:image"'),
+});
 
 const parsed = new WeakMap<object, unknown>();
 

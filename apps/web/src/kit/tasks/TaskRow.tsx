@@ -15,13 +15,15 @@ export function TaskCheckbox({
 }) {
   const done = task.status === 'done';
   return (
-    <input
-      type="checkbox"
-      checked={done}
-      disabled={disabled}
-      onChange={onToggle}
-      aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-    />
+    <label className="task-check">
+      <input
+        type="checkbox"
+        checked={done}
+        disabled={disabled}
+        onChange={onToggle}
+        aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
+      />
+    </label>
   );
 }
 
