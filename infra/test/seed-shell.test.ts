@@ -40,16 +40,21 @@ describe('scripts/local/seed-shell.sh', () => {
     write(join(root, 'apps/web/dist/index.html'), 'new shell');
     write(join(root, 'apps/web/dist/_shell.html'), 'new shell');
     const site = join(root, '.local-site');
-    const published = [
-      'blog/hello/index.html',
-      'blog/posts.json',
-      'projects/notebook/index.html',
-      'resume/index.html',
-      'resume.pdf',
-      'home/last-published.json',
-      'rss.xml',
-      'sitemap.xml',
-    ];
+    const published = readFileSync(
+      join(ROOT, 'scripts', 'publisher-owned-paths.generated.txt'),
+      'utf8',
+    )
+      .split('\n')
+      .filter((line) => line && !line.startsWith('#'))
+      .flatMap((pattern) =>
+        pattern.endsWith('/*')
+          ? [
+              `${pattern.slice(0, -1)}published.json`,
+              `${pattern.slice(0, -1)}nested/index.html`,
+            ]
+          : [pattern],
+      );
+    expect(published.length).toBeGreaterThan(0);
     for (const key of [...published, 'stale.html']) write(join(site, key));
     write(join(site, 'index.html'), 'old prerender');
 
