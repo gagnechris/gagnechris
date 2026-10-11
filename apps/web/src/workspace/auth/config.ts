@@ -60,3 +60,20 @@ export const ensureAmplifyConfigured = (): void => {
 
   configured = true;
 };
+
+/**
+ * Managed login's add-passkey page for this app's client. It returns to the
+ * sign-in callback, which goes back to the saved page while the session is
+ * live.
+ */
+export const addPasskeyUrl = (): string => {
+  const domain = requireValue(
+    'VITE_COGNITO_AUTH_DOMAIN',
+    import.meta.env.VITE_COGNITO_AUTH_DOMAIN,
+  );
+  const params = new URLSearchParams({
+    client_id: requireValue('Cognito app client ID', clientId),
+    redirect_uri: `${window.location.origin}/auth/callback`,
+  });
+  return `https://${domain}/passkeys/add?${params.toString()}`;
+};

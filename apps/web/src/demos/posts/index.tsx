@@ -9,10 +9,11 @@ import {
 import {
   HomeRecentPosts,
   PlainLink,
+  PostArticle,
   PublicLinkContext,
 } from '@gagnechris/public-ui';
 import {
-  renderPostArticleHtml,
+  postArticleView,
   selectHomeRecentPosts,
 } from '@gagnechris/shared/render';
 import { Button } from '../../kit/Button';
@@ -192,20 +193,16 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
   );
   // Under the slot's "Try it" h2 and inside the project page's <main>: no
   // second h1 and no author note.
-  const postHtml = useMemo(
+  const post = useMemo(
     () =>
       published &&
-      renderPostArticleHtml(
-        {
-          slug: published.slug,
-          title: published.title,
-          excerpt: '',
-          publishedAt: published.publishedAt,
-          bodyMarkdown: published.bodyMarkdown,
-        },
-        [],
-        3,
-      ),
+      postArticleView({
+        slug: published.slug,
+        title: published.title,
+        excerpt: '',
+        publishedAt: published.publishedAt,
+        bodyMarkdown: published.bodyMarkdown,
+      }),
     [published],
   );
 
@@ -233,7 +230,7 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
         </span>
       </header>
       <div className="posts-demo__page">
-        {view === 'post' && !postHtml ? (
+        {view === 'post' && !post ? (
           <p className="posts-demo__missing">
             Nothing at {postPath} yet. Publish to put it here.
           </p>
@@ -244,18 +241,19 @@ function PublicSitePane({ state }: { state: PostsDemoState }) {
             onClick={onClick}
             onAnimationEnd={() => setFlashed(state.publishes)}
           >
-            {view === 'home' ? (
-              // Plain anchors, so the click handler above can keep the
-              // visitor in the demo before the router sees the click.
-              <PublicLinkContext.Provider value={PlainLink}>
+            {/* Plain anchors, so the click handler above can keep the
+                visitor in the demo before the router sees the click. */}
+            <PublicLinkContext.Provider value={PlainLink}>
+              {view === 'home' ? (
                 <HomeRecentPosts posts={recentPosts} />
-              </PublicLinkContext.Provider>
-            ) : (
-              <div
-                className="post-page"
-                dangerouslySetInnerHTML={{ __html: postHtml ?? '' }}
-              />
-            )}
+              ) : (
+                post && (
+                  <div className="post-page">
+                    <PostArticle post={post} headingLevel={3} />
+                  </div>
+                )
+              )}
+            </PublicLinkContext.Provider>
           </div>
         )}
       </div>

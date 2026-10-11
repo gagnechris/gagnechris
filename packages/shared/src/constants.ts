@@ -5,6 +5,12 @@ export const API_SERVICE_NAME = 'gagnechris-api' as const;
 export const PUBLISHER_SERVICE_NAME = 'gagnechris-publisher' as const;
 export const RESTORE_TEST_SERVICE_NAME = 'gagnechris-restore-test' as const;
 
+export const CONTACT_PER_IP_PER_HOUR = 3;
+/** Shared by contact + resume notify; well under the SES sandbox 200/day. */
+export const SES_GLOBAL_DAILY_CAP = 100;
+/** Contact submits faster than this are treated as bots. */
+export const MIN_CONTACT_SUBMIT_MS = 2_000;
+
 /** EMF metric names the restore-test Lambda emits and Data-prod alarms on. */
 export const RESTORE_TEST_METRICS = {
   validationSucceeded: 'RestoreValidationSucceeded',

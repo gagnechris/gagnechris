@@ -502,14 +502,8 @@ describe('AuthStack', () => {
 
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'ios',
-      CallbackURLs: [
-        'https://notebook.gagnechris.com/ios/auth/callback',
-        'gagnechris://auth/callback',
-      ],
-      LogoutURLs: [
-        'https://notebook.gagnechris.com/ios/auth/signed-out',
-        'gagnechris://',
-      ],
+      CallbackURLs: ['https://notebook.gagnechris.com/ios/auth/callback'],
+      LogoutURLs: ['https://notebook.gagnechris.com/ios/auth/signed-out'],
     });
     template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
       ClientName: 'dev-local',
@@ -836,7 +830,7 @@ describe('ApiStack', () => {
     ).toBe(5);
 
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs24.x',
+      Runtime: 'provided.al2023',
       Architectures: ['arm64'],
       Environment: {
         Variables: Match.objectLike({
@@ -846,10 +840,10 @@ describe('ApiStack', () => {
       },
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-errors',
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-throttles',
+      AlarmName: 'gagnechris-prod-api-go-lambda-throttles',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-handler-errors',

@@ -3,7 +3,6 @@ import {
   escapeHtml,
   homeAboutExcerpt,
   pageTitle,
-  renderPostPageBodyHtml,
   projectPageView,
   resumeSummaryExcerpt,
 } from '@gagnechris/shared/render';
@@ -24,6 +23,7 @@ import {
 import type { HomeRecentPost } from '@gagnechris/shared/render';
 import {
   renderHomePrerenderHtml,
+  renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,

@@ -20,9 +20,11 @@ const Mini = ({ nodes }: { nodes: readonly ProjectMiniNode[] }) =>
 export const ProjectPreview = ({
   card,
   loading,
+  fetchPriority,
 }: {
   card: Pick<ProjectCardView, 'previewImage' | 'stage' | 'demo'>;
   loading?: 'lazy';
+  fetchPriority?: 'low';
 }) => {
   const preview = projectPreview(card);
   switch (preview.kind) {
@@ -34,6 +36,7 @@ export const ProjectPreview = ({
             width={PROJECT_PREVIEW_WIDTH}
             height={PROJECT_PREVIEW_HEIGHT}
             loading={loading}
+            fetchPriority={fetchPriority}
             src={preview.src}
           />
         </div>

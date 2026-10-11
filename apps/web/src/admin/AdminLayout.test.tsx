@@ -30,6 +30,7 @@ vi.mock('../workspace/auth/session', () => ({
     groups: ['site-admin'],
   })),
   redirectToSignIn: vi.fn(),
+  canAddPasskey: () => false,
   signOutUser: vi.fn(),
   getIdToken: vi.fn(async () => 'fake-id-token'),
 }));

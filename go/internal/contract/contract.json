@@ -1,4 +1,12 @@
 {
+  "api": {
+    "serviceName": "gagnechris-api",
+    "metricsNamespace": "gagnechris",
+    "apexDomain": "gagnechris.com",
+    "contactPerIpPerHour": 3,
+    "sesGlobalDailyCap": 100,
+    "minContactSubmitMs": 2000
+  },
   "restoreTest": {
     "serviceName": "gagnechris-restore-test",
     "metricsNamespace": "gagnechris",
@@ -48,6 +56,11 @@
     "SK_PUBLISHED": "PUBLISHED",
     "postPk({postId})": "POST#{postId}",
     "projectPk({projectId})": "PROJECT#{projectId}",
+    "projectSlugPk({slug})": "PROJECT_SLUG#{slug}",
+    "projectSlugClaimSk()": "PROJECT",
+    "slugRedirectSk()": "REDIRECT",
+    "projectStatusGsi1Pk({status})": "PROJECT_STATUS#{status}",
+    "projectOrderGsi1Sk(42,{projectId})": "ORDER#000042#PROJECT#{projectId}",
     "homePk()": "HOME#current",
     "resumePk()": "RESUME#current",
     "contactPk({contactId})": "CONTACT#{contactId}",
@@ -58,10 +71,270 @@
     "noteMetaSk()": "META",
     "taskPk({userId},{taskId})": "USER#{userId}#TASK#{taskId}",
     "taskMetaSk()": "META",
+    "notebookAreaGsi1Pk({userId},{area})": "USER#{userId}#AREA#{area}",
+    "taskAreaStatusGsi1Pk({userId},{area},{status})": "USER#{userId}#AREA#{area}#STATUS#{status}",
     "dailyNoteClaimPk({userId},{area},{date})": "USER#{userId}#DAILY#{area}#{date}",
     "dailyNoteClaimSk()": "NOTE",
+    "noteDateGsi1Sk({date},{noteId})": "DATE#{date}#NOTE#{noteId}",
+    "notePageGsi1Sk({updatedAt},{noteId})": "PAGE#{updatedAt}#NOTE#{noteId}",
+    "taskStartGsi1Sk({date},{taskId})": "START#{date}#TASK#{taskId}",
+    "taskUpdatedGsi1Sk({updatedAt},{taskId})": "UPDATED#{updatedAt}#TASK#{taskId}",
+    "taskSomedayGsi1Sk({updatedAt},{taskId})": "SOMEDAY#{updatedAt}#TASK#{taskId}",
+    "noteTasksGsi2Pk({userId},{noteId})": "USER#{userId}#NOTE#{noteId}#TASKS",
+    "noteTasksGsi2Sk({taskId})": "TASK#{taskId}",
+    "syncPk({userId})": "SYNC#{userId}",
+    "ownerSyncCreateClaimPk({userId},task,{taskId})": "CREATED#TASK#USER#{userId}#{taskId}",
+    "syncCreateClaimSk()": "META",
     "dailyTemplatePk({userId},{area})": "USER#{userId}#DAILY_TEMPLATE#{area}",
-    "dailyTemplateSk()": "META"
+    "dailyTemplateSk()": "META",
+    "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
+    "rateResumeIpPk({ip})": "RATE#resume#ip#{ip}",
+    "rateSesGlobalPk()": "RATE#ses#global",
+    "rateHourSk(2026-01-02T23:04:05.678Z)": "HOUR#2026-01-02T23",
+    "rateDaySk(2026-01-02T23:04:05.678Z)": "DAY#2026-01-02",
+    "ttlEndOfUtcHour(2026-01-02T23:04:05.678Z)": "1767402000",
+    "ttlEndOfUtcDay(2026-01-02T23:04:05.678Z)": "1767484800"
+  },
+  "limits": {
+    "maxSlugLength": 120,
+    "linkHrefMaxLength": 2048,
+    "postLinkSchemes": [
+      "http",
+      "https",
+      "mailto",
+      "tel"
+    ],
+    "projectHrefSchemes": [
+      "https"
+    ],
+    "projectNameMaxLength": 120,
+    "projectPitchMaxLength": 300,
+    "projectStageNoteMaxLength": 80,
+    "projectStackMax": 30,
+    "projectStackItemMaxLength": 50,
+    "projectLinksMax": 20,
+    "projectLinkLabelMaxLength": 100,
+    "projectOrderMax": 999999,
+    "projectDemoIds": [
+      "posts",
+      "notebook"
+    ]
+  },
+  "defaults": {
+    "home": {
+      "name": "Chris Gagne",
+      "title": "Engineering Leader",
+      "about": "I'm an Engineering Leader at Ro with more than 20 years of experience building modern web technologies to solve critical business problems—and a passion for using technology to improve everyday lives.",
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-09-27T00:00:00.000Z",
+      "seo": null,
+      "version": 0,
+      "hasUnpublishedChanges": false
+    },
+    "resume": {
+      "name": "Chris Gagne",
+      "pdfPath": "/resume.pdf",
+      "status": "draft",
+      "publishedAt": null,
+      "updatedAt": "2026-09-27T00:00:00.000Z",
+      "seo": null,
+      "version": 0,
+      "hasUnpublishedChanges": false,
+      "content": {
+        "headline": "Director of Software Engineering",
+        "earlierRolesThrough": 2012,
+        "summary": "Results-driven Director of Software Engineering with extensive experience scaling high-performing teams, driving technical vision, and delivering innovative software solutions in fast-paced environments. Proven track record in building engineering culture, partnering with stakeholders to define and execute product roadmaps, and implementing process improvements that enhance operational excellence and team productivity. Recognized for coaching and mentoring talent, fostering collaboration, and championing continuous improvement across the organization.",
+        "competencies": [
+          "Strategic Roadmap Development",
+          "Stakeholder Partnership",
+          "Agile & Lean Methodologies",
+          "Team & Culture Building",
+          "Continuous Improvement & Operational Excellence",
+          "Technical Vision & Innovation",
+          "Diversity, Equity & Inclusion Advocacy"
+        ],
+        "experience": [
+          {
+            "title": "Director of Software Engineering",
+            "company": "Ro",
+            "start": "2019-07",
+            "end": null,
+            "bullets": [
+              "Dedicated to aligning engineering initiatives with business goals while leading a high performing team.",
+              "Spearheaded the adoption and modernization of the software development lifecycle with Agentic AI.",
+              "Instituted onboarding and incident management processes, enhancing team productivity and system reliability.",
+              "Defined the technical vision for care delivery, ensuring alignment with Ro's rapid growth and scalability."
+            ]
+          },
+          {
+            "title": "Director of Software Engineering",
+            "company": "JW Player",
+            "start": "2017-03",
+            "end": "2019-07",
+            "bullets": [
+              "Led the transformation of the Media Engineering department, significantly enhancing our operational capabilities.",
+              "Grew the engineering team and hired three engineering managers to support our expanding team.",
+              "Established three specialized teams, each with dedicated leadership, to streamline media solutions.",
+              "Drove key vendor relationships and cost optimization initiatives, ensuring efficient resource management."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Shutterstock",
+            "start": "2014-09",
+            "end": "2017-03",
+            "bullets": [
+              "Spearheaded transformative engineering initiatives at Shutterstock, enhancing our media systems and architecture.",
+              "Led two teams through the modernization of media metadata and ingestion systems, ensuring robust performance.",
+              "Oversaw the shift from monolithic to micro services architecture, significantly improving system reliability.",
+              "Collaborated with a Montreal-based team to create a unified data model and new APIs for better integration."
+            ]
+          },
+          {
+            "title": "Software Architect",
+            "company": "Viacom",
+            "start": "2014-09",
+            "end": "2015-04",
+            "bullets": [
+              "Instrumental in architecting web solutions for Viacom's international brands, streamlining site-building processes."
+            ]
+          },
+          {
+            "title": "Application Development Manager",
+            "company": "Getty Images",
+            "start": "2012-06",
+            "end": "2014-09",
+            "bullets": [
+              "Played a pivotal role in leading the development of Getty Images' Digital Asset Management system, driving innovation through technology.",
+              "Championed the use of Scala, Akka, and .NET/C# to build robust applications.",
+              "Fostered a collaborative environment among developers to enhance project outcomes.",
+              "Gained expertise in cloud technologies and application performance optimization."
+            ]
+          },
+          {
+            "title": "Software Engineering Manager",
+            "company": "Dealertrack",
+            "start": "2010-08",
+            "end": "2012-06",
+            "bullets": [
+              "Effectively managed a team dedicated to delivering robust software solutions for Dealertrack.",
+              "Directed the development of 22 applications, leveraging open-source technologies to meet customer needs.",
+              "Collaborated with cross-functional teams to prioritize and implement application changes, enhancing product offerings.",
+              "Fostered a culture of quality assurance, ensuring that both software engineers and quality analysts worked seamlessly together."
+            ]
+          },
+          {
+            "title": "Senior Software Engineer",
+            "company": "Dealertrack",
+            "start": "2004-12",
+            "end": "2010-08",
+            "bullets": [
+              "Actively contributed to the development of critical applications and became a subject matter expert in key processes.",
+              "Developed Java EE, VB 6.0 and C# applications to support diverse business needs.",
+              "Specialized in the consolidated ACH process and the MD and VA Online Registration System (OLRS) applications.",
+              "Enhanced application performance through the creation of various supporting web applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Psyche Systems Corporation",
+            "start": "2000-07",
+            "end": "2004-12",
+            "bullets": [
+              "Developed, deployed and supported VB 6.0, VB.NET and SmallTalk Applications."
+            ]
+          },
+          {
+            "title": "Software Engineer",
+            "company": "Daystar Corporation",
+            "start": "1999-01",
+            "end": "2000-04",
+            "bullets": [
+              "Developed and maintained applications. Supported corporate IT infrastructure."
+            ]
+          }
+        ],
+        "skills": [
+          "Programming Languages: Python, NodeJS, React, Java, Scala, SQL",
+          "Frameworks & Architecture: Microservices, Distributed Systems, RESTful APIs, Message-Driven Architectures",
+          "Cloud & Infrastructure: AWS, CI/CD, Kubernetes, Docker, Infrastructure as Code (e.g. Terraform, CloudFormation)",
+          "Databases: Postgres, MySQL, Cassandra, SQL Server, NoSQL Databases",
+          "DevOps & Methodologies: Agile, Scrum, Kanban",
+          "Data & Analytics: AI/ML, Data Modeling, Data Migration, ETL Pipelines"
+        ],
+        "education": [
+          {
+            "title": "MBA for Emerging Leaders",
+            "institution": "University of New Haven",
+            "location": "New London, CT",
+            "year": "May 2008"
+          },
+          {
+            "title": "Bachelor's Degree in Business Management",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "December 2006"
+          },
+          {
+            "title": "Associate's Degree",
+            "degreeDetail": "Computer and Network Servicing Technology",
+            "institution": "New England Institute of Technology",
+            "location": "Warwick, RI",
+            "year": "March 2000"
+          }
+        ]
+      }
+    }
+  },
+  "notebook": {
+    "textMaxBytes": 100000,
+    "titleMaxLength": 300,
+    "tagMaxLength": 50,
+    "tagsMax": 50,
+    "batchMaxIds": 100,
+    "pageSize": 50,
+    "dailyTemplates": {
+      "work": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+      "personal": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n"
+    },
+    "dailyTemplateMaxBytes": 10000,
+    "dailyTemplateTaskMessage": "Templates can’t hold tasks, or a new one would be added every day. Use - [ ] for a checklist."
+  },
+  "sync": {
+    "changeTypes": [
+      "note",
+      "task"
+    ],
+    "defaultPageLimit": 50,
+    "minClientVersion": "0.0.0",
+    "clientVersionHeader": "x-gagnechris-client-version",
+    "tombstoneTtlDays": 30,
+    "createClaimTtlDays": 365,
+    "resyncMarginMs": 86400000,
+    "overlapMs": 15000
+  },
+  "users": {
+    "accessGroups": [
+      "site-admin",
+      "notebook",
+      "user-admin"
+    ],
+    "accessLevelGroups": {
+      "full": [
+        "site-admin",
+        "notebook",
+        "user-admin"
+      ],
+      "cms": [
+        "site-admin"
+      ],
+      "notebook": [
+        "notebook"
+      ]
+    },
+    "reauthSeconds": 300,
+    "reauthRequired": "reauth_required"
   },
   "itemSchemas": {
     "post": {
@@ -1974,6 +2247,144 @@
       "createdAt": "2026-10-01T12:00:00.000Z",
       "removedBy": "user-sub-1"
     }
+  },
+  "textCases": {
+    "taskEmbedIds": [
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ]
+      },
+      {
+        "input": "  {{task:01arz3ndektsv4rrffq69g5fav}} \r\n\t{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+        ]
+      },
+      {
+        "input": "```\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n```\n~~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
+      },
+      {
+        "input": "- {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\ntext {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAI}}",
+        "want": []
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}} \n　{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
+      }
+    ],
+    "carriedInMarkdown": [
+      {
+        "input": [
+          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n"
+      },
+      {
+        "input": [
+          "01arz3ndektsv4rrffq69g5fav",
+          "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      }
+    ],
+    "normalizeTags": [
+      {
+        "input": [
+          "Work",
+          " work ",
+          "Big  Idea",
+          "big-idea",
+          ""
+        ],
+        "want": [
+          "work",
+          "big-idea"
+        ]
+      },
+      {
+        "input": [
+          " Ünïcode Tag﻿",
+          "İstanbul",
+          "ΣΊΣΥΦΟΣ",
+          "tab\tsep",
+          "   "
+        ],
+        "want": [
+          "ünïcode-tag",
+          "i̇stanbul",
+          "σίσυφος",
+          "tab-sep"
+        ]
+      }
+    ],
+    "fillDailyTemplate": [
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "work",
+          "date": "2026-10-06"
+        },
+        "want": "# Tuesday Tuesday, October 6 (Work) {{other}} Tuesday, October 6"
+      },
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "personal",
+          "date": "2024-02-29"
+        },
+        "want": "# Thursday Thursday, February 29 (Personal) {{other}} Thursday, February 29"
+      },
+      {
+        "input": {
+          "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
+          "area": "work",
+          "date": "2027-01-01"
+        },
+        "want": "# Friday Friday, January 1 (Work) {{other}} Friday, January 1"
+      }
+    ],
+    "dailyTemplateHasTasks": [
+      {
+        "input": "- [ ] checklist\n* [x] done",
+        "want": false
+      },
+      {
+        "input": "[ ] task line",
+        "want": true
+      },
+      {
+        "input": "  \t[ ] indented task",
+        "want": true
+      },
+      {
+        "input": "[ ]",
+        "want": false
+      },
+      {
+        "input": "[ ]   ",
+        "want": false
+      },
+      {
+        "input": "```\n[ ] in a fence\n```",
+        "want": false
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}",
+        "want": true
+      },
+      {
+        "input": "~~~\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n~~~",
+        "want": false
+      },
+      {
+        "input": "[x] not a task line",
+        "want": false
+      }
+    ]
   },
   "apiSamples": {
     "post": {

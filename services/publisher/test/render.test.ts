@@ -89,7 +89,7 @@ describe('publisher render', () => {
       samplePost({ publishedAt: '2026-02-01T00:00:00.000Z' }),
     );
     expect(html).toContain(
-      '<time class="post-date" datetime="2026-02-01">February 1, 2026</time>',
+      '<time class="post-date" dateTime="2026-02-01">February 1, 2026</time>',
     );
   });
 
@@ -357,7 +357,10 @@ describe('publisher render', () => {
     expect(html).toContain(`<title>${escapedTitle} - Chris Gagne</title>`);
     expect(html).toContain(`content="${escapedTitle} - Chris Gagne"`);
     expect(html).toContain(`content="${escapedBody}"`);
-    expect(html).toContain(`<h1>${escapedTitle}</h1>`);
+    // React escapes ' as &#x27; in the page body.
+    expect(html).toContain(
+      `<h1>${escapedTitle.replace('&#39;', '&#x27;')}</h1>`,
+    );
     expect(html).toContain(escapedBody);
     // Must not collapse $$ → $ via String.replace special patterns.
     expect(html).toContain('$$$');

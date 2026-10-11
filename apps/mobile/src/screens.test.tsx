@@ -26,9 +26,15 @@ import {
   settle,
   signedInBackend,
 } from '../test/render';
+import { addPasskey } from './auth/passkey';
 import { router } from '../test/router';
 import { canManageUsers, SPACE_STORAGE_KEY, useRememberSpace } from './space';
 import { MIN_TARGET } from './theme';
+
+vi.mock('./auth/passkey', () => ({
+  canAddPasskey: true,
+  addPasskey: vi.fn(async () => undefined),
+}));
 
 const flatStyle = (style: unknown): Record<string, unknown> =>
   Array.isArray(style)
@@ -148,6 +154,9 @@ describe('Notebook tab screens', () => {
     expect(text).toContain('local@gagnechris.com');
     expect(text).toContain('Full Admin');
 
+    act(() => byLabel(renderer, 'Add a passkey').props.onPress());
+    expect(addPasskey).toHaveBeenCalledOnce();
+
     act(() => byLabel(renderer, 'Sign out of Notebook').props.onPress());
     const buttons = vi.mocked(Alert.alert).mock.calls[0]![2]!;
     await act(async () =>
@@ -189,6 +198,9 @@ describe('Spaces', () => {
     expect(router.replace).toHaveBeenLastCalledWith('/today');
     act(() => byLabel(admin, 'Public site').props.onPress());
     expect(Linking.openURL).toHaveBeenCalledWith('https://gagnechris.com');
+    vi.mocked(addPasskey).mockClear();
+    act(() => byLabel(admin, 'Add a passkey').props.onPress());
+    expect(addPasskey).toHaveBeenCalledOnce();
   });
 
   it('reopens in the last space the user still has', async () => {
@@ -254,7 +266,7 @@ describe('No access', () => {
     );
     const text = allText(renderer);
     expect(headers(renderer)[0]?.props.children).toBe(
-      'You don’t have access to Notebook',
+      'You don’t have access to this app',
     );
     expect(text).toContain('local@gagnechris.com');
     expect(text).toContain('Public CMS');

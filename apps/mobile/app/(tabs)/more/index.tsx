@@ -2,6 +2,7 @@ import { NOTEBOOK_AREA_LABELS } from '@gagnechris/shared';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { useArea } from '../../../src/area';
+import { addPasskey, canAddPasskey } from '../../../src/auth/passkey';
 import { signOutWarning } from '../../../src/cache';
 import { useSession } from '../../../src/session';
 import { color } from '../../../src/theme';
@@ -49,6 +50,16 @@ const MoreScreen = () => {
       </Section>
 
       <Section title="Account">
+        {canAddPasskey ? (
+          <Row
+            title="Add a passkey"
+            accessibilityHint="Opens the sign-in page to save a passkey for this account"
+            onPress={() => void addPasskey()}
+            trailing={
+              <Icon name="chevron.right" size={14} color={color.muted} />
+            }
+          />
+        ) : null}
         <Row
           title="Sign out of Notebook"
           destructive

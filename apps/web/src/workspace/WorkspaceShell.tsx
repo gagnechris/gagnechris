@@ -13,7 +13,12 @@ import {
 import { isDevProdApiTarget } from './api/apiTarget';
 import AccessGate from './auth/AccessGate';
 import RequireAuth from './auth/RequireAuth';
-import { signOutUser, type AuthUser } from './auth/session';
+import {
+  canAddPasskey,
+  openAddPasskey,
+  signOutUser,
+  type AuthUser,
+} from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import { useModalDialog } from '../kit/useModalDialog';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
@@ -206,6 +211,17 @@ export function WorkspaceFrame({
           {accessLevel(user.groups)}
         </span>
       </span>
+      {canAddPasskey() ? (
+        <button
+          type="button"
+          className="workspace-icon-button"
+          aria-label="Add a passkey"
+          title="Add a passkey"
+          onClick={openAddPasskey}
+        >
+          <ShellIcon name="passkey" />
+        </button>
+      ) : null}
       <button
         type="button"
         className="workspace-icon-button"

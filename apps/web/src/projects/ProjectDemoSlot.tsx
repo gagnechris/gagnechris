@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react';
-import {
-  PROJECT_DEMO_LABEL,
-  PROJECT_DEMO_LABEL_ID,
-  type ProjectPageView,
-} from '@gagnechris/shared';
-import { ProjectPreview } from '@gagnechris/public-ui';
+import type { ProjectPageView } from '@gagnechris/shared';
+import { ProjectDemoPreview, ProjectDemoSection } from '@gagnechris/public-ui';
 import { PROJECT_DEMO_LOADERS, type ProjectDemoProps } from './demoLoaders';
 import './ProjectPreview.css';
 
@@ -14,7 +10,7 @@ type Loaded = { slug: string; Demo: ComponentType<ProjectDemoProps> };
 const PRELOAD_MARGIN = '200px 0px';
 
 /**
- * First renders the prerendered preview, so a cold load paints it once. The
+ * First renders the published preview, so a cold load hydrates it. The
  * demo's chunk is fetched only when the slot nears the viewport or is
  * clicked, then replaces the preview.
  */
@@ -60,18 +56,16 @@ const ProjectDemoSlot = ({ project }: { project: ProjectPageView }) => {
 
   const Demo = loaded?.slug === slug ? loaded.Demo : null;
   return (
-    <section className="project-demo" aria-labelledby={PROJECT_DEMO_LABEL_ID}>
-      <h2 className="project-demo__label" id={PROJECT_DEMO_LABEL_ID}>
-        {PROJECT_DEMO_LABEL}
-      </h2>
-      <div
-        className="project-demo__stage"
-        ref={stageRef}
-        onPointerDown={load && !wanted ? () => setWantedSlug(slug) : undefined}
-      >
-        {Demo ? <Demo project={project} /> : <ProjectPreview card={project} />}
-      </div>
-    </section>
+    <ProjectDemoSection
+      stageRef={stageRef}
+      onPointerDown={load && !wanted ? () => setWantedSlug(slug) : undefined}
+    >
+      {Demo ? (
+        <Demo project={project} />
+      ) : (
+        <ProjectDemoPreview project={project} />
+      )}
+    </ProjectDemoSection>
   );
 };
 

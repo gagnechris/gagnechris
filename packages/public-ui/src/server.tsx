@@ -5,17 +5,18 @@ import {
   PROJECTS_PATH,
   postsIndexView,
   projectCardViews,
+  type PostProjectLink,
   type PostsIndexItem,
   type ProjectCardView,
   type ProjectPageView,
 } from '@gagnechris/shared';
 import {
+  postArticleView,
   renderHomeAboutHtml,
-  renderProjectPageBodyHtml,
-  renderResumeBodyHtml,
-  renderResumeUnavailableBodyHtml,
+  resumeIntro,
   type Home,
   type HomeRecentPost,
+  type PostArticleFields,
   type ProjectsIndexItem,
   type Resume,
 } from '@gagnechris/shared/render';
@@ -24,8 +25,14 @@ import { SiteFooter, SiteHeader, SitePage } from './chrome/SiteChrome.js';
 import { ContactPageBody } from './pages/ContactPageBody.js';
 import { HomeBody } from './home/HomeBody.js';
 import { NotFoundBody } from './pages/NotFoundBody.js';
+import { PostArticle, PostPageBody } from './posts/PostPageBody.js';
 import { PostsIndexBody } from './posts/PostsIndexBody.js';
+import { ProjectPageBody } from './projects/ProjectPageBody.js';
 import { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
+import {
+  ResumePageBody,
+  ResumeUnavailableBody,
+} from './resume/ResumePageBody.js';
 
 const thisYear = () => new Date().getFullYear();
 
@@ -40,6 +47,25 @@ const page = (
     <SitePage current={current} year={year}>
       {body}
     </SitePage>,
+  );
+
+export const renderPostPageBodyHtml = (
+  post: PostArticleFields,
+  partOf: readonly PostProjectLink[] = [],
+): string =>
+  renderToString(<PostPageBody post={postArticleView(post, partOf)} />);
+
+/** The article alone, for embeds; `headingLevel` fits where it sits. */
+export const renderPostArticleHtml = (
+  post: PostArticleFields,
+  partOf: readonly PostProjectLink[] = [],
+  headingLevel: 1 | 2 | 3 | 4 = 1,
+): string =>
+  renderToString(
+    <PostArticle
+      post={postArticleView(post, partOf)}
+      headingLevel={headingLevel}
+    />,
   );
 
 export const renderPostsIndexBodyHtml = (
@@ -111,11 +137,25 @@ export const renderProjectsIndexPrerenderHtml = (
     year,
   );
 
+export const renderProjectPageBodyHtml = (view: ProjectPageView): string =>
+  renderToString(<ProjectPageBody project={view} />);
+
 export const renderProjectPagePrerenderHtml = (
   view: ProjectPageView,
   year?: number | string,
 ): string =>
   renderSitePageHtml(PROJECTS_PATH, renderProjectPageBodyHtml(view), year);
+
+export const renderResumeBodyHtml = (resume: Resume): string =>
+  renderToString(
+    <ResumePageBody
+      intro={resumeIntro(resume)}
+      body={{ content: resume.content }}
+    />,
+  );
+
+export const renderResumeUnavailableBodyHtml = (): string =>
+  renderToString(<ResumeUnavailableBody />);
 
 export const renderResumePrerenderHtml = (
   resume: Resume,

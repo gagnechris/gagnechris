@@ -21,7 +21,7 @@ import {
   formatResumeDateMigrationReport,
   migrateResumeDates,
   resumeDateMigrationExitCode,
-} from '@gagnechris/api/resume/date-migration';
+} from '@gagnechris/ops/resume-date-migration';
 
 const { values } = parseArgs({
   options: {

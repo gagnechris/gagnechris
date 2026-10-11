@@ -5,12 +5,12 @@ import {
   applyPageMeta,
   DEFAULT_RESUME,
   pageTitle,
-  renderPostPageBodyHtml,
   projectPageView,
 } from '@gagnechris/shared/render';
 import { selectHomeProjects } from '@gagnechris/shared';
 import {
   renderHomePrerenderHtml,
+  renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
   renderProjectPagePrerenderHtml,
   renderProjectsIndexPrerenderHtml,
@@ -197,7 +197,11 @@ async function coldLoad(
 ) {
   window.history.replaceState(null, '', path);
   document.head.innerHTML = head;
-  document.body.innerHTML = `<div id="root">${prerender}</div>`;
+  // The publisher and the Vite build wrap every prerender in these markers.
+  const published = prerender.startsWith('<!--prerender:start-->')
+    ? prerender
+    : `<!--prerender:start-->${prerender}<!--prerender:end-->`;
+  document.body.innerHTML = `<div id="root">${published}</div>`;
   const root = document.getElementById('root')!;
   const before = {
     text: text(root),
@@ -275,8 +279,9 @@ describe('cold load: first React render matches the prerender', () => {
     // Same chrome element-for-element, so nothing above the page body moves.
     const header = loaded.root.querySelector('header.site-header');
     const footer = loaded.root.querySelector('footer.site-footer');
-    expect(loaded.before.html.startsWith(header!.outerHTML)).toBe(true);
-    expect(loaded.before.html.endsWith(footer!.outerHTML)).toBe(true);
+    const published = withoutMarkers(loaded.before.html);
+    expect(published.startsWith(header!.outerHTML)).toBe(true);
+    expect(published.endsWith(footer!.outerHTML)).toBe(true);
   });
 
   test.each([
@@ -284,12 +289,7 @@ describe('cold load: first React render matches the prerender', () => {
     ['with no posts or projects', renderHomePrerenderHtml(PUBLISHED_HOME)],
   ])('/ %s hydrates the published markup in place', async (_, html) => {
     const onRecoverableError = vi.fn();
-    const loaded = await coldLoad(
-      '/',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
-      '',
-      onRecoverableError,
-    );
+    const loaded = await coldLoad('/', html, '', onRecoverableError);
     unmount = loaded.unmount;
 
     expect(onRecoverableError).not.toHaveBeenCalled();
@@ -315,7 +315,7 @@ describe('cold load: first React render matches the prerender', () => {
     const onRecoverableError = vi.fn();
     const loaded = await coldLoad(
       '/projects',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      html,
       HEADS['/projects'],
       onRecoverableError,
     );
@@ -330,6 +330,15 @@ describe('cold load: first React render matches the prerender', () => {
   test.each([
     ['with a demo slot and a Build log', PRERENDERS['/projects/posts']!],
     [
+      'with a preview image in the demo slot',
+      renderProjectPagePrerenderHtml(
+        projectPageView({
+          ...SAMPLE_PROJECTS.find((p) => p.slug === 'posts')!,
+          previewImage: '/media/posts.png',
+        }),
+      ),
+    ],
+    [
       'with no demo and no posts',
       renderProjectPagePrerenderHtml(
         projectPageView({
@@ -339,11 +348,19 @@ describe('cold load: first React render matches the prerender', () => {
       ),
     ],
   ])(
-    '/projects/posts %s mounts the same DOM as the prerender',
+    '/projects/posts %s hydrates the published markup in place',
     async (_, html) => {
-      const loaded = await coldLoad('/projects/posts', html);
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        '/projects/posts',
+        html,
+        '',
+        onRecoverableError,
+      );
       unmount = loaded.unmount;
 
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
       expect(loaded.root.querySelector('.project-build-log')).not.toBeNull();
       expect(fetch).not.toHaveBeenCalled();
@@ -364,18 +381,44 @@ describe('cold load: first React render matches the prerender', () => {
     );
   });
 
-  test.each(['/posts', '/posts/hello-world'])(
-    '%s keeps the prerendered markup',
-    async (path) => {
-      const loaded = await coldLoad(path, PRERENDERS[path]);
+  test('/posts keeps the prerendered markup', async () => {
+    const loaded = await coldLoad('/posts', PRERENDERS['/posts']!);
+    unmount = loaded.unmount;
+
+    expect(loaded.root.innerHTML).toBe(loaded.before.html);
+  });
+
+  test.each([
+    ['with Part of', PRERENDERS['/posts/hello-world']!],
+    [
+      'with no date, excerpt or projects',
+      renderSitePageHtml(
+        '/posts',
+        renderPostPageBodyHtml({
+          slug: 'hello-world',
+          title: 'Hello World',
+          excerpt: '',
+          publishedAt: null,
+          bodyMarkdown: 'Short.',
+        }),
+      ),
+    ],
+  ])(
+    '/posts/hello-world %s hydrates the published markup in place',
+    async (_, html) => {
+      const onRecoverableError = vi.fn();
+      const loaded = await coldLoad(
+        '/posts/hello-world',
+        html,
+        '',
+        onRecoverableError,
+      );
       unmount = loaded.unmount;
 
+      expect(onRecoverableError).not.toHaveBeenCalled();
+      expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
       expect(loaded.root.innerHTML).toBe(loaded.before.html);
-      if (path === '/posts/hello-world') {
-        expect(loaded.root.querySelector('.post-part-of')?.textContent).toBe(
-          'Part of the Notebook and Bears projects',
-        );
-      }
+      expect(fetch).not.toHaveBeenCalled();
     },
   );
 
@@ -411,7 +454,7 @@ describe('cold load: first React render matches the prerender', () => {
     const onRecoverableError = vi.fn();
     const loaded = await coldLoad(
       '/posts',
-      `<!--prerender:start-->${html}<!--prerender:end-->`,
+      html,
       HEADS['/posts'],
       onRecoverableError,
     );
@@ -444,33 +487,37 @@ describe('cold load: first React render matches the prerender', () => {
   });
 
   test.each([
-    ['with headline and earlier roles', PUBLISHED_RESUME],
+    [
+      'with headline and earlier roles',
+      renderResumePrerenderHtml(PUBLISHED_RESUME),
+    ],
     [
       'without headline or cut-off',
-      { ...PUBLISHED_RESUME, content: UNSET_CONTENT },
+      renderResumePrerenderHtml({
+        ...PUBLISHED_RESUME,
+        content: UNSET_CONTENT,
+      }),
     ],
-  ])('/resume %s mounts the same DOM as the prerender', async (_, resume) => {
-    const prerender = renderResumePrerenderHtml(resume);
-    const loaded = await coldLoad('/resume', prerender);
+    ['when unpublished', renderResumeUnavailablePrerenderHtml()],
+  ])('/resume %s hydrates the published markup in place', async (_, html) => {
+    const onRecoverableError = vi.fn();
+    const loaded = await coldLoad('/resume', html, '', onRecoverableError);
     unmount = loaded.unmount;
 
+    expect(onRecoverableError).not.toHaveBeenCalled();
+    expect(loaded.root.querySelector('main')).toBe(loaded.before.main);
     expect(loaded.root.innerHTML).toBe(loaded.before.html);
-    expect(loaded.root.querySelector('.resume-download')).not.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  test('/resume when unpublished', async () => {
-    const loaded = await coldLoad(
-      '/resume',
-      renderResumeUnavailablePrerenderHtml(),
-    );
+  test('/resume keeps Download PDF only while published', async () => {
+    let loaded = await coldLoad('/resume', PRERENDERS['/resume']!);
+    expect(loaded.root.querySelector('.resume-download')).not.toBeNull();
+    loaded.unmount();
+    loaded = await coldLoad('/resume', renderResumeUnavailablePrerenderHtml());
     unmount = loaded.unmount;
-
-    expect(text(loaded.root)).toBe(loaded.before.text);
     expect(text(loaded.root)).toContain('Resume available on request.');
-    expect(loaded.root.innerHTML).toBe(loaded.before.html);
     expect(loaded.root.querySelector('.resume-download')).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   test('a prerender for another slug is not reused', async () => {

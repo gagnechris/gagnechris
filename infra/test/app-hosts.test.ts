@@ -462,11 +462,9 @@ describe('app hosts: Cognito', () => {
     const props = client('ios');
     expect(props.CallbackURLs).toEqual([
       'https://notebook.gagnechris.com/ios/auth/callback',
-      'gagnechris://auth/callback',
     ]);
     expect(props.LogoutURLs).toEqual([
       'https://notebook.gagnechris.com/ios/auth/signed-out',
-      'gagnechris://',
     ]);
   });
 
@@ -574,12 +572,12 @@ describe('app hosts: API Gateway', () => {
     return byRoute;
   }
 
-  it('pins each prefix to its audience: admin-web on admin, notebook-web and ios on notebook', () => {
+  it('pins each prefix to its audience: admin-web and ios on admin, notebook-web and ios on notebook', () => {
     const byRoute = authorizersByRoute(built.api);
     for (const [keys, audience] of [
       [
         ['ANY /api/admin', 'ANY /api/admin/{proxy+}'],
-        ['cognitoadminwebclientid'],
+        ['cognitoadminwebclientid', 'cognitoiosclientid'],
       ],
       [
         ['ANY /api/notebook', 'ANY /api/notebook/{proxy+}'],
@@ -596,7 +594,8 @@ describe('app hosts: API Gateway', () => {
         );
       }
     }
-    expect(byRoute['ANY /api/admin']).not.toMatch(/ios|notebook|dev/i);
+    expect(byRoute['ANY /api/admin']).not.toMatch(/notebook|dev/i);
+    expect(byRoute['ANY /api/notebook']).not.toMatch(/admin|dev/i);
     expect(JSON.stringify(byRoute)).not.toMatch(
       /DevClient|cognitodevclientid|ImportValue|UserPoolWebClient/,
     );
@@ -615,7 +614,7 @@ describe('app hosts: API Gateway', () => {
   it('passes the two web client IDs and the iOS client ID to the Lambda', () => {
     const fn = Object.values(
       resourcesOf(built.api, 'AWS::Lambda::Function'),
-    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api')!;
+    ).find((f) => f.Properties.FunctionName === 'gagnechris-prod-api-go')!;
     const vars = fn.Properties.Environment.Variables;
     expect(vars.ADMIN_WEB_CLIENT_ID).toEqual({
       Ref: expect.stringMatching(/cognitoadminwebclientid/),

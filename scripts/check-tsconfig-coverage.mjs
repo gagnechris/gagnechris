@@ -10,6 +10,7 @@ const workspaces = [
   'packages/api-client',
   'packages/tokens',
   'packages/data',
+  'packages/ops',
   'packages/app-core',
   'packages/public-ui',
   'services/api',

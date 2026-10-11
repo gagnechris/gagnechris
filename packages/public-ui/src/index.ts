@@ -17,7 +17,22 @@ export {
 } from './home/HomeBody.js';
 export { ContactPageBody } from './pages/ContactPageBody.js';
 export { NotFoundBody } from './pages/NotFoundBody.js';
+export {
+  PostArticle,
+  PostContent,
+  PostPageBody,
+} from './posts/PostPageBody.js';
 export { PostsIndexBody } from './posts/PostsIndexBody.js';
 export { ProjectCard } from './projects/ProjectCard.js';
 export { ProjectPreview } from './projects/ProjectPreview.js';
+export {
+  ProjectDemoPreview,
+  ProjectDemoSection,
+  ProjectPageBody,
+} from './projects/ProjectPageBody.js';
 export { ProjectsIndexBody } from './projects/ProjectsIndexBody.js';
+export {
+  ResumePageBody,
+  ResumeSections,
+  ResumeUnavailableBody,
+} from './resume/ResumePageBody.js';

@@ -16,12 +16,15 @@ const (
 	serviceEnv   = "POWERTOOLS_SERVICE_NAME"
 	namespaceEnv = "POWERTOOLS_METRICS_NAMESPACE"
 	traceEnv     = "_X_AMZN_TRACE_ID"
+	levelEnv     = "POWERTOOLS_LOG_LEVEL"
 )
 
 // NewLogger returns a JSON logger whose records carry Powertools' keys:
-// level, message, timestamp, service, sampling_rate and xray_trace_id.
+// level, message, timestamp, service, sampling_rate and xray_trace_id, at
+// the level POWERTOOLS_LOG_LEVEL names (INFO by default).
 func NewLogger(w io.Writer, service string) *slog.Logger {
 	handler := slog.NewJSONHandler(w, &slog.HandlerOptions{
+		Level:       levelFromEnv(),
 		ReplaceAttr: powertoolsKeys,
 	})
 	return slog.New(&traceHandler{Handler: handler}).With(
@@ -56,6 +59,18 @@ func powertoolsKeys(groups []string, a slog.Attr) slog.Attr {
 		)
 	}
 	return a
+}
+
+func levelFromEnv() slog.Level {
+	switch strings.ToUpper(strings.TrimSpace(os.Getenv(levelEnv))) {
+	case "DEBUG", "TRACE":
+		return slog.LevelDebug
+	case "WARN":
+		return slog.LevelWarn
+	case "ERROR", "CRITICAL", "SILENT":
+		return slog.LevelError
+	}
+	return slog.LevelInfo
 }
 
 func levelName(l slog.Level) string {

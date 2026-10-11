@@ -10,7 +10,7 @@ import {
 const text = (root: ParentNode, selector: string): string =>
   root.querySelector(selector)?.textContent ?? '';
 
-/** Reads back what `renderProjectPageBodyHtml` wrote. */
+/** Reads back what public-ui's `ProjectPageBody` printed. */
 export function projectPageViewFromDocument(
   root: ParentNode,
 ): ProjectPageView | null {

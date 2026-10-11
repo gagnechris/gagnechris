@@ -26,7 +26,7 @@ const NoAccessScreen = () => {
         <Icon name="lock" size={26} color={color.inkSoft} />
       </View>
       <Text style={styles.title} accessibilityRole="header">
-        You don’t have access to Notebook
+        You don’t have access to this app
       </Text>
       <Text style={styles.body}>
         You’re signed in as <Text style={styles.strong}>{user?.email}</Text>
@@ -39,7 +39,7 @@ const NoAccessScreen = () => {
             access
           </>
         ) : null}
-        . Ask a Full Admin if you need Notebook.
+        . Ask a Full Admin if you need Notebook or Admin.
       </Text>
       <View style={styles.actions}>
         <Button

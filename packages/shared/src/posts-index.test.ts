@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formatPostShortDate } from './post-date.js';
-import { selectHomeRecentPosts } from './home-html.js';
+import { selectHomeRecentPosts } from './home-page.js';
 import {
   comparePostsNewestFirst,
   groupPostsByYear,

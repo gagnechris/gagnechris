@@ -10,7 +10,7 @@ import {
 import PostEditorPage from './PostEditorPage';
 import { queryKeys } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
-import { renderPostPageBodyHtml } from '@gagnechris/shared/render';
+import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
 import { adminApi } from '../mockAdminApi';
 
 const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;

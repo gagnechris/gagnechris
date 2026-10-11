@@ -68,9 +68,9 @@ const bannedImportPrefixes = [
 
 const bannedPathFragments = [
   'markdown.ts',
-  'home-html.ts',
-  'resume-html.ts',
-  'project-html.ts',
+  'home-page.ts',
+  'resume-page.ts',
+  'project-page.ts',
   'html.ts',
   'dynamodb.ts',
   'openapi.ts',

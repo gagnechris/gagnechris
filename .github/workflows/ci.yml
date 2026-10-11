@@ -119,7 +119,9 @@ jobs:
             api:
               - 'services/api/**'
               - 'packages/data/**'
+              - 'packages/ops/**'
               - 'packages/shared/**'
+              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'
@@ -144,9 +146,14 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
         run: npx tsx scripts/local/wait-dynamodb.ts http://127.0.0.1:8001
 
-      - name: API integration tests
+      - name: Build the Go API
+        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        run: go -C go build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
+
+      - name: API HTTP suite
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
         env:
+          GO_API_BIN: ${{ runner.temp }}/gagnechris-api
           AWS_ACCESS_KEY_ID: local
           AWS_SECRET_ACCESS_KEY: local
           AWS_REGION: us-east-1
@@ -181,6 +188,7 @@ jobs:
               - 'services/api/**'
               - 'services/publisher/**'
               - 'packages/**'
+              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'

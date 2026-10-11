@@ -1,0 +1,127 @@
+import { render } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, test } from 'vitest';
+import { readingMinutes, readingTimeLabel } from '@gagnechris/shared';
+import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
+import { PostPageBody, PublicLinkContext } from '@gagnechris/public-ui';
+import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
+import SiteLink from '../components/SiteLink';
+import { postViewFromDocument, type PostView } from './publishedPost';
+
+type PostInput = Parameters<typeof renderPostPageBodyHtml>[0];
+
+const POSTS: Record<string, PostInput> = {
+  'every markdown element': {
+    slug: 'every-element',
+    title: 'Every markdown element',
+    excerpt: 'A fixture post that uses every element the editor can produce.',
+    publishedAt: '2026-09-28T09:00:00.000Z',
+    bodyMarkdown: EVERY_MARKDOWN_ELEMENT,
+  },
+  'a long post': {
+    slug: 'long',
+    title: 'Long & "quoted"',
+    excerpt: 'It <takes> a while.',
+    publishedAt: '2026-02-01T00:00:00.000Z',
+    bodyMarkdown: Array.from({ length: 9 }, () => EVERY_MARKDOWN_ELEMENT).join(
+      '\n\n',
+    ),
+  },
+  'no date or excerpt': {
+    slug: 'draft',
+    title: 'Draft',
+    excerpt: '',
+    publishedAt: null,
+    bodyMarkdown: 'Short.',
+  },
+};
+
+/** Through the HTML parser, so React's `<img … />` and the browser's `<img …>` compare equal. */
+const normalize = (html: string): string => {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  return template.innerHTML;
+};
+
+const parse = (html: string): PostView => {
+  const view = postViewFromDocument(
+    new DOMParser().parseFromString(html, 'text/html'),
+  );
+  if (!view) throw new Error('prerender did not parse');
+  return view;
+};
+
+const InApp = ({ post }: { post: PostView }) => (
+  <MemoryRouter>
+    <PublicLinkContext.Provider value={SiteLink}>
+      <PostPageBody post={post} />
+    </PublicLinkContext.Provider>
+  </MemoryRouter>
+);
+
+const staticMarkup = (post: PostView): string =>
+  normalize(renderToStaticMarkup(<InApp post={post} />));
+
+describe('postViewFromDocument', () => {
+  test.each(Object.entries(POSTS))(
+    'reads back %s, which the app renders as published',
+    (_name, input) => {
+      const prerender = renderPostPageBodyHtml(input);
+      const view = parse(prerender);
+
+      expect(staticMarkup(view)).toBe(normalize(prerender));
+      const { container } = render(<InApp post={view} />);
+      expect(container.innerHTML).toBe(normalize(prerender));
+    },
+  );
+
+  test.each(Object.entries(POSTS))(
+    'shows the same reading time as the prerender for %s',
+    (_name, input) => {
+      const expected = readingTimeLabel(readingMinutes(input.bodyMarkdown));
+      const prerender = new DOMParser().parseFromString(
+        renderPostPageBodyHtml(input),
+        'text/html',
+      );
+      const { container } = render(
+        <InApp post={parse(renderPostPageBodyHtml(input))} />,
+      );
+
+      expect(prerender.querySelector('.post-reading-time')?.textContent).toBe(
+        expected,
+      );
+      expect(container.querySelector('.post-reading-time')?.textContent).toBe(
+        expected,
+      );
+    },
+  );
+
+  test('reads back Part of, linked and unlinked, which the app renders as published', () => {
+    const partOf = [
+      { name: 'Notebook', href: '/projects/notebook' },
+      { name: 'Bears & co', href: '/dont-feed-the-bears' },
+      { name: 'Elsewhere', href: 'https://example.com/x' },
+      { name: 'Someday', href: null },
+    ];
+    const prerender = renderPostPageBodyHtml(
+      POSTS['no date or excerpt'],
+      partOf,
+    );
+    const view = parse(prerender);
+
+    expect(view.partOf).toEqual(partOf);
+    expect(staticMarkup(view)).toBe(normalize(prerender));
+    const { container } = render(<InApp post={view} />);
+    expect(container.innerHTML).toBe(normalize(prerender));
+    expect(container.querySelector('.post-part-of')?.textContent).toBe(
+      'Part of the Notebook, Bears & co, Elsewhere and Someday projects',
+    );
+  });
+
+  test('the long fixture reads for more than a minute', () => {
+    expect(readingMinutes(POSTS['a long post'].bodyMarkdown)).toBeGreaterThan(
+      1,
+    );
+  });
+});

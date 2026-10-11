@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { siteUrl } from '@gagnechris/shared';
-import PostArticle from '../posts/PostArticle';
+import { PostPageBody } from '@gagnechris/public-ui';
 import { documentPostView, loadPublishedPost } from '../posts/publishedPost';
 import { usePublishedView } from '../prerender/usePublishedView';
 import NotFound from './NotFound';
@@ -31,7 +31,7 @@ function PostPage() {
   return (
     <>
       <PageHead title={post.headTitle} url={siteUrl(`/posts/${slug}`)} />
-      <PostArticle post={post} />
+      <PostPageBody post={post} />
     </>
   );
 }

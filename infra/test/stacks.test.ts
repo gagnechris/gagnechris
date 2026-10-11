@@ -462,7 +462,7 @@ describe('stack Template assertions', () => {
     }
   });
 
-  it('ApiStack Lambda is arm64 Node 24 with powertools env and active tracing', () => {
+  it('ApiStack Lambda is arm64 Go with powertools env and active tracing', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ApiAssertDeps', {
@@ -512,7 +512,7 @@ describe('stack Template assertions', () => {
     const template = Template.fromStack(api);
     const alarmActions = alertsTopicAlarmActions(alertsTopic);
     template.hasResourceProperties('AWS::Lambda::Function', {
-      Runtime: 'nodejs24.x',
+      Runtime: 'provided.al2023',
       Architectures: ['arm64'],
       TracingConfig: { Mode: 'Active' },
       Environment: {
@@ -523,7 +523,7 @@ describe('stack Template assertions', () => {
       },
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-errors',
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 'gagnechris-prod-api-handler-errors',
@@ -554,7 +554,89 @@ describe('stack Template assertions', () => {
       AlarmActions: alarmActions,
     });
     template.hasResourceProperties('AWS::CloudWatch::Alarm', {
-      AlarmName: 'gagnechris-prod-api-lambda-throttles',
+      AlarmName: 'gagnechris-prod-api-go-lambda-throttles',
     });
+
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-api-go',
+      Runtime: 'provided.al2023',
+      Architectures: ['arm64'],
+      Environment: {
+        Variables: Match.objectLike({
+          POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
+          CONTACT_TO_EMAIL: config.alertsEmail,
+          SITE_BUCKET_NAME: Match.anyValue(),
+          USER_POOL_ID: Match.anyValue(),
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 'gagnechris-prod-api-go-lambda-errors',
+    });
+    const integrationFunction = (routeKey: string) => {
+      const [route] = Object.values(
+        template.findResources('AWS::ApiGatewayV2::Route', {
+          Properties: { RouteKey: routeKey },
+        }),
+      );
+      const target = JSON.stringify(route?.Properties?.Target);
+      const [integrationId] = Object.keys(
+        template.findResources('AWS::ApiGatewayV2::Integration'),
+      ).filter((id) => target.includes(id));
+      const integration = template.toJSON().Resources[integrationId!];
+      return JSON.stringify(integration.Properties.IntegrationUri);
+    };
+    const adminAuthorizers = Object.keys(
+      template.findResources('AWS::ApiGatewayV2::Authorizer', {
+        Properties: { Name: 'CognitoJwtAdmin' },
+      }),
+    );
+    expect(adminAuthorizers).toHaveLength(1);
+    const routes = template.findResources('AWS::ApiGatewayV2::Route');
+    expect(
+      Object.values(routes)
+        .map((r) => r.Properties.RouteKey as string)
+        .sort(),
+    ).toEqual([
+      'ANY /api/admin',
+      'ANY /api/admin/{proxy+}',
+      'ANY /api/notebook',
+      'ANY /api/notebook/{proxy+}',
+      'GET /api/health',
+      'POST /api/contact',
+      'POST /api/resume/download',
+    ]);
+    for (const route of Object.values(routes)) {
+      const routeKey = route.Properties.RouteKey as string;
+      expect(integrationFunction(routeKey), routeKey).toContain(
+        'GoApiFunction',
+      );
+      const authorizer = JSON.stringify(route.Properties.AuthorizerId);
+      if (routeKey.includes('/api/admin')) {
+        expect(authorizer, routeKey).toContain(adminAuthorizers[0]);
+      } else if (routeKey.includes('/api/notebook')) {
+        expect(route.Properties.AuthorizationType, routeKey).toBe('JWT');
+        expect(authorizer, routeKey).not.toContain(adminAuthorizers[0]);
+      }
+    }
+    // One invoke permission per route; Lambda caps the resource policy at 20 KB.
+    expect(
+      Object.keys(template.findResources('AWS::Lambda::Permission')).filter(
+        (id) => id.startsWith('HttpApi'),
+      ),
+    ).toHaveLength(Object.keys(routes).length);
+    expect(
+      Object.keys(template.findResources('AWS::Lambda::Function')).filter(
+        (id) => id.startsWith('ApiFunction'),
+      ),
+    ).toEqual([]);
+    const goPolicies = JSON.stringify(
+      Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
+      ),
+    );
+    expect(goPolicies).toContain('s3:PutObject');
+    expect(goPolicies).toContain('/media/*');
+    expect(goPolicies).toContain('cognito-idp:AdminCreateUser');
   });
 });

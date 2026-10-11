@@ -291,7 +291,7 @@ export async function startStack(): Promise<Stack> {
     );
 
     const apiLogs = start('api', join(BIN, 'tsx'), [
-      'services/api/local/server.ts',
+      'services/api/local/api.ts',
     ]);
     const siteLogs = start('site', join(BIN, 'tsx'), [
       'services/api/local/static-server.ts',

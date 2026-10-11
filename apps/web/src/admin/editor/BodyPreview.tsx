@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo } from 'react';
+import { PostContent } from '@gagnechris/public-ui';
 import {
   renderPostMarkdownToHtml,
   renderProjectMarkdownToHtml,
@@ -25,20 +26,21 @@ export function BodyPreview({
 }) {
   const deferred = useDeferredValue(markdown);
   const html = useMemo(() => render[kind](deferred), [kind, deferred]);
-  const body = (
-    <div
-      className={`post-content ${kind === 'post' ? 'blog-post-body' : 'project-body'}`}
-      dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
-    />
-  );
   return (
     <div className="admin-body-preview">
       {kind === 'post' ? (
-        <div className="post-page">{body}</div>
+        <div className="post-page">
+          <PostContent html={withPublicUrls(html)} />
+        </div>
       ) : (
         // A div, not the published page's <main>: the admin shell already has one.
         <div className="project-page">
-          <div className="project-main">{body}</div>
+          <div className="project-main">
+            <div
+              className="post-content project-body"
+              dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
+            />
+          </div>
         </div>
       )}
     </div>

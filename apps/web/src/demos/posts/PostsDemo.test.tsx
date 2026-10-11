@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { HomeRecentPosts } from '@gagnechris/public-ui';
-import { renderPostArticleHtml } from '@gagnechris/shared/render';
+import { renderPostArticleHtml } from '@gagnechris/public-ui/server';
 import PostsDemo from '.';
 import {
   POSTS_DEMO_CAPTIONS,

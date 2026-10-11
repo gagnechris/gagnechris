@@ -57,12 +57,12 @@ echo "==> Site root ${SITE_BUCKET_NAME}"
 if curl -sf "http://127.0.0.1:${LOCAL_API_PORT}/api/health" >/dev/null 2>&1; then
   echo "==> Local API already running on :${LOCAL_API_PORT}"
 else
-  echo "==> Start local API on :${LOCAL_API_PORT} (tsx watch)"
-  # Without watch, new routes 404 against a stale process until restart.
-  npx tsx watch --clear-screen=false services/api/local/server.ts &
+  echo "==> Start local Go API on :${LOCAL_API_PORT} (built once; restart to pick up Go changes)"
+  npx tsx services/api/local/api.ts &
   API_PID=$!
   STARTED_API=1
-  wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API" || exit 1
+  # The Go API builds first.
+  wait_http "http://127.0.0.1:${LOCAL_API_PORT}/api/health" "local API" 240 || exit 1
 fi
 
 site_listening() {

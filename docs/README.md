@@ -51,7 +51,8 @@ npm run e2e:browser
 
 ```
 apps/web/              React/Vite site + admin
-services/api/          Lambda HTTP API (posts, home, resume, notebook, contact, auth)
+go/                    Go Lambdas: the HTTP API (cmd/api), the restore-test validator
+services/api/          Local Go API runner and the API's black-box HTTP suite
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 packages/shared/       Domain schemas/types; `/render`, `/openapi` subpaths
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site
@@ -77,7 +78,6 @@ e2e/                   Playwright browser tests
 | [data-model.md](./data-model.md)                                                         | Single-table DynamoDB keys and entities                                  |
 | [adding-an-entity.md](./adding-an-entity.md)                                             | Steps and files for a new Notebook or publishable entity                 |
 | [local-e2e.md](./local-e2e.md)                                                           | Local DynamoDB + API + publisher smoke / day-to-day admin                |
-| [migrate-posts.md](./migrate-posts.md)                                                   | Import the legacy markdown posts into DynamoDB                           |
 | [mobile.md](./mobile.md)                                                                 | Expo app: install layout, auth setup, CI bundle checks                   |
 | [adr/0001-passkey-rp-id.md](./adr/0001-passkey-rp-id.md)                                 | Passkey RP ID stays `auth.gagnechris.com`                                |
 | [adr/0002-admin-notebook-subdomains.md](./adr/0002-admin-notebook-subdomains.md)         | `admin.` / `notebook.` hosts, clients, groups, cutover                   |

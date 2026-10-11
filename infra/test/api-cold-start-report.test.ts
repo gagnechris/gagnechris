@@ -20,13 +20,10 @@ function row(fields: Record<string, string>): QueryResults[number] {
 
 describe('API cold-start report', () => {
   it('queries the log keys the handler writes', () => {
-    const handler = readFileSync(
-      join(REPO_ROOT, 'services/api/src/handler.ts'),
-      'utf8',
-    );
-    expect(handler).toContain("logger.info('request'");
-    expect(handler).toContain('route:');
-    expect(handler).toContain('bundleReadyMs');
+    const app = readFileSync(join(REPO_ROOT, 'go/internal/api/app.go'), 'utf8');
+    expect(app).toContain('log.Info("request"');
+    expect(app).toContain('"route", ');
+    expect(app).toContain('"bundleReadyMs", ');
     expect(API_COLD_START_QUERY).toContain('message = "request"');
     expect(API_COLD_START_QUERY).toContain('earliest(route)');
     expect(API_COLD_START_QUERY).toContain('max(bundleReadyMs)');

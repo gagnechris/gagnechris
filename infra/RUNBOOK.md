@@ -466,7 +466,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
      --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"   # []
    ```
 
-Rehearsed against DynamoDB Local (`services/api/test/integration/copy-back.integration.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the Linear ticket.
+Rehearsed against DynamoDB Local (`services/api/test/http/ops-copy-back.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the Linear ticket.
 
 ### Full-table disaster recovery (stop and ask Chris first)
 
@@ -559,8 +559,6 @@ AWS_PROFILE=gagnechris-readonly node scripts/scan-orphan-daily-claims.mjs --veri
 
 SSM: `/gagnechris/prod/data-table-name`, `data-table-arn`, `data-table-stream-arn`.
 
-Legacy post import: `docs/migrate-posts.md` (`npm run migrate:posts`).
-
 Media uploads: admin `POST /api/admin/media/upload-url` returns a
 presigned PUT for `media/*` on the site bucket; CloudFront serves `/media/*`
 with a long cache. Paste/drop images in the post editor inserts
@@ -619,7 +617,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval 
 
 `Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention and Powertools env; errors/throttles alarms come from `lambda-guardrails.ts`, which `GoLambda` uses too.
 
-**Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `services/api/src/sync/adapters.ts` lists it), `SyncCorruptRow` (the sync feed skipped a row that failed to parse; the warning log `Skipping corrupt stored item` names its `pk`/`sk`; fix the row through the API or a script that writes a newer `updatedAt` and `syncSk` so clients pick it up), publisher `DataIntegrityError`, resume-pdf, kvs-sync and `RebuildUnsettled` (a rebuild gave up after 4 passes while publishes kept landing; invoke `{"action":"republishAll"}` if the site looks stale), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
+**Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `syncAdapters` in `go/internal/notebook/sync.go` lists it), `SyncCorruptRow` (the sync feed skipped a row that failed to parse; the warning log `Skipping corrupt stored item` names its `pk`/`sk`; fix the row through the API or a script that writes a newer `updatedAt` and `syncSk` so clients pick it up), publisher `DataIntegrityError`, resume-pdf, kvs-sync and `RebuildUnsettled` (a rebuild gave up after 4 passes while publishes kept landing; invoke `{"action":"republishAll"}` if the site looks stale), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 
 Notebook ops alarms:
 
@@ -628,7 +626,7 @@ Notebook ops alarms:
 
 4xx responses aren't alarmed: unauthenticated 401s from scanners would make them noise.
 
-To test alert delivery, set an alarm to ALARM with the admin profile, for example `aws cloudwatch set-alarm-state --alarm-name gagnechris-prod-api-lambda-throttles --state-value ALARM --state-reason 'alert test'`. The alerts address gets the email, and the alarm resets on its next evaluation. Repeat after any change to the Guardrails topic or subscription.
+To test alert delivery, set an alarm to ALARM with the admin profile, for example `aws cloudwatch set-alarm-state --alarm-name gagnechris-prod-api-go-lambda-throttles --state-value ALARM --state-reason 'alert test'`. The alerts address gets the email, and the alarm resets on its next evaluation. Repeat after any change to the Guardrails topic or subscription.
 
 Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
@@ -684,8 +682,8 @@ SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-admin-web-client-id`, `co
 - Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and `user-admin` (managing users, `/api/admin/users*`). CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each, making that user a Full Admin. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
 - Users are managed in Admin under **Settings › Users & access** (`/settings/users`), which calls `/api/admin/users*` (`docs/architecture.md`, Users and access). Removing someone never deletes their Cognito user or Notebook; don't delete pool users by hand either, since a deleted user's Notebook data is orphaned under a `sub` nobody can sign in as. Invite emails come from the Cognito default sender, which has a low daily limit.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
-- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audience `admin-web`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
-- The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`, plus `gagnechris://auth/callback` and `gagnechris://` until the app's sign-in uses the https callback. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
+- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audiences `admin-web` and `ios`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
+- The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools
@@ -758,7 +756,7 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 ## HTTP API runtime and contract
 
-`Api-prod`: HTTP API + arm64 Node.js 24 Lambda (1024 MB, X-Ray active tracing) behind CloudFront `/api/*`. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
+`Api-prod`: HTTP API + arm64 Go Lambda `gagnechris-prod-api-go` (`provided.al2023`, 512 MB, X-Ray active tracing) behind CloudFront `/api/*`. Every route goes to that function. Cognito JWT authorizers on `/api/admin/*` and `/api/notebook/*`. Public `GET /api/health`.
 
 OpenAPI contract: `packages/shared/openapi/openapi.json`, client types
 `packages/api-client/src/schema.d.ts` and Go types `go/internal/apitypes/apitypes.gen.go`.
@@ -782,28 +780,23 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gagnechris.com/api/admin/me
 
 ### Cold starts
 
-The first request on a new instance logs `bundleReadyMs` on its `request` line: milliseconds from Node process start until the bundle finished loading. The REPORT line's Init Duration minus that is Lambda runtime and sandbox time, which no bundle change shrinks.
+The first request on a new instance logs `bundleReadyMs` on its `request` line: milliseconds from process start until the router was ready. The REPORT line's Init Duration minus that is Lambda runtime and sandbox time.
 
 Per-route report (cold-start ratio, init p50/p95, cold and warm handler p50/p95, all routes and DynamoDB routes, per memory size):
 
 ```bash
 AWS_PROFILE=gagnechris-readonly AWS_REGION=us-east-1 npx tsx scripts/api-cold-start-report.ts --days 14
 # or --since 2026-10-07T00:00:00Z to start at a deploy
+# --function <name> for another function, --log-group <name> for a group whose function is gone
 ```
 
-It runs this Logs Insights query on the function's log group (`aws lambda get-function-configuration --function-name gagnechris-prod-api --query LoggingConfig.LogGroup`) and aggregates the rows:
+It runs this Logs Insights query on the function's log group (`aws lambda get-function-configuration --function-name gagnechris-prod-api-go --query LoggingConfig.LogGroup`) and aggregates the rows:
 
 ```
 filter @type = "REPORT" or message = "request"
 | fields coalesce(@requestId, function_request_id) as invocation
 | stats earliest(route) as apiRoute, max(@initDuration) as initMs, max(@duration) as durationMs, max(@memorySize / 1000 / 1000) as memoryMb, max(bundleReadyMs) as loadMs, count(*) as lineCount by invocation
 | filter lineCount = 2
-```
-
-Bundle load time, with and without `--enable-source-maps` (median of fresh Node processes; `--docker` uses the Lambda Node.js 24 image with a CPU cap):
-
-```bash
-npx tsx scripts/measure-api-init.ts --docker --cpus 0.58 --runs 40
 ```
 
 ## Local E2E

@@ -11,10 +11,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Project } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
-import {
-  projectPageView,
-  renderProjectPageBodyHtml,
-} from '@gagnechris/shared/render';
+import { projectPageView } from '@gagnechris/shared/render';
+import { renderProjectPageBodyHtml } from '@gagnechris/public-ui/server';
 import { QueryClientTestProvider } from '../test-utils';
 import ProjectEditorPage from './ProjectEditorPage';
 import { adminApi } from '../mockAdminApi';

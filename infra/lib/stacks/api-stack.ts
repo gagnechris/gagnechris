@@ -25,7 +25,6 @@ import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { NagSuppressions } from 'cdk-nag';
-import { join } from 'node:path';
 import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
@@ -49,7 +48,7 @@ export const USER_ADMIN_COGNITO_ACTIONS = [
   'cognito-idp:AdminUserGlobalSignOut',
 ] as const;
 import { emfServiceAlarm, metricAlarm } from '../constructs/emf-alarm.js';
-import { NodeLambda, REPO_ROOT } from '../constructs/node-lambda.js';
+import { GoLambda } from '../constructs/go-lambda.js';
 
 export interface ApiStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -64,7 +63,7 @@ export interface ApiStackProps extends StackProps {
 
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
-  readonly apiFunction: NodeLambda;
+  readonly apiFunction: GoLambda;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -105,18 +104,16 @@ export class ApiStack extends Stack {
       siteBucketName,
     );
 
-    this.apiFunction = new NodeLambda(this, 'ApiFunction', {
-      functionName: `gagnechris-${config.name}-api`,
-      description:
-        'gagnechris HTTP API (health, contact, admin posts/media; shared data table)',
-      entry: join(REPO_ROOT, 'services/api/src/handler.ts'),
-      handler: 'handler',
-      // More memory is more CPU: cold-start init and JSON/zod work scale with it.
-      memorySize: 1024,
+    // Changing the construct id or function name would replace the function.
+    this.apiFunction = new GoLambda(this, 'GoApiFunction', {
+      functionName: `gagnechris-${config.name}-api-go`,
+      description: 'gagnechris HTTP API (shared data table)',
+      cmd: 'api',
+      memorySize: 512,
       timeout: Duration.millis(API_LAMBDA_TIMEOUT_MS),
       powertoolsServiceName: API_SERVICE_NAME,
       alertsTopic,
-      alarmNamePrefix: `gagnechris-${config.name}-api`,
+      alarmNamePrefix: `gagnechris-${config.name}-api-go`,
       iam5NagReason:
         'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity.',
       iam5NagAppliesTo: [
@@ -137,7 +134,6 @@ export class ApiStack extends Stack {
         USER_POOL_ID: userPool.userPoolId,
       },
     });
-
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only; objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
@@ -147,11 +143,11 @@ export class ApiStack extends Stack {
     userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     // One authorizer per prefix so a token from the other web app's client
-    // gets a gateway 401. The iOS app calls Notebook, so its client is in that
-    // audience only; groups still gate every route in the Lambda.
+    // gets a gateway 401. The iOS app has both spaces, so its client is in
+    // both audiences; groups still gate every route in the Lambda.
     const issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`;
     const adminAuthorizer = new HttpJwtAuthorizer('CognitoJwtAdmin', issuer, {
-      jwtAudience: [adminWebClientId],
+      jwtAudience: [adminWebClientId, iosClientId],
       identitySource: ['$request.header.Authorization'],
     });
     const notebookAuthorizer = new HttpJwtAuthorizer(
@@ -164,7 +160,7 @@ export class ApiStack extends Stack {
     );
 
     const integration = new HttpLambdaIntegration(
-      'ApiIntegration',
+      'GoApiIntegration',
       this.apiFunction,
     );
 

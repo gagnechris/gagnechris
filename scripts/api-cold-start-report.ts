@@ -4,6 +4,8 @@
  *
  *   AWS_PROFILE=gagnechris-readonly npx tsx scripts/api-cold-start-report.ts
  *   ... --days 14 | --since 2026-10-07T00:00:00Z | --file results.json
+ *   ... --function <name>                    (default gagnechris-prod-api-go)
+ *   ... --log-group <name>                   (a group whose function is gone)
  *
  * `--file` reads saved `aws logs get-query-results` output instead of querying.
  * The query only reads route, durations and memory; no request content.
@@ -187,17 +189,24 @@ function aws(args: string[]): string {
   });
 }
 
-async function runQuery(start: number, end: number): Promise<QueryResults> {
-  const logGroup = JSON.parse(
+function functionLogGroup(functionName: string): string {
+  return JSON.parse(
     aws([
       'lambda',
       'get-function-configuration',
       '--function-name',
-      'gagnechris-prod-api',
+      functionName,
       '--query',
       'LoggingConfig.LogGroup',
     ]),
   ) as string;
+}
+
+async function runQuery(
+  logGroup: string,
+  start: number,
+  end: number,
+): Promise<QueryResults> {
   const { queryId } = JSON.parse(
     aws([
       'logs',
@@ -235,6 +244,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       days: { type: 'string', default: '14' },
       since: { type: 'string' },
       file: { type: 'string' },
+      function: { type: 'string', default: 'gagnechris-prod-api-go' },
+      'log-group': { type: 'string' },
     },
   });
   const end = Math.floor(Date.now() / 1000);
@@ -247,7 +258,11 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
           results: QueryResults;
         }
       ).results
-    : await runQuery(start, end);
+    : await runQuery(
+        values['log-group'] ?? functionLogGroup(values.function),
+        start,
+        end,
+      );
   if (results.length >= QUERY_ROW_LIMIT) {
     console.warn(`Hit the ${QUERY_ROW_LIMIT}-row limit; narrow the window.`);
   }
