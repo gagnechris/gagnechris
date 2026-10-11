@@ -91,5 +91,7 @@ export const cognitoConfig: CognitoConfig = {
       process.env.EXPO_PUBLIC_AUTH_REDIRECT as string | undefined,
     )
   ],
-  ephemeralSession: true,
+  // On a real iPhone the ephemeral session offered only email and password,
+  // never the iCloud Keychain passkey for auth.gagnechris.com.
+  ephemeralSession: false,
 };
