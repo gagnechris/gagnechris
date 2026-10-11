@@ -5,6 +5,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   highlightParts,
+  searchHitDetail,
   wordMatches,
   type TextRange,
 } from '@gagnechris/shared';
@@ -26,6 +27,11 @@ const SCOPE_OPTIONS = [
   { value: 'area', label: 'This area' },
   { value: 'all', label: 'All areas' },
 ] as const;
+
+function detail(hit: { title: string; snippet: string; matches: TextRange[] }) {
+  const text = searchHitDetail(hit);
+  return text ? highlight(text, hit.matches) : null;
+}
 
 function highlight(text: string, matches: TextRange[]) {
   if (matches.length === 0) return text;
@@ -62,7 +68,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
         area: h.area,
       }),
       title: title(h.title, h.area),
-      detail: highlight(h.snippet, h.matches),
+      detail: detail(h),
     });
   }
   for (const { hit: h, live } of search.tasks) {
@@ -71,7 +77,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
       group: 'Tasks',
       to: `/tasks/${h.id}`,
       title: title(live?.title ?? h.title, h.area),
-      detail: highlight(h.snippet, h.matches),
+      detail: detail(h),
       check: live
         ? {
             checked: live.status === 'done',
