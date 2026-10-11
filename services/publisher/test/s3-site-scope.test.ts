@@ -210,7 +210,9 @@ describe('rebuildPublishedSite selective scope', () => {
     const { syncViewerRequestKeys } =
       await import('../src/viewer-request-slugs.js');
 
-    const storage = memoryStorage();
+    const storage = memoryStorage({
+      seed: { 'blog/slugs.json': '{"slugs":[]}' },
+    });
     const scope: RebuildScope = {
       allPosts: false,
       postSlugs: new Set(['post-7']),
@@ -233,11 +235,12 @@ describe('rebuildPublishedSite selective scope', () => {
         'blog/post-7/index.html',
         'blog/index.html',
         'blog/posts.json',
-        'blog/slugs.json',
         'sitemap.xml',
         'rss.xml',
       ]),
     );
+    expect(storage.puts).not.toContain('blog/slugs.json');
+    expect(storage.deletes).toEqual(['blog/slugs.json']);
     expect(storage.puts.some((k) => k === 'resume/index.html')).toBe(false);
     expect(result.invalidated.length).toBeLessThanOrEqual(5);
     expect(result.invalidated).toEqual(
@@ -429,10 +432,6 @@ describe('rebuildPublishedSite selective scope', () => {
     const postsJson = JSON.parse(
       (await storage.read('blog/posts.json')) ?? '{}',
     ) as { items: unknown[] };
-    const slugsJson = JSON.parse(
-      (await storage.read('blog/slugs.json')) ?? '{}',
-    ) as { slugs: unknown[] };
     expect(postsJson.items).toEqual([]);
-    expect(slugsJson.slugs).toEqual([]);
   });
 });
