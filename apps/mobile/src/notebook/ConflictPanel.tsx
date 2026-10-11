@@ -10,6 +10,7 @@ import {
 } from '../outbox';
 import { color, font } from '../theme';
 import { Button } from '../ui/Button';
+import { Excerpt } from '../ui/Excerpt';
 import { confirmAction, showError } from '../ui/confirm';
 
 /** Where the screen goes once the user has chosen. */
@@ -160,9 +161,9 @@ export const ConflictPanel = ({
       {theirs ? (
         <View style={styles.theirs}>
           <Text style={styles.label}>Theirs</Text>
-          <Text style={styles.theirsText} numberOfLines={8}>
+          <Excerpt style={styles.theirsText} lines={8}>
             {theirs}
-          </Text>
+          </Excerpt>
         </View>
       ) : null}
       <View style={styles.actions}>

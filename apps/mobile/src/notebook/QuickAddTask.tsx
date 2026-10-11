@@ -24,7 +24,12 @@ export const QuickAddTask = ({
   const canAdd = !quickAdd.pending && text.trim().length > 0;
   const submit = async () => {
     if (!canAdd) return;
-    if (await quickAdd.submit(text, today)) setText('');
+    const sent = text;
+    // The field stays editable (disabling it drops the keyboard), so keep
+    // anything typed while the add was in flight.
+    if (await quickAdd.submit(sent, today)) {
+      setText((current) => (current === sent ? '' : current));
+    }
   };
 
   return (
@@ -43,7 +48,6 @@ export const QuickAddTask = ({
           onSubmitEditing={() => void submit()}
           submitBehavior="submit"
           returnKeyType="done"
-          editable={!quickAdd.pending}
           autoCorrect={false}
         />
         <Pressable

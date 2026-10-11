@@ -162,6 +162,7 @@ export {
   comingUpDayLabel,
   comingUpShortLabel,
   comingUpWindow,
+  carryFooterText,
   snoozeBaseDay,
   sourceNoteName,
   stillOpenSource,

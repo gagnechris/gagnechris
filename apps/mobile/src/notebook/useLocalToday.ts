@@ -4,9 +4,11 @@ import { AppState } from 'react-native';
 
 /** The device's day; rolls over at midnight and when the app comes back. */
 export function useLocalToday(): string {
-  const [today, setToday] = useState(() => localDateString());
+  // A fresh object each check reschedules the timer even when the day reads
+  // the same (the clock or time zone moved).
+  const [check, setCheck] = useState(() => ({ today: localDateString() }));
   useEffect(() => {
-    const refresh = () => setToday(localDateString());
+    const refresh = () => setCheck({ today: localDateString() });
     const now = new Date();
     const nextMidnight = new Date(
       now.getFullYear(),
@@ -24,6 +26,6 @@ export function useLocalToday(): string {
       clearTimeout(timer);
       subscription.remove();
     };
-  }, [today]);
-  return today;
+  }, [check]);
+  return check.today;
 }

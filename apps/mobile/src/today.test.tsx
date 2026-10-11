@@ -1,5 +1,5 @@
 import { clearPendingFlushes } from '@gagnechris/app-core';
-import { ActionSheetIOS } from 'react-native';
+import { ActionSheetIOS, AppState } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TodayScreen from '../app/(tabs)/today/index';
@@ -108,6 +108,10 @@ describe('Today', () => {
     expect(allText(renderer)).toContain(
       '1 open task will carry to Saturday if not done',
     );
+    // VoiceOver reads the label, so the arrow stays silent.
+    expect(
+      labelled(renderer, '1 open task will carry to Saturday if not done'),
+    ).toHaveLength(1);
   });
 
   it('snoozes a row away at once, and it stays away after a relaunch', async () => {
@@ -204,6 +208,24 @@ describe('Today', () => {
     expect(router.push).toHaveBeenCalledWith(`/today/task/${B}`);
   });
 
+  it('opens a task once on a double tap', async () => {
+    segments.current = ['(tabs)', 'today'];
+    serve(
+      [
+        makeNote(TODAY_NOTE, `{{task:${B}}}`, {
+          type: 'daily',
+          date: '2026-10-02',
+          title: '',
+        }),
+      ],
+      [makeTask(B, 'Book flights', { noteId: TODAY_NOTE })],
+    );
+    const renderer = await launch();
+    act(() => byLabel(renderer, 'Book flights').props.onPress());
+    act(() => byLabel(renderer, 'Book flights').props.onPress());
+    expect(router.push).toHaveBeenCalledTimes(1);
+  });
+
   it('adds a Still open task to today’s note with + Note', async () => {
     serve([yesterdaysNote], [yesterdaysTask]);
     const renderer = await launch();
@@ -241,6 +263,28 @@ describe('Today', () => {
     expect(byLabel(renderer, 'Jump to today').props.disabled).toBe(false);
     await act(async () => byLabel(renderer, 'Jump to today').props.onPress());
     expect(allText(renderer)).toContain('Friday · Today');
+  });
+
+  it('follows the device day again once a picked day becomes today', async () => {
+    serve([], []);
+    const renderer = await launch();
+    await act(async () => byLabel(renderer, 'Next day').props.onPress());
+    expect(allText(renderer)).toContain('Saturday');
+
+    const comeBack = async (now: Date) => {
+      vi.setSystemTime(now);
+      const listeners = vi
+        .mocked(AppState.addEventListener)
+        .mock.calls.map(([, listener]) => listener);
+      await act(async () =>
+        listeners.forEach((listener) => listener('active')),
+      );
+      await settle(5);
+    };
+    await comeBack(new Date(2026, 9, 3, 9));
+    expect(allText(renderer)).toContain('Saturday · Today');
+    await comeBack(new Date(2026, 9, 4, 9));
+    expect(allText(renderer)).toContain('Sunday · Today');
   });
 
   it('when another device started the day first, keeps what was typed and merges it into their note', async () => {

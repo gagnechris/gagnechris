@@ -40,16 +40,17 @@ describe('what the cache persists', () => {
     expect(CACHE_MAX_AGE_MS).toBe(30 * 24 * 60 * 60 * 1000);
   });
 
-  it('keeps persisted queries in memory as long as the cache', () => {
+  it('never collects persisted queries; the persister maxAge expires them', async () => {
     const client = createAppQueryClient();
     expect(client.getQueryDefaults(queryKeys.notes.detail('n1')).gcTime).toBe(
-      CACHE_MAX_AGE_MS,
-    );
-    expect(client.getQueryDefaults(queryKeys.tasks.list()).gcTime).toBe(
-      CACHE_MAX_AGE_MS,
+      Infinity,
     );
     expect(
       client.getQueryDefaults(queryKeys.search({ q: 'x' })).gcTime,
     ).toBeUndefined();
+
+    client.setQueryData(queryKeys.tasks.list(), { pages: [] });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(client.getQueryData(queryKeys.tasks.list())).toEqual({ pages: [] });
   });
 });

@@ -248,6 +248,39 @@ describe('note editor', () => {
     expect(allText(renderer)).not.toContain('Show this task on');
   });
 
+  it('opens "Pick a date…" on today each time, not on the last pick', async () => {
+    serve([makeNote(NOTE, '')]);
+    const renderer = await renderNote();
+    const pickedDay = () =>
+      renderer.root.find((node) => (node.type as string) === 'DateTimePicker')
+        .props.value as Date;
+    const done = () =>
+      act(() =>
+        renderer.root
+          .find(
+            (node) =>
+              (node.type as string) === 'Pressable' &&
+              node.findAll((child) => child.children.includes('Done')).length >
+                0,
+          )
+          .props.onPress(),
+      );
+
+    type(renderer, '[ ] A @');
+    await press(renderer, 'Pick a date…');
+    act(() =>
+      renderer.root
+        .find((node) => (node.type as string) === 'DateTimePicker')
+        .props.onChange({}, new Date(2026, 9, 20)),
+    );
+    done();
+    expect(bodies(renderer).at(-1)!.props.value).toBe('[ ] A @oct 20 ');
+
+    type(renderer, '[ ] A @oct 20 \n[ ] B @');
+    await press(renderer, 'Pick a date…');
+    expect(pickedDay().getDate()).toBe(2);
+  });
+
   it('runs each toolbar button on the focused text', async () => {
     serve([makeNote(NOTE, '')]);
     const renderer = await renderNote();
