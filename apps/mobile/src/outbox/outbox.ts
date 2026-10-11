@@ -306,6 +306,12 @@ export class Outbox {
       this.scheduleRetry();
       return false;
     }
+    if (status === 401) {
+      // No session (an expired refresh token sends unsigned): the queue waits
+      // for the next sign-in, which reopens the outbox and drains it.
+      this.resolveWaiters(op.seq, (waiter) => waiter.optimistic);
+      return false;
+    }
     const body = await readJson(response);
     const current = serverCopy(body);
     const landed =
