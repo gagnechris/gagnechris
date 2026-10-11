@@ -653,6 +653,21 @@ func (e ListTasksQueryStatus) Valid() bool {
 	}
 }
 
+// Defines values for ListTasksQueryUndated.
+const (
+	ListTasksQueryUndatedTrue ListTasksQueryUndated = "true"
+)
+
+// Valid indicates whether the value is a known member of the ListTasksQueryUndated enum.
+func (e ListTasksQueryUndated) Valid() bool {
+	switch e {
+	case ListTasksQueryUndatedTrue:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for MediaUploadURLRequestContentType.
 const (
 	MediaUploadURLRequestContentTypeImageGif  MediaUploadURLRequestContentType = "image/gif"
@@ -5201,6 +5216,21 @@ func (e GetAPINotebookTasksParamsSomeday) Valid() bool {
 	}
 }
 
+// Defines values for GetAPINotebookTasksParamsUndated.
+const (
+	GetAPINotebookTasksParamsUndatedTrue GetAPINotebookTasksParamsUndated = "true"
+)
+
+// Valid indicates whether the value is a known member of the GetAPINotebookTasksParamsUndated enum.
+func (e GetAPINotebookTasksParamsUndated) Valid() bool {
+	switch e {
+	case GetAPINotebookTasksParamsUndatedTrue:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAPINotebookTasksParamsOpen.
 const (
 	GetAPINotebookTasksParamsOpenFalse GetAPINotebookTasksParamsOpen = "false"
@@ -6647,6 +6677,9 @@ type ListTasksQuery struct {
 
 	// Today Caller's local day (yyyy-mm-dd) for carried-over ranking; defaults to UTC today
 	Today *string `json:"today,omitempty"`
+
+	// Undated Only tasks with no startDate that are not someday
+	Undated *ListTasksQueryUndated `json:"undated,omitempty"`
 }
 
 // ListTasksQueryArea defines model for ListTasksQuery.Area.
@@ -6663,6 +6696,9 @@ type ListTasksQuerySomeday string
 
 // ListTasksQueryStatus defines model for ListTasksQuery.Status.
 type ListTasksQueryStatus string
+
+// ListTasksQueryUndated Only tasks with no startDate that are not someday
+type ListTasksQueryUndated string
 
 // MediaUploadURLRequest defines model for MediaUploadUrlRequest.
 type MediaUploadURLRequest struct {
@@ -12043,6 +12079,9 @@ type GetAPINotebookTasksParams struct {
 	// Someday Only someday tasks (true) or only scheduled tasks (false)
 	Someday *GetAPINotebookTasksParamsSomeday `form:"someday,omitempty" json:"someday,omitempty"`
 
+	// Undated Only tasks with no startDate that are not someday
+	Undated *GetAPINotebookTasksParamsUndated `form:"undated,omitempty" json:"undated,omitempty"`
+
 	// NoteID Tasks linked to a note
 	NoteID *string `form:"noteId,omitempty" json:"noteId,omitempty"`
 
@@ -12068,6 +12107,9 @@ type GetAPINotebookTasksParamsPriority string
 
 // GetAPINotebookTasksParamsSomeday defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasksParamsSomeday string
+
+// GetAPINotebookTasksParamsUndated defines parameters for GetAPINotebookTasks.
+type GetAPINotebookTasksParamsUndated string
 
 // GetAPINotebookTasksParamsOpen defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasksParamsOpen string

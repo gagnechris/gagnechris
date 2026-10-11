@@ -152,6 +152,19 @@ describe('Notebook schemas', () => {
         startAfter: '2026-10-03',
       }),
     ).toMatchObject({ someday: false, startAfter: '2026-10-03' });
+    expect(ListTasksQuerySchema.parse({ undated: 'true' })).toMatchObject({
+      undated: true,
+    });
+    expect(
+      ListTasksQuerySchema.safeParse({ undated: 'true', someday: 'true' })
+        .success,
+    ).toBe(false);
+    expect(
+      ListTasksQuerySchema.safeParse({
+        undated: 'true',
+        startBefore: '2026-10-03',
+      }).success,
+    ).toBe(false);
   });
 
   it('discriminates SyncChange note and task variants', () => {

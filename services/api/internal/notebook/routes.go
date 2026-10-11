@@ -509,6 +509,9 @@ func (h handlers) listTasks(ctx context.Context, r *api.Request) (*api.Response,
 		someday := s == "true"
 		q.someday = &someday
 	}
+	if _, ok := v.Enum("undated", false, "true"); ok {
+		q.undated = true
+	}
 	q.noteID, _ = v.String("noteId", false, false, api.MinLen(1))
 	if s, ok := v.Enum("open", false, "true", "false"); ok {
 		q.open = s == "true"
@@ -528,6 +531,9 @@ func (h handlers) listTasks(ctx context.Context, r *api.Request) (*api.Response,
 		}
 		if q.someday != nil && *q.someday && ranges > 0 {
 			v.Fail("someday", api.CodeCustom)
+		}
+		if q.undated && (ranges > 0 || q.someday != nil && *q.someday) {
+			v.Fail("undated", api.CodeCustom)
 		}
 	}
 	if err := v.ErrWith("Invalid query parameters"); err != nil {
