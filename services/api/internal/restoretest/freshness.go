@@ -10,8 +10,10 @@ import (
 // So the daily check asks AWS Backup what last succeeded.
 
 const (
-	RecoveryPointMaxAge     = 26 * time.Hour
-	RestoreValidationMaxAge = 8 * 24 * time.Hour
+	RecoveryPointMaxAge = 26 * time.Hour
+	// Weekly runs start Sundays 09:00-10:00 UTC and the daily check runs at
+	// 12:00, so a week plus an hour flags a missed run on the day it is missed.
+	RestoreValidationMaxAge = 7*24*time.Hour + time.Hour
 )
 
 // FreshnessDeps return the zero time when there is nothing to report.
