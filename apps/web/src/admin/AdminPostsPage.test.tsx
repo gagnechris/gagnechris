@@ -248,4 +248,78 @@ describe('AdminPostsPage', () => {
       .map((a) => a.querySelector('.admin-table__title')?.textContent);
     expect(titles).toEqual(['Untitled', 'Hello']);
   });
+
+  test('a row menu publishes the draft and unpublishes a published post', async () => {
+    const user = userEvent.setup();
+    post.mockImplementation(async (path: string) =>
+      respond(
+        path.endsWith('/unpublish')
+          ? makePost({ id: '01LIVE', title: 'Live', version: 4 })
+          : makePost({ status: 'published', version: 2 }),
+      ),
+    );
+    get.mockResolvedValue(
+      respond({
+        items: [
+          makePost(),
+          makePost({
+            id: '01LIVE',
+            title: 'Live',
+            status: 'published',
+            version: 3,
+          }),
+        ],
+      }),
+    );
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <AdminPostsPage />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Hello' }),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Unpublish' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/publish', {
+      params: { path: { id: '01POST' } },
+      body: { version: 1 },
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Actions for Live' }));
+    expect(
+      screen.queryByRole('button', { name: 'Publish' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Unpublish' }));
+    expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/unpublish', {
+      params: { path: { id: '01LIVE' } },
+      body: { version: 3 },
+    });
+  });
+
+  test('a failed row publish shows why', async () => {
+    const user = userEvent.setup();
+    post.mockResolvedValue({
+      data: undefined,
+      error: { error: 'Post changed since you loaded it' },
+      response: { status: 409 },
+    });
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter>
+          <AdminPostsPage />
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Actions for Hello' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+  });
 });

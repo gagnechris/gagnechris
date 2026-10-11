@@ -7,6 +7,7 @@ import {
   usePostsQuery,
 } from '@gagnechris/app-core';
 import { Button } from '../kit/Button';
+import { PostRowActions } from './PostRowActions';
 import { TextInput } from '../kit/Field';
 import { StatusBadge } from '../kit/StatusBadge';
 import { useDebouncedValue } from '../kit/useDebouncedValue';
@@ -154,6 +155,9 @@ export default function AdminPostsPage() {
                 <th scope="col" className="admin-table__date">
                   Date
                 </th>
+                <th scope="col" className="admin-table__actions">
+                  <span className="admin-visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -185,6 +189,9 @@ export default function AdminPostsPage() {
                     {post.status === 'published'
                       ? formatDate(post.publishedAt)
                       : formatDate(post.updatedAt)}
+                  </td>
+                  <td className="admin-table__actions">
+                    <PostRowActions post={post} onError={setActionError} />
                   </td>
                 </tr>
               ))}
