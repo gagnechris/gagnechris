@@ -60,6 +60,7 @@ describe('apple-app-site-association', () => {
           { '/': '/auth/*', exclude: true },
           { '/': '/posts/*' },
           { '/': '/projects/*' },
+          { '/': '/pages' },
           { '/': '/home' },
           { '/': '/resume' },
           { '/': '/settings/users' },

@@ -6,6 +6,7 @@ import {
   parseClientVersion,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
+  taskEmbedIds,
   taskShowsOn,
 } from '@gagnechris/shared';
 
@@ -83,6 +84,10 @@ const matchesNote = (note: Note, params: URLSearchParams) => {
   if (type && note.type !== type) return false;
   if (from && (!note.date || note.date < from)) return false;
   if (to && (!note.date || note.date > to)) return false;
+  const taskId = params.get('taskId');
+  if (taskId && !taskEmbedIds(note.bodyMarkdown).includes(taskId)) {
+    return false;
+  }
   return true;
 };
 
@@ -122,6 +127,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     /** Every request, reached the server or not. */
     calls: [] as string[],
     requests: [] as string[],
+    /** The query string of every `GET /api/notebook/notes`. */
+    noteQueries: [] as string[],
     writes: 0,
     conflicts: 0,
     /** `x-gagnechris-client-version` of every request. */
@@ -301,6 +308,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       return json(200, syncChanges(params));
     }
     if (route === 'GET /api/notebook/notes') {
+      state.noteQueries.push(url.search);
       const all = [...store.values()].filter((n) => matchesNote(n, params));
       return json(200, page(all, params));
     }

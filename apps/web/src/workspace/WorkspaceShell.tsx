@@ -34,6 +34,8 @@ export type ShellNavItem = {
   tabLabel?: string;
   icon: ShellIconName;
   end?: boolean;
+  /** Other paths whose screens open from this item, so it stays current there. */
+  childPaths?: string[];
   /** Hidden unless the user is in this Cognito group. */
   group?: string;
   count?: string;
@@ -278,11 +280,18 @@ export function WorkspaceFrame({
                       key={item.to}
                       to={item.to}
                       end={item.end}
-                      className={(state) =>
-                        overflow
-                          ? `${navItemClass(state)} workspace-nav__item--overflow`
-                          : navItemClass(state)
-                      }
+                      className={({ isActive }) => {
+                        const active =
+                          isActive ||
+                          (item.childPaths ?? []).some(
+                            (path) =>
+                              location.pathname === path ||
+                              location.pathname.startsWith(`${path}/`),
+                          );
+                        return overflow
+                          ? `${navItemClass({ isActive: active })} workspace-nav__item--overflow`
+                          : navItemClass({ isActive: active });
+                      }}
                       title={item.label}
                       aria-label={
                         item.count

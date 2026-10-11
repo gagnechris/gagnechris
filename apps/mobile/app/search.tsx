@@ -1,7 +1,7 @@
 import {
-  useCachedTasks,
-  useNotebookSearchQuery,
+  useDebouncedNotebookSearch,
   useTaskToggle,
+  type LiveTaskHit,
 } from '@gagnechris/app-core';
 import {
   areaQueryParam,
@@ -13,7 +13,7 @@ import {
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../src/area';
+import { dailyNotePath } from '../src/notebook/detailRoutes';
 import {
   readRecentSearches,
   withRecentSearch,
@@ -35,7 +36,6 @@ import { Icon } from '../src/ui/Icon';
 import { Section } from '../src/ui/Section';
 import { SegmentedControl } from '../src/ui/SegmentedControl';
 
-const SEARCH_DEBOUNCE_MS = 200;
 const SCOPES = ['area', 'all'] as const;
 type Scope = (typeof SCOPES)[number];
 const SCOPE_LABELS: Record<Scope, string> = {
@@ -77,7 +77,6 @@ const SearchScreen = () => {
   const insets = useSafeAreaInsets();
   const { area, store } = useArea();
   const [q, setQ] = useState('');
-  const [query, setQuery] = useState('');
   const [scope, setScope] = useState<Scope>('area');
   const [recent, setRecent] = useState<string[]>([]);
 
@@ -90,22 +89,13 @@ const SearchScreen = () => {
       cancelled = true;
     };
   }, [store]);
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(q), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [q]);
 
   const searchArea = scope === 'area' ? areaQueryParam(area) : undefined;
-  const search = useNotebookSearchQuery(
-    { q: query, area: searchArea, limit: 50 },
-    query.trim().length > 0,
-  );
-  const taskIds = useMemo(
-    () => (search.data?.tasks ?? []).map((t) => t.id),
-    [search.data],
-  );
-  // Hits carry status; a check-off here updates the cached task first.
-  const cachedTasks = useCachedTasks(taskIds);
+  const search = useDebouncedNotebookSearch(q, {
+    area: searchArea,
+    limit: 50,
+  });
+  const { query, notes, tasks } = search;
   const { toggle, error: toggleError } = useTaskToggle();
 
   const remember = (text: string) => {
@@ -120,18 +110,24 @@ const SearchScreen = () => {
   const open = (hit: NotebookSearchHit) => {
     remember(q);
     router.back();
+    if (hit.type === 'note' && hit.date) {
+      router.navigate(dailyNotePath(hit.date, hit.area));
+      return;
+    }
     router.push(hit.type === 'task' ? `/tasks/${hit.id}` : `/notes/${hit.id}`, {
       withAnchor: true,
     });
   };
 
-  const notes = search.data?.notes ?? [];
-  const tasks = search.data?.tasks ?? [];
   const searching = q.trim().length > 0;
-  const settled = q.trim() === query.trim() && !search.isFetching;
   const showArea = searchArea === undefined;
 
-  const hitRow = (hit: NotebookSearchHit, index: number, check?: boolean) => {
+  const hitRow = (
+    hit: NotebookSearchHit,
+    index: number,
+    task?: LiveTaskHit['live'],
+  ) => {
+    const check = task ? task.status === 'done' : undefined;
     const tags = showArea ? ` · ${NOTEBOOK_AREA_LABELS[hit.area]}` : '';
     return (
       <View key={hit.id} style={[styles.hit, index > 0 && styles.divider]}>
@@ -142,21 +138,7 @@ const SearchScreen = () => {
             accessibilityLabel={
               check ? `Reopen ${hit.title}` : `Complete ${hit.title}`
             }
-            onPress={() => {
-              const cached = cachedTasks[index]?.data;
-              const live =
-                cached && !cached.deleted
-                  ? cached
-                  : hit.status !== undefined && hit.version !== undefined
-                    ? {
-                        id: hit.id,
-                        title: hit.title,
-                        status: hit.status,
-                        version: hit.version,
-                      }
-                    : undefined;
-              if (live) void toggle(live);
-            }}
+            onPress={() => void toggle(task!)}
             style={styles.box}
           >
             <Icon
@@ -276,7 +258,7 @@ const SearchScreen = () => {
           <Text style={styles.error} accessibilityRole="alert">
             Search failed. Check your connection.
           </Text>
-        ) : !settled && notes.length + tasks.length === 0 ? (
+        ) : search.pending && notes.length + tasks.length === 0 ? (
           <Text style={styles.status}>Searching…</Text>
         ) : notes.length + tasks.length === 0 ? (
           <Text style={styles.status}>No notes or tasks match.</Text>
@@ -289,12 +271,7 @@ const SearchScreen = () => {
             ) : null}
             {tasks.length > 0 ? (
               <Section title="Tasks">
-                {tasks.map((hit, i) => {
-                  const cached = cachedTasks[i]?.data;
-                  const status =
-                    cached && !cached.deleted ? cached.status : hit.status;
-                  return hitRow(hit, i, status === 'done');
-                })}
+                {tasks.map(({ hit, live }, i) => hitRow(hit, i, live))}
               </Section>
             ) : null}
           </>

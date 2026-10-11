@@ -12,6 +12,7 @@ describe('admin links', () => {
     ['https://admin.gagnechris.com/projects', '/admin/projects'],
     ['https://admin.gagnechris.com/home', '/admin/pages/home'],
     ['https://admin.gagnechris.com/resume', '/admin/pages/resume'],
+    ['https://admin.gagnechris.com/pages', '/admin/pages'],
     ['https://admin.gagnechris.com/settings/users', '/admin/users'],
     ['https://admin.gagnechris.com/', '/admin/posts'],
     ['https://admin.gagnechris.com', '/admin/posts'],

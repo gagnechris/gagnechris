@@ -20,7 +20,7 @@ export function renderHook<TResult>(
   }
 
   const Wrapper = options?.wrapper;
-  // A fresh element each time: React bails out of re-rendering an identical one.
+  // A fresh element each time, so rerender runs the hook again.
   const element = () =>
     Wrapper
       ? createElement(Wrapper, null, createElement(HookHost))
