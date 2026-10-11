@@ -58,7 +58,7 @@ describe('NotebookCalendar', () => {
     expect(onSelect).toHaveBeenCalledWith('2026-10-13');
   });
 
-  test('arrows stop at the ends of the month; PageDown opens the next month', async () => {
+  test('arrows stop at the ends of the month; PageDown and PageUp only browse', async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
     render(<Harness initial="2026-10-28" onSelect={onSelect} />);
@@ -68,7 +68,27 @@ describe('NotebookCalendar', () => {
     expect(cell(/October 31, 2026/)).toHaveFocus();
 
     await user.keyboard('{PageDown}');
-    expect(onSelect).toHaveBeenCalledWith('2026-11-01');
-    expect(cell(/November 1, 2026/)).toHaveFocus();
+    expect(screen.getByRole('grid', { name: 'November 2026' })).toBeVisible();
+    expect(cell(/November 30, 2026/)).toHaveFocus();
+    await user.keyboard('{PageUp}{PageUp}');
+    expect(cell(/September 30, 2026/)).toHaveFocus();
+    expect(onSelect).not.toHaveBeenCalled();
+
+    await user.keyboard('{Enter}');
+    expect(onSelect).toHaveBeenCalledWith('2026-09-30');
+  });
+
+  test('the month buttons browse without selecting', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<Harness initial="2026-10-11" onSelect={onSelect} />);
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(screen.getByRole('grid', { name: 'September 2026' })).toBeVisible();
+    expect(cell(/September 1, 2026/)).toHaveAttribute('tabindex', '0');
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByRole('grid', { name: 'November 2026' })).toBeVisible();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });
