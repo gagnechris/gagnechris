@@ -24,6 +24,15 @@ describe('root gate', () => {
     });
   });
 
+  it('lets a Notebook-only user reach admin links, which end at No access', () => {
+    expect(rootGuards('signedIn', ['notebook'])).toEqual({
+      notebook: true,
+      admin: true,
+      noAccess: true,
+      signIn: false,
+    });
+  });
+
   it('shows No access to a signed-in user with no space', () => {
     expect(rootGuards('signedIn', [])).toEqual({
       notebook: false,

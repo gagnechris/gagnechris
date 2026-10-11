@@ -240,13 +240,15 @@ done
 # Expect: 200, CSP with script-src 'self' and no google hosts, {"status":"ok",...}
 ```
 
-AASA (app ID `FF9YB7FZ7A.com.gagnechris.mobile`): the notebook host serves `/.well-known/apple-app-site-association` with `applinks` and `webcredentials`, the apex serves one with `webcredentials` only, and the admin host serves none. Devices read it from Apple's CDN, which caches it for hours, so an AASA change reaches iPhones only after the CDN refetches; reinstalling the app doesn't help before then. Compare what the host and Apple serve:
+AASA (app ID `FF9YB7FZ7A.com.gagnechris.mobile`): the notebook host serves `/.well-known/apple-app-site-association` with `applinks` and `webcredentials`, the admin host serves one with `applinks` only, and the apex serves one with `webcredentials` only. Devices read it from Apple's CDN, which caches it for hours, so an AASA change reaches iPhones only after the CDN refetches; reinstalling the app doesn't help before then. Compare what the host and Apple serve:
 
 ```bash
 curl -sS https://notebook.gagnechris.com/.well-known/apple-app-site-association
 curl -sS https://app-site-association.cdn-apple.com/a/v1/notebook.gagnechris.com
+curl -sS https://admin.gagnechris.com/.well-known/apple-app-site-association
+curl -sS https://app-site-association.cdn-apple.com/a/v1/admin.gagnechris.com
 curl -sS https://app-site-association.cdn-apple.com/a/v1/gagnechris.com
-# Expect the same JSON from the host and the CDN; the notebook one has applinks and webcredentials.
+# Expect the same JSON from each host and the CDN; the notebook one has applinks and webcredentials.
 ```
 
 ## Web deploy pipeline

@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["FF9YB7FZ7A.com.gagnechris.mobile"],
+        "components": [
+          { "/": "/auth/*", "exclude": true },
+          { "/": "/posts/*" },
+          { "/": "/projects/*" },
+          { "/": "/home" },
+          { "/": "/resume" },
+          { "/": "/settings/users" }
+        ]
+      }
+    ]
+  }
+}
