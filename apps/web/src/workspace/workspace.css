@@ -408,6 +408,7 @@
       env(safe-area-inset-left, 0px);
     border-right: 0;
     border-top: 1px solid var(--neutral-200);
+    align-items: stretch;
   }
 
   .workspace-desktop,
