@@ -8,7 +8,14 @@ import {
   type TaskDateMenuItem,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActionSheetIOS,
   StyleSheet,
@@ -294,6 +301,13 @@ export const NoteBodyEditor = ({
     return openTaskDateQuery(text, caret, today);
   }, [focus, focusedText, today]);
 
+  const dateMenu = dateQuery
+    ? {
+        heading: dateQuery.kind === 'due' ? 'Deadline' : 'Show this task on',
+        items: taskDateMenuItems(today, dateQuery.query, dateQuery.kind),
+      }
+    : null;
+
   const insertToken = (key: string, query: DateQuery, token: string) => {
     const segment = textSegment(latest.current.segments, key);
     if (!segment) return;
@@ -359,55 +373,50 @@ export const NoteBodyEditor = ({
         // list of tasks reads like one.
         const collapsed =
           empty && segment.key !== lastText && focus?.key !== segment.key;
+        // iOS gives an accessory to the first input with its id, once, when
+        // the accessory mounts, so each run has its own.
+        const toolbarId = `${NOTE_TOOLBAR_ID}-${segment.key}`;
         return (
-          <TextInput
-            key={segment.key}
-            ref={(input) => {
-              if (input) inputs.current.set(segment.key, input);
-              else inputs.current.delete(segment.key);
-            }}
-            style={[
-              styles.text,
-              empty && styles.gap,
-              collapsed && styles.collapsed,
-              collapsed && index > 0 && styles.collapsedBelowRow,
-            ]}
-            accessibilityLabel="Note body"
-            placeholder={
-              segment.key === lastText && segments.length === 1
-                ? 'Write in markdown…'
-                : undefined
-            }
-            placeholderTextColor={color.muted}
-            value={segmentText(segment)}
-            onChangeText={(text) => onChangeText(segment.key, text)}
-            onSelectionChange={(event) => onSelectionChange(segment.key, event)}
-            onBlur={() => onBlur(segment.key)}
-            inputAccessoryViewID={NOTE_TOOLBAR_ID}
-            multiline
-            scrollEnabled={false}
-            textAlignVertical="top"
-            autoFocus={autoFocus && segment.key === lastText}
-          />
+          <Fragment key={segment.key}>
+            <TextInput
+              ref={(input) => {
+                if (input) inputs.current.set(segment.key, input);
+                else inputs.current.delete(segment.key);
+              }}
+              style={[
+                styles.text,
+                empty && styles.gap,
+                collapsed && styles.collapsed,
+                collapsed && index > 0 && styles.collapsedBelowRow,
+              ]}
+              accessibilityLabel="Note body"
+              placeholder={
+                segment.key === lastText && segments.length === 1
+                  ? 'Write in markdown…'
+                  : undefined
+              }
+              placeholderTextColor={color.muted}
+              value={segmentText(segment)}
+              onChangeText={(text) => onChangeText(segment.key, text)}
+              onSelectionChange={(event) =>
+                onSelectionChange(segment.key, event)
+              }
+              onBlur={() => onBlur(segment.key)}
+              inputAccessoryViewID={toolbarId}
+              multiline
+              scrollEnabled={false}
+              textAlignVertical="top"
+              autoFocus={autoFocus && segment.key === lastText}
+            />
+            <NoteKeyboardToolbar
+              nativeID={toolbarId}
+              onAction={onAction}
+              dateMenu={focus?.key === segment.key ? dateMenu : null}
+              onPickDate={onPickDate}
+            />
+          </Fragment>
         );
       })}
-      <NoteKeyboardToolbar
-        onAction={onAction}
-        dateMenu={
-          dateQuery
-            ? {
-                heading:
-                  dateQuery.kind === 'due' ? 'Deadline' : 'Show this task on',
-                items: taskDateMenuItems(
-                  today,
-                  dateQuery.query,
-                  dateQuery.kind,
-                ),
-              }
-            : null
-        }
-        onPickDate={onPickDate}
-      />
       <PickDateModal
         title={
           picking
