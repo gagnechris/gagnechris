@@ -1,5 +1,6 @@
 import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
-import { mergeEditorSeo, type Home } from '@gagnechris/app-core';
+import { mergeEditorSeo } from './mergeEditorSeo.js';
+import type { Home } from './query/api.js';
 
 export type HomeDraftFields = {
   name: string;

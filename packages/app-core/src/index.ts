@@ -14,6 +14,12 @@ export {
   type PostDraftFields,
 } from './postDraft.js';
 export {
+  emptyHomeDraft,
+  homeDraftFromHome,
+  homePayload,
+  type HomeDraftFields,
+} from './homeDraft.js';
+export {
   isPlaceholderSlug,
   newPlaceholderSlug,
   slugWasPublished,
