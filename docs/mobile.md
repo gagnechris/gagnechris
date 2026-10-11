@@ -78,7 +78,7 @@ Query caching and offline state are described in [Cached reads and offline](#cac
 
 The Admin Posts tab lists posts newest first with their status (Draft, Published, or Published · unpublished changes), the publish or last-edit date and tags, filtered on the server by All / Drafts / Published (each with its count) and a search on title, slug and tags. The compose button creates a draft with a placeholder slug and opens it.
 
-The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEditor` with `postResource` and the shared `postDraft` helpers, as the web post editor does, so it autosaves, publishes, unpublishes, discards unpublished changes and deletes through the same Posts API, and the slug follows the title until it is edited by hand (or while it is still a placeholder).
+The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEditor` with `postResource` and the shared `postDraft` helpers, as the web post editor does, so it autosaves, publishes, unpublishes, discards unpublished changes and deletes through the same Posts API, and a placeholder slug follows the title until it is edited by hand or the post is published (`slugWasPublished`).
 
 - **Body.** A Markdown text view with a keyboard toolbar: Heading, List, Link and Photo. Preview renders it with `MarkdownView`, resolving root-relative links and images against `https://gagnechris.com`, where the post is published.
 - **Details** (the sliders button) opens a sheet with the slug, tags, excerpt, cover image, Part of project and the SEO title and description.

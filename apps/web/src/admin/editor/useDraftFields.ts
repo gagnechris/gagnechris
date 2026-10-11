@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isPlaceholderSlug } from '@gagnechris/app-core';
+import { isPlaceholderSlug, slugWasPublished } from '@gagnechris/app-core';
 import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
 
 type FieldValue<T> = T | ((prev: T) => T);
@@ -17,6 +17,8 @@ type Editor<TDraft> = {
   updateDraft: (update: (prev: TDraft) => TDraft) => void;
   /** The entity the draft was last hydrated from. */
   hydrated: object | null;
+  /** The latest saved entity. */
+  entity?: object | null;
 };
 
 const hydratedSlug = (entity: object): string =>
@@ -24,22 +26,24 @@ const hydratedSlug = (entity: object): string =>
 
 /**
  * With `slugFrom`, the slug follows that field until it is edited by hand; a
- * loaded entity whose slug is still a placeholder keeps following.
+ * loaded entity whose slug is still a placeholder keeps following until it is
+ * published.
  */
 export function useDraftFields<TDraft extends object>(
   editor: Editor<TDraft>,
   { slugFrom }: { slugFrom?: SlugSource<TDraft> } = {},
 ) {
-  const { updateDraft, hydrated } = editor;
+  const { updateDraft, hydrated, entity } = editor;
   const [manualOverride, setManualOverride] = useState<{
     entity: object | null;
     manual: boolean;
   } | null>(null);
 
   const slugManual =
-    manualOverride && manualOverride.entity === hydrated
+    slugWasPublished(entity) ||
+    (manualOverride && manualOverride.entity === hydrated
       ? manualOverride.manual
-      : hydrated !== null && !isPlaceholderSlug(hydratedSlug(hydrated));
+      : hydrated !== null && !isPlaceholderSlug(hydratedSlug(hydrated)));
 
   const setSlugManual = (manual: boolean) =>
     setManualOverride({ entity: hydrated, manual });

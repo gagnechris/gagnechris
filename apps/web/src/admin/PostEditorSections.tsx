@@ -19,6 +19,8 @@ type Project = components['schemas']['Project'];
 type DetailsProps = {
   draft: PostDraftFields;
   setField: SetDraftField<PostDraftFields>;
+  /** Whether the slug no longer follows the title. */
+  slugManual: boolean;
   setSlugManual: (manual: boolean) => void;
   onSave: () => void;
   onUploadImage: (file: File) => Promise<string>;
@@ -30,6 +32,7 @@ type DetailsProps = {
 export function PostEditorDetails({
   draft,
   setField,
+  slugManual,
   setSlugManual,
   onSave,
   onUploadImage,
@@ -59,16 +62,18 @@ export function PostEditorDetails({
               className="admin-prefixed__input"
               value={draft.slug}
               maxLength={MAX_SLUG_LENGTH}
-              aria-describedby={slugHintId}
+              aria-describedby={slugManual ? undefined : slugHintId}
               onChange={(e) => {
                 setSlugManual(true);
                 setField('slug', e.target.value);
               }}
             />
           </div>
-          <span id={slugHintId} className="admin-hint">
-            Follows the title until you edit it.
-          </span>
+          {!slugManual && (
+            <span id={slugHintId} className="admin-hint">
+              Follows the title until you edit it.
+            </span>
+          )}
         </div>
         <ChipsInput
           label="Tags"
