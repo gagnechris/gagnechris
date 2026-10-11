@@ -608,3 +608,10 @@
   font-size: var(--text-sm);
   font-weight: 500;
 }
+
+/* Phones: above the bottom tab bar. */
+@media (max-width: 767px) {
+  .users-toast-region {
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}

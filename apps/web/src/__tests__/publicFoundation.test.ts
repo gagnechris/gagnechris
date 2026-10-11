@@ -48,6 +48,22 @@ describe('public CSS', () => {
       expect(css).not.toMatch(/opacity:\s*0(?:\.0+)?\s*[;}]/);
     },
   );
+
+  it.each(files.map((file) => [path.relative(src, file), file]))(
+    '%s pads columns past the notch in landscape',
+    (_name, file) => {
+      const css = fs.readFileSync(file, 'utf8');
+      expect(css).not.toMatch(/padding-inline:\s*var\(--site-gutter\)/);
+    },
+  );
+
+  it('the full-screen menu clears the notch and the home indicator', () => {
+    const css = fs.readFileSync(path.join(src, 'public.css'), 'utf8');
+    const panel = /\.site-menu__panel\s*{[^}]*}/.exec(css)?.[0] ?? '';
+    expect(panel).toMatch(/safe-area-inset-top/);
+    expect(panel).toMatch(/safe-area-inset-bottom/);
+    expect(panel).toMatch(/--site-inset-left/);
+  });
 });
 
 describe('public fonts', () => {
