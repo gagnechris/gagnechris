@@ -157,3 +157,12 @@ button:focus-visible {
   padding: var(--space-2) 0;
   font-weight: 500;
 }
+
+.route-loading {
+  margin: var(--space-8) auto;
+  padding: 0 var(--space-4);
+  max-width: 720px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}

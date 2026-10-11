@@ -282,16 +282,28 @@ export function useQueuedAutosave<TDraft, TEntity>({
     })();
 
     return promise;
-  }, [enabled]);
+  }, [
+    enabled,
+    conflictMessageRef,
+    conflictMessagesRef,
+    draftRef,
+    getBaseVersionRef,
+    isSavedInRef,
+    onSavedRef,
+    performSaveRef,
+    setDirtyRef,
+    tooLargeMessageRef,
+  ]);
 
   useEffect(() => {
     if (!enabled || !dirty || held) return;
-    const handle = timersRef.current.setTimeout(() => {
+    const t = timersRef.current;
+    const handle = t.setTimeout(() => {
       if (heldRef.current) return;
       void save();
     }, debounceMs);
-    return () => timersRef.current.clearTimeout(handle);
-  }, [dirty, draft, debounceMs, enabled, save, held]);
+    return () => t.clearTimeout(handle);
+  }, [dirty, draft, debounceMs, enabled, save, held, timersRef]);
 
   // The debounce will not fire again until the next edit, so retryable
   // failures need their own loop.
@@ -301,7 +313,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
       signalledSinceSendRef.current = true;
       retryNowRef.current?.();
     });
-  }, [dirty, enabled]);
+  }, [dirty, enabled, retrySignalsRef]);
   useEffect(() => {
     if (!enabled || !dirty || held || retryAttempt === 0) return;
     const retry = () => {
@@ -311,13 +323,14 @@ export function useQueuedAutosave<TDraft, TEntity>({
     const delay = signalledSinceSendRef.current
       ? 0
       : (retryDelaysMs[Math.min(retryAttempt, retryDelaysMs.length) - 1] ?? 0);
-    const handle = timersRef.current.setTimeout(retry, delay);
+    const t = timersRef.current;
+    const handle = t.setTimeout(retry, delay);
     retryNowRef.current = retry;
     return () => {
-      timersRef.current.clearTimeout(handle);
+      t.clearTimeout(handle);
       if (retryNowRef.current === retry) retryNowRef.current = null;
     };
-  }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save]);
+  }, [dirty, enabled, held, retryAttempt, retryDelaysMs, save, timersRef]);
 
   // Unmount cancels the debounce timer; flush instead of dropping edits.
   const saveRef = useLatest(save);
@@ -398,7 +411,16 @@ export function useQueuedAutosave<TDraft, TEntity>({
       })();
       registerPendingFlush(key, entry);
     },
-    [],
+    [
+      dirtyRef,
+      draftRef,
+      getBaseVersionRef,
+      queueKeyRef,
+      retryDelaysRef,
+      retrySignalsRef,
+      saveRef,
+      timersRef,
+    ],
   );
 
   const awaitInFlight = useCallback((): Promise<FlushResult> => {
@@ -411,7 +433,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     lastSavedGenRef.current = editGenRef.current;
     setDirtyRef.current(false);
     setSaveState('saved');
-  }, []);
+  }, [setDirtyRef]);
 
   return {
     save,

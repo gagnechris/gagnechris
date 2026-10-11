@@ -280,3 +280,72 @@ describe('useVersionedDocEditor remote updates', () => {
     expect(result.current.draft).toEqual({ body: 'mine' });
   });
 });
+
+describe('useVersionedDocEditor callbacks', () => {
+  test('hydration uses the toDraft and onHydrate passed with it', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const client = {} as ApiClient;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const noteResource = createVersionedResource<FakeNote, FakeNoteParams>({
+      queryKey: ({ id }) => ['notebook', 'notes', id] as const,
+      fetch: async (_c, { id }) => {
+        await gate;
+        return { id, body: 'hello', version: 1 };
+      },
+      update: async () => {
+        throw new Error('unused');
+      },
+      tooLargeMessage: 'Too large.',
+      setCache: (qc, entity) => {
+        qc.setQueryData(['notebook', 'notes', entity.id], entity);
+      },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(AppApiProvider, {
+        getClient: () => client,
+        children: createElement(QueryClientProvider, {
+          client: queryClient,
+          children,
+        }),
+      });
+    const toDraftA = (n: FakeNote) => ({ body: `${n.body}:a` });
+    const toDraftB = (n: FakeNote) => ({ body: `${n.body}:b` });
+    const onHydrateA = vi.fn();
+    const onHydrateB = vi.fn();
+    let variant: 'a' | 'b' = 'a';
+
+    const { result, rerender } = renderHook(
+      () =>
+        useVersionedDocEditor({
+          resource: noteResource,
+          params: { id: 'n1' },
+          initialDraft: { body: '' },
+          toDraft: variant === 'a' ? toDraftA : toDraftB,
+          getEntityId: (n) => n.id,
+          toPayload: (draft) => ({ body: draft.body }),
+          conflictMessage: 'Conflict.',
+          confirm: async () => true,
+          onHydrate: variant === 'a' ? onHydrateA : onHydrateB,
+        }),
+      { wrapper },
+    );
+
+    // The fetched data and the new callbacks land in the same render.
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      variant = 'b';
+      rerender();
+    });
+    await waitUntil(() => !result.current.isLoading, 'hydrate');
+
+    expect(result.current.draft).toEqual({ body: 'hello:b' });
+    expect(onHydrateA).not.toHaveBeenCalled();
+    expect(onHydrateB).toHaveBeenCalledTimes(1);
+  });
+});

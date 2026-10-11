@@ -86,9 +86,12 @@ const go = spawn(bin, [], {
 });
 children.push(go);
 go.on('exit', (code) => shutdown(code ?? 1));
-await waitForHealth(`http://127.0.0.1:${goPort}`, go);
+await waitForHealth(`http://127.0.0.1:${goPort}`, go).catch((err) => {
+  console.error(err);
+  shutdown(1);
+});
 
-createHttpServer(async (req, res) => {
+const server = createHttpServer(async (req, res) => {
   try {
     if (mediaCors(req, res)) return;
     const body = await readBody(req);
@@ -131,4 +134,10 @@ createHttpServer(async (req, res) => {
     res.statusCode = 502;
     res.end();
   }
-}).listen(Number(port), '127.0.0.1');
+});
+// An uncaught listen error (EADDRINUSE) would leave the Go child running.
+server.on('error', (err) => {
+  console.error(`api.ts: cannot listen on 127.0.0.1:${port}:`, err.message);
+  shutdown(1);
+});
+server.listen(Number(port), '127.0.0.1');

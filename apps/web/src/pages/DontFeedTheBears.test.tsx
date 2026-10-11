@@ -76,7 +76,7 @@ describe('DontFeedTheBears landing', () => {
         within(tips).getByRole('heading', { name: tip.title }),
       ).toBeInTheDocument();
     }
-    expect(within(tips).getAllByRole('link', { name: 'Source' })).toHaveLength(
+    expect(within(tips).getAllByRole('link', { name: /^Source/ })).toHaveLength(
       BEAR_TIPS.length,
     );
   });

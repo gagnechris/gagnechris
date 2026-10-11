@@ -590,7 +590,7 @@ function registerPublishablePaths(
   }
 }
 
-export function buildOpenApiDocument() {
+export function buildOpenApiRegistry(): OpenAPIRegistry {
   const registry = new OpenAPIRegistry();
 
   registry.register('HealthResponse', HealthResponseSchema);
@@ -1077,7 +1077,11 @@ export function buildOpenApiDocument() {
     description: 'Cognito ID token (Authorization: Bearer <token>)',
   });
 
-  const generator = new OpenApiGeneratorV3(registry.definitions);
+  return registry;
+}
+
+export function buildOpenApiDocument() {
+  const generator = new OpenApiGeneratorV3(buildOpenApiRegistry().definitions);
   return addPrefixForbidden(
     requireRequestBodies(
       generator.generateDocument({

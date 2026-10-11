@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import {
   createEphemeralIntegrationTable,
@@ -7,6 +7,7 @@ import {
   truncateTable,
 } from '../../support/dynamo-local.js';
 import { startApi, type Api } from './api.js';
+import { assertRowsMatchSchemas, rowKey, type RowKey } from './row-schemas.js';
 
 export type Harness = {
   /** The API under test, serving `tableName`. */
@@ -14,6 +15,8 @@ export type Harness = {
   readonly tableName: string;
   /** For seeding rows and checking what the API stored. */
   readonly doc: DynamoDBDocumentClient;
+  /** Exempts a row the current test corrupts on purpose from the item schema check. */
+  corruptRow(key: RowKey): void;
 };
 
 /**
@@ -27,10 +30,20 @@ export function useApi(
   const doc = createLocalDocClient();
   let api: Api | undefined;
   let tableName: string | undefined;
+  const corruptKeys = new Set<string>();
 
   beforeAll(async () => {
     tableName = await createEphemeralIntegrationTable(slug);
     api = await startApi(tableName, opts.env);
+  });
+
+  // Before the next test's truncate, so every row a test leaves is checked.
+  afterEach(async () => {
+    try {
+      await assertRowsMatchSchemas(doc, tableName!, corruptKeys);
+    } finally {
+      if (opts.truncate !== false) corruptKeys.clear();
+    }
   });
 
   afterAll(async () => {
@@ -54,5 +67,8 @@ export function useApi(
       return tableName;
     },
     doc,
+    corruptRow(key) {
+      corruptKeys.add(rowKey(key));
+    },
   };
 }

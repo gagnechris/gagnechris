@@ -167,6 +167,34 @@ a.today-row__chip:hover {
   right: 0;
 }
 
+.today-snooze--up .task-syntax__menu {
+  top: auto;
+  bottom: calc(100% + var(--space-1));
+}
+
+.task-row__actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+@media (max-width: 767px) {
+  .task-row__actions .today-row__icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Once the title would be under 6rem (200% zoom), the actions wrap under it. */
+.admin-post-list__link:has(> .task-row__actions) {
+  flex-wrap: wrap;
+}
+
+.admin-post-list__link > .task-row__actions {
+  margin-left: auto;
+}
+
 .today-carry {
   margin: var(--space-4) 0 0;
   padding-top: var(--space-3);

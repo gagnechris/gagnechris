@@ -22,6 +22,12 @@ on:
 permissions:
   contents: read
 
+# An explicit bash shell runs with -eo pipefail, so `script | tee` fails when
+# the script does.
+defaults:
+  run:
+    shell: bash
+
 env:
   AWS_REGION: us-east-1
   # Placeholder for synth-only paths; real deploys use repo variable ALERTS_EMAIL.

@@ -1,6 +1,7 @@
 import {
   pageTitle,
   SITE_AUTHOR_NAME,
+  SITE_LINKEDIN_URL,
   SITE_PROJECTS_LIVE,
 } from './site-config.js';
 
@@ -38,3 +39,10 @@ export const CONTACT_DESCRIPTION =
 
 export const CONTACT_HEADING = 'Contact';
 export const CONTACT_INTRO = 'Say hello. I read everything and reply to most.';
+/** Printed without JavaScript too, unlike the form. */
+export const CONTACT_ELSEWHERE = {
+  before: 'Or find me on ',
+  label: 'LinkedIn',
+  href: SITE_LINKEDIN_URL,
+  after: '.',
+} as const;

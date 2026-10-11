@@ -9,7 +9,7 @@ import ProjectsIndex from './pages/ProjectsIndex.tsx';
 import ProjectPage from './pages/ProjectPage.tsx';
 import LegacyPostRedirect from './pages/LegacyPostRedirect.tsx';
 import AppWithTracking from './components/AppWithTracking.tsx';
-import { EmptyFallback, LazyFallback } from './components/LazyFallback.tsx';
+import { EmptyFallback } from './components/LazyFallback.tsx';
 import { lazyRoute } from './routing/lazyRoute';
 
 // HydrateFallback must be a static route property (sibling to `lazy`): React
@@ -20,7 +20,6 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     element: <AppWithTracking />,
-    HydrateFallback: LazyFallback,
     children: [
       {
         index: true,

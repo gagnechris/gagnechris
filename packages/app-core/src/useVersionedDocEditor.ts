@@ -1,5 +1,5 @@
 import { deepEqual } from '@gagnechris/shared';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useEffectEvent, useRef } from 'react';
 import { useGetApiClient } from './AppApiProvider.js';
 import { useEditorStore } from './editorStore.js';
 import { peekPendingFlush, takePendingFlush } from './pendingFlushes.js';
@@ -105,9 +105,7 @@ export function useVersionedDocController<
   const { phase, hydratedId, draft, boundVersion, dirty, busy } = state;
 
   const suppressLeaveGuardRef = useRef(false);
-  const onHydrateRef = useLatest(onHydrate);
   const toDraftRef = useLatest(toDraft);
-  const getEntityIdRef = useLatest(getEntityId);
 
   useEffect(() => {
     if (!peekPendingFlush(queueKey)) return;
@@ -130,7 +128,7 @@ export function useVersionedDocController<
 
   const entity = query.data;
   const { error: queryError, isPending, isFetchedAfterMount } = query;
-  const entityId = entity ? getEntityIdRef.current(entity) : null;
+  const entityId = entity ? getEntityId(entity) : null;
 
   if (
     entity &&
@@ -145,13 +143,19 @@ export function useVersionedDocController<
       ...(adopted
         ? { draft: adopted.draft, version: adopted.version, dirty: true }
         : {
-            draft: toDraftRef.current(entity),
+            draft: toDraft(entity),
             version: entity.version,
             dirty: false,
           }),
     });
-    onHydrateRef.current?.(entity);
   }
+
+  const notifyHydrated = useEffectEvent((id: string) => {
+    if (entity && entityId === id) onHydrate?.(entity);
+  });
+  useEffect(() => {
+    if (hydratedId !== null) notifyHydrated(hydratedId);
+  }, [hydratedId]);
 
   if (
     entity &&
@@ -163,7 +167,7 @@ export function useVersionedDocController<
   ) {
     dispatch({
       type: 'replace',
-      draft: toDraftRef.current(entity),
+      draft: toDraft(entity),
       version: entity.version,
     });
   }
