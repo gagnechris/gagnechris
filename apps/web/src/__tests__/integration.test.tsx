@@ -1,5 +1,7 @@
 import { screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { DEFAULT_RESUME } from '@gagnechris/shared/render';
+import { renderResumePrerenderHtml } from '@gagnechris/public-ui/server';
 import App from '../App';
 import Resume from '../pages/Resume';
 import RouteTracker from '../components/RouteTracker';
@@ -103,7 +105,11 @@ describe('Integration Tests', () => {
     test('resume page renders correctly with download functionality', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn(async () => ({ ok: false, status: 404 })),
+        vi.fn(async () => ({
+          ok: true,
+          text: async () =>
+            `<!DOCTYPE html><html><body>${renderResumePrerenderHtml(DEFAULT_RESUME)}</body></html>`,
+        })),
       );
       renderWithProviders(<Resume />);
 

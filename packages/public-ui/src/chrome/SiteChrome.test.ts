@@ -104,11 +104,12 @@ describe('static pages', () => {
     expect(header(renderNotFoundPageHtml(2026))).not.toContain('aria-current');
   });
 
-  it('Contact is its header only, with Contact current', () => {
+  it('Contact is its header and a LinkedIn link, no form, with Contact current', () => {
     const html = renderContactPageHtml(2026);
     expect(body(html)).toBe(
       '<main class="contact-page"><header class="contact-page__header"><h1>Contact</h1>' +
-        '<p class="contact-page__intro">Say hello. I read everything and reply to most.</p></header></main>',
+        '<p class="contact-page__intro">Say hello. I read everything and reply to most.</p></header>' +
+        '<p class="contact-page__elsewhere">Or find me on <a href="https://www.linkedin.com/in/christophergagne/">LinkedIn</a>.</p></main>',
     );
     expect(header(html)).toContain(
       '<a class="site-nav__link" aria-current="page" href="/contact">',
