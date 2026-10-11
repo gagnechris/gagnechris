@@ -117,6 +117,7 @@ describe('Project editor', () => {
         name: 'Untitled project',
         slug: 'untitled-project-abc123',
         status: 'draft',
+        publishedAt: null,
       }),
     );
     const renderer = await show(<ProjectScreen />);

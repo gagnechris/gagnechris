@@ -1,6 +1,7 @@
 import {
   emptyPostDraft,
   isPlaceholderSlug,
+  slugWasPublished,
   postDraftFromPost,
   postPayload,
   postResource,
@@ -80,11 +81,12 @@ const PostScreen = () => {
   });
   const { draft, updateDraft, entity, dirty, save, actionBarProps } = editor;
   useSaveOnBackground(dirty, save);
+  const slugFollows = followSlug && !slugWasPublished(entity);
 
   const setTitle = useCallback(
     (title: string) =>
-      updateDraft((prev) => withSlugSource(prev, 'title', title, followSlug)),
-    [updateDraft, followSlug],
+      updateDraft((prev) => withSlugSource(prev, 'title', title, slugFollows)),
+    [updateDraft, slugFollows],
   );
   const setBody = useCallback(
     (bodyMarkdown: string) =>
@@ -181,6 +183,7 @@ const PostScreen = () => {
             onClose={() => setDetails(false)}
             draft={draft}
             onChange={updateDraft}
+            slugFollows={slugFollows}
             onSlugEdited={() => setFollowSlug(false)}
             onChooseCover={() =>
               void addPhoto((path) =>

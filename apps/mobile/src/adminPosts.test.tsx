@@ -122,6 +122,27 @@ describe('Post editor', () => {
     );
   });
 
+  it('stops following the title once a new draft is published', async () => {
+    serve([makePost('p1', { title: 'Untitled', slug: 'untitled-abc123' })]);
+    const renderer = await show(<PostScreen />);
+    act(() => input(renderer, 'Title').props.onChangeText('Hello'));
+    await vi.waitFor(() =>
+      expect(server.state.store.get('p1')).toMatchObject({ slug: 'hello' }),
+    );
+    await act(async () => byLabel(renderer, 'Publish').props.onPress());
+    await settle(10);
+    expect(server.state.store.get('p1')!.status).toBe('published');
+
+    act(() => input(renderer, 'Title').props.onChangeText('Hello again'));
+    await vi.waitFor(() =>
+      expect(server.state.store.get('p1')).toMatchObject({
+        title: 'Hello again',
+        slug: 'hello',
+      }),
+    );
+    expect(allText(renderer)).not.toContain('Follows the title');
+  });
+
   it('keeps a hand-set slug when the title changes', async () => {
     serve([makePost('p1', { title: 'Old', slug: 'kept' })]);
     const renderer = await show(<PostScreen />);
