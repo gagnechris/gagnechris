@@ -418,6 +418,7 @@ export const NoteBodyEditor = ({
         );
       })}
       <PickDateModal
+        key={picking ? 'picking' : 'closed'}
         title={
           picking
             ? picking.query.kind === 'due'

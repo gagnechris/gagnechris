@@ -170,6 +170,37 @@ describe('Upcoming', () => {
     expect(input(renderer, 'Schedule a task').props.value).toBe('');
   });
 
+  it('keeps the field editable while a quick add is in flight', async () => {
+    serve([], []);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let posts = 0;
+    vi.stubGlobal('fetch', async (request: Request) => {
+      if (request.method === 'POST' && request.url.endsWith('/tasks')) {
+        posts++;
+        await held;
+      }
+      return server.fetch(request);
+    });
+    const renderer = await launch(UpcomingScreen);
+    act(() =>
+      input(renderer, 'Schedule a task').props.onChangeText('Call Sam'),
+    );
+    act(() => input(renderer, 'Schedule a task').props.onSubmitEditing());
+    await settle(2);
+
+    expect(allText(renderer)).toContain('Adding…');
+    expect(input(renderer, 'Schedule a task').props.editable).not.toBe(false);
+    act(() => input(renderer, 'Schedule a task').props.onSubmitEditing());
+    await settle(2);
+    expect(posts).toBe(1);
+
+    release();
+    await settle(10);
+    expect(server.state.taskStore.size).toBe(1);
+    expect(input(renderer, 'Schedule a task').props.value).toBe('');
+  });
+
   it('a failed add shows an error and keeps the text', async () => {
     serve([], []);
     vi.stubGlobal('fetch', async (request: Request) =>

@@ -49,9 +49,10 @@ export const shouldPersistQuery = (query: Query): boolean =>
 export const createAppQueryClient = () => {
   const queryClient = new QueryClient();
   // An unused query is collected after gcTime and then drops out of the next
-  // persist, so persisted ones must live as long as the cache.
+  // persist, so persisted ones are never collected; the persister's maxAge
+  // expires the cache. A finite 30 days overflows setTimeout's 32-bit delay.
   for (const root of notebookRoots) {
-    queryClient.setQueryDefaults(root, { gcTime: CACHE_MAX_AGE_MS });
+    queryClient.setQueryDefaults(root, { gcTime: Infinity });
   }
   return queryClient;
 };
