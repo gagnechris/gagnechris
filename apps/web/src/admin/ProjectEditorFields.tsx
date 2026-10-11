@@ -1,5 +1,13 @@
 import type { FormEvent } from 'react';
 import {
+  emptyProjectLink,
+  projectHrefError,
+  projectLinkErrors,
+  projectOrderError,
+  projectPreviewImageError,
+  type ProjectDraftFields,
+} from '@gagnechris/app-core';
+import {
   MAX_SLUG_LENGTH,
   PROJECT_DEMO_IDS,
   PROJECT_LINK_LABEL_MAX_LENGTH,
@@ -22,14 +30,6 @@ import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
-import {
-  emptyProjectLink,
-  projectHrefError,
-  projectLinkErrors,
-  projectOrderError,
-  projectPreviewImageError,
-  type ProjectDraftFields,
-} from './projectDraft';
 
 type Props = {
   draft: ProjectDraftFields;

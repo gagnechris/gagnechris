@@ -1,4 +1,5 @@
 import {
+  createUlid,
   PROJECT_ORDER_MAX,
   ProjectHrefSchema,
   ProjectLinkSchema,
@@ -6,9 +7,9 @@ import {
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
-import type { Project, UpdateProjectRequest } from '@gagnechris/app-core';
-import { newRepeaterId } from '../workspace/ui/repeaterId';
+import type { Project, UpdateProjectRequest } from './query/api.js';
 
+/** `id` is a client-only row key, never sent. */
 export type ProjectLinkDraft = { id: string; label: string; url: string };
 
 export type ProjectDraftFields = {
@@ -29,7 +30,7 @@ export type ProjectDraftFields = {
 export const NEW_PROJECT_NAME = 'Untitled project';
 
 export const emptyProjectLink = (): ProjectLinkDraft => ({
-  id: newRepeaterId(),
+  id: createUlid(),
   label: '',
   url: '',
 });
@@ -60,7 +61,7 @@ export const projectDraftFromProject = (
   previewImage: project.previewImage ?? '',
   bodyMarkdown: project.bodyMarkdown,
   stack: [...project.stack],
-  links: project.links.map((link) => ({ id: newRepeaterId(), ...link })),
+  links: project.links.map((link) => ({ id: createUlid(), ...link })),
   demo: project.demo ?? '',
   orderText: String(project.order),
   href: project.href ?? '',

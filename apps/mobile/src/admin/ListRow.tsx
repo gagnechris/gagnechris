@@ -5,12 +5,13 @@ import { color, font, MIN_TARGET } from '../theme';
 type Props = {
   title: string;
   meta: string;
+  /** Tags or stack, on their own line. */
   tags: readonly string[];
   divider?: boolean;
   onPress: () => void;
 };
 
-export const PostRow = ({ title, meta, tags, divider, onPress }: Props) => {
+export const ListRow = ({ title, meta, tags, divider, onPress }: Props) => {
   const tagLine = tags.join(', ');
   return (
     <Pressable
