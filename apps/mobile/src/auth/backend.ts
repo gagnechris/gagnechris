@@ -46,6 +46,9 @@ export function createAuthBackend({
 }): AuthBackend {
   let current: StoredTokens | null = null;
   let refreshing: Promise<string | null> | null = null;
+  // Bumped by sign-in and sign-out, so a refresh started for the session
+  // before never writes its tokens back.
+  let session = 0;
   const expiredListeners = new Set<() => void>();
 
   const expire = async () => {
@@ -60,14 +63,23 @@ export function createAuthBackend({
     if (refreshing) return refreshing;
     const from = current;
     if (!from) return Promise.resolve(null);
+    const started = session;
     refreshing = (async () => {
       try {
         const next = await issuer.refresh(from.refreshToken);
+        const dropped = () => {
+          void issuer.revoke(next.refreshToken).catch(() => {});
+          return null;
+        };
+        if (session !== started) return dropped();
         await tokens.write(next);
+        // Sign-in or sign-out overwrites or clears the Keychain after this.
+        if (session !== started) return dropped();
         current = next;
         return next.idToken;
       } catch (error) {
         if (error instanceof SessionExpiredError) {
+          if (session !== started) return null;
           await expire();
           return null;
         }
@@ -79,6 +91,9 @@ export function createAuthBackend({
     })();
     return refreshing;
   };
+
+  // A refresh past its session check may still be writing the Keychain.
+  const settleRefresh = () => refreshing?.catch(() => null);
 
   const getToken: TokenProvider = async (options) => {
     if (!current) return null;
@@ -100,6 +115,8 @@ export function createAuthBackend({
       if (!signedIn) return null;
       const user = issuer.user(signedIn.idToken);
       if (!user) return null;
+      session += 1;
+      await settleRefresh();
       const previousSub = await tokens.lastSub();
       await tokens.writeSignIn(signedIn, user.sub, new Date(now()));
       current = signedIn;
@@ -110,8 +127,10 @@ export function createAuthBackend({
     },
 
     async signOut() {
+      session += 1;
       const signedOut = current ?? (await tokens.read());
       current = null;
+      await settleRefresh();
       if (signedOut) {
         await issuer.revoke(signedOut.refreshToken).catch(() => {
           // Revocation is best effort; the tokens go from the Keychain anyway.
