@@ -82,7 +82,9 @@ func ClassifyWriteError(err error) WriteErrorKind {
 	switch apiErr.ErrorCode() {
 	case "ThrottlingException", "ThrottlingError", "ProvisionedThroughputExceededException", "RequestLimitExceeded":
 		return WriteThrottled
-	case "ConditionalCheckFailedException":
+	// TransactionConflictException: a single-item write hit an item another
+	// request's transaction holds. The SDK doesn't retry it.
+	case "ConditionalCheckFailedException", "TransactionConflictException":
 		return WriteConflict
 	case "TransactionCanceledException":
 		codes := CancellationCodes(err)

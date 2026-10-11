@@ -556,11 +556,13 @@ func (h handlers) batchTasks(ctx context.Context, r *api.Request) (*api.Response
 }
 
 // checkLinkedNote is a 400 unless noteID names a live note of the user's.
+// The read is consistent: an outbox replays a note's create just before the
+// task that links it.
 func (h handlers) checkLinkedNote(ctx context.Context, userID string, noteID *string) error {
 	if noteID == nil {
 		return nil
 	}
-	n, err := h.notes.base.get(ctx, userID, *noteID)
+	n, err := h.notes.base.getLive(ctx, userID, *noteID, true)
 	if err != nil || n != nil {
 		return err
 	}

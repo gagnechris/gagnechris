@@ -175,7 +175,11 @@ func (s *versioned[T, P]) getIncludingDeleted(ctx context.Context, userID, id st
 }
 
 func (s *versioned[T, P]) get(ctx context.Context, userID, id string) (*T, error) {
-	e, err := s.getIncludingDeleted(ctx, userID, id, false)
+	return s.getLive(ctx, userID, id, false)
+}
+
+func (s *versioned[T, P]) getLive(ctx context.Context, userID, id string, consistent bool) (*T, error) {
+	e, err := s.getIncludingDeleted(ctx, userID, id, consistent)
 	if err != nil || e == nil || P(e).isDeleted() {
 		return nil, err
 	}
