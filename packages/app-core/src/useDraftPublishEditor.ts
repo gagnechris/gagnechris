@@ -166,7 +166,10 @@ export function useDraftPublishEditor<TEntity>({
       await awaitInFlight();
       const { data, error, response } = await discard();
       if (error || !data) {
-        setSaveError(`Discard failed (${response.status}).`);
+        const fallback = `Discard failed (${response.status}).`;
+        setSaveError(
+          response.status === 400 ? errorMessage(error, fallback) : fallback,
+        );
         return;
       }
       onReplaceDraft(data);
