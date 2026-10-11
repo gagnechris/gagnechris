@@ -25,17 +25,24 @@ interface Step {
   if?: string;
   uses?: string;
   run?: string;
+  shell?: string;
   with?: Record<string, unknown>;
 }
 
-interface Job {
+interface RunDefaults {
+  defaults?: { run?: { shell?: string } };
+}
+
+interface Job extends RunDefaults {
   name?: string;
+  if?: string;
   permissions?: Record<string, string> | string;
   steps?: Step[];
   concurrency?: { group?: string; 'cancel-in-progress'?: boolean };
 }
 
-interface Workflow {
+interface Workflow extends RunDefaults {
+  on?: Record<string, unknown>;
   permissions?: Record<string, string> | string;
   jobs: Record<string, Job>;
 }
@@ -154,6 +161,137 @@ describe('GitHub Actions supply chain', () => {
       'id-token': 'write',
     });
     expectNoNpm(plan);
+  });
+});
+
+// GitHub runs an implicit shell as `bash -e`; only an explicit `shell: bash`
+// adds pipefail, so `a | tee` otherwise takes tee's status.
+function pipesWithoutPipefail(run: string, shell: string | undefined): boolean {
+  if (shell === 'bash') return false;
+  if (/\bset\s+(?:-\w+\s+)*-\w*o\s*pipefail\b/.test(run)) return false;
+  const unquoted = run
+    .replace(/\$\{\{[\s\S]*?\}\}/g, '')
+    .replace(/'[^'\n]*'/g, '')
+    .replace(/"(?:\\.|[^"\\\n])*"/g, '')
+    .replace(/\|\|/g, '');
+  return /\|/.test(unquoted);
+}
+
+describe('workflow shells', () => {
+  it('runs every step that pipes with pipefail', () => {
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        for (const step of job.steps ?? []) {
+          if (step.run === undefined) continue;
+          const shell =
+            step.shell ?? job.defaults?.run?.shell ?? doc.defaults?.run?.shell;
+          if (pipesWithoutPipefail(step.run, shell)) {
+            offenders.push(`${path}#${jobId}/${step.name ?? step.run}`);
+          }
+        }
+      }
+    }
+    for (const file of actionFiles) {
+      const action = loadYaml<{ runs: { steps?: Step[] } }>(file);
+      for (const step of action.runs.steps ?? []) {
+        if (
+          step.run !== undefined &&
+          pipesWithoutPipefail(step.run, step.shell)
+        ) {
+          offenders.push(`${file}/${step.name ?? step.run}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('flags a pipe only when pipefail is missing', () => {
+    expect(pipesWithoutPipefail('a | tee -a out', undefined)).toBe(true);
+    expect(pipesWithoutPipefail('a | tee -a out', 'sh')).toBe(true);
+    expect(pipesWithoutPipefail('a | tee -a out', 'bash')).toBe(false);
+    expect(
+      pipesWithoutPipefail('set -euo pipefail\na | tee out', undefined),
+    ).toBe(false);
+    expect(pipesWithoutPipefail('set -o pipefail\na | b', undefined)).toBe(
+      false,
+    );
+    expect(pipesWithoutPipefail("grep -E '(a|b)' f || true", undefined)).toBe(
+      false,
+    );
+    expect(pipesWithoutPipefail('echo "${{ a || b }}" >> out', undefined)).toBe(
+      false,
+    );
+  });
+});
+
+describe('path-filtered jobs', () => {
+  const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+  const mobile = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'mobile.yml'));
+
+  function filters(job: Job): Record<string, string[]> {
+    const step = job.steps?.find((s) =>
+      s.uses?.startsWith('dorny/paths-filter@'),
+    );
+    return parse(String(step?.with?.filters ?? '')) as Record<string, string[]>;
+  }
+
+  it('reruns Mobile and API integration when the Node or npm config changes', () => {
+    for (const file of ['.nvmrc', '.npmrc']) {
+      expect(filters(mobile.jobs.mobile!).mobile).toContain(file);
+      expect(filters(ci.jobs['api-integration']!).api).toContain(file);
+    }
+  });
+
+  it('runs every filtered step on a push to main', () => {
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        for (const step of job.steps ?? []) {
+          if (!/steps\.filter\.outputs\./.test(step.if ?? '')) continue;
+          if (!step.if!.includes("github.event_name == 'push' ||")) {
+            offenders.push(`${path}#${jobId}/${step.name ?? step.uses}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('VITE_AUTH_MODE=local guard step', () => {
+  const step = loadYaml<Workflow>(
+    join(WORKFLOWS_DIR, 'ci.yml'),
+  ).jobs.build!.steps!.find(
+    (s) => s.name === 'Reject VITE_AUTH_MODE=local in production build',
+  )!;
+  const guardMessage = /'(VITE_AUTH_MODE=local is not allowed[^']*)'/.exec(
+    readFileSync(join(ROOT, 'apps', 'web', 'vite.config.ts'), 'utf8'),
+  )![1]!;
+
+  // Runs the step with `npm` stubbed to print `output` and exit `code`.
+  function runStep(output: string, code: number) {
+    const bin = join(tempDir(), 'bin');
+    mkdirSync(bin);
+    writeFileSync(
+      join(bin, 'npm'),
+      `#!/usr/bin/env bash\nprintf '%s\\n' "$FAKE_NPM_OUTPUT" >&2\nexit ${code}\n`,
+    );
+    chmodSync(join(bin, 'npm'), 0o755);
+    return spawnSync('bash', ['-eo', 'pipefail', '-c', step.run!], {
+      env: {
+        ...process.env,
+        PATH: `${bin}:${process.env.PATH}`,
+        FAKE_NPM_OUTPUT: output,
+      },
+      encoding: 'utf8',
+    }).status;
+  }
+
+  it('passes only when the build fails on the guard', () => {
+    expect(runStep(`Error: ${guardMessage}`, 1)).toBe(0);
+    expect(runStep('error TS2304: Cannot find name', 1)).not.toBe(0);
+    expect(runStep('built in 1s', 0)).not.toBe(0);
   });
 });
 
@@ -358,6 +496,40 @@ describe('deploy job guards', () => {
       expect(jobNames).toContain(context);
     }
     expect(cdk.jobs.diff?.name).toBe('CDK diff (PR)');
+  });
+
+  // A required check that is skipped never reports, so the PR waits forever;
+  // path filtering must happen inside the job.
+  it('always runs required checks on pull requests', () => {
+    const ruleset = JSON.parse(
+      readFileSync(join(ROOT, 'scripts', 'main-branch-ruleset.json'), 'utf8'),
+    ) as {
+      rules: Array<{
+        parameters?: { required_status_checks?: Array<{ context: string }> };
+      }>;
+    };
+    const required = ruleset.rules
+      .flatMap((r) => r.parameters?.required_status_checks ?? [])
+      .map((c) => c.context);
+    expect(required.length).toBeGreaterThan(0);
+    for (const context of required) {
+      const owners = workflows.flatMap(({ path, doc }) =>
+        Object.values(doc.jobs)
+          .filter((j) => j.name === context)
+          .map((job) => ({ path, doc, job })),
+      );
+      expect(owners, context).toHaveLength(1);
+      const { path, doc, job } = owners[0]!;
+      expect(job.if, `${context} has a job-level if`).toBeUndefined();
+      expect(doc.on, path).toHaveProperty('pull_request');
+      for (const [event, config] of Object.entries(doc.on ?? {})) {
+        const keys = Object.keys((config as object | null) ?? {});
+        expect(
+          keys.filter((k) => k === 'paths' || k === 'paths-ignore'),
+          `${path} on.${event}`,
+        ).toEqual([]);
+      }
+    }
   });
 });
 

@@ -42,20 +42,22 @@ jobs:
               - '.github/workflows/mobile.yml'
               - '.github/actions/setup/**'
               - 'package-lock.json'
+              - '.nvmrc'
+              - '.npmrc'
 
       - name: Setup
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         uses: ./.github/actions/setup
 
       # apps/mobile is outside the root workspaces and has its own lockfile, so
       # only this job pays for the Expo / RN tree.
       - name: Install mobile
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm ci
 
       - name: Typecheck mobile + client packages
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         run: |
           npm run typecheck -w @gagnechris/shared
           npm run typecheck -w @gagnechris/api-client
@@ -64,11 +66,11 @@ jobs:
           npm run typecheck --prefix apps/mobile
 
       - name: Lint mobile
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         run: npm run lint --prefix apps/mobile
 
       - name: Test mobile + client packages
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         run: |
           npm test -w @gagnechris/api-client
           npm test -w @gagnechris/tokens
@@ -78,16 +80,16 @@ jobs:
       # A successful `expo export` can still bundle `.d.ts` files and crash on
       # launch, so check the sourcemap and execute the bundle too.
       - name: Export iOS bundle
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run export:ios
 
       - name: Reject type-only sources in the bundle
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run check:bundle
 
       - name: Smoke-run shared Zod from a real Metro bundle
-        if: steps.filter.outputs.mobile == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm run smoke:bundle

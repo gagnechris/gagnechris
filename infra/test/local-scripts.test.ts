@@ -1,7 +1,17 @@
 import { spawn } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -100,5 +110,74 @@ describe('scripts/local/lib.sh', () => {
       ).on('exit', done);
     });
     expect(status).toBe(0);
+  });
+});
+
+const alive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+describe('scripts/local/api.ts', () => {
+  it('exits non-zero and stops the Go API when its port is taken', async () => {
+    const taken = createServer();
+    servers.push(taken);
+    await new Promise<void>((done) => taken.listen(0, '127.0.0.1', done));
+    const { port } = taken.address() as AddressInfo;
+
+    const dir = mkdtempSync(join(tmpdir(), 'local-api-'));
+    const pidFile = join(dir, 'go-api.pid');
+    // Stands in for the Go binary: answers /api/health on PORT.
+    const fakeGo = join(dir, 'fake-go-api.cjs');
+    writeFileSync(
+      fakeGo,
+      `#!/usr/bin/env node
+require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid));
+require('node:http')
+  .createServer((_req, res) => res.end('{}'))
+  .listen(Number(process.env.PORT), '127.0.0.1');
+`,
+    );
+    chmodSync(fakeGo, 0o755);
+    const tmp = join(dir, 'tmp');
+    mkdirSync(tmp);
+
+    let pid: number | undefined;
+    try {
+      const status = await new Promise<number | null>((done) => {
+        spawn(
+          join(ROOT, 'node_modules', '.bin', 'tsx'),
+          ['scripts/local/api.ts'],
+          {
+            cwd: ROOT,
+            stdio: 'ignore',
+            env: {
+              ...process.env,
+              LOCAL_API_PORT: String(port),
+              GO_API_BIN: fakeGo,
+              TMPDIR: tmp,
+            },
+          },
+        ).on('exit', done);
+      });
+      expect(status).not.toBe(0);
+      expect(existsSync(pidFile)).toBe(true);
+      pid = Number(readFileSync(pidFile, 'utf8'));
+      const deadline = Date.now() + 5_000;
+      while (alive(pid) && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      expect(alive(pid), 'Go API still running').toBe(false);
+      expect(
+        readdirSync(tmp).filter((f) => f.startsWith('gagnechris-go-api-')),
+      ).toEqual([]);
+    } finally {
+      if (pid && alive(pid)) process.kill(pid, 'SIGKILL');
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

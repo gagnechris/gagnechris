@@ -15,6 +15,11 @@ concurrency:
 permissions:
   contents: read
 
+# An explicit bash shell runs with -eo pipefail.
+defaults:
+  run:
+    shell: bash
+
 # Placeholders only; nothing is deployed from this workflow.
 env:
   VITE_COGNITO_USER_POOL_ID: us-east-1_ciPlaceholder
@@ -91,8 +96,14 @@ jobs:
 
       - name: Reject VITE_AUTH_MODE=local in production build
         run: |
-          if VITE_AUTH_MODE=local npm run build -w @gagnechris/web; then
+          if out="$(VITE_AUTH_MODE=local npm run build -w @gagnechris/web 2>&1)"; then
+            echo "$out"
             echo "Expected vite build to fail when VITE_AUTH_MODE=local" >&2
+            exit 1
+          fi
+          echo "$out"
+          if ! grep -qF 'VITE_AUTH_MODE=local is not allowed in production Vite builds' <<<"$out"; then
+            echo "vite build failed, but not on the VITE_AUTH_MODE=local guard" >&2
             exit 1
           fi
 
@@ -125,6 +136,7 @@ jobs:
               - 'package-lock.json'
               - 'tsconfig.base.json'
               - '.nvmrc'
+              - '.npmrc'
               - 'scripts/local/**'
               - 'docker-compose.local.yml'
               - 'docker-compose.ci.yml'
