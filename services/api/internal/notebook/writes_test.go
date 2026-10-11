@@ -27,12 +27,20 @@ type fakeDynamo struct {
 	items    []data.Item // GetItem answers, in order; the last repeats
 	gets     []bool      // ConsistentRead of each GetItem
 	putError string      // PutItem's __type, or "" for success
+	// partitions answer Query by gsi1pk, each sorted by gsi1sk.
+	partitions map[string][]data.Item
+	queries    int
 }
 
 func (f *fakeDynamo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var body struct{ ConsistentRead bool }
+	var body struct {
+		ConsistentRead            bool
+		Limit                     int
+		ExclusiveStartKey         map[string]map[string]string
+		ExpressionAttributeValues map[string]map[string]string
+	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	w.Header().Set("Content-Type", "application/x-amz-json-1.0")
 	switch op := strings.TrimPrefix(r.Header.Get("X-Amz-Target"), "DynamoDB_20120810."); op {
@@ -57,6 +65,27 @@ func (f *fakeDynamo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_, _ = w.Write([]byte("{}"))
+	case "Query":
+		f.queries++
+		rows := f.partitions[body.ExpressionAttributeValues[":pk"]["S"]]
+		start := 0
+		if after := body.ExclusiveStartKey["gsi1sk"]["S"]; after != "" {
+			for start < len(rows) && rows[start]["gsi1sk"].(*types.AttributeValueMemberS).Value <= after {
+				start++
+			}
+		}
+		end := min(start+body.Limit, len(rows))
+		out := map[string]any{"Items": []any{}}
+		items := []any{}
+		for _, row := range rows[start:end] {
+			items = append(items, wireItem(row))
+		}
+		out["Items"] = items
+		if end < len(rows) {
+			last := rows[end-1]
+			out["LastEvaluatedKey"] = wireItem(data.Item{"pk": last["pk"], "sk": last["sk"], "gsi1pk": last["gsi1pk"], "gsi1sk": last["gsi1sk"]})
+		}
+		_ = json.NewEncoder(w).Encode(out)
 	default:
 		http.Error(w, "unexpected "+op, http.StatusNotImplemented)
 	}
