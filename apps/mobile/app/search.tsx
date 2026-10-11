@@ -114,7 +114,9 @@ const SearchScreen = () => {
   const open = (hit: NotebookSearchHit) => {
     remember(q);
     router.back();
-    router.push(hit.type === 'task' ? `/tasks/${hit.id}` : `/notes/${hit.id}`);
+    router.push(hit.type === 'task' ? `/tasks/${hit.id}` : `/notes/${hit.id}`, {
+      withAnchor: true,
+    });
   };
 
   const notes = search.data?.notes ?? [];

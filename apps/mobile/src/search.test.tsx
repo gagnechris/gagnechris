@@ -112,7 +112,9 @@ describe('Search', () => {
     );
     act(() => task.props.onPress());
     expect(router.back).toHaveBeenCalled();
-    expect(router.push).toHaveBeenCalledWith(`/tasks/${TASK}`);
+    expect(router.push).toHaveBeenCalledWith(`/tasks/${TASK}`, {
+      withAnchor: true,
+    });
     expect(JSON.parse(data.get(RECENT_SEARCHES_KEY)!)).toEqual(['passport']);
 
     const again = await launch(store);

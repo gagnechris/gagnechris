@@ -59,7 +59,7 @@ const ConflictsScreen = () => {
               onResolved={(after) => {
                 if (after.type !== 'open') return;
                 router.back();
-                router.push(path(conflict, after.id));
+                router.push(path(conflict, after.id), { withAnchor: true });
               }}
             />
           </View>
