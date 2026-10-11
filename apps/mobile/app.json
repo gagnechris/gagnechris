@@ -56,6 +56,14 @@
       "expo-secure-store",
       "expo-sqlite",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose photos to add to your posts.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {

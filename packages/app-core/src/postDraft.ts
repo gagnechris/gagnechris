@@ -1,8 +1,6 @@
 import { EMPTY_SLUG_FALLBACK } from '@gagnechris/shared';
-import { mergeEditorSeo, type UpdatePostRequest } from '@gagnechris/app-core';
-import type { components } from '@gagnechris/api-client';
-
-type Post = components['schemas']['Post'];
+import { mergeEditorSeo } from './mergeEditorSeo.js';
+import type { Post, UpdatePostRequest } from './query/api.js';
 
 export type PostDraftFields = {
   title: string;

@@ -89,6 +89,14 @@ vi.mock('expo-web-browser', () => ({
   openBrowserAsync: vi.fn(async () => ({ type: 'dismiss' })),
 }));
 
+vi.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: vi.fn(async () => ({
+    canceled: true,
+    assets: null,
+  })),
+  UIImagePickerPreferredAssetRepresentationMode: { Compatible: 'compatible' },
+}));
+
 vi.mock('expo-haptics', () => ({
   impactAsync: vi.fn(async () => undefined),
   ImpactFeedbackStyle: { Light: 'light' },

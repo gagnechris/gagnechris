@@ -17,7 +17,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { openMarkdownLink, resolveMarkdownUrl } from './links';
+import { NOTEBOOK_ORIGIN, openMarkdownLink, resolveMarkdownUrl } from './links';
 import { CELL_CHAR_WIDTH, styles } from './styles';
 
 export type TaskEmbedLine = { id: string; indent: string };
@@ -29,16 +29,14 @@ export type MarkdownViewProps = {
   /** Task records for the fallback line; a missing one reads "(deleted task)". */
   embedTasks?: ReadonlyMap<string, TaskEmbedMarkdownTask>;
   onLinkPress?: (href: string) => void;
+  /** What root-relative links and images resolve against; the Notebook host unless set. */
+  siteOrigin?: string;
 };
 
 type RenderContext = Pick<
   MarkdownViewProps,
   'renderTaskEmbed' | 'embedTasks'
-> & { onLinkPress: (href: string) => void };
-
-const openLink = (href: string) => {
-  void openMarkdownLink(href);
-};
+> & { onLinkPress: (href: string) => void; siteOrigin: string };
 
 // testIDs name the HTML element each node stands for, so tests can compare
 // the native tree with the web preview's.
@@ -103,9 +101,17 @@ const Inlines = ({
     }
   });
 
-const MarkdownImage = ({ src, alt }: { src: string | null; alt: string }) => {
+const MarkdownImage = ({
+  src,
+  alt,
+  origin,
+}: {
+  src: string | null;
+  alt: string;
+  origin: string;
+}) => {
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
-  const uri = src ? resolveMarkdownUrl(src) : null;
+  const uri = src ? resolveMarkdownUrl(src, origin) : null;
   if (!uri) {
     return (
       <Text testID="md-img" accessibilityLabel={alt} style={styles.imageAlt}>
@@ -162,7 +168,12 @@ const Paragraph = ({
     if (node.type === 'image') {
       flush();
       parts.push(
-        <MarkdownImage key={parts.length} src={node.src} alt={node.alt} />,
+        <MarkdownImage
+          key={parts.length}
+          src={node.src}
+          alt={node.alt}
+          origin={ctx.siteOrigin}
+        />,
       );
     } else {
       run.push(node);
@@ -400,19 +411,27 @@ const Blocks = ({
 );
 
 /**
- * Note bodies and task descriptions, structured like the web Notebook
+ * Note bodies, task descriptions and post bodies, structured like the web
  * preview. Raw HTML shows as its text; links open in SFSafariViewController.
  */
 export const MarkdownView = ({
   markdown,
   renderTaskEmbed,
   embedTasks,
-  onLinkPress = openLink,
+  onLinkPress,
+  siteOrigin = NOTEBOOK_ORIGIN,
 }: MarkdownViewProps) => {
   const nodes = useMemo(() => parseMarkdownBlocks(markdown), [markdown]);
   const ctx = useMemo(
-    () => ({ renderTaskEmbed, embedTasks, onLinkPress }),
-    [renderTaskEmbed, embedTasks, onLinkPress],
+    () => ({
+      renderTaskEmbed,
+      embedTasks,
+      siteOrigin,
+      onLinkPress:
+        onLinkPress ??
+        ((href: string) => void openMarkdownLink(href, siteOrigin)),
+    }),
+    [renderTaskEmbed, embedTasks, onLinkPress, siteOrigin],
   );
   return (
     <Blocks testID="md-root" nodes={nodes} ctx={ctx} style={styles.root} />
