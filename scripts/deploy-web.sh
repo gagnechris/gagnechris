@@ -40,6 +40,7 @@ ADMIN_BUCKET="$(ssm_value adminSiteBucketName)"
 ADMIN_DISTRIBUTION_ID="$(ssm_value adminDistributionId)"
 NOTEBOOK_BUCKET="$(ssm_value notebookSiteBucketName)"
 NOTEBOOK_DISTRIBUTION_ID="$(ssm_value notebookDistributionId)"
+PUBLISHER_FN="$(ssm_value publisherFunctionName)"
 
 VITE_COGNITO_USER_POOL_ID="$(ssm_value cognitoUserPoolId)"
 VITE_COGNITO_ADMIN_CLIENT_ID="$(ssm_value cognitoAdminWebClientId)"
@@ -57,7 +58,8 @@ export VITE_COGNITO_USER_POOL_ID VITE_COGNITO_ADMIN_CLIENT_ID \
 npm run build -w @gagnechris/web
 npm run --silent check:web-shells
 
-# The publisher renders from this pristine shell; index.html gets prerendered over.
+# The publisher renders from this pristine shell; index.html seeds `/` in a
+# bucket the publisher hasn't written yet.
 for required in index.html _shell.html; do
   if [ ! -f "${DIST}/${required}" ]; then
     echo "Missing build output: ${DIST}/${required}" >&2
@@ -170,31 +172,49 @@ aws s3 sync "${DIST}/" "s3://${BUCKET}/" \
   --cache-control "public,max-age=0,must-revalidate" \
   --metadata-directive REPLACE
 
+# index.html is the publisher's home page (excluded from the sync above). The
+# build's copy only seeds a bucket that has none, so a failed republish leaves
+# the last good prerender on `/`, not the empty shell.
+apex_has_index() {
+  local err
+  if err="$(aws s3api head-object --bucket "${BUCKET}" --key index.html \
+    --region "${AWS_REGION}" 2>&1 >/dev/null)"; then
+    return 0
+  fi
+  if [[ "${err}" == *"(404)"* ]]; then
+    return 1
+  fi
+  echo "${err}" >&2
+  exit 1
+}
+if ! apex_has_index; then
+  echo "Seeding index.html (the bucket has no home page yet)"
+  aws s3 cp "${DIST}/index.html" "s3://${BUCKET}/index.html" \
+    --region "${AWS_REGION}" \
+    --cache-control "public,max-age=0,must-revalidate" \
+    --metadata-directive REPLACE
+fi
+
 upload_well_known "${DIST}" "${BUCKET}"
 invalidate "${DISTRIBUTION_ID}"
 
 # Re-render publisher pages against the new shell. `aws lambda invoke` exits 0
 # even when the function throws, so check FunctionError.
-PUBLISHER_FN="$(ssm_value publisherFunctionName 2>/dev/null || true)"
-if [ -n "${PUBLISHER_FN}" ]; then
-  echo "Invoking publisher republish-all (${PUBLISHER_FN})"
-  OUT="$(mktemp)"
-  FUNC_ERR="$(aws lambda invoke \
-    --function-name "${PUBLISHER_FN}" \
-    --cli-binary-format raw-in-base64-out \
-    --payload '{"action":"republishAll"}' \
-    --region "${AWS_REGION}" \
-    --query 'FunctionError' \
-    --output text \
-    "${OUT}")"
-  cat "${OUT}"
-  rm -f "${OUT}"
-  if [ -n "${FUNC_ERR}" ] && [ "${FUNC_ERR}" != "None" ]; then
-    echo "Publisher republish-all failed (FunctionError=${FUNC_ERR})" >&2
-    exit 1
-  fi
-else
-  echo "Publisher function SSM param missing; skipped republish-all" >&2
+echo "Invoking publisher republish-all (${PUBLISHER_FN})"
+OUT="$(mktemp)"
+FUNC_ERR="$(aws lambda invoke \
+  --function-name "${PUBLISHER_FN}" \
+  --cli-binary-format raw-in-base64-out \
+  --payload '{"action":"republishAll"}' \
+  --region "${AWS_REGION}" \
+  --query 'FunctionError' \
+  --output text \
+  "${OUT}")"
+cat "${OUT}"
+rm -f "${OUT}"
+if [ -n "${FUNC_ERR}" ] && [ "${FUNC_ERR}" != "None" ]; then
+  echo "Publisher republish-all failed (FunctionError=${FUNC_ERR})" >&2
+  exit 1
 fi
 
 echo "Web deploy complete."

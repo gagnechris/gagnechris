@@ -256,9 +256,9 @@ On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk dep
 1. `npm run build -w @gagnechris/web` builds all three apps; `check:web-shells` must pass before anything uploads.
 2. Admin and Notebook: `assets/` (immutable cache), then `sync --delete` (excluding `assets/*`) to the host's bucket, `.well-known/*` as `application/json`, `manifest.json` as `application/manifest+json`, and a `/*` invalidation on that host's distribution.
 3. Public: `assets/`, then `fonts/*.woff2` (both immutable cache), then the apex `sync --delete`, `.well-known/*`, and a `/*` invalidation.
-4. Publisher `{"action":"republishAll"}` (SSM `publisher-function-name`) so pages pick up the new HTML shell. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
+4. Publisher `{"action":"republishAll"}` (SSM `publisher-function-name`) so pages pick up the new HTML shell. A `FunctionError` in the response fails the deploy. The publisher also regenerates `/resume.pdf` from the published resume singleton via pdf-lib when that item is published.
 
-The apex sync never deletes publisher-owned keys (the patterns in `scripts/publisher-owned-paths.generated.txt`), admin `media/*`, the reserved `notebook/*`, hashed `assets/*` or hashed `fonts/*.woff2`. It deletes every other key the public build doesn't produce. The bucket is versioned, so a deleted key's previous version stays restorable for 90 days.
+The apex sync never deletes publisher-owned keys (the patterns in `scripts/publisher-owned-paths.generated.txt`), admin `media/*`, the reserved `notebook/*`, hashed `assets/*` or hashed `fonts/*.woff2`. It deletes every other key the public build doesn't produce. `index.html` is the publisher's prerendered Home, so the apex sync skips it and the deploy uploads `dist/index.html` only into a bucket that has no `index.html` (a fresh bucket); the republish then replaces it. Any SSM read error, or a non-404 error checking `index.html`, stops the deploy. The bucket is versioned, so a deleted key's previous version stays restorable for 90 days.
 
 Manual / local:
 

@@ -50,9 +50,9 @@ const rendersHome = (scope: RebuildScope): boolean =>
 
 const target: PublishTarget = {
   id: 'home',
-  // `index.html` is the web deploy's shell; republishAll re-renders it, so
-  // only the snapshot needs protecting.
-  s3Outputs: ['home/*'],
+  // The web deploy keeps `index.html` and only seeds it into an empty bucket,
+  // so `/` serves the last good prerender until republishAll replaces it.
+  s3Outputs: ['home/*', 'index.html'],
   // Home is `/` (special-cased in viewer-request), not Option B.
   adminMutationPrefixes: [
     '/api/admin/home',

@@ -52,7 +52,15 @@ function executable(file: string, body: string): void {
  * Runs deploy-web.sh from a scratch copy of the repo layout with `aws` and
  * `npm` stubbed, recording every call in order.
  */
-function runDeploy() {
+type Stub = {
+  /** The apex bucket's index.html: there, missing (404) or unreadable (403). */
+  index?: 'present' | 'missing' | 'denied';
+  /** An SSM parameter whose read fails. */
+  ssmFails?: string;
+  functionError?: string;
+};
+
+function runDeploy(stub: Stub = {}) {
   const root = tempDir('deploy-web-');
   mkdirSync(join(root, 'scripts'));
   for (const file of ['deploy-web.sh', 'publisher-owned-paths.generated.txt']) {
@@ -76,10 +84,22 @@ function runDeploy() {
 case "$1 $2" in
   "ssm get-parameter")
     for ((i = 1; i <= $#; i++)); do
-      if [ "\${!i}" = "--name" ]; then j=$((i + 1)); basename "\${!j}"; fi
+      if [ "\${!i}" = "--name" ]; then
+        j=$((i + 1)); name="$(basename "\${!j}")"
+        if [ "$name" = "${stub.ssmFails ?? ''}" ]; then
+          echo "An error occurred (ThrottlingException) when calling the GetParameter operation: Rate exceeded" >&2
+          exit 254
+        fi
+        echo "$name"
+      fi
     done ;;
+  "s3api head-object")
+    case "${stub.index ?? 'present'}" in
+      missing) echo "An error occurred (404) when calling the HeadObject operation: Not Found" >&2; exit 254 ;;
+      denied) echo "An error occurred (403) when calling the HeadObject operation: Forbidden" >&2; exit 254 ;;
+    esac ;;
   "cloudfront create-invalidation") echo I123 ;;
-  "lambda invoke") echo '{}' > "\${!#}"; echo None ;;
+  "lambda invoke") echo '{}' > "\${!#}"; echo ${stub.functionError ?? 'None'} ;;
 esac
 exit 0
 `,
@@ -297,10 +317,60 @@ describe('deploy-web.sh', () => {
     ]);
   });
 
+  it('keeps the published home page: index.html is neither synced nor uploaded over', () => {
+    const apex = syncTo(ok.calls, 's3://site-bucket-name/')[0]!;
+    expect(syncCovers(apex, 'site-bucket-name', 'index.html')).toBe(false);
+    expect(
+      ok.calls.some((c) => c.includes('s3://site-bucket-name/index.html')),
+    ).toBe(false);
+  });
+
+  it('republishes after the apex upload and checks the result', () => {
+    const invoke = ok.calls.find((c) => c[1] === 'lambda');
+    expect(invoke?.[invoke.indexOf('--function-name') + 1]).toBe(
+      'publisher-function-name',
+    );
+    expect(ok.calls.indexOf(invoke!)).toBeGreaterThan(
+      ok.calls.indexOf(syncTo(ok.calls, 's3://site-bucket-name/')[0]!),
+    );
+  });
+
   it('syncs the apex without a dry run or legacy shell check first', () => {
     expect(ok.calls.some((c) => c.includes('--dryrun'))).toBe(false);
     expect(
       ok.calls.some((c) => c.join(' ').includes('legacy-admin-plan')),
     ).toBe(false);
+  });
+});
+
+describe('deploy-web.sh home page and republish', () => {
+  it('seeds index.html into a bucket that has no home page yet', () => {
+    const run = runDeploy({ index: 'missing' });
+    expect(run.status, run.stderr).toBe(0);
+    const seed = run.calls.find(
+      (c) => c[2] === 'cp' && c[4] === 's3://site-bucket-name/index.html',
+    );
+    expect(seed?.[3]).toMatch(/apps\/web\/dist\/index\.html$/);
+  });
+
+  it('fails when it cannot tell whether the home page exists', () => {
+    const run = runDeploy({ index: 'denied' });
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toMatch(/403/);
+    expect(run.calls.some((c) => c[1] === 'lambda')).toBe(false);
+  });
+
+  it('fails before uploading anything when the publisher name cannot be read', () => {
+    const run = runDeploy({ ssmFails: 'publisher-function-name' });
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toMatch(/ThrottlingException/);
+    expect(run.calls.some((c) => c[0] === 'npm')).toBe(false);
+    expect(run.calls.some((c) => c[1] === 's3')).toBe(false);
+  });
+
+  it('fails when republish-all throws', () => {
+    const run = runDeploy({ functionError: 'Unhandled' });
+    expect(run.status).not.toBe(0);
+    expect(run.stderr).toMatch(/FunctionError=Unhandled/);
   });
 });
