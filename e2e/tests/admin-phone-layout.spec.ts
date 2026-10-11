@@ -35,11 +35,12 @@ test.describe('admin phone layout at 390px', () => {
     prefix,
     signIn,
   }) => {
+    const name = `Phone ${prefix}`;
     await signIn();
     await page.goto(`${apps.admin}/settings/users`);
     await page.getByRole('button', { name: 'Invite user' }).click();
     const dialog = page.getByRole('dialog', { name: 'Invite user' });
-    await dialog.getByLabel('Name').fill('Phone Friend');
+    await dialog.getByLabel('Name').fill(name);
     await dialog.getByLabel('Email').fill(`${prefix}-phone@e2e.test`);
     await dialog.getByRole('button', { name: 'Send invite' }).click();
     await expect(dialog).toBeHidden();
@@ -47,11 +48,9 @@ test.describe('admin phone layout at 390px', () => {
     await expectNoOverflow(page);
     await expectFullWidthTabBar(page);
 
-    await page
-      .getByRole('button', { name: 'Edit access for Phone Friend' })
-      .click();
+    await page.getByRole('button', { name: `Edit access for ${name}` }).click();
     const drawer = page.getByRole('dialog', {
-      name: 'Edit access for Phone Friend',
+      name: `Edit access for ${name}`,
     });
     await expect(drawer).toBeVisible();
     const box = (await drawer.boundingBox())!;
