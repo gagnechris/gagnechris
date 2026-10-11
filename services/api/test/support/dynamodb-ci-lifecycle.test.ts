@@ -14,7 +14,7 @@ describe('dynamodb CI lifecycle', () => {
   let tmp: string;
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'chr163-'));
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dynamodb-ci-'));
   });
 
   afterEach(() => {
