@@ -159,8 +159,10 @@ export function rootGuards(status: SessionStatus, spaces: readonly Space[]) {
   const signedIn = status === 'signedIn';
   return {
     notebook: signedIn && spaces.includes('notebook'),
-    admin: signedIn && spaces.includes('admin'),
-    noAccess: signedIn && spaces.length === 0,
+    // Any space can open an admin link; the admin layout sends a user without
+    // Admin to No access.
+    admin: signedIn && spaces.length > 0,
+    noAccess: signedIn && !spaces.includes('admin'),
     signIn: status === 'signedOut',
   };
 }

@@ -21,6 +21,7 @@ import NotesScreen from '../app/(tabs)/notes/index';
 import TasksScreen from '../app/(tabs)/tasks/index';
 import TodayScreen from '../app/(tabs)/today/index';
 import UpcomingScreen from '../app/(tabs)/upcoming/index';
+import AdminLayout from '../app/admin/_layout';
 import NoAccessScreen from '../app/no-access';
 import SignInScreen from '../app/sign-in';
 import {
@@ -281,6 +282,18 @@ describe('Spaces', () => {
     expect(canManageUsers(['site-admin', 'user-admin'])).toBe(true);
     expect(canManageUsers(['site-admin'])).toBe(false);
   });
+
+  it('sends an admin link opened without Admin to No access', async () => {
+    const renderer = await render(
+      <Providers backend={signedInBackend(['notebook'])}>
+        <AdminLayout />
+      </Providers>,
+    );
+    expect(
+      renderer.root.find((node) => (node.type as string) === 'Redirect').props
+        .href,
+    ).toEqual({ pathname: '/no-access', params: { space: 'admin' } });
+  });
 });
 
 describe('No access', () => {
@@ -301,6 +314,22 @@ describe('No access', () => {
     expectAccessible(renderer);
     await act(async () => byLabel(renderer, 'Sign out').props.onPress());
     expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it('offers the Notebook when an admin link is opened without Admin', async () => {
+    searchParams.current = { space: 'admin' };
+    const renderer = await render(
+      <Providers backend={signedInBackend(['notebook'])}>
+        <NoAccessScreen />
+      </Providers>,
+    );
+    expect(headers(renderer)[0]?.props.children).toBe(
+      'You don’t have Admin access',
+    );
+    expect(allText(renderer)).toContain('Ask a Full Admin if you need Admin.');
+    expectAccessible(renderer);
+    act(() => byLabel(renderer, 'Open Notebook').props.onPress());
+    expect(router.replace).toHaveBeenCalledWith('/today');
   });
 
   it('sign-in screen is accessible', async () => {

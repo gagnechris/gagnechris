@@ -1,3 +1,4 @@
+import { Redirect } from 'expo-router';
 import { useSession } from '../../src/session';
 import { canManageUsers, useRememberSpace } from '../../src/space';
 import { SpaceTabs } from '../../src/ui/SpaceTabs';
@@ -23,4 +24,14 @@ const AdminTabs = () => {
   );
 };
 
-export default AdminTabs;
+const AdminLayout = () => {
+  const { spaces } = useSession();
+  if (!spaces.includes('admin')) {
+    return (
+      <Redirect href={{ pathname: '/no-access', params: { space: 'admin' } }} />
+    );
+  }
+  return <AdminTabs />;
+};
+
+export default AdminLayout;

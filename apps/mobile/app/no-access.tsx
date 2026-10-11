@@ -1,13 +1,19 @@
 import { ACCESS_LEVEL_LABELS, accessLevelFromGroups } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../src/session';
+import { SPACE_HOME } from '../src/space';
 import { color, font } from '../src/theme';
 import { Button } from '../src/ui/Button';
 import { Icon } from '../src/ui/Icon';
 
 const NoAccessScreen = () => {
-  const { user, signOut, signIn } = useSession();
+  const { user, spaces, signOut, signIn } = useSession();
+  const router = useRouter();
+  const { space } = useLocalSearchParams<{ space?: string }>();
+  // An admin link opened by an account with only the Notebook.
+  const adminLink = space === 'admin' && spaces.includes('notebook');
   const level = user ? accessLevelFromGroups(user.groups) : null;
   const switchAccount = async () => {
     await signOut();
@@ -26,7 +32,9 @@ const NoAccessScreen = () => {
         <Icon name="lock" size={26} color={color.inkSoft} />
       </View>
       <Text style={styles.title} accessibilityRole="header">
-        You don’t have access to this app
+        {adminLink
+          ? 'You don’t have Admin access'
+          : 'You don’t have access to this app'}
       </Text>
       <Text style={styles.body}>
         You’re signed in as <Text style={styles.strong}>{user?.email}</Text>
@@ -39,9 +47,16 @@ const NoAccessScreen = () => {
             access
           </>
         ) : null}
-        . Ask a Full Admin if you need Notebook or Admin.
+        . Ask a Full Admin if you need{' '}
+        {adminLink ? 'Admin' : 'Notebook or Admin'}.
       </Text>
       <View style={styles.actions}>
+        {adminLink ? (
+          <Button
+            title="Open Notebook"
+            onPress={() => router.replace(SPACE_HOME.notebook)}
+          />
+        ) : null}
         <Button
           title="Use a different account"
           variant="secondary"
