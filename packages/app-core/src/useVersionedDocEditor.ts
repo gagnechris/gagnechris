@@ -157,7 +157,9 @@ export function useVersionedDocController<
     entity &&
     hydratedId === entityId &&
     !dirty &&
-    entity.version > boundVersion
+    // Not only upward: a failed optimistic write rolls the cache back below
+    // the version the editor rebound to.
+    entity.version !== boundVersion
   ) {
     dispatch({
       type: 'replace',
