@@ -1,13 +1,19 @@
 import { clearPendingFlushes } from '@gagnechris/app-core';
+import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { ActionSheetIOS, Alert, View } from 'react-native';
-import { act, type ReactTestRenderer } from 'react-test-renderer';
+import {
+  act,
+  type ReactTestInstance,
+  type ReactTestRenderer,
+} from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaskScreen from '../app/(tabs)/tasks/[id]';
 import TodayScreen from '../app/(tabs)/today/index';
 import UpcomingScreen from '../app/(tabs)/upcoming/index';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { router, searchParams } from '../test/router';
+import { safeAreaInsets } from '../test/safeArea';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
 
 const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
@@ -174,6 +180,20 @@ describe('Task detail', () => {
     expect(Haptics.impactAsync).toHaveBeenCalled();
     expect(server.state.taskStore.get(A)!.status).toBe('done');
     expect(byLabel(renderer, 'Reopen task')).toBeDefined();
+  });
+
+  it('sits the bottom bar on the tab bar, which already clears the home indicator', async () => {
+    safeAreaInsets.current = { top: 59, right: 0, bottom: 34, left: 0 };
+    serve([], [makeTask(A, 'Call Sam')]);
+    const renderer = await launch(TaskScreen);
+    const paddingOf = (node: ReactTestInstance) =>
+      ([node.props.style].flat(Infinity) as { paddingBottom?: number }[])
+        .map((rule) => rule?.paddingBottom)
+        .findLast((value) => value !== undefined);
+    let bar: ReactTestInstance | null = byLabel(renderer, 'Complete task');
+    while (bar && paddingOf(bar) === undefined) bar = bar.parent;
+    const paddingBottom = bar ? paddingOf(bar) : undefined;
+    expect(paddingBottom).toBe(tokens.space[2]);
   });
 
   it('deletes from ⋯ after a confirm', async () => {

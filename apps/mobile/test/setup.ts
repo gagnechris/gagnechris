@@ -2,6 +2,7 @@ import { createElement, type ReactNode } from 'react';
 import { beforeEach, vi } from 'vitest';
 import { notebookServer } from './notebookServer';
 import { searchParams, segments } from './router';
+import { safeAreaInsets } from './safeArea';
 
 /**
  * react-native ships Flow sources Node can't load, so screen tests render
@@ -109,9 +110,10 @@ vi.mock('@react-native-community/datetimepicker', () => ({
 
 vi.mock('expo-symbols', () => ({ SymbolView: host('SymbolView') }));
 
-vi.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
-}));
+vi.mock('react-native-safe-area-context', async () => {
+  const { safeAreaInsets } = await import('./safeArea');
+  return { useSafeAreaInsets: () => safeAreaInsets.current };
+});
 
 /** A screen's header items render inline, so tests can press them. */
 const StackScreen = ({
@@ -144,6 +146,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', notebookServer([]).fetch);
   searchParams.current = {};
   segments.current = [];
+  safeAreaInsets.current = { top: 0, right: 0, bottom: 0, left: 0 };
 });
 
 vi.mock('@react-native-community/netinfo', async () => ({

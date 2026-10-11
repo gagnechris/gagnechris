@@ -89,7 +89,7 @@ npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # Option B pages, KVS keys, publish routes and publisher-owned S3 keys from publisher targets (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
-npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
+npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, entry JS within budget and without zod, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
 npm run check:rn-bundles            # packages mobile imports bundle without Node-only or banned imports (CI)
 npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)
 npm run check:tsconfig-coverage     # each workspace's typecheck covers every .ts file in it (CI)
