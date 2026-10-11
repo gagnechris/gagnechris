@@ -32,6 +32,66 @@ const Pressable = ({
     typeof children === 'function' ? children({ pressed: false }) : children,
   );
 
+type ListProps = {
+  sections: { data: unknown[] }[];
+  keyExtractor: (item: unknown, index: number) => string;
+  renderItem: (info: {
+    item: unknown;
+    index: number;
+    section: { data: unknown[] };
+  }) => ReactNode;
+  renderSectionHeader?: (info: { section: { data: unknown[] } }) => ReactNode;
+  ListHeaderComponent?: ReactNode;
+  ListEmptyComponent?: ReactNode;
+  initialNumToRender?: number;
+};
+
+/**
+ * Mounts only the first `initialNumToRender` rows (React Native's default is
+ * 10), as the real list does before any scroll, so a test sees the window.
+ */
+const SectionList = ({
+  sections,
+  keyExtractor,
+  renderItem,
+  renderSectionHeader,
+  ListHeaderComponent,
+  ListEmptyComponent,
+  initialNumToRender = 10,
+  ...props
+}: ListProps) => {
+  let budget = initialNumToRender;
+  const body: ReactNode[] = [];
+  sections.forEach((section, s) => {
+    if (budget <= 0) return;
+    body.push(
+      createElement(
+        'SectionHeader',
+        { key: `header-${s}` },
+        renderSectionHeader?.({ section }),
+      ),
+    );
+    section.data.slice(0, budget).forEach((item, index) => {
+      body.push(
+        createElement(
+          'Cell',
+          { key: keyExtractor(item, index) },
+          renderItem({ item, index, section }),
+        ),
+      );
+    });
+    budget -= section.data.length;
+  });
+  return createElement(
+    'SectionList',
+    { ...props, sections, initialNumToRender },
+    ListHeaderComponent,
+    sections.some((section) => section.data.length > 0)
+      ? body
+      : ListEmptyComponent,
+  );
+};
+
 vi.mock('expo-sqlite', async () => (await import('./expoSqlite')).expoSqlite);
 
 vi.mock('react-native', () => ({
@@ -39,6 +99,7 @@ vi.mock('react-native', () => ({
   Text: host('Text'),
   Image: host('Image'),
   ScrollView: host('ScrollView'),
+  SectionList,
   Pressable,
   TextInput: host('TextInput'),
   Switch: host('Switch'),

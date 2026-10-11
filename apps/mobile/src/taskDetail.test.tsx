@@ -110,7 +110,7 @@ describe('Task detail', () => {
     expect(banner(renderer)).toBe('1 still open, 0 coming up. Show list');
   });
 
-  it('lists every note that embeds the task, home note first, and opens it', async () => {
+  it('lists every note that embeds the task, home note first, and opens it (a daily one on Today)', async () => {
     serve(
       [
         makeNote(OTHER, 'Nothing here'),
@@ -134,8 +134,17 @@ describe('Task detail', () => {
       'Planning (created here), Thu',
       'Friday, Oct 2, Called, left a message',
     ]);
+    // The server finds the mentions; the app never pages the whole notebook.
+    expect(server.state.noteQueries).not.toHaveLength(0);
+    for (const query of server.state.noteQueries) {
+      expect(query).toContain(`taskId=${A}`);
+    }
+    act(() => rows[0]!.props.onPress());
+    expect(router.push).toHaveBeenCalledWith(`/notes/${HOME}`);
     act(() => rows[1]!.props.onPress());
-    expect(router.push).toHaveBeenCalledWith(`/notes/${LATER}`);
+    expect(router.navigate).toHaveBeenCalledWith(
+      '/today?date=2026-10-02&area=personal',
+    );
   });
 
   it('keeps field edits after a relaunch', async () => {

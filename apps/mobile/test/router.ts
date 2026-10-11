@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 /** What the expo-router mock in `setup.ts` returns. */
 export const router = {
   push: vi.fn(),
+  navigate: vi.fn(),
   replace: vi.fn(),
   back: vi.fn(),
   setParams: vi.fn(),

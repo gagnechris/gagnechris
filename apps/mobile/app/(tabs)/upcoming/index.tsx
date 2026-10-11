@@ -75,10 +75,12 @@ const UpcomingScreen = () => {
     [groups],
   );
   const noteResults = useNotesByIds(noteIds);
+  const notesById = useMemo(
+    () => new Map(noteIds.map((id, i) => [id, noteResults[i]?.data])),
+    [noteIds, noteResults],
+  );
   const noteFor = (task: Task) => {
-    const note = task.noteId
-      ? noteResults[noteIds.indexOf(task.noteId)]?.data
-      : undefined;
+    const note = task.noteId ? notesById.get(task.noteId) : undefined;
     return note && !note.deleted ? note : undefined;
   };
 
