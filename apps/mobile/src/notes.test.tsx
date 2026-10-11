@@ -43,6 +43,15 @@ const rowLabels = (renderer: ReactTestRenderer) =>
     )
     .map((node) => node.props.accessibilityLabel as string);
 
+const listedNotes = (renderer: ReactTestRenderer) =>
+  (
+    renderer.root.find((node) => (node.type as string) === 'SectionList').props
+      .sections as { data: { note: { title: string } }[] }[]
+  ).flatMap((section) => section.data.map((item) => item.note.title));
+
+const searchRequests = () =>
+  server.state.requests.filter((r) => r === 'POST /api/notebook/search');
+
 const renderNotes = async () => {
   const renderer = await render(
     <Providers>
@@ -95,7 +104,7 @@ describe('Notes list', () => {
     expect(allText(renderer)).not.toContain('Personal stuff');
   });
 
-  it('loads every page and filters to daily notes or pages', async () => {
+  it('loads every page but mounts only a window of rows, and filters to daily notes or pages', async () => {
     serve(
       Array.from({ length: 120 }, (_, i) =>
         makeNote(`01PAGE${String(i).padStart(20, '0')}`, `body ${i}`, {
@@ -106,17 +115,18 @@ describe('Notes list', () => {
       ),
     );
     const renderer = await renderNotes();
-    expect(rowLabels(renderer)).toHaveLength(120);
+    expect(listedNotes(renderer)).toHaveLength(120);
+    expect(rowLabels(renderer)).toHaveLength(20);
 
     act(() => byLabel(renderer, 'Pages').props.onPress());
     await settle(10);
-    expect(rowLabels(renderer)).toHaveLength(60);
-    expect(rowLabels(renderer).every((l) => /^Page \d*[02468],/.test(l))).toBe(
-      true,
-    );
+    expect(listedNotes(renderer)).toHaveLength(60);
+    expect(
+      listedNotes(renderer).every((t) => /^Page \d*[02468]$/.test(t)),
+    ).toBe(true);
   });
 
-  it('search asks the server, so it finds a note past the first page', async () => {
+  it('search asks the server once typing pauses, so it finds a note past the first page', async () => {
     serve(
       Array.from({ length: 60 }, (_, i) =>
         makeNote(`01SRCH${String(i).padStart(20, '0')}`, `text ${i}`, {
@@ -125,15 +135,56 @@ describe('Notes list', () => {
       ),
     );
     const renderer = await renderNotes();
-    act(() => byLabel(renderer, 'Search notes').props.onChangeText('offsite'));
+    let typed = '';
+    for (const letter of 'offsite') {
+      typed += letter;
+      act(() => byLabel(renderer, 'Search notes').props.onChangeText(typed));
+    }
+    await vi.waitFor(() => expect(searchRequests()).toHaveLength(1));
     await settle(10);
+    expect(searchRequests()).toHaveLength(1);
 
-    expect(server.state.requests).toContain('POST /api/notebook/search');
     const hit = byLabel(renderer, 'Quarterly offsite, text 59');
     act(() => hit.props.onPress());
     expect(router.push).toHaveBeenCalledWith(
       '/notes/01SRCH00000000000000000059',
     );
+
+    // The last results stay up while the next search waits on typing.
+    act(() =>
+      byLabel(renderer, 'Search notes').props.onChangeText('offsite plans'),
+    );
+    expect(byLabel(renderer, 'Quarterly offsite, text 59')).toBeTruthy();
+    expect(allText(renderer)).not.toContain('Searching…');
+    await vi.waitFor(() => expect(searchRequests()).toHaveLength(2));
+  });
+
+  it('opens a daily note on Today, from the list and from search', async () => {
+    serve([
+      makeNote('01DAILYOPEN000000000000000', 'Standup', {
+        type: 'daily',
+        date: '2026-09-30',
+        title: '',
+      }),
+    ]);
+    const renderer = await renderNotes();
+    act(() =>
+      byLabel(renderer, 'Wednesday, Sep 30, Standup, Wed').props.onPress(),
+    );
+    expect(router.navigate).toHaveBeenLastCalledWith(
+      '/today?date=2026-09-30&area=work',
+    );
+
+    act(() => byLabel(renderer, 'Search notes').props.onChangeText('standup'));
+    await vi.waitFor(() => expect(searchRequests()).toHaveLength(1));
+    await settle(10);
+    router.navigate.mockClear();
+    const hit = byLabel(renderer, ', Standup');
+    act(() => hit.props.onPress());
+    expect(router.navigate).toHaveBeenCalledWith(
+      '/today?date=2026-09-30&area=work',
+    );
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it('New page creates a page in the current area and opens it', async () => {
