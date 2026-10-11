@@ -72,6 +72,7 @@ describe('SessionProvider', () => {
         return () => {};
       },
       markInstalled: vi.fn(async () => {}),
+      reauthenticate: vi.fn(async () => false),
       ...overrides,
     };
     return { backend, expire: () => expire() };

@@ -4,7 +4,7 @@ import {
   type ManagedUser,
   type ManagedUserStatus,
 } from '@gagnechris/shared';
-import { ApiError } from '@gagnechris/app-core';
+import { ApiError } from './query/api.js';
 
 export const LEVEL_ORDER: readonly AccessLevel[] = ['full', 'cms', 'notebook'];
 

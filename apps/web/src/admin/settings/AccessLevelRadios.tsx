@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { ACCESS_LEVEL_LABELS, type AccessLevel } from '@gagnechris/shared';
-import { LEVEL_DESCRIPTIONS, LEVEL_ORDER } from './userAccess';
+import { LEVEL_DESCRIPTIONS, LEVEL_ORDER } from '@gagnechris/app-core';
 
 type Props = {
   value: AccessLevel | null;

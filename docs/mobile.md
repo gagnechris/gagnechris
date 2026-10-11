@@ -27,7 +27,7 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 | `app/admin/posts/index.tsx`, `app/admin/posts/[id].tsx`            | `/admin/posts` and `/admin/posts/:id`: the post list and editor (see [Posts](#posts))                                       |
 | `app/admin/projects/index.tsx`, `app/admin/projects/[id].tsx`      | `/admin/projects` and `/admin/projects/:id`: the project list and editor (see [Projects](#projects))                        |
 | `app/admin/pages/{index,home,resume}.tsx`                          | `/admin/pages`, `/admin/pages/home` and `/admin/pages/resume`: the page list and editors (see [Pages](#pages))              |
-| `app/admin/users/index.tsx`                                        | `/admin/users`: opens Users on `admin.gagnechris.com` until the screen is in the app                                        |
+| `app/admin/users/index.tsx`                                        | `/admin/users`: people and access levels (see [Users](#users))                                                              |
 | `app/admin/more/index.tsx`                                         | `/admin/more`: account, Your apps, Add a passkey, sign out                                                                  |
 | `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                            |
 
@@ -99,6 +99,12 @@ The Admin Pages tab lists the Home page and Resume with their publish status; pu
 
 - **Home page:** Name, Title, About me, and an SEO title and description under Search and sharing.
 - **Resume:** Profile (name, headline, earlier-roles cut-off year), Summary, Experience, Skills and Education. Each role opens in a sheet with title, company, Start and End months typed as `YYYY-MM`, Present, note and bullets, plus Move up, Move down and Remove role. A role whose End is before its Start, or with a half-typed month, shows the error and "Check dates" in the list and saves its last saved dates, and the save state stays Edited. Publish refuses while such a role has no saved dates. Education entries are edited in place, with Move up and Remove.
+
+## Users
+
+The Admin Users tab (only with `user-admin`) lists each person with their access level, status, when they were added and their email, then the three access levels with their counts and apps. The header's button opens Invite user (name, email, access). A person opens a sheet with the access levels, what saving a change gives or takes away, Save access, and the account actions: Resend invite for an invited user, Sign out everywhere, Disable or Enable sign-in, and Remove or Restore access. Sign out, Disable and Remove ask first. Your own row offers only Full Admin and no account actions. Labels, descriptions and messages come from app-core's `userAccess.ts` and `userChange.ts`, shared with the web page.
+
+A change the API refuses with `reauth_required` (the sign-in is over five minutes old) runs `reauthenticate` from the session: managed login opens with `prompt=login`, and the change is sent again once the same account has signed in. Closing the sheet changes nothing.
 
 ## Search
 
@@ -223,6 +229,7 @@ Metro config (`metro.config.js`) watches the repo root, resolves `node_modules` 
 - **Expiry:** `invalid_grant` on refresh ends the session: the tokens go, the cache and `sub` stay, and sign-in says "Your session ended". A network failure keeps the tokens. If a different `sub` signs in next, `wipe` runs before the first render.
 - **Relaunch:** `restore()` reads the Keychain, so a killed app comes back signed in. AsyncStorage holds an install marker (`gagnechris.installed`); a launch without one deletes the Keychain items first, because Keychain items outlive an uninstall. The marker is written again after each sign-in, since sign-out clears AsyncStorage.
 - **Sign-out:** More's confirmation warns "N unsaved edits will be lost." (`signOutWarning`) when the pending-save queue or the outbox isn't empty. Then `wipe` (`wipeLocalData`, see [Cached reads and offline](#cached-reads-and-offline)), then the refresh token is revoked (`/oauth2/revoke`, best effort), then the Keychain items are deleted. The session is shared (`ephemeralSession: false` in `src/config.ts`), so sign-out also opens `/logout` with the configured `logout_uri`, and No access's "Use a different account" adds `prompt=login`. An ephemeral session offered only email and password on a real iPhone, without the iCloud Keychain passkey.
+- **Reauthenticate:** a refreshed ID token keeps the first sign-in's `auth_time`, so `reauthenticate()` signs in again with `prompt=login` and keeps the new tokens only when the `sub` matches; another account's tokens are revoked and the session stays as it was. Users uses it for changes that need a recent sign-in.
 - **Access:** groups come from the ID token's `cognito:groups`; `notebook` opens Notebook, `site-admin` opens Admin, and with neither the app shows No access.
 
 ### iOS sign-in and associated domains

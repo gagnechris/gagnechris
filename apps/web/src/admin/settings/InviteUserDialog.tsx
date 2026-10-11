@@ -5,7 +5,7 @@ import { useInviteUserMutation } from '@gagnechris/app-core';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { useModal } from './useModal';
-import { displayName, userErrorMessage } from './userAccess';
+import { displayName, userErrorMessage } from '@gagnechris/app-core';
 
 type Props = {
   onClose: () => void;
