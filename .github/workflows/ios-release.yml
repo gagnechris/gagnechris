@@ -1,6 +1,7 @@
 name: iOS release
 
-# A tag `ios-vX.Y.Z` builds the app on EAS and submits it to TestFlight.
+# A tag `ios-vX.Y.Z` on main builds the app on EAS and submits it to
+# TestFlight. A manual run must pick such a tag as its ref.
 # EAS owns the build number (`autoIncrement`); the App Store Connect API key
 # lives in EAS credentials, so this job only holds the Expo token.
 on:
@@ -24,6 +25,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Require an ios-v* tag on main
+        run: bash scripts/ci/check-release-ref.sh "${GITHUB_REF}" "${GITHUB_SHA}"
 
       # Non-interactive submit needs the App Store Connect app id.
       - name: Require the App Store Connect app id
@@ -36,12 +42,15 @@ jobs:
               process.exit(1);
             }'
 
+      # This job holds EXPO_TOKEN, and EAS auto-submits what it builds.
       - name: Setup
         uses: ./.github/actions/setup
+        with:
+          ignore-scripts: 'true'
 
       - name: Install mobile
         working-directory: apps/mobile
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Typecheck, lint and test
         run: |
