@@ -8,7 +8,7 @@ import {
   experienceRangeError,
   roleTitle,
   type ExperienceDraft,
-} from './resumeDraft';
+} from '@gagnechris/app-core';
 
 type Props = {
   roles: ExperienceDraft[];

@@ -23,10 +23,12 @@ import { Section } from '../ui/Section';
 export const DetailsSheet = ({
   visible,
   onClose,
+  title = 'Details',
   children,
 }: {
   visible: boolean;
   onClose: () => void;
+  title?: string;
   children: ReactNode;
 }) => (
   <Modal
@@ -37,8 +39,12 @@ export const DetailsSheet = ({
   >
     <View style={styles.sheet}>
       <View style={styles.bar}>
-        <Text style={styles.heading} accessibilityRole="header">
-          Details
+        <Text
+          style={styles.heading}
+          accessibilityRole="header"
+          numberOfLines={1}
+        >
+          {title}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -239,7 +245,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.border,
   },
-  heading: { ...font.semibold, fontSize: tokens.text.body, color: color.ink },
+  heading: {
+    ...font.semibold,
+    fontSize: tokens.text.body,
+    color: color.ink,
+    flexShrink: 1,
+  },
   done: {
     minHeight: MIN_TARGET,
     minWidth: MIN_TARGET,

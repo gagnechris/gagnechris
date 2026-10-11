@@ -1,13 +1,11 @@
 import { homeResource, resumeResource } from '@gagnechris/app-core';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
-import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { publishStatusLabel } from '../../../src/admin/labels';
 import { ListRow } from '../../../src/admin/ListRow';
 import { color, font } from '../../../src/theme';
-import { ADMIN_WEB } from '../../../src/ui/OnTheWeb';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 
@@ -55,9 +53,9 @@ const PagesScreen = () => {
         <ListRow
           title="Resume"
           meta={statusMeta(resume)}
-          tags={['Opens on the web']}
+          tags={['Experience, skills and education']}
           divider
-          onPress={() => void openBrowserAsync(`${ADMIN_WEB}/resume`)}
+          onPress={() => router.push('/admin/pages/resume')}
         />
       </Section>
       <Text style={styles.hint}>
