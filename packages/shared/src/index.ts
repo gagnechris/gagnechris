@@ -162,6 +162,7 @@ export {
   comingUpDayLabel,
   comingUpShortLabel,
   comingUpWindow,
+  carryFooterText,
   snoozeBaseDay,
   sourceNoteName,
   stillOpenSource,
@@ -187,6 +188,7 @@ export {
   type TaskShowOnFilter,
 } from './task-show-on.js';
 export { taskDue, type TaskDue } from './task-due.js';
+export { compareTasksForList, sortTasksForList } from './task-list-order.js';
 export {
   openTaskDateQuery,
   taskDateMenuIds,

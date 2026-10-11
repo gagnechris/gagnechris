@@ -118,10 +118,7 @@ export const TaskEmbedRow = ({ state, onOpen, onRemove }: Props) => {
         disabled={!onOpen && !onRemove}
         {...removeActions}
       >
-        <Text
-          style={[styles.title, (done || dropped) && styles.closed]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.title, (done || dropped) && styles.closed]}>
           {task.title}
         </Text>
         <View style={styles.pills}>

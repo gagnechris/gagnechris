@@ -7,6 +7,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   addDays,
+  carryFooterText,
   formatCalendarDay,
   snoozeBaseDay,
   weekdayName,
@@ -37,6 +38,8 @@ const TodayScreen = () => {
   const { area } = useArea();
   // Null follows the device's day, so midnight moves it on.
   const [picked, setPicked] = useState<string | null>(null);
+  // Midnight can make the picked day today; from then on, follow the device.
+  if (picked === today) setPicked(null);
   const date = picked ?? today;
   const writingArea: NotebookArea | null = area === 'all' ? null : area;
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -95,6 +98,7 @@ const TodayScreen = () => {
   const goTo = (day: string) => setPicked(day === today ? null : day);
 
   const weekday = weekdayName(date, 'long');
+  const carryText = carryFooterText(buckets.carryCount, addDays(date, 1));
   const heading = formatCalendarDay(date, {
     month: 'long',
     year: date.slice(0, 4) !== today.slice(0, 4),
@@ -207,11 +211,8 @@ const TodayScreen = () => {
       )}
 
       {date >= today && !loading.stillOpen ? (
-        <Text style={styles.footer}>
-          {'→ '}
-          {buckets.carryCount === 0
-            ? `Nothing carries over to ${weekdayName(addDays(date, 1), 'long')}`
-            : `${buckets.carryCount === 1 ? '1 open task' : `${buckets.carryCount} open tasks`} will carry to ${weekdayName(addDays(date, 1), 'long')} if not done`}
+        <Text style={styles.footer} accessibilityLabel={carryText}>
+          {`→ ${carryText}`}
         </Text>
       ) : null}
 

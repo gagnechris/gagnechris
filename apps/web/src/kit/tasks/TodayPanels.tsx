@@ -1,6 +1,7 @@
 import { createElement, useId, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  carryFooterText,
   COMING_UP_DAYS,
   type ComingUpDay,
   comingUpDayLabel,
@@ -12,7 +13,6 @@ import {
   type Task,
   type TaskDue,
   type TaskSchedule,
-  weekdayName,
 } from '@gagnechris/shared';
 import { SnoozeMenu } from './SnoozeMenu';
 import { TaskDuePill } from './TaskDuePill';
@@ -420,13 +420,10 @@ export function CarryFooter({
   count: number;
   nextDay: string;
 }) {
-  const weekday = weekdayName(nextDay, 'long');
   return (
     <p className="today-carry" data-testid="carry-footer">
       <span aria-hidden="true">→ </span>
-      {count === 0
-        ? `Nothing carries over to ${weekday}`
-        : `${count === 1 ? '1 open task' : `${count} open tasks`} will carry to ${weekday} if not done`}
+      {carryFooterText(count, nextDay)}
     </p>
   );
 }

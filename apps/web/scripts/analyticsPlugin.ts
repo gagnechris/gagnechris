@@ -13,13 +13,14 @@ export function gaMeasurementId(raw: string | undefined): string | undefined {
 }
 
 // A file rather than an inline script, so the public CSP needs no 'unsafe-inline'.
+// RouteTracker sends every page_view, the first one included.
 export const gaBootstrap = (id: string): string =>
   `window.dataLayer = window.dataLayer || [];
 function gtag() {
   dataLayer.push(arguments);
 }
 gtag('js', new Date());
-gtag('config', '${id}');
+gtag('config', '${id}', { send_page_view: false });
 `;
 
 export const gaTags = (id: string): HtmlTagDescriptor[] => [

@@ -3,13 +3,12 @@ import {
   addDays,
   bucketTodayTasks,
   COMING_UP_DAYS,
-  type SourceNote,
   stillOpenSource,
   type StillOpenSource,
   taskDue,
   type TaskDue,
 } from '@gagnechris/shared';
-import type { NotebookArea, Task } from './api.js';
+import type { Note, NotebookArea, Task } from './api.js';
 import { useNotesByIds } from './notes.js';
 import { taskActionError } from './taskActionError.js';
 import {
@@ -21,6 +20,8 @@ import {
 export type TodayStillOpenRow = {
   task: Task;
   source: StillOpenSource;
+  /** The note `source` names, once loaded. */
+  sourceNote?: Note;
   due: TaskDue | null;
 };
 
@@ -77,21 +78,21 @@ export function useTodayTasks({
     [buckets.stillOpen],
   );
   const noteResults = useNotesByIds(sourceNoteIds);
-  const notesById = new Map<string, SourceNote>();
+  const notesById = new Map<string, Note>();
   sourceNoteIds.forEach((id, i) => {
     const note = noteResults[i]?.data;
     if (note && !note.deleted) notesById.set(id, note);
   });
 
-  const stillOpenRows: TodayStillOpenRow[] = buckets.stillOpen.map((task) => ({
-    task,
-    source: stillOpenSource(
+  const stillOpenRows: TodayStillOpenRow[] = buckets.stillOpen.map((task) => {
+    const sourceNote = task.noteId ? notesById.get(task.noteId) : undefined;
+    return {
       task,
-      day,
-      task.noteId ? notesById.get(task.noteId) : undefined,
-    ),
-    due: taskDue(task, day),
-  }));
+      source: stillOpenSource(task, day, sourceNote),
+      sourceNote,
+      due: taskDue(task, day),
+    };
+  });
 
   const showingLoading =
     embeddedIds === null || showing.isPending || showing.hasNextPage;

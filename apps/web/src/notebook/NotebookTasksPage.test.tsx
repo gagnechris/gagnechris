@@ -382,6 +382,42 @@ describe('NotebookTasksPage', () => {
     expect(dropped).not.toHaveTextContent('Next week task');
   });
 
+  test('lists an overdue task before one shown tomorrow', async () => {
+    const today = localDateString();
+    const mk = (
+      i: number,
+      title: string,
+      fields: Pick<Task, 'startDate' | 'dueDate'>,
+    ): Task => ({
+      id: `01TASKORDER${String(i).padStart(15, '0')}`,
+      userId: 'u1',
+      area: 'work',
+      title,
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      someday: false,
+      completedAt: null,
+      noteId: null,
+      tags: [],
+      version: 1,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      updatedAt: '2026-09-01T12:00:00.000Z',
+      deleted: false,
+      ...fields,
+    });
+    state.tasks = [
+      mk(1, 'Shown tomorrow', { startDate: addDays(today, 1), dueDate: null }),
+      mk(2, 'Overdue', { startDate: null, dueDate: addDays(today, -1) }),
+    ];
+    renderTasks();
+
+    const open = await screen.findByRole('list', { name: 'Open tasks' });
+    const titles = [...open.querySelectorAll('li')].map((li) => li.textContent);
+    expect(titles[0]).toContain('Overdue');
+    expect(titles[1]).toContain('Shown tomorrow');
+  });
+
   describe('show-on filters page on the server', () => {
     const today = localDateString();
     const mk = (i: number, startDate: string | null): Task => ({

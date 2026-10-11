@@ -6030,6 +6030,8 @@ export interface paths {
                     to?: string;
                     /** @description Filter by daily or page notes */
                     type?: "daily" | "page";
+                    /** @description Notes that embed this task */
+                    taskId?: string;
                     /** @description Opaque pagination cursor from a previous list response */
                     cursor?: string;
                     /** @description Page size (1-100; default 50) */
@@ -10504,6 +10506,8 @@ export interface components {
              * @enum {string}
              */
             type?: "daily" | "page";
+            /** @description Notes that embed this task */
+            taskId?: string;
             /** @description Opaque pagination cursor from a previous list response */
             cursor?: string;
             /** @description Page size (1-100; default 50) */

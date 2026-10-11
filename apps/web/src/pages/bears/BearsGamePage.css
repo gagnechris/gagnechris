@@ -2,7 +2,7 @@
 .bears-game-page {
   max-width: 1040px;
   margin: 0 auto;
-  padding-inline: var(--site-gutter);
+  padding-inline: var(--site-inset-left) var(--site-inset-right);
 }
 
 .bears-game-page__header {

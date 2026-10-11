@@ -216,6 +216,12 @@ const noteMatches = (
   if (filters.q) return undefined;
   if (filters.area !== undefined && filters.area !== note.area) return false;
   if (filters.type !== undefined && filters.type !== note.type) return false;
+  if (
+    typeof filters.taskId === 'string' &&
+    !note.taskIds.includes(filters.taskId)
+  ) {
+    return false;
+  }
   const from = typeof filters.from === 'string' ? filters.from : undefined;
   const to = typeof filters.to === 'string' ? filters.to : undefined;
   if (from !== undefined || to !== undefined) {

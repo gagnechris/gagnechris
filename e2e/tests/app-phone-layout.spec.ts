@@ -99,6 +99,8 @@ const expectPhoneReady = async (page: Page, url: string) => {
     await page.setViewportSize({ width, height: 800 });
     await page.goto(url);
     await expect(page.locator('main').first()).toBeVisible();
+    // Measure the loaded screen, not a loading state.
+    await page.waitForLoadState('networkidle');
     const m = await measure(page);
     expect(
       m.overflow,

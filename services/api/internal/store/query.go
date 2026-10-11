@@ -181,6 +181,11 @@ func encodeComposite(c compositeCursor) string {
 // and remainingBytes JSON bytes.
 type PartitionFetch[P, T any] func(partition P, cursor string, remaining, remainingBytes int) (Page[T], error)
 
+// maxWalkFetches bounds the Queries one list request makes; past it the
+// page ends short with a cursor, so a sparse filter can't run into the
+// Lambda timeout.
+const maxWalkFetches = 20
+
 // WalkPartitions pages through partitions in order: results are grouped by
 // partition, not globally sorted. A fetch may return fewer rows than asked
 // as long as its cursor advances.
@@ -191,9 +196,11 @@ func WalkPartitions[P, T any](partitions []P, cursor string, limit int, fetch Pa
 	}
 	var out Page[T]
 	used := 0
-	full := func() bool { return len(out.Items) >= limit || used >= PageByteBudget }
+	fetches := 0
+	full := func() bool { return len(out.Items) >= limit || used >= PageByteBudget || fetches >= maxWalkFetches }
 	p, k := c.P, c.K
 	for p < len(partitions) {
+		fetches++
 		page, err := fetch(partitions[p], k, limit-len(out.Items), PageByteBudget-used)
 		if err != nil {
 			return Page[T]{}, err

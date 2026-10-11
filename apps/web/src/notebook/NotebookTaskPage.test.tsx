@@ -12,6 +12,7 @@ import { createTestQueryClient, QueryClientTestProvider } from '../test-utils';
 import NotebookTaskPage from './NotebookTaskPage';
 
 const TASK_ID = '01JTASKAAAAAAAAAAAAAAAAAA1';
+const NOTE_ID = '01JNOTEAAAAAAAAAAAAAAAAAA1';
 const TS = '2026-10-02T12:00:00.000Z';
 
 const api = vi.hoisted(() => ({
@@ -19,11 +20,15 @@ const api = vi.hoisted(() => ({
   failWrites: false,
   failed: 0,
   putVersions: [] as number[],
+  noteQueries: [] as Record<string, unknown>[],
 }));
 
 type Init = {
   body?: Record<string, unknown>;
-  params?: { path?: Record<string, string> };
+  params?: {
+    path?: Record<string, string>;
+    query?: Record<string, unknown>;
+  };
 };
 
 const ok = <T,>(data: T, status = 200) => ({
@@ -54,10 +59,13 @@ const write = async (body: Record<string, unknown>, patch: Partial<Task>) => {
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
-    GET: async (path: string) => {
+    GET: async (path: string, init?: Init) => {
       if (path === '/api/notebook/tasks/{id}') return ok(api.task);
       if (path === '/api/notebook/tasks') return ok({ items: [] });
-      if (path === '/api/notebook/notes') return ok({ items: [] });
+      if (path === '/api/notebook/notes') {
+        api.noteQueries.push(init?.params?.query ?? {});
+        return ok({ items: [] });
+      }
       return fail(404, 'not_found');
     },
     PUT: async (path: string, init?: Init) => {
@@ -70,6 +78,22 @@ vi.mock('../workspace/api/client', () => ({
     POST: async (path: string, init?: Init) => {
       const body = init?.body ?? {};
       if (path === '/api/notebook/tasks/batch') return ok({ items: [] });
+      if (path === '/api/notebook/notes/batch') return ok({ items: [] });
+      if (path === '/api/notebook/search') {
+        return ok({
+          notes: [
+            {
+              type: 'note',
+              id: NOTE_ID,
+              area: 'work',
+              title: 'Planning',
+              snippet: '',
+              matches: [],
+            },
+          ],
+          tasks: [],
+        });
+      }
       if (path === '/api/notebook/tasks/{id}/complete') {
         return write(body, { status: 'done', completedAt: TS });
       }
@@ -199,5 +223,33 @@ describe('NotebookTaskPage after a failed write', () => {
     await editTitleAfterFailure('Snooze', () =>
       expect(document.querySelector('input[type="date"]')).toHaveValue(''),
     );
+  });
+});
+
+describe('NotebookTaskPage notes', () => {
+  beforeEach(() => {
+    api.failWrites = false;
+    api.putVersions = [];
+    api.noteQueries = [];
+  });
+
+  test('reads only the notes that embed the task', async () => {
+    seedTask();
+    renderPage();
+    await screen.findByText('No note embeds this task yet.');
+    expect(api.noteQueries.length).toBeGreaterThan(0);
+    expect(api.noteQueries.every((q) => q.taskId === TASK_ID)).toBe(true);
+  });
+
+  test('links a note found by search', async () => {
+    const user = userEvent.setup();
+    seedTask();
+    renderPage();
+    const picker = await screen.findByRole('combobox', { name: 'Linked note' });
+    await user.type(picker, 'Plan');
+    await user.click(await screen.findByRole('option', { name: /Planning/ }));
+    await waitFor(() => expect(api.task?.noteId).toBe(NOTE_ID), {
+      timeout: 4000,
+    });
   });
 });

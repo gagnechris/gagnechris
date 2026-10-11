@@ -226,8 +226,8 @@ func (r *notesRepo) delete(ctx context.Context, userID, id string, expected api.
 
 // listNotesQuery is ListNotesQuerySchema.
 type listNotesQuery struct {
-	area, from, to, noteType, cursor string
-	limit                            int
+	area, from, to, noteType, taskID, cursor string
+	limit                                    int
 }
 
 type skRange struct{ from, to string }
@@ -263,8 +263,10 @@ func gsi1Page[T any](ctx context.Context, table *data.Table, pk string, rng *skR
 		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 		ScanIndexForward:          aws.Bool(true),
 	}
+	// Tombstones and keep drop rows after the read, so read whole pages:
+	// a sparse match must not cost one Query per stored row.
 	q := store.PageQuery{
-		Cursor: cursor, Limit: limit, CursorKeys: store.GSI1CursorKeys,
+		Cursor: cursor, Limit: max(limit, filteredReadPage), MaxItems: limit, CursorKeys: store.GSI1CursorKeys,
 		PartitionAttr: "gsi1pk", PartitionValue: pk, ByteBudget: byteBudget,
 	}
 	if rng != nil {
@@ -274,21 +276,26 @@ func gsi1Page[T any](ctx context.Context, table *data.Table, pk string, rng *skR
 		q.SortAttr, q.SortLowerBound = "gsi1sk", rng.from
 	}
 	q.Input = in
-	page, err := store.QueryPage(ctx, table, q, func(item data.Item) (T, bool, error) {
+	return store.QueryPage(ctx, table, q, func(item data.Item) (T, bool, error) {
 		row, err := parse(item)
-		return row, err == nil && deleted(row), err
+		return row, err == nil && (deleted(row) || keep != nil && !keep(row)), err
 	}, onCorrupt)
-	if err != nil || keep == nil {
-		return page, err
+}
+
+const filteredReadPage = 100
+
+// keep is the filter with no key condition: notes that embed taskID.
+func (q listNotesQuery) keep() func(Note) bool {
+	if q.taskID == "" {
+		return nil
 	}
-	page.Items = slices.DeleteFunc(page.Items, func(row T) bool { return !keep(row) })
-	return page, nil
+	return func(n Note) bool { return slices.Contains(n.TaskIDs, q.taskID) }
 }
 
 func (r *notesRepo) list(ctx context.Context, userID string, q listNotesQuery, onCorrupt func(*api.DataIntegrityError)) (store.Page[Note], error) {
 	fetch := func(area, cursor string, limit, budget int) (store.Page[Note], error) {
 		return gsi1Page(ctx, r.table, keys.NotebookAreaGSI1Pk(userID, area), noteRange(q), cursor, limit, budget,
-			r.base.parse, func(n Note) bool { return n.Deleted }, nil, onCorrupt)
+			r.base.parse, func(n Note) bool { return n.Deleted }, q.keep(), onCorrupt)
 	}
 	if q.area != "" {
 		return fetch(q.area, q.cursor, q.limit, store.PageByteBudget)

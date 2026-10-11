@@ -222,7 +222,7 @@ top. Tolerances: positions ±2px, font sizes ±1px.
 
 | Element      | Value                                                                                                                                                                               |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Column       | 20px gutters (x 20–373 on the 393 artboard)                                                                                                                                         |
+| Column       | 20px gutters (x 20–373 on the 393 artboard), widened to the safe-area inset where the notch is wider (landscape); the open menu also pads by the top and bottom insets              |
 | Header row   | 16px top padding (the artboard's status bar is not measured), 44px row; 32px below it to the page                                                                                   |
 | Photo, name  | 32px photo, 10px gap, name Newsreader 19px / 500                                                                                                                                    |
 | Menu button  | 44×44 target; icon three 2px ink bars, 17px wide, 4px apart, its right edge 6px inside the column, centred on the photo                                                             |
@@ -429,6 +429,15 @@ Wider viewports keep the desktop game.
 | Share result | Touch screens with Web Share open the share sheet with "Camp Rules · Oct 4 · held 60s, 3 saves" and the game URL; closing the sheet does nothing. Elsewhere, and if sharing fails, the button is Copy result as on desktop    |
 | Not as drawn | The back link, Sound and Skip to the bear tips stay above the HUD; the noise line stays under the HUD stats; the other game keeps "Now play as the bear"; Random camp and Back to Don’t Feed the Bears stay under the actions |
 | Not built    | The artboard's haptic on save and on share in the iOS app: the app does not embed the site                                                                                                                                    |
+
+### Stay Wild on phones
+
+Stay Wild plays in landscape on touch screens (`pointer: coarse`). In
+portrait, a panel on the warm `#f6e3c8` ground replaces the game: a rotate
+icon, "Turn your phone sideways", one line of copy, and a 44px "Or play Camp
+Rules in portrait" link to Camp Rules. The stage, the keyboard line, Sound and
+Skip to the bear tips are hidden while it shows. Turning to portrait pauses a
+run; it resumes only in landscape.
 
 ## Colours
 
