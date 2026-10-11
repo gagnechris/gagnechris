@@ -22,7 +22,8 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 | `app/(tabs)/more/templates.tsx`                                    | `/more/templates`: the Work and Personal daily templates (see [Today](#today))                                              |
 | `app/search.tsx`                                                   | `/search`: a modal over the tabs (see [Search](#search))                                                                    |
 | `app/admin/_layout.tsx`                                            | Admin tab bar: Posts, Pages, Projects, Users (only with `user-admin`), More                                                 |
-| `app/admin/{posts,pages,projects,users}/index.tsx`                 | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
+| `app/admin/posts/index.tsx`, `app/admin/posts/[id].tsx`            | `/admin/posts` and `/admin/posts/:id`: the post list and editor (see [Posts](#posts))                                       |
+| `app/admin/{pages,projects,users}/index.tsx`                       | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
 | `app/admin/more/index.tsx`                                         | `/admin/more`: account, Your apps, sign out                                                                                 |
 | `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                            |
 
@@ -70,6 +71,18 @@ Query caching and offline state are described in [Cached reads and offline](#cac
 - **Quick add.** Both screens take task syntax (`Call Sam @tomorrow !high`) through app-core's `useQuickAddTask`, which web uses too: the task goes to the filtered area (All means Work), a failed create shows an error and keeps the text, and on Upcoming a task without a later date says it shows on Today.
 - **Refresh.** Pull to refresh on both.
 
+## Posts
+
+The Admin Posts tab lists posts newest first with their status (Draft, Published, or Published · unpublished changes), the publish or last-edit date and tags, filtered on the server by All / Drafts / Published (each with its count) and a search on title, slug and tags. The compose button creates a draft with a placeholder slug and opens it.
+
+The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEditor` with `postResource` and the shared `postDraft` helpers, as the web post editor does, so it autosaves, publishes, unpublishes, discards unpublished changes and deletes through the same Posts API, and the slug follows the title until it is edited by hand (or while it is still a placeholder).
+
+- **Body.** A Markdown text view with a keyboard toolbar: Heading, List, Link and Photo. Preview renders it with `MarkdownView`, resolving root-relative links and images against `https://gagnechris.com`, where the post is published.
+- **Details** (the sliders button) opens a sheet with the slug, tags, excerpt, cover image, Part of project and the SEO title and description.
+- **Photos.** Photo and the cover image open the photo library (`expo-image-picker`, with the compatible representation so HEIC comes back as JPEG), upload through `POST /api/admin/media/upload-url` and the presigned `PUT`, and insert `![name](/media/…)` as its own paragraph or set the cover. Images over 10 MB or of a type the site doesn't serve are refused with a message.
+- **Actions.** Publish (or Publish changes) sits under the header while there is something to publish. The ⋯ menu has View on site and Share link for a published post, Discard unpublished changes, Unpublish and Delete, each confirmed first.
+- Posts aren't in the persisted cache or the outbox: the Admin space needs a connection, and a save that fails retries when the connection returns.
+
 ## Search
 
 The magnifying glass on Today opens `/search`. It sends the query to `POST /api/notebook/search` (app-core's `useNotebookSearchQuery`, 200 ms after typing stops), which searches every note and task server side and returns titles and snippets with embeds already replaced by the task's line, so no `{{task:…}}` token shows. Results are grouped Notes, then Tasks; matches are bold (`wordMatches` and `highlightParts` from `@gagnechris/shared`, as on web), and a task hit's checkbox completes it from the hit's status and version. The scope is the chosen area, with All areas beside it. Recent searches (the last 8) live in AsyncStorage under `gagnechris.notebook.recentSearches`, so sign-out's wipe removes them.
@@ -80,11 +93,11 @@ The magnifying glass on Today opens `/search`. It sends the query to `POST /api/
 
 ## Markdown
 
-`MarkdownView` (`src/markdown/`) renders note bodies and task descriptions with the same structure as the web Notebook preview (`renderMarkdownToHtml`): headings, paragraphs, bold / italic / strikethrough, lists and task lists (read-only checkboxes), inline code and code blocks in Menlo, quotes, links, images, tables (horizontal scroll) and rules.
+`MarkdownView` (`src/markdown/`) renders note bodies, task descriptions and post bodies with the same structure as the web Notebook preview (`renderMarkdownToHtml`): headings, paragraphs, bold / italic / strikethrough, lists and task lists (read-only checkboxes), inline code and code blocks in Menlo, quotes, links, images, tables (horizontal scroll) and rules.
 
 - **Parser.** `@gagnechris/shared/markdown-ast` (`parseMarkdownBlocks`) turns markdown into plain data using `marked`'s `Lexer`, the same lexer and options the web renderer uses, so both split a note into the same blocks. `check:rn-bundles` bans `marked` from the RN-facing entries to keep the HTML renderers and the sanitizers (`sanitize-html` pulls in postcss and htmlparser2) out of them and out of pages that never render markdown; `marked` itself touches no DOM or Node API. So the ban stays on the domain entry, and only `markdown-ast` may import `marked`, and only `Lexer` and its types (ESLint `allowImportNames`; `check:rn-bundles` builds it as its own entry with the sanitizers still banned). The rest of `marked` (its HTML parser) ships unused: about 45 KB minified, 14 KB gzipped. `apps/mobile` lists `marked` at the web's version.
 - **No HTML.** Raw HTML never renders as markup: tags are dropped and their text kept, and `script`, `style`, `textarea`, `option` and `xmp` lose their content, as in the web sanitizer. Inline formatting tags such as `<b>` therefore show as plain text, where the web preview keeps them. Entities decode to text (common named ones and all numeric ones).
-- **Links.** A link exists only when `isSafeLinkHref` accepts it with `POST_LINK_SCHEMES` (images: `http` / `https`); anything else renders as its text. Root-relative links and images resolve against `https://notebook.gagnechris.com`. `http(s)` links open in `SFSafariViewController` (`expo-web-browser`), `mailto:` and `tel:` through `Linking`; `onLinkPress` overrides both.
+- **Links.** A link exists only when `isSafeLinkHref` accepts it with `POST_LINK_SCHEMES` (images: `http` / `https`); anything else renders as its text. Root-relative links and images resolve against `https://notebook.gagnechris.com`, or the `siteOrigin` prop (post bodies pass the public site). `http(s)` links open in `SFSafariViewController` (`expo-web-browser`), `mailto:` and `tel:` through `Linking`; `onLinkPress` overrides both.
 - **Task embeds.** `{{task:<ULID>}}` lines (see [data-model.md](./data-model.md#task-embeds)) split the body as on the web and render through the `renderTaskEmbed` prop, so the editor supplies live rows. Without it a line shows `taskEmbedFallbackLine` for the record in `embedTasks` (a missing record reads "(deleted task)"), so a raw token never shows.
 - **Parity.** `EVERY_MARKDOWN_ELEMENT_TREE` (`@gagnechris/shared/fixtures/every-markdown-element`) is the web preview's DOM for the every-element fixture, reduced to tags, a few attributes and visible text. `packages/shared/src/markdown-ast.test.ts` checks the web output and the AST against it; `src/markdown/MarkdownView.test.tsx` checks the rendered native tree (each node's `testID` names its HTML element) against it, with `react-native` mocked as host components.
 - **Performance.** Parsing a 20 KB note takes about 2 ms in Node and rendering it with `react-test-renderer` about 8 ms; both tests fail above generous budgets. Top-level blocks are memoized, so a re-render with the same markdown skips them.
@@ -109,8 +122,9 @@ Every module listed in `expo/bundledNativeModules.json` uses exactly the range g
 | `expo-symbols`                                                                                               | SF Symbols for the tab bar and icons                                                                                                                                                                                      |
 | `expo-haptics`                                                                                               | Haptic on completing a task in a note                                                                                                                                                                                     |
 | `@react-native-community/datetimepicker`                                                                     | Pick a date… in the note editor                                                                                                                                                                                           |
+| `expo-image-picker`                                                                                          | Photos for posts from the library                                                                                                                                                                                         |
 
-`app.json` registers the config plugins for `expo-router`, `expo-font`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
+`app.json` registers the config plugins for `expo-router`, `expo-font`, `expo-web-browser`, `expo-secure-store`, `expo-sqlite`, `expo-image-picker` (the photo library prompt; no camera or microphone), and `expo-build-properties`. `ios/` and `android/` are generated by `expo prebuild` (or `expo run:ios`) and are gitignored.
 
 ## Cached reads and offline
 
