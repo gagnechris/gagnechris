@@ -8,6 +8,7 @@ import {
   areaQueryParam,
   isOpenTaskStatus,
   matchesTaskShowOn,
+  sortTasksForList,
   taskShowOnQuery,
   NOTEBOOK_AREA_FILTERS,
   NOTEBOOK_AREA_LABELS,
@@ -83,8 +84,11 @@ const TasksScreen = () => {
   });
   const items = useMemo(
     () =>
-      (tasks.data?.pages.flatMap((p) => p.items) ?? []).filter(
-        (t) => inStatus(t, status) && matchesTaskShowOn(t, showOn, today),
+      sortTasksForList(
+        (tasks.data?.pages.flatMap((p) => p.items) ?? []).filter(
+          (t) => inStatus(t, status) && matchesTaskShowOn(t, showOn, today),
+        ),
+        today,
       ),
     [tasks.data, status, showOn, today],
   );
