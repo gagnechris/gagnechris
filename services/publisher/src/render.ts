@@ -9,7 +9,9 @@ import {
 import {
   PROJECTS_PATH,
   SITE_AUTHOR_NAME,
+  SITE_OG_IMAGE_PATH,
   projectHasPage,
+  projectPageTitle,
   siteUrl,
   projectPagePath,
   type PostProjectLink,
@@ -22,6 +24,10 @@ import {
 } from '@gagnechris/shared';
 import type { HomeRecentPost } from '@gagnechris/shared/render';
 import {
+  POSTS_INDEX_DESCRIPTION,
+  PROJECTS_INDEX_DESCRIPTION,
+} from '@gagnechris/shared/public-pages';
+import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
   renderPostsIndexBodyHtml,
@@ -32,6 +38,7 @@ import {
   renderSitePageHtml,
 } from '@gagnechris/public-ui/server';
 import { APEX } from './config.js';
+import { STATIC_OPTION_B_PAGES } from './publish-targets/surface.js';
 import { RESUME_PDF_PUBLIC_PATH } from './resume-pdf.js';
 
 /** `siteUrl('/')` is the bare origin; the sitemap and JSON-LD keep the slash. */
@@ -46,7 +53,7 @@ const absoluteUrl = (pathOrUrl: string): string => {
 
 /** An override image as an absolute URL, else the site-wide OG image. */
 const ogImage = (override?: string | null): string =>
-  absoluteUrl(override || '/og-image.jpg');
+  absoluteUrl(override || SITE_OG_IMAGE_PATH);
 
 const PRERENDER_OPEN = '<!--prerender:start-->';
 const PRERENDER_CLOSE = '<!--prerender:end-->';
@@ -146,7 +153,7 @@ export const renderPostsIndexPage = (
     shellHtml,
     {
       title: pageTitle('Posts'),
-      description: `Posts by ${SITE_AUTHOR_NAME}.`,
+      description: POSTS_INDEX_DESCRIPTION,
       url: siteUrl(POSTS_PATH, APEX),
       type: 'website',
     },
@@ -224,7 +231,7 @@ export const renderProjectsIndexPage = (
     shellHtml,
     {
       title: pageTitle('Projects'),
-      description: `What ${SITE_AUTHOR_NAME} is building.`,
+      description: PROJECTS_INDEX_DESCRIPTION,
       url: siteUrl(PROJECTS_PATH, APEX),
       type: 'website',
     },
@@ -239,7 +246,7 @@ export const renderProjectPage = (
   renderShellPage(
     shellHtml,
     {
-      title: escapeHtml(pageTitle(project.name)),
+      title: escapeHtml(projectPageTitle(project.name)),
       description: escapeHtml(projectDescription(project)),
       url: projectCanonicalUrl(project.slug),
       type: 'website',
@@ -279,8 +286,8 @@ export const buildSitemapXml = (
 ): string => {
   const staticUrls = [
     ROOT_URL,
-    ...[POSTS_PATH, PROJECTS_PATH, '/resume', '/contact'].map((path) =>
-      siteUrl(path, APEX),
+    ...[POSTS_PATH, PROJECTS_PATH, '/resume', ...STATIC_OPTION_B_PAGES].map(
+      (path) => siteUrl(path, APEX),
     ),
   ];
   const seen = new Set(posts.map((p) => p.slug));

@@ -17,10 +17,13 @@ export {
 } from './constants.js';
 export {
   pageTitle,
+  projectPageTitle,
   siteUrl,
   SITE_AUTHOR_NAME,
+  SITE_DEFAULT_DESCRIPTION,
   SITE_GITHUB_URL,
   SITE_LINKEDIN_URL,
+  SITE_OG_IMAGE_PATH,
   SITE_PROFILE_IMAGE_SRC,
 } from './site-config.js';
 export * from './schemas.js';
