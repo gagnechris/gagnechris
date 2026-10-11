@@ -9,6 +9,7 @@ import {
   ProjectDemoSchema,
   ProjectLinkSchema,
   ProjectStageSchema,
+  RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES,
   ResumeContentSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
@@ -904,3 +905,20 @@ export function buildTaskMetaItem(task: Task): TaskMetaItem {
   }
   return item;
 }
+
+/** The item schema for each entity type that has one. */
+export const ITEM_SCHEMAS: Record<
+  (typeof RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES)[number],
+  z.ZodType
+> = {
+  post: PostMetaItemSchema,
+  project: ProjectMetaItemSchema,
+  home: HomeMetaItemSchema,
+  removedUser: RemovedUserItemSchema,
+  resume: ResumeMetaItemSchema,
+  contact: ContactMsgItemSchema,
+  note: NoteMetaItemSchema,
+  task: TaskMetaItemSchema,
+  dailyNoteClaim: DailyNoteClaimItemSchema,
+  dailyTemplate: DailyTemplateItemSchema,
+};

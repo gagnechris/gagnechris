@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertResponseMatchesSchema } from './response-schemas.js';
 
 const repoRoot = path.resolve(
   fileURLToPath(new URL('../../../../..', import.meta.url)),
@@ -122,11 +123,16 @@ export async function startApi(
       const res = await fetch(target, { method, headers, body });
       const text = await res.text();
       const isJson = res.headers.get('content-type')?.includes('json');
-      return {
-        status: res.status,
-        headers: res.headers,
-        body: text && isJson ? JSON.parse(text) : text || undefined,
-      };
+      const parsed = text && isJson ? JSON.parse(text) : text || undefined;
+      if (res.ok) {
+        assertResponseMatchesSchema(
+          method,
+          target.pathname,
+          res.status,
+          parsed,
+        );
+      }
+      return { status: res.status, headers: res.headers, body: parsed };
     },
     async stop() {
       if (child.exitCode != null) return;

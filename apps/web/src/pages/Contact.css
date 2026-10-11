@@ -37,6 +37,13 @@
   color: var(--color-ink-soft);
 }
 
+.contact-page__elsewhere {
+  margin: var(--contact-header-gap) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
 .contact-form {
   position: relative;
   display: grid;

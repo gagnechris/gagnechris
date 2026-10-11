@@ -123,6 +123,21 @@ describe('AdminUsersPage', () => {
     expect(within(levels).getAllByText('1 user')).toHaveLength(3);
   });
 
+  test('tapping a row opens Edit access, but Resend invite does not', async () => {
+    renderPage();
+    const jordanRow = await row('Jordan Lee');
+    await userEvent.click(
+      within(jordanRow).getByRole('button', { name: /Resend invite/ }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await userEvent.click(
+      within(await row('Sam Rivera')).getByText('Sam Rivera'),
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Edit access for Sam Rivera' }),
+    ).toBeInTheDocument();
+  });
+
   test('changing access shows what changes, saves and toasts', async () => {
     put.mockResolvedValue(ok({ user: { ...sam, level: 'notebook' } }));
     renderPage();

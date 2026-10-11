@@ -25,6 +25,9 @@ export default defineConfig({
           include: ['http/**/*.test.ts'],
           environment: 'node',
           globalSetup: ['support/global-setup.ts'],
+          // Loads the OpenAPI zod extension before any shared schema is
+          // created; a schema built earlier has no .openapi().
+          setupFiles: ['http/support/response-schemas.ts'],
           // Per-file ephemeral tables (gagnechris-it-*) allow parallel files.
           hookTimeout: 120_000,
           testTimeout: 60_000,

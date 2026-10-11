@@ -1,10 +1,10 @@
 import type { Resume } from './schemas.js';
-import { SITE_AUTHOR_NAME } from './site-config.js';
+import { RESUME_PDF_PATH, SITE_AUTHOR_NAME } from './site-config.js';
 
-/** Fallback so the public page never blanks before the first publish. */
+/** Seeds the resume draft on first read. */
 export const DEFAULT_RESUME: Resume = {
   name: SITE_AUTHOR_NAME,
-  pdfPath: '/resume.pdf',
+  pdfPath: RESUME_PDF_PATH,
   status: 'draft',
   publishedAt: null,
   updatedAt: '2026-09-27T00:00:00.000Z',

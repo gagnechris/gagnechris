@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { highlightParts, wordMatches } from './search-highlight.js';
+import {
+  highlightParts,
+  searchHitDetail,
+  wordMatches,
+} from './search-highlight.js';
 
 describe('search highlight', () => {
   it('finds every query word, in order', () => {
@@ -26,5 +30,15 @@ describe('search highlight', () => {
     expect(highlightParts('plain', [])).toEqual([
       { text: 'plain', match: false },
     ]);
+  });
+});
+
+describe('searchHitDetail', () => {
+  it('is the snippet unless it only repeats the title', () => {
+    expect(searchHitDetail({ title: 'Plan', snippet: 'Book the venue' })).toBe(
+      'Book the venue',
+    );
+    expect(searchHitDetail({ title: 'Plan', snippet: 'Plan' })).toBe('');
+    expect(searchHitDetail({ title: 'Plan', snippet: '' })).toBe('');
   });
 });

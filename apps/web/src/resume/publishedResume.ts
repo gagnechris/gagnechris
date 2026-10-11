@@ -1,8 +1,6 @@
 import {
-  DEFAULT_RESUME,
+  RESUME_PDF_PATH,
   RESUME_UNAVAILABLE_TEXT,
-  resumeIntro,
-  type ResumeContent,
   type ResumeIntro,
 } from '@gagnechris/shared/render';
 import { pageTitle } from '@gagnechris/shared';
@@ -15,21 +13,14 @@ import {
 import { publishedSiteUrl } from '../prerender/publishedSiteUrl';
 
 export type ResumeView = ResumeIntro & {
-  /** The sections as the published page printed them, or the bundled content. */
-  body: { html: string } | { content: ResumeContent };
+  /** The sections as the published page printed them. */
+  body: { html: string };
   head: PrerenderedHead;
   /** True when the publisher wrote the unpublish placeholder. */
   unavailable?: boolean;
 };
 
 export const publishedResumeUrl = (): string => publishedSiteUrl('/resume/');
-
-/** Only when the published page can't be loaded; never painted before it. */
-export const fallbackResumeView = (): ResumeView => ({
-  ...resumeIntro(DEFAULT_RESUME),
-  body: { content: DEFAULT_RESUME.content },
-  head: { title: pageTitle('Resume') },
-});
 
 export const unavailableResumeView = (): ResumeView => ({
   headline: null,
@@ -59,7 +50,7 @@ export function resumeViewFromDocument(root: ParentNode): ResumeView | null {
     summary: summary.textContent ?? '',
     pdfPath:
       page.querySelector('.resume-download')?.getAttribute('href') ||
-      DEFAULT_RESUME.pdfPath,
+      RESUME_PDF_PATH,
     body: { html: body.innerHTML },
     head: prerenderedHead(root, pageTitle('Resume')),
   };

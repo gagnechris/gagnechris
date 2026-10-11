@@ -316,8 +316,9 @@ describe('sync feed parity over HTTP (DynamoDB Local)', () => {
       key: { pk: string; sk: string },
       type: string,
       id: string,
-    ) =>
-      h.doc.send(
+    ) => {
+      h.corruptRow(key);
+      return h.doc.send(
         new PutCommand({
           TableName: h.tableName,
           // Fails the item schema: no area, title, version, timestamps.
@@ -331,6 +332,7 @@ describe('sync feed parity over HTTP (DynamoDB Local)', () => {
           },
         }),
       );
+    };
     await corrupt(keys.notebook.note.meta(USER, BAD_NOTE), 'note', BAD_NOTE);
     await corrupt(keys.notebook.task.meta(USER, BAD_TASK), 'task', BAD_TASK);
 

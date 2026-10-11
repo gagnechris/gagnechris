@@ -23,6 +23,9 @@ func TestTextHelpersMatchTypeScript(t *testing.T) {
 		"dailyTemplateHasTasks": func(in json.RawMessage) any {
 			return DailyTemplateHasTasks(decode[string](t, in))
 		},
+		"markdownPlainText": func(in json.RawMessage) any {
+			return MarkdownPlainText(decode[string](t, in))
+		},
 	}
 	for name, cases := range contract.Data.TextCases {
 		fn, ok := run[name]

@@ -2393,6 +2393,32 @@
         "input": "[x] not a task line",
         "want": false
       }
+    ],
+    "markdownPlainText": [
+      {
+        "input": "## Focus\r\nPrep for the **roadmap** review. See [[Project notes]].\n- [ ] Review the Q4 plan\n  * [x] done _em_ ~~gone~~ `code`",
+        "want": "Focus\nPrep for the roadmap review. See Project notes.\nReview the Q4 plan\ndone _em_ gone code"
+      },
+      {
+        "input": "> quote\n1. one\n2) two\n10.\n#hashtag\n####### seven\n[ ] bare task\n[x]\n-",
+        "want": "quote\none\ntwo\n\n#hashtag\n####### seven\nbare task\n\n"
+      },
+      {
+        "input": "[a link](https://example.com) and ![alt](img.png), [ref] [[a]] [[]]",
+        "want": "a link and alt, [ref] a "
+      },
+      {
+        "input": "---\n* * *\n___\n| A | B |\n|:--|--:|\n| 1 | 2 |\na | b",
+        "want": "\n\n\n  A   B  \n\n  1   2  \na | b"
+      },
+      {
+        "input": "```js\n## kept **as** code\n```\n~~~~\n- [ ] still code\n~~~\nopen",
+        "want": "\n## kept **as** code\n\n\n- [ ] still code\n~~~\nopen"
+      },
+      {
+        "input": " ## not a heading\n\t- tabbed\n   ### indented\n😀 **é**",
+        "want": " ## not a heading\ntabbed\nindented\n😀 é"
+      }
     ]
   },
   "apiSamples": {

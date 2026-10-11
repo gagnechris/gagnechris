@@ -265,6 +265,7 @@ describe('GET /api/admin/posts/:id', () => {
   });
 
   it('answers 500 data_integrity for a corrupt row', async () => {
+    h.corruptRow(keys.post.meta('bad'));
     await h.doc.send(
       new PutCommand({
         TableName: h.tableName,
@@ -607,6 +608,7 @@ describe('GET /api/admin/posts', () => {
     const meta = await row(keys.post.meta(published.id));
     delete meta!.hasUnpublishedChanges;
     await h.doc.send(new PutCommand({ TableName: h.tableName, Item: meta }));
+    h.corruptRow(keys.post.meta('corrupt'));
     await h.doc.send(
       new PutCommand({
         TableName: h.tableName,
