@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ConfirmFn } from './platform.js';
-import type { MutateResult } from './query/api.js';
+import { errorMessage, type MutateResult } from './query/api.js';
 import type { FlushResult, SaveState } from './useQueuedAutosave.js';
 
 export type DraftPublishAutosave = {
@@ -100,7 +100,10 @@ export function useDraftPublishEditor<TEntity>({
       const baselineGen = getLastSavedGen();
       const { data, error, response } = await request();
       if (error || !data) {
-        setSaveError(`${label} failed (${response.status}).`);
+        const fallback = `${label} failed (${response.status}).`;
+        setSaveError(
+          response.status === 400 ? errorMessage(error, fallback) : fallback,
+        );
         return;
       }
       onEntityMeta(data);

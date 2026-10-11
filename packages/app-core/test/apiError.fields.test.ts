@@ -2,17 +2,17 @@ import { createApiClient } from '@gagnechris/api-client';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { ApiError, createTask } from '../src/query/api.js';
 
-describe('ApiError from a 400', () => {
+describe('ApiError from an error response', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  const reject = (body: unknown) =>
+  const reject = (body: unknown, status = 400) =>
     vi.stubGlobal(
       'fetch',
       async () =>
         new Response(JSON.stringify(body), {
-          status: 400,
+          status,
           headers: { 'content-type': 'application/json' },
         }),
     );
@@ -48,5 +48,17 @@ describe('ApiError from a 400', () => {
   test('has no field codes when the body has none', async () => {
     reject({ error: 'bad_request', message: 'Bad request' });
     expect((await createError()).fields).toBeUndefined();
+  });
+
+  test("uses the API's message for a 4xx", async () => {
+    reject({ error: 'bad_request', message: 'Unknown project id: 01X' });
+    expect((await createError()).message).toBe('Unknown project id: 01X');
+  });
+
+  test('keeps the status text for a 5xx or a body with no message', async () => {
+    reject({ error: 'internal', message: 'Internal error' }, 500);
+    expect((await createError()).message).toBe('Could not create task (500).');
+    reject({ error: 'bad_request' });
+    expect((await createError()).message).toBe('Could not create task (400).');
   });
 });

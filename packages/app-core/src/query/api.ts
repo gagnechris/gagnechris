@@ -56,7 +56,7 @@ export class ApiError extends Error {
   }
 }
 
-/** The API's message for an `ApiError`; anything else (network, bug) gets `fallback`. */
+/** An `ApiError`'s message (the API's own text for a 4xx); anything else (network, bug) gets `fallback`. */
 export const errorMessage = (err: unknown, fallback: string): string =>
   err instanceof ApiError ? err.message : fallback;
 
@@ -83,6 +83,12 @@ function fieldErrorsFromBody(body: unknown): ApiFieldErrors | undefined {
   return out;
 }
 
+function messageFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+  const message = (body as { message?: unknown }).message;
+  return typeof message === 'string' && message.trim() ? message : undefined;
+}
+
 function currentFromBody(body: unknown): unknown {
   if (!body || typeof body !== 'object') return undefined;
   return (body as { current?: unknown }).current;
@@ -90,9 +96,13 @@ function currentFromBody(body: unknown): unknown {
 
 export const unwrap = <T>(result: OpenApiResult<T>, label: string): T => {
   if (result.error || !result.data) {
+    const status = result.response.status;
+    // A 5xx message names a server fault the user can't act on.
+    const message =
+      status >= 400 && status < 500 ? messageFromBody(result.error) : undefined;
     throw new ApiError(
-      `${label} (${result.response.status}).`,
-      result.response.status,
+      message ?? `${label} (${status}).`,
+      status,
       errorCodeFromBody(result.error),
       fieldErrorsFromBody(result.error),
       currentFromBody(result.error),
