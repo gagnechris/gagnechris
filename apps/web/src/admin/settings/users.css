@@ -405,6 +405,16 @@
   box-shadow: 0 20px 48px rgb(16 24 40 / 0.2);
 }
 
+.users-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.bottom-sheet .users-btn {
+  min-height: 44px;
+}
+
 .users-drawer h2,
 .users-dialog h2 {
   margin: 0;

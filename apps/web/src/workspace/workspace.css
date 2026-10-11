@@ -1398,6 +1398,17 @@
   opacity: 0.85;
 }
 
+.bottom-sheet .admin-details-panel {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.bottom-sheet .admin-details-panel__title,
+.bottom-sheet .admin-details-panel__keys {
+  display: none;
+}
+
 .admin-seo {
   display: grid;
   gap: var(--space-3);
