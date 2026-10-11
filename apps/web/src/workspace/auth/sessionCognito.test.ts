@@ -18,7 +18,6 @@ vi.mock('./config', () => ({
 
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import {
-  ADD_PASSKEY_AFTER_SIGN_IN_KEY,
   canAddPasskey,
   getAuthTime,
   getAuthUser,
@@ -27,7 +26,6 @@ import {
   redirectToSignIn,
   safeReturnTo,
   signOutUser,
-  takeAddPasskeyAfterSignIn,
   takeReturnTo,
 } from './session';
 
@@ -107,63 +105,21 @@ describe('Cognito session', () => {
     expect(takeReturnTo()).toBe('/');
   });
 
-  const signedInAt = (authTime: number) =>
-    vi.mocked(fetchAuthSession).mockResolvedValue({
-      tokens: {
-        accessToken: { toString: () => 'access', payload: {} },
-        idToken: { toString: () => 'id', payload: { auth_time: authTime } },
-      },
-    });
-
-  test('opens the add-passkey page after a recent sign-in and comes back to the same page', async () => {
+  test('opens the add-passkey page and comes back to the same page', () => {
     const assign = vi.fn();
     vi.stubGlobal('location', { ...window.location, assign });
     try {
       window.history.replaceState(null, '', '/notes/01J9ZX');
       Object.assign(window.location, { pathname: '/notes/01J9ZX' });
-      signedInAt(Math.floor(Date.now() / 1000) - 10 * 60);
       expect(canAddPasskey()).toBe(true);
-      await openAddPasskey();
+      openAddPasskey();
       expect(assign).toHaveBeenCalledWith(
         'https://auth.example.com/passkeys/add?client_id=c',
       );
-      expect(signInWithRedirect).not.toHaveBeenCalled();
       expect(takeReturnTo()).toBe('/notes/01J9ZX');
     } finally {
       vi.unstubAllGlobals();
     }
-  });
-
-  test('signs in again first when managed login has forgotten the sign-in', async () => {
-    const assign = vi.fn();
-    vi.stubGlobal('location', { ...window.location, assign });
-    try {
-      window.history.replaceState(null, '', '/settings/users');
-      Object.assign(window.location, { pathname: '/settings/users' });
-      signedInAt(Math.floor(Date.now() / 1000) - 2 * 60 * 60);
-      await openAddPasskey();
-      expect(assign).not.toHaveBeenCalled();
-      expect(signInWithRedirect).toHaveBeenCalledWith({
-        options: { prompt: 'LOGIN' },
-      });
-      expect(takeAddPasskeyAfterSignIn()).toBe(
-        'https://auth.example.com/passkeys/add?client_id=c',
-      );
-      expect(takeAddPasskeyAfterSignIn()).toBeNull();
-      expect(takeReturnTo()).toBe('/settings/users');
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  test('forgets a passkey request whose sign-in never came back', () => {
-    const now = Date.now();
-    window.sessionStorage.setItem(
-      ADD_PASSKEY_AFTER_SIGN_IN_KEY,
-      String(now - 11 * 60 * 1000),
-    );
-    expect(takeAddPasskeyAfterSignIn(now)).toBeNull();
-    expect(takeAddPasskeyAfterSignIn(now)).toBeNull();
   });
 
   test.each([

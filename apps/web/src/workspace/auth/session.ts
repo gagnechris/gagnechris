@@ -141,49 +141,9 @@ const saveReturnTo = (): void => {
 /** Local auth has no managed login, so nowhere to add a passkey. */
 export const canAddPasskey = (): boolean => !isLocalAuth();
 
-/** Managed login's own session; without one, `/passkeys/add` sends the user straight back. */
-const MANAGED_LOGIN_SESSION_SECONDS = 55 * 60;
-
-export const ADD_PASSKEY_AFTER_SIGN_IN_KEY = 'gagnechris.addPasskeyAfterSignIn';
-
-/** How long the passkey page waits for the sign-in that opens it. */
-const ADD_PASSKEY_PENDING_MS = 10 * 60 * 1000;
-
-/** The app's tokens outlive managed login's session, so an older sign-in signs in again first. */
-export const openAddPasskey = async (): Promise<void> => {
-  const authTime = await getAuthTime().catch(() => null);
-  if (
-    authTime !== null &&
-    Date.now() / 1000 - authTime < MANAGED_LOGIN_SESSION_SECONDS
-  ) {
-    saveReturnTo();
-    window.location.assign(addPasskeyUrl());
-    return;
-  }
-  try {
-    window.sessionStorage.setItem(
-      ADD_PASSKEY_AFTER_SIGN_IN_KEY,
-      String(Date.now()),
-    );
-  } catch {
-    // Storage disabled: the sign-in still lands back here.
-  }
-  await redirectToSignIn({ prompt: 'LOGIN' });
-};
-
-/** The passkey page to continue to after the sign-in `openAddPasskey` started. */
-export const takeAddPasskeyAfterSignIn = (now = Date.now()): string | null => {
-  let stored: string | null;
-  try {
-    stored = window.sessionStorage.getItem(ADD_PASSKEY_AFTER_SIGN_IN_KEY);
-    window.sessionStorage.removeItem(ADD_PASSKEY_AFTER_SIGN_IN_KEY);
-  } catch {
-    return null;
-  }
-  const at = Number(stored);
-  return stored && now - at >= 0 && now - at < ADD_PASSKEY_PENDING_MS
-    ? addPasskeyUrl()
-    : null;
+export const openAddPasskey = (): void => {
+  saveReturnTo();
+  window.location.assign(addPasskeyUrl());
 };
 
 /** `LOGIN` makes managed login ask again even with a live session. */
