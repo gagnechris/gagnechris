@@ -46,6 +46,9 @@
 :root {
   --site-column: 720px;
   --site-gutter: var(--space-6);
+  /* The gutter, widened to clear the notch in landscape (viewport-fit=cover). */
+  --site-inset-left: max(var(--site-gutter), env(safe-area-inset-left, 0px));
+  --site-inset-right: max(var(--site-gutter), env(safe-area-inset-right, 0px));
   --site-header-gap: calc(var(--space-12) * 2);
 
   color: var(--color-ink);
@@ -106,7 +109,7 @@ h4 {
 .not-found {
   max-width: calc(var(--site-column) + 2 * var(--site-gutter));
   margin-inline: auto;
-  padding-inline: var(--site-gutter);
+  padding-inline: var(--site-inset-left) var(--site-inset-right);
 }
 
 .site-header {
@@ -299,7 +302,9 @@ h4 {
     z-index: -1;
     display: flex;
     flex-direction: column;
-    padding: 77px var(--site-gutter) var(--space-8);
+    padding: calc(77px + env(safe-area-inset-top, 0px)) var(--site-inset-right)
+      calc(var(--space-8) + env(safe-area-inset-bottom, 0px))
+      var(--site-inset-left);
     overflow-y: auto;
     background: white;
   }

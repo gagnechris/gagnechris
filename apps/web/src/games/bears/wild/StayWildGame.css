@@ -418,7 +418,7 @@
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
   .wild--touch .wild-stage {
     aspect-ratio: auto;
-    height: calc(100dvh - 24px);
+    height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px));
   }
 
   .wild--touch .wild-hud__sniff {

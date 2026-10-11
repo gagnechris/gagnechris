@@ -222,7 +222,7 @@ top. Tolerances: positions ±2px, font sizes ±1px.
 
 | Element      | Value                                                                                                                                                                               |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Column       | 20px gutters (x 20–373 on the 393 artboard)                                                                                                                                         |
+| Column       | 20px gutters (x 20–373 on the 393 artboard), widened to the safe-area inset where the notch is wider (landscape); the open menu also pads by the top and bottom insets              |
 | Header row   | 16px top padding (the artboard's status bar is not measured), 44px row; 32px below it to the page                                                                                   |
 | Photo, name  | 32px photo, 10px gap, name Newsreader 19px / 500                                                                                                                                    |
 | Menu button  | 44×44 target; icon three 2px ink bars, 17px wide, 4px apart, its right edge 6px inside the column, centred on the photo                                                             |
