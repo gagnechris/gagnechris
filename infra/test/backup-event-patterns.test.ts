@@ -100,9 +100,10 @@ function expectMatches(ruleName: string, cases: Record<string, boolean>) {
 }
 
 describe('backup event rule patterns against realistic events', () => {
-  it('validator rule matches COMPLETED DynamoDB restores wherever the plan ARN sits, and nothing else', () => {
+  it('validator rule matches COMPLETED DynamoDB and DynamoDB.FullyManaged restores wherever the plan ARN sits, and nothing else', () => {
     expectMatches('gagnechris-prod-restore-test-validate', {
       'restore-dynamodb-completed': true,
+      'restore-dynamodb-fully-managed-completed': true,
       'restore-dynamodb-completed-plan-nested': true,
       'restore-dynamodb-completed-plan-top-level': true,
       'restore-documented-completed': false,

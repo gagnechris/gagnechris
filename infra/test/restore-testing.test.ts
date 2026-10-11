@@ -262,7 +262,7 @@ describe('AWS Backup restore testing', () => {
         'detail-type': ['Restore Job State Change'],
         detail: {
           status: ['COMPLETED'],
-          resourceType: ['DynamoDB'],
+          resourceType: ['DynamoDB', 'DynamoDB.FullyManaged'],
         },
       },
       Targets: [
