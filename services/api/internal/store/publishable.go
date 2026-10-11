@@ -11,6 +11,7 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
 // Publishable is the publish state every site-admin entity carries.
@@ -427,7 +428,7 @@ func (s *PublishableStore[T]) sitePublishUpdate(id string, published bool) types
 	}
 	return types.TransactWriteItem{Update: &types.Update{
 		TableName:                 aws.String(s.table.Name),
-		Key:                       data.Key("SITE#publish", "META"),
+		Key:                       data.Key(keys.SitePublishPk(), keys.SitePublishSk()),
 		UpdateExpression:          aws.String(expr),
 		ExpressionAttributeNames:  names,
 		ExpressionAttributeValues: values,
