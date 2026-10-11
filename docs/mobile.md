@@ -26,7 +26,7 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 | `app/admin/_layout.tsx`                                            | Admin tab bar: Posts, Pages, Projects, Users (only with `user-admin`), More                                                 |
 | `app/admin/posts/index.tsx`, `app/admin/posts/[id].tsx`            | `/admin/posts` and `/admin/posts/:id`: the post list and editor (see [Posts](#posts))                                       |
 | `app/admin/projects/index.tsx`, `app/admin/projects/[id].tsx`      | `/admin/projects` and `/admin/projects/:id`: the project list and editor (see [Projects](#projects))                        |
-| `app/admin/pages/index.tsx`, `app/admin/pages/home.tsx`            | `/admin/pages` and `/admin/pages/home`: the page list and Home editor (see [Pages](#pages))                                 |
+| `app/admin/pages/{index,home,resume}.tsx`                          | `/admin/pages`, `/admin/pages/home` and `/admin/pages/resume`: the page list and editors (see [Pages](#pages))              |
 | `app/admin/users/index.tsx`                                        | `/admin/users`: opens Users on `admin.gagnechris.com` until the screen is in the app                                        |
 | `app/admin/more/index.tsx`                                         | `/admin/more`: account, Your apps, Add a passkey, sign out                                                                  |
 | `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                            |
@@ -95,7 +95,10 @@ The project editor works like the post editor (see [Posts](#posts)) with app-cor
 
 ## Pages
 
-The Admin Pages tab lists the Home page and Resume with their publish status; pull to refresh. Home page opens the native editor: Name, Title, About me, and an SEO title and description under Search and sharing, saved like the other admin editors, with Publish, Discard, View on site and Unpublish. Resume opens the admin web page in an in-app browser until its editor is in the app. The Home draft fields and payload come from `homeDraft.ts` in `@gagnechris/app-core`, shared with the web editor.
+The Admin Pages tab lists the Home page and Resume with their publish status; pull to refresh. Both editors save like the other admin editors, with Publish, Discard, View on site and Unpublish, and take their draft fields and payload from app-core (`homeDraft.ts`, `resumeDraft.ts`), shared with the web editors.
+
+- **Home page:** Name, Title, About me, and an SEO title and description under Search and sharing.
+- **Resume:** Profile (name, headline, earlier-roles cut-off year), Summary, Experience, Skills and Education. Each role opens in a sheet with title, company, Start and End months typed as `YYYY-MM`, Present, note and bullets, plus Move up, Move down and Remove role. A role whose End is before its Start, or with a half-typed month, shows the error and "Check dates" in the list and saves its last saved dates, and the save state stays Edited. Publish refuses while such a role has no saved dates. Education entries are edited in place, with Move up and Remove.
 
 ## Search
 

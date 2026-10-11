@@ -41,6 +41,7 @@ vi.mock('react-native', () => ({
   ScrollView: host('ScrollView'),
   Pressable,
   TextInput: host('TextInput'),
+  Switch: host('Switch'),
   RefreshControl: host('RefreshControl'),
   AppState: {
     currentState: 'active',

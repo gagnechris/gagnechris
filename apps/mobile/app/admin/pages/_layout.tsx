@@ -12,6 +12,14 @@ const PagesStack = () => (
         headerBackTitle: 'Pages',
       }}
     />
+    <Stack.Screen
+      name="resume"
+      options={{
+        title: 'Resume',
+        headerLargeTitleEnabled: false,
+        headerBackTitle: 'Pages',
+      }}
+    />
   </Stack>
 );
 

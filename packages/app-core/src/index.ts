@@ -40,6 +40,28 @@ export {
   type ProjectLinkDraft,
   type ProjectLinkErrors,
 } from './projectDraft.js';
+export {
+  createResumeContentBuilder,
+  emptyEducation,
+  emptyExperience,
+  emptyResumeDraft,
+  END_BEFORE_START,
+  experienceRangeError,
+  hasExperienceRangeError,
+  MONTH_FORMAT,
+  parseResumeLines,
+  RESUME_PDF_PATH,
+  resumeContentFromDraft,
+  resumeDraftFromResume,
+  resumePayload,
+  resumeRoleEndId,
+  roleTitle,
+  type EducationDraft,
+  type ExperienceDraft,
+  type ResumeContentBuilder,
+  type ResumeDraftFields,
+  type RoleDates,
+} from './resumeDraft.js';
 export { useLatest } from './useLatest.js';
 export {
   clearPendingFlushes,

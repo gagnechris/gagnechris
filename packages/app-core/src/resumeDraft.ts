@@ -1,11 +1,11 @@
 import {
+  createUlid,
   DEFAULT_RESUME,
   RESUME_MONTH_PATTERN,
   SITE_AUTHOR_NAME,
-  type Resume,
   type ResumeContent,
 } from '@gagnechris/shared';
-import { newRepeaterId } from '../workspace/ui/repeaterId';
+import type { Resume } from './query/api.js';
 
 export type RoleDates = { start: string; end: string | null };
 
@@ -46,7 +46,7 @@ export type ResumeDraftFields = {
 export const RESUME_PDF_PATH = DEFAULT_RESUME.pdfPath;
 
 export const emptyExperience = (): ExperienceDraft => ({
-  id: newRepeaterId(),
+  id: createUlid(),
   loadedDates: null,
   title: '',
   company: '',
@@ -58,7 +58,7 @@ export const emptyExperience = (): ExperienceDraft => ({
 });
 
 export const emptyEducation = (): EducationDraft => ({
-  id: newRepeaterId(),
+  id: createUlid(),
   title: '',
   degreeDetail: '',
   institution: '',
@@ -84,7 +84,7 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   summary: resume.content.summary,
   competenciesText: resume.content.competencies.join('\n'),
   experience: resume.content.experience.map((item) => ({
-    id: newRepeaterId(),
+    id: createUlid(),
     loadedDates: item.start
       ? { start: item.start, end: item.end ?? null }
       : null,
@@ -98,7 +98,7 @@ export const resumeDraftFromResume = (resume: Resume): ResumeDraftFields => ({
   })),
   skillsText: resume.content.skills.join('\n'),
   education: resume.content.education.map((item) => ({
-    id: newRepeaterId(),
+    id: createUlid(),
     title: item.title,
     degreeDetail: item.degreeDetail ?? '',
     institution: item.institution,
@@ -127,9 +127,18 @@ export const resumeRoleEndId = (roleId: string) => `resume-role-${roleId}-end`;
 
 export const END_BEFORE_START = 'End is before start';
 
+export const MONTH_FORMAT = 'Use YYYY-MM, like 2024-03';
+
+const badMonth = (value: string) =>
+  value.trim() !== '' && validMonth(value) === undefined;
+
+/** A half-typed month counts as an error, so its role keeps its saved dates. */
 export const experienceRangeError = (
   item: ExperienceDraft,
 ): string | undefined => {
+  if (badMonth(item.start) || (!item.present && badMonth(item.end))) {
+    return MONTH_FORMAT;
+  }
   const start = validMonth(item.start);
   const end = item.present ? undefined : validMonth(item.end);
   return start && end && end < start ? END_BEFORE_START : undefined;

@@ -13,7 +13,7 @@ import {
   roleTitle,
   type ExperienceDraft,
   type ResumeDraftFields,
-} from './resumeDraft';
+} from '@gagnechris/app-core';
 
 type SetField = SetDraftField<ResumeDraftFields>;
 

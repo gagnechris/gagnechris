@@ -14,7 +14,7 @@ import {
   type ExperienceDraft,
   type ResumeContentBuilder,
   type ResumeDraftFields,
-} from './resumeDraft';
+} from '@gagnechris/app-core';
 import { EditorFrame } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';

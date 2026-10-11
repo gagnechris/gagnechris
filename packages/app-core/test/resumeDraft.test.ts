@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_RESUME, type ResumeContent } from '@gagnechris/shared';
+// eslint-disable-next-line no-restricted-imports -- a test fixture, never bundled
 import { legacyResume } from '@gagnechris/shared/fixtures/legacy-resume';
 import {
   createResumeContentBuilder,
@@ -7,7 +8,7 @@ import {
   experienceRangeError,
   resumeContentFromDraft,
   resumeDraftFromResume,
-} from './resumeDraft';
+} from '../src/resumeDraft.js';
 
 describe('resume draft round trip', () => {
   test('structured dates, note, headline and cut-off survive draft → payload', () => {
@@ -46,6 +47,17 @@ describe('resume draft round trip', () => {
     const role = resumeContentFromDraft(draft).experience[1]!;
     expect(role).toMatchObject({ start: loaded.start, end: loaded.end });
     expect(draft.experience[1]!.end).toBe('2016-01');
+  });
+
+  test('a half-typed month is an error and the loaded dates are sent', () => {
+    const draft = resumeDraftFromResume(DEFAULT_RESUME);
+    const loaded = DEFAULT_RESUME.content.experience[1]!;
+    draft.experience[1]!.start = '2019-';
+    expect(experienceRangeError(draft.experience[1]!)).toBe(
+      'Use YYYY-MM, like 2024-03',
+    );
+    const role = resumeContentFromDraft(draft).experience[1]!;
+    expect(role).toMatchObject({ start: loaded.start, end: loaded.end });
   });
 });
 

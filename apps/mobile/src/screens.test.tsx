@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import MoreScreen from '../app/(tabs)/more/index';
 import AdminMoreScreen from '../app/admin/more/index';
 import AdminHomePageScreen from '../app/admin/pages/home';
+import AdminResumeScreen from '../app/admin/pages/resume';
 import AdminPagesScreen from '../app/admin/pages/index';
 import AdminUsersScreen from '../app/admin/users/index';
 import AdminPostScreen from '../app/admin/posts/[id]';
@@ -183,6 +184,7 @@ describe('Admin screens', () => {
     ['Project', AdminProjectScreen],
     ['Pages', AdminPagesScreen],
     ['Home page', AdminHomePageScreen],
+    ['Resume', AdminResumeScreen],
   ] as const)('%s has labelled, scalable controls', async (_, Screen) => {
     vi.stubGlobal(
       'fetch',
