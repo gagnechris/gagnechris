@@ -88,41 +88,52 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 
 	var noteHits []Hit
 	for _, n := range notes {
-		// Embeds match and read as the task's title, never as the raw token.
-		body := notebook.ReplaceTaskEmbeds(n.BodyMarkdown, func(e notebook.TaskEmbed) string {
-			if t := tasksByID[e.ID]; t != nil {
-				return notebook.TaskEmbedFallbackLine(e.Indent, t)
-			}
-			return ""
-		})
-		hit, ok := rankFields(q, notebook.NoteDisplayTitle(n), body, n.Tags)
-		if !ok {
-			continue
+		if hit, ok := noteHit(q, n, tasksByID); ok {
+			noteHits = append(noteHits, hit)
 		}
-		h := Hit{Type: "note", ID: n.ID, Area: n.Area, Title: hit.title, Snippet: Text(hit.snippet), Matches: hit.matches, score: hit.score}
-		if n.Type == "daily" && n.Date != nil && *n.Date != "" {
-			h.Date = n.Date
-		}
-		noteHits = append(noteHits, h)
 	}
-
 	var taskHits []Hit
 	for _, t := range tasks {
-		hit, ok := rankFields(q, t.Title, t.Description, t.Tags)
-		if !ok {
-			continue
+		if hit, ok := taskHit(q, t); ok {
+			taskHits = append(taskHits, hit)
 		}
-		version := t.Version
-		taskHits = append(taskHits, Hit{
-			Type: "task", ID: t.ID, Area: t.Area, Title: hit.title, Status: t.Status, Version: &version,
-			Snippet: Text(hit.snippet), Matches: hit.matches, score: hit.score,
-		})
 	}
 
 	return api.JSON(http.StatusOK, map[string][]Hit{
 		"notes": top(noteHits, int(limit)),
 		"tasks": top(taskHits, int(limit)),
 	}), nil
+}
+
+func noteHit(q string, n notebook.Note, tasksByID map[string]*notebook.Task) (Hit, bool) {
+	// Embeds match and read as the task's title, never as the raw token.
+	body := notebook.ReplaceTaskEmbeds(n.BodyMarkdown, func(e notebook.TaskEmbed) string {
+		if t := tasksByID[e.ID]; t != nil {
+			return notebook.TaskEmbedFallbackLine(e.Indent, t)
+		}
+		return ""
+	})
+	hit, ok := rankFields(q, notebook.NoteDisplayTitle(n), notebook.MarkdownPlainText(body), n.Tags)
+	if !ok {
+		return Hit{}, false
+	}
+	h := Hit{Type: "note", ID: n.ID, Area: n.Area, Title: hit.title, Snippet: Text(hit.snippet), Matches: hit.matches, score: hit.score}
+	if n.Type == "daily" && n.Date != nil && *n.Date != "" {
+		h.Date = n.Date
+	}
+	return h, true
+}
+
+func taskHit(q string, t notebook.Task) (Hit, bool) {
+	hit, ok := rankFields(q, t.Title, notebook.MarkdownPlainText(t.Description), t.Tags)
+	if !ok {
+		return Hit{}, false
+	}
+	version := t.Version
+	return Hit{
+		Type: "task", ID: t.ID, Area: t.Area, Title: hit.title, Status: t.Status, Version: &version,
+		Snippet: Text(hit.snippet), Matches: hit.matches, score: hit.score,
+	}, true
 }
 
 func top(hits []Hit, limit int) []Hit {

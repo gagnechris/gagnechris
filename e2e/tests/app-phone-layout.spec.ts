@@ -50,6 +50,13 @@ const measure = (page: Page) =>
       }
       return false;
     };
+    // Fixed bars span the screen on purpose; the overflow check still covers them.
+    const fixed = (el: Element, root: Element) => {
+      for (let a: Element | null = el; a && a !== root; a = a.parentElement) {
+        if (getComputedStyle(a).position === 'fixed') return true;
+      }
+      return false;
+    };
     const main = document.querySelector('main');
     const mainRight = main
       ? main.getBoundingClientRect().right -
@@ -61,7 +68,8 @@ const measure = (page: Page) =>
             (el) =>
               visible(el) &&
               el.getBoundingClientRect().right > mainRight + 1 &&
-              !scrollsInside(el, main),
+              !scrollsInside(el, main) &&
+              !fixed(el, main),
           )
           .map(name)
           .slice(0, 5)
@@ -135,6 +143,7 @@ test.describe('signed-in apps on a phone', () => {
       '/resume',
       '/projects',
       `/projects/${project.id}`,
+      '/settings/users',
     ]) {
       await expectPhoneReady(page, new URL(path, apps.admin).href);
     }

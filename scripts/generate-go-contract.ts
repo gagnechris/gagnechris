@@ -10,22 +10,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as z from 'zod';
 import {
-  ContactMsgItemSchema,
-  DailyNoteClaimItemSchema,
-  DailyTemplateItemSchema,
-  HomeMetaItemSchema,
-  NoteMetaItemSchema,
-  PostMetaItemSchema,
-  ProjectMetaItemSchema,
-  RemovedUserItemSchema,
-  ResumeMetaItemSchema,
   SK_META,
   SK_PUBLISHED,
   SYNC_CREATE_CLAIM_TTL_DAYS,
   SYNC_OVERLAP_MS,
   SYNC_RESYNC_MARGIN_MS,
   SYNC_TOMBSTONE_TTL_DAYS,
-  TaskMetaItemSchema,
   buildDailyNoteClaimItem,
   buildDailyTemplateItem,
   buildHomeMetaItem,
@@ -91,6 +81,7 @@ import {
   taskUpdatedGsi1Sk,
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
+  ITEM_SCHEMAS,
 } from '@gagnechris/data';
 import {
   ACCESS_GROUPS,
@@ -105,6 +96,7 @@ import {
   carriedInMarkdown,
   dailyTemplateHasTasks,
   fillDailyTemplate,
+  markdownPlainText,
   taskEmbedIds,
   DEFAULT_HOME,
   DEFAULT_RESUME,
@@ -157,22 +149,6 @@ const OUT = join(
   dirname(fileURLToPath(import.meta.url)),
   '../services/api/internal/contract/contract.json',
 );
-
-const ITEM_SCHEMAS: Record<
-  (typeof RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES)[number],
-  z.ZodType
-> = {
-  post: PostMetaItemSchema,
-  project: ProjectMetaItemSchema,
-  home: HomeMetaItemSchema,
-  removedUser: RemovedUserItemSchema,
-  resume: ResumeMetaItemSchema,
-  contact: ContactMsgItemSchema,
-  note: NoteMetaItemSchema,
-  task: TaskMetaItemSchema,
-  dailyNoteClaim: DailyNoteClaimItemSchema,
-  dailyTemplate: DailyTemplateItemSchema,
-};
 
 // Late in the UTC day, so a builder that rounds the wrong way crosses midnight.
 const KEY_TIME = '2026-01-02T23:04:05.678Z';
@@ -517,6 +493,14 @@ const TEXT_CASES = {
     `~~~\n{{task:${EMBED_ID}}}\n~~~`,
     '[x] not a task line',
   ].map((input) => ({ input, want: dailyTemplateHasTasks(input) })),
+  markdownPlainText: [
+    '## Focus\r\nPrep for the **roadmap** review. See [[Project notes]].\n- [ ] Review the Q4 plan\n  * [x] done _em_ ~~gone~~ `code`',
+    '> quote\n1. one\n2) two\n10.\n#hashtag\n####### seven\n[ ] bare task\n[x]\n-',
+    '[a link](https://example.com) and ![alt](img.png), [ref] [[a]] [[]]',
+    '---\n* * *\n___\n| A | B |\n|:--|--:|\n| 1 | 2 |\na | b',
+    '```js\n## kept **as** code\n```\n~~~~\n- [ ] still code\n~~~\nopen',
+    '\u00a0## not a heading\n\t- tabbed\n   ### indented\n😀 **é**',
+  ].map((input) => ({ input, want: markdownPlainText(input) })),
 };
 
 const contract = {

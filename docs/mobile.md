@@ -110,7 +110,7 @@ A change the API refuses with `reauth_required` (the sign-in is over five minute
 
 ## Search
 
-The magnifying glass on Today opens `/search`. It sends the query to `POST /api/notebook/search` through app-core's `useDebouncedNotebookSearch`, which the Notes tab and the web palette also use: one request 200 ms after typing stops, the previous results kept on screen until the new ones arrive, and task hits merged with cached tasks. The server searches every note and task and returns titles and snippets with embeds already replaced by the task's line, so no `{{task:…}}` token shows. Results are grouped Notes, then Tasks, and a daily note hit opens on Today; matches are bold (`wordMatches` and `highlightParts` from `@gagnechris/shared`, as on web), and a task hit's checkbox completes it from the hit's status and version. The scope is the chosen area, with All areas beside it. Recent searches (the last 8) live in AsyncStorage under `gagnechris.notebook.recentSearches`, so sign-out's wipe removes them.
+The magnifying glass on Today opens `/search`. It sends the query to `POST /api/notebook/search` through app-core's `useDebouncedNotebookSearch`, which the Notes tab and the web palette also use: one request 200 ms after typing stops, the previous results kept on screen until the new ones arrive, and task hits merged with cached tasks. The server searches every note and task and returns titles and plain-text snippets with embeds already replaced by the task's line, so no `{{task:…}}` token or markdown marker shows; a hit whose snippet would only repeat its title shows the title alone (`searchHitDetail`). Results are grouped Notes, then Tasks, and a daily note hit opens on Today; matches are bold (`wordMatches` and `highlightParts` from `@gagnechris/shared`, as on web), and a task hit's checkbox completes it from the hit's status and version. The scope is the chosen area, with All areas beside it. Recent searches (the last 8) live in AsyncStorage under `gagnechris.notebook.recentSearches`, so sign-out's wipe removes them.
 
 ## Entry and polyfills
 
@@ -275,7 +275,7 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 
 Releases go to TestFlight from an `ios-v*` tag through `.github/workflows/ios-release.yml` (EAS build and submit); setup and tester management are in [infra/RUNBOOK.md](../infra/RUNBOOK.md#ios-release-testflight).
 
-`.github/workflows/mobile.yml` uses no AWS credentials. It runs on every PR and push to `main` so the required check **Mobile typecheck, lint, test, bundle** always reports; an in-job `dorny/paths-filter` step skips the steps below (the job still passes) unless mobile, the client packages, the root lockfile, `eslint.config.js`, `tsconfig.base.json`, the setup action or the workflow changed. When it applies, it runs:
+`.github/workflows/mobile.yml` uses no AWS credentials. It runs on every PR and push to `main` so the required check **Mobile typecheck, lint, test, bundle** always reports; on a PR, an in-job `dorny/paths-filter` step skips the steps below (the job still passes) unless mobile, the client packages, the root lockfile, `.nvmrc`, `.npmrc`, `eslint.config.js`, `tsconfig.base.json`, the setup action or the workflow changed; a push to `main` always runs them. When it applies, it runs:
 
 1. Root `npm ci`, then `npm ci` in `apps/mobile`.
 2. Typecheck for `shared`, `api-client`, `tokens`, `app-core`, and mobile; **test** for `api-client`, `tokens`, `app-core`, and mobile (not `shared` — shared tests run in root CI); lint for mobile.

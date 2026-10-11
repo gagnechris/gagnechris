@@ -3,6 +3,8 @@ package search
 import (
 	"bytes"
 	"encoding/json"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -14,19 +16,20 @@ func TestRankFields(t *testing.T) {
 		snippet        string
 		matches        []Range
 	}{
-		{"ship", "Ship plan", "", nil, 37, "Ship plan", []Range{{0, 4}}},
-		{"ship", "Reship", "", nil, 30, "Reship", []Range{{2, 6}}},
+		{"ship", "Ship plan", "", nil, 37, "", []Range{}},
+		{"ship", "Reship", "We ship Friday", nil, 30, "We ship Friday", []Range{{3, 7}}},
+		{"ship", "Ship", repeat("long ", 30), nil, 37, strings.TrimSpace(repeat("long ", 24)) + "…", []Range{}},
 		{"ship", "  ", "a ship", nil, 12, "a ship", []Range{{2, 6}}},
 		{"ship", "x", "", []string{"shipping", "y"}, 27, "shipping y", []Range{{0, 4}}},
-		{"LAUNCH", "\U0001F680 Launch", "", nil, 32, "\U0001F680 Launch", []Range{{3, 9}}},
-		{"_id", "my_id", "", nil, 30, "my_id", []Range{{2, 5}}},
+		{"LAUNCH", "\U0001F680 Launch", "\U0001F680 launch day", nil, 32, "\U0001F680 launch day", []Range{{3, 9}}},
+		{"_id", "my_id", "", nil, 30, "", []Range{}},
 	} {
 		got, ok := rankFields(tc.q, tc.title, tc.body, tc.tags)
 		if !ok {
 			t.Errorf("%q in %q: no hit", tc.q, tc.title)
 			continue
 		}
-		if got.score != tc.score || string(mustJSON(t, Text(got.snippet))) != string(mustJSON(t, tc.snippet)) || len(got.matches) != 1 || got.matches[0] != tc.matches[0] {
+		if got.score != tc.score || string(mustJSON(t, Text(got.snippet))) != string(mustJSON(t, tc.snippet)) || !slices.Equal(got.matches, tc.matches) || got.matches == nil {
 			t.Errorf("%q in %q: %+v", tc.q, tc.title, got)
 		}
 	}

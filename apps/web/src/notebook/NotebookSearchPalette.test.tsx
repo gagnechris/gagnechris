@@ -166,6 +166,26 @@ describe('NotebookSearchPalette', () => {
     expect(await screen.findByText('Task page')).toBeInTheDocument();
   });
 
+  test('a task hit whose snippet is only its title reads the title once', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    await user.type(
+      screen.getByRole('combobox', { name: 'Search notes and tasks' }),
+      'standup',
+    );
+    const option = await screen.findByRole('option', {
+      name: /^Prep standup/,
+    });
+    expect(option).toHaveAccessibleName('Prep standup, open');
+    expect(option.querySelector('.workspace-search__hit-snippet')).toBeNull();
+    expect(
+      within(screen.getByRole('group', { name: 'Notes · 2' })).getByRole(
+        'option',
+        { name: /^Standup notes/ },
+      ),
+    ).toHaveTextContent('standup with team');
+  });
+
   test('waits for a pause in typing before searching', async () => {
     const user = userEvent.setup();
     renderPalette();

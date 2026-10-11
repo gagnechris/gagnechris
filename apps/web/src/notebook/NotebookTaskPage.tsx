@@ -7,13 +7,17 @@ import {
   useDeleteTaskMutation,
   useTaskToggle,
 } from '@gagnechris/app-core';
+import { snoozeBaseDay } from '@gagnechris/shared';
 import { Field, Select, TextInput } from '../kit/Field';
+import { SnoozeMenu } from '../kit/tasks/SnoozeMenu';
+import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { TaskMentions } from './TaskMentions';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import { useLocalToday } from './useLocalToday';
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
@@ -22,6 +26,8 @@ import {
 export default function NotebookTaskPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const today = useLocalToday();
+  const phone = useMediaQuery(PHONE_QUERY);
   const deleteMutation = useDeleteTaskMutation();
   const {
     toggle: toggleTask,
@@ -99,15 +105,17 @@ export default function NotebookTaskPage() {
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
         <div className="admin-toolbar">
-          <button
-            type="button"
-            className="admin-btn"
-            disabled={busy || dirty || togglePending}
-            onClick={() => void toggleDone()}
-            title={dirty ? 'Save before completing' : undefined}
-          >
-            {entity.status === 'done' ? 'Reopen' : 'Complete'}
-          </button>
+          {phone ? null : (
+            <button
+              type="button"
+              className="admin-btn"
+              disabled={busy || dirty || togglePending}
+              onClick={() => void toggleDone()}
+              title={dirty ? 'Save before completing' : undefined}
+            >
+              {entity.status === 'done' ? 'Reopen' : 'Complete'}
+            </button>
+          )}
           <button
             type="button"
             className="admin-btn"
@@ -118,6 +126,33 @@ export default function NotebookTaskPage() {
           </button>
         </div>
       </div>
+
+      {/* Phones: Complete and Snooze within thumb reach, above the tab bar. */}
+      {phone ? (
+        <div className="notebook-task__bottom-bar">
+          <button
+            type="button"
+            className="admin-btn admin-btn--primary"
+            disabled={busy || dirty || togglePending}
+            onClick={() => void toggleDone()}
+            title={dirty ? 'Save before completing' : undefined}
+          >
+            {entity.status === 'done' ? 'Reopen' : 'Complete'}
+          </button>
+          <SnoozeMenu
+            label="Snooze"
+            title={entity.title}
+            baseDay={snoozeBaseDay(draft.startDate || today, today)}
+            onChoose={(schedule) =>
+              updateDraft((prev) => ({
+                ...prev,
+                startDate: schedule.startDate ?? '',
+                someday: schedule.someday,
+              }))
+            }
+          />
+        </div>
+      ) : null}
 
       {saveError ? (
         <p className="admin-panel__error" role="alert">

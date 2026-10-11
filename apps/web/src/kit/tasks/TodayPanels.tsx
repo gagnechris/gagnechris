@@ -7,16 +7,14 @@ import {
   comingUpDayLabel,
   comingUpShortLabel,
   comingUpWindow,
-  formatTaskDay,
-  nextWeekday,
   type StillOpenSource,
   type Task,
   type TaskDue,
   type TaskSchedule,
 } from '@gagnechris/shared';
-import { SnoozeMenu } from './SnoozeMenu';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
+import { TaskRowActions } from './TaskRowActions';
 import './todayPanels.css';
 
 type PanelTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;
@@ -159,8 +157,6 @@ function FullStillOpenList({
   readOnly,
   onAddToNote,
 }: Extract<StillOpenProps, { snoozeFrom: string }>) {
-  const monday = nextWeekday(snoozeFrom, 1);
-  const mondayLabel = formatTaskDay(monday);
   return (
     <ul className="today-panel__list">
       {rows.map(({ task, source, sourceTo, to, due }) => (
@@ -200,65 +196,12 @@ function FullStillOpenList({
                 {onAddToNote ? (
                   <AddToNoteButton task={task} onAdd={onAddToNote} />
                 ) : null}
-                <button
-                  type="button"
-                  className="today-row__icon-btn"
-                  aria-label={`Snooze ${task.title} to ${mondayLabel}`}
-                  title={`Snooze to ${mondayLabel}`}
-                  onClick={() =>
-                    onSnooze(task.id, { startDate: monday, someday: false })
-                  }
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    width="14"
-                    height="14"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="8"
-                      cy="9"
-                      r="5.25"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                    />
-                    <path
-                      d="M8 6.5V9l1.75 1.25M2.5 3.5l2-1.5M13.5 3.5l-2-1.5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-                <SnoozeMenu
+                <TaskRowActions
                   title={task.title}
-                  baseDay={snoozeFrom}
-                  onChoose={(schedule) => onSnooze(task.id, schedule)}
+                  snoozeFrom={snoozeFrom}
+                  onSnooze={(schedule) => onSnooze(task.id, schedule)}
+                  onDrop={() => onDrop(task.id)}
                 />
-                <button
-                  type="button"
-                  className="today-row__icon-btn"
-                  aria-label={`Drop ${task.title}`}
-                  title="Drop: close without doing it"
-                  onClick={() => onDrop(task.id)}
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    width="14"
-                    height="14"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M4 4l8 8M12 4l-8 8"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
               </span>
             )}
           </div>

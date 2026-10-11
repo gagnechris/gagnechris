@@ -3,6 +3,7 @@ import {
   CLIENT_VERSION_HEADER,
   isClientVersionSupported,
   isOpenTaskStatus,
+  markdownPlainText,
   parseClientVersion,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
@@ -338,7 +339,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (route === 'POST /api/notebook/search') {
       const { q, area } = (await input.json()) as { q: string; area?: string };
       const needle = q.toLowerCase();
-      // As the API: embeds read as the task's line, never the raw token.
+      // As the API: embeds read as the task's line, never the raw token, and
+      // snippets are plain text from the body, never the title again.
       const searchable = (n: Note) =>
         replaceTaskEmbeds(n.bodyMarkdown, (embed) => {
           const t = taskStore.get(embed.id);
@@ -368,7 +370,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
               (!area || n.area === area) &&
               `${n.title}\n${searchable(n)}`.toLowerCase().includes(needle),
           )
-          .map((n) => hit('note', n, searchable(n), n.date)),
+          .map((n) => hit('note', n, markdownPlainText(searchable(n)), n.date)),
         tasks: [...taskStore.values()]
           .filter(
             (t) =>
@@ -377,7 +379,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
               `${t.title}\n${t.description}`.toLowerCase().includes(needle),
           )
           .map((t) =>
-            hit('task', t, t.description || t.title, null, {
+            hit('task', t, markdownPlainText(t.description), null, {
               status: t.status,
               version: t.version,
             }),
