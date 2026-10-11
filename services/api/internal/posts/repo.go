@@ -83,7 +83,7 @@ func tagSyncItems(tableName string, after Post, opts store.PersistOptions[Post])
 			}
 			items = append(items, types.TransactWriteItem{Delete: &types.Delete{
 				TableName: aws.String(tableName),
-				Key:       data.Key(tagPk(tag), tagSk(*beforePublishedAt, after.ID)),
+				Key:       data.Key(keys.TagPk(tag), keys.TagSk(*beforePublishedAt, after.ID)),
 			}})
 		}
 	}
@@ -92,9 +92,9 @@ func tagSyncItems(tableName string, after Post, opts store.PersistOptions[Post])
 			if slices.Contains(beforeTags, tag) && samePublishedAt {
 				continue
 			}
-			item := data.Key(tagPk(tag), tagSk(*afterPublishedAt, after.ID))
-			item["gsi2pk"] = data.S(tagPk(tag))
-			item["gsi2sk"] = data.S(tagSk(*afterPublishedAt, after.ID))
+			item := data.Key(keys.TagPk(tag), keys.TagSk(*afterPublishedAt, after.ID))
+			item["gsi2pk"] = data.S(keys.TagPk(tag))
+			item["gsi2sk"] = data.S(keys.TagSk(*afterPublishedAt, after.ID))
 			item["entityType"] = data.S("tagIndex")
 			item["postId"] = data.S(after.ID)
 			item["slug"] = data.S(after.Slug)
@@ -112,7 +112,7 @@ func (r *repo) list(ctx context.Context, status, cursor string, limit int, q str
 	}
 	q = api.TrimJS(q)
 	return store.WalkPartitions(partitions, cursor, limit, func(partition, cursor string, remaining, remainingBytes int) (store.Page[Summary], error) {
-		pk := statusGSI1Pk(partition)
+		pk := keys.StatusGSI1Pk(partition)
 		query := store.PageQuery{
 			Input: dynamodb.QueryInput{
 				IndexName:                 aws.String(gsi1Name),
@@ -186,7 +186,7 @@ func (r *repo) countStatus(ctx context.Context, status string) (int, error) {
 		TableName:                 aws.String(r.table.Name),
 		IndexName:                 aws.String(gsi1Name),
 		KeyConditionExpression:    aws.String("gsi1pk = :pk"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(statusGSI1Pk(status))},
+		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(keys.StatusGSI1Pk(status))},
 		Select:                    types.SelectCount,
 	})
 	n := 0
