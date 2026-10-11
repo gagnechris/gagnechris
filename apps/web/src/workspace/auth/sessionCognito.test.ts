@@ -13,12 +13,15 @@ vi.mock('aws-amplify/auth', () => ({
 }));
 vi.mock('./config', () => ({
   addPasskeyUrl: () => 'https://auth.example.com/passkeys/add?client_id=c',
+  renewManagedLoginUrl: () =>
+    'https://auth.example.com/oauth2/authorize?client_id=c&prompt=login',
   ensureAmplifyConfigured: vi.fn(),
 }));
 
 import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import {
   canAddPasskey,
+  passkeyCallbackStep,
   getAuthTime,
   getAuthUser,
   openAddPasskey,
@@ -120,6 +123,45 @@ describe('Cognito session', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  test('signs in once when the passkey page finds no session, then reopens it', () => {
+    expect(passkeyCallbackStep('?result=invalid_session')).toEqual({
+      redirect:
+        'https://auth.example.com/oauth2/authorize?client_id=c&prompt=login',
+    });
+    // A repeated render of the same callback doesn't spend the retry.
+    expect(passkeyCallbackStep('?result=invalid_session')).toEqual({
+      redirect:
+        'https://auth.example.com/oauth2/authorize?client_id=c&prompt=login',
+    });
+    expect(passkeyCallbackStep('?code=abc&state=s')).toEqual({
+      redirect: 'https://auth.example.com/passkeys/add?client_id=c',
+    });
+    // Back from the passkey page: the round trip is done, so a later sign-in
+    // is an ordinary one.
+    expect(passkeyCallbackStep('?result=success')).toBeNull();
+    expect(passkeyCallbackStep('?code=def&state=s')).toBeNull();
+  });
+
+  test('stops with a message when signing in still leaves no session', () => {
+    passkeyCallbackStep('?result=invalid_session');
+    passkeyCallbackStep('?code=abc&state=s');
+    expect(passkeyCallbackStep('?result=invalid_session&n=2')).toEqual({
+      error: expect.stringContaining('Try again'),
+    });
+  });
+
+  test('stops when the sign-in returns without a code', () => {
+    passkeyCallbackStep('?result=invalid_session&a');
+    expect(passkeyCallbackStep('?result=invalid_session&b')).toEqual({
+      error: expect.stringContaining('Try again'),
+    });
+  });
+
+  test('leaves an ordinary sign-in callback alone', () => {
+    expect(passkeyCallbackStep('?code=ordinary&state=s')).toBeNull();
+    expect(passkeyCallbackStep('?result=success')).toBeNull();
   });
 
   test.each([

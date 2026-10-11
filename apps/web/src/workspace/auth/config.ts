@@ -61,12 +61,10 @@ export const ensureAmplifyConfigured = (): void => {
   configured = true;
 };
 
-/**
- * Managed login's add-passkey page for this app's client. It returns to the
- * sign-in callback, which goes back to the saved page while the session is
- * live.
- */
-export const addPasskeyUrl = (): string => {
+const managedLoginUrl = (
+  path: string,
+  extra: Record<string, string> = {},
+): string => {
   const domain = requireValue(
     'VITE_COGNITO_AUTH_DOMAIN',
     import.meta.env.VITE_COGNITO_AUTH_DOMAIN,
@@ -74,6 +72,26 @@ export const addPasskeyUrl = (): string => {
   const params = new URLSearchParams({
     client_id: requireValue('Cognito app client ID', clientId),
     redirect_uri: `${window.location.origin}/auth/callback`,
+    ...extra,
   });
-  return `https://${domain}/passkeys/add?${params.toString()}`;
+  return `https://${domain}${path}?${params.toString()}`;
 };
+
+/**
+ * Managed login's add-passkey page for this app's client. It returns to the
+ * sign-in callback, which goes back to the saved page while the session is
+ * live.
+ */
+export const addPasskeyUrl = (): string => managedLoginUrl('/passkeys/add');
+
+/**
+ * A sign-in that only renews the managed-login session cookie
+ * `/passkeys/add` needs. Amplify didn't start it, so its OAuth listener leaves
+ * the returned code alone and the app keeps its tokens.
+ */
+export const renewManagedLoginUrl = (): string =>
+  managedLoginUrl('/oauth2/authorize', {
+    response_type: 'code',
+    scope: 'openid email profile',
+    prompt: 'login',
+  });

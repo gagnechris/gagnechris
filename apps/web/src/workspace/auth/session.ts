@@ -5,7 +5,11 @@ import {
   signOut,
 } from 'aws-amplify/auth';
 import { isSitePath } from '@gagnechris/shared';
-import { addPasskeyUrl, ensureAmplifyConfigured } from './config';
+import {
+  addPasskeyUrl,
+  ensureAmplifyConfigured,
+  renewManagedLoginUrl,
+} from './config';
 
 export type AuthUser = {
   label: string;
@@ -141,9 +145,63 @@ const saveReturnTo = (): void => {
 /** Local auth has no managed login, so nowhere to add a passkey. */
 export const canAddPasskey = (): boolean => !isLocalAuth();
 
+const PASSKEY_AFTER_SIGN_IN_KEY = 'gagnechris.addPasskeyAfterSignIn';
+
 export const openAddPasskey = (): void => {
   saveReturnTo();
   window.location.assign(addPasskeyUrl());
+};
+
+export type PasskeyCallbackStep = { redirect: string } | { error: string };
+
+let lastStep: { search: string; step: PasskeyCallbackStep | null } | null =
+  null;
+
+/**
+ * `/passkeys/add` needs a live managed-login session, which lasts far less
+ * than the app's refresh token; without one Cognito returns
+ * `result=invalid_session`. The callback then signs in once and reopens the
+ * page. Decided once per callback URL, so a repeated render or effect doesn't
+ * spend the one retry.
+ */
+export const passkeyCallbackStep = (
+  search: string,
+): PasskeyCallbackStep | null => {
+  if (lastStep?.search === search) return lastStep.step;
+  const params = new URLSearchParams(search);
+  // 'renewing' while signing in, 'opened' once the page is reopened: either
+  // way a further invalid_session ends the round trip instead of looping.
+  let stage: string | null = null;
+  try {
+    stage = window.sessionStorage.getItem(PASSKEY_AFTER_SIGN_IN_KEY);
+    window.sessionStorage.removeItem(PASSKEY_AFTER_SIGN_IN_KEY);
+  } catch {
+    // Storage disabled: no round trip to resume.
+  }
+  let step: PasskeyCallbackStep | null = null;
+  if (params.get('result') === 'invalid_session') {
+    if (stage) {
+      step = {
+        error: 'Couldn’t open the passkey page after signing in. Try again.',
+      };
+    } else {
+      try {
+        window.sessionStorage.setItem(PASSKEY_AFTER_SIGN_IN_KEY, 'renewing');
+        step = { redirect: renewManagedLoginUrl() };
+      } catch {
+        step = { error: 'Sign in again, then add your passkey.' };
+      }
+    }
+  } else if (stage === 'renewing' && params.has('code')) {
+    try {
+      window.sessionStorage.setItem(PASSKEY_AFTER_SIGN_IN_KEY, 'opened');
+    } catch {
+      // Without the marker a second invalid_session retries once more.
+    }
+    step = { redirect: addPasskeyUrl() };
+  }
+  lastStep = { search, step };
+  return step;
 };
 
 /** `LOGIN` makes managed login ask again even with a live session. */

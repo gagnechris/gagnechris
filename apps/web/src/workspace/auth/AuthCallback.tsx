@@ -4,13 +4,21 @@ import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { ensureAmplifyConfigured } from './config';
-import { takeReturnTo } from './session';
+import { passkeyCallbackStep, takeReturnTo } from './session';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const [passkey] = useState(() => passkeyCallbackStep(window.location.search));
+  const [error, setError] = useState<string | null>(
+    passkey && 'error' in passkey ? passkey.error : null,
+  );
 
   useEffect(() => {
+    if (passkey) {
+      if ('redirect' in passkey) window.location.assign(passkey.redirect);
+      return;
+    }
+
     let cancelled = false;
     let settled = false;
 
@@ -74,7 +82,7 @@ export default function AuthCallback() {
       cancelled = true;
       unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, passkey]);
 
   return (
     <div className="admin-shell admin-shell--centered">
