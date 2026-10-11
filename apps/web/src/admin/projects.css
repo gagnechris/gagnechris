@@ -70,6 +70,12 @@
   outline-offset: 1px;
 }
 
+@media (max-width: 767px) {
+  .admin-stage__options .workspace-segmented__option {
+    min-height: 44px;
+  }
+}
+
 .admin-project-preview__row {
   display: flex;
   flex-wrap: wrap;

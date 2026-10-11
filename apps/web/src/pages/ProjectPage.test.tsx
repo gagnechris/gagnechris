@@ -55,7 +55,7 @@ describe('ProjectPage', () => {
         .getByRole('region', { name: 'Build log' })
         .querySelector('a[href="/posts/welcome"]'),
     ).not.toBeNull();
-    expect(document.title).toBe('Notebook - Chris Gagne');
+    expect(document.title).toBe('Project: Notebook - Chris Gagne');
     expect(fetch).toHaveBeenCalledWith(
       '/projects/notebook/',
       expect.objectContaining({ headers: { Accept: 'text/html' } }),

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import { pageTitle, projectPagePath, siteUrl } from '@gagnechris/shared';
+import { projectPagePath, siteUrl } from '@gagnechris/shared';
 import { ProjectPageBody } from '@gagnechris/public-ui';
 import ProjectDemoSlot from '../projects/ProjectDemoSlot';
 import {
@@ -40,10 +40,7 @@ function ProjectPage() {
   const project = published.view;
   return (
     <>
-      <PageHead
-        title={pageTitle(project.name)}
-        url={siteUrl(projectPagePath(slug))}
-      />
+      <PageHead {...project.head} url={siteUrl(projectPagePath(slug))} />
       <ProjectPageBody
         project={project}
         demoSlot={<ProjectDemoSlot project={project} />}

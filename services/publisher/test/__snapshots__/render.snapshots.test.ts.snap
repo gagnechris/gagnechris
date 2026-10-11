@@ -66,14 +66,14 @@ exports[`render HTML snapshots > matches frozen output for a project page with a
 "<!doctype html>
 <html lang="en">
   <head>
-    <title>Posts - Chris Gagne</title>
+    <title>Project: Posts - Chris Gagne</title>
     <meta name="description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
-    <meta property="og:title" content="Posts - Chris Gagne" />
+    <meta property="og:title" content="Project: Posts - Chris Gagne" />
     <meta property="og:description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://gagnechris.com/projects/posts" />
     <meta property="og:image" content="https://gagnechris.com/media/projects/posts.png" />
-    <meta name="twitter:title" content="Posts - Chris Gagne" />
+    <meta name="twitter:title" content="Project: Posts - Chris Gagne" />
     <meta name="twitter:description" content="The publishing system behind this site. Write in the admin, publish, and the page, RSS feed and sitemap update on their own." />
     <meta name="twitter:image" content="https://gagnechris.com/media/projects/posts.png" />
     <link rel="canonical" href="https://gagnechris.com/projects/posts" />
@@ -97,14 +97,14 @@ exports[`render HTML snapshots > matches frozen output for a project page with n
 "<!doctype html>
 <html lang="en">
   <head>
-    <title>Notebook - Chris Gagne</title>
+    <title>Project: Notebook - Chris Gagne</title>
     <meta name="description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
-    <meta property="og:title" content="Notebook - Chris Gagne" />
+    <meta property="og:title" content="Project: Notebook - Chris Gagne" />
     <meta property="og:description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://gagnechris.com/projects/notebook" />
     <meta property="og:image" content="https://gagnechris.com/og-image.jpg" />
-    <meta name="twitter:title" content="Notebook - Chris Gagne" />
+    <meta name="twitter:title" content="Project: Notebook - Chris Gagne" />
     <meta name="twitter:description" content="Daily notes and tasks in one place. Tasks live inside notes, and anything unfinished carries forward to tomorrow." />
     <meta name="twitter:image" content="https://gagnechris.com/og-image.jpg" />
     <link rel="canonical" href="https://gagnechris.com/projects/notebook" />
@@ -267,7 +267,7 @@ exports[`render HTML snapshots > matches frozen output for resume-unavailable, R
 
 exports[`render HTML snapshots > matches frozen output for resume-unavailable, RSS, and sitemap 3`] = `
 "<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gagnechris.com/</loc></url><url><loc>https://gagnechris.com/posts</loc></url><url><loc>https://gagnechris.com/projects</loc></url><url><loc>https://gagnechris.com/resume</loc></url><url><loc>https://gagnechris.com/contact</loc></url><url><loc>https://gagnechris.com/posts/hello-world</loc><lastmod>2026-09-27</lastmod></url></urlset>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://gagnechris.com/</loc></url><url><loc>https://gagnechris.com/posts</loc></url><url><loc>https://gagnechris.com/projects</loc></url><url><loc>https://gagnechris.com/resume</loc></url><url><loc>https://gagnechris.com/contact</loc></url><url><loc>https://gagnechris.com/dont-feed-the-bears</loc></url><url><loc>https://gagnechris.com/dont-feed-the-bears/camp</loc></url><url><loc>https://gagnechris.com/dont-feed-the-bears/wild</loc></url><url><loc>https://gagnechris.com/posts/hello-world</loc><lastmod>2026-09-27</lastmod></url></urlset>
 "
 `;
 

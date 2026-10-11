@@ -543,3 +543,23 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
   margin: var(--space-2) 0;
   border-radius: var(--radius-md);
 }
+
+@media (max-width: 767px) {
+  .markdown-toolbar {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .markdown-toggle {
+    min-height: 44px;
+  }
+
+  .markdown-toolbar__btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .markdown-editor .cm-content {
+    font-size: max(16px, 1em);
+  }
+}
