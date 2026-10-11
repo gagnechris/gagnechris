@@ -105,11 +105,14 @@ describe('AdminLayout', () => {
       'page',
     );
     expect(
-      within(nav).getByRole('link', { name: 'Home page' }),
-    ).toHaveAttribute('href', '/home');
-    expect(
-      within(nav).getByRole('link', { name: 'Resume' }),
-    ).toBeInTheDocument();
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Posts', 'Pages', 'Projects']);
+    expect(within(nav).getByRole('link', { name: 'Pages' })).toHaveAttribute(
+      'href',
+      '/pages',
+    );
     expect(within(nav).getByRole('link', { name: 'Projects' })).toHaveAttribute(
       'href',
       '/projects',
@@ -131,6 +134,28 @@ describe('AdminLayout', () => {
     ).toBeInTheDocument();
     expect(await screen.findByText(/No posts yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/PRODUCTION API/i)).not.toBeInTheDocument();
+  });
+
+  test.each(['/home', '/resume'])('Pages stays current on %s', async (path) => {
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/" element={<AdminLayout />}>
+              <Route path="*" element={null} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: 'Admin' });
+    expect(within(nav).getByRole('link', { name: 'Pages' })).toHaveClass(
+      'workspace-nav__item--active',
+    );
+    expect(within(nav).getByRole('link', { name: 'Posts' })).not.toHaveClass(
+      'workspace-nav__item--active',
+    );
   });
 
   test('shows PRODUCTION banner when Vite proxies to prod API', async () => {

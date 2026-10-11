@@ -129,6 +129,7 @@ const TodayScreen = () => {
           <Text style={styles.title}>{heading}</Text>
         </View>
         <View style={styles.headerActions}>
+          <AreaChip />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Search"
@@ -137,7 +138,6 @@ const TodayScreen = () => {
           >
             <Icon name="magnifyingglass" size={20} color={color.ink} />
           </Pressable>
-          <AreaChip />
         </View>
       </View>
       <View style={styles.dayNav}>

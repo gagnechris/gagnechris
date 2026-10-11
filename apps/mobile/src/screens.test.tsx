@@ -91,6 +91,14 @@ describe('Notebook tab screens', () => {
     expect(headers(renderer)[0]?.props.accessibilityLabel).toBe(
       'Today, Friday, October 2',
     );
+    const actions = renderer.root
+      .findAll(
+        (node) =>
+          typeof node.type === 'string' &&
+          ['Area: Work', 'Search'].includes(node.props.accessibilityLabel),
+      )
+      .map((node) => node.props.accessibilityLabel);
+    expect(actions).toEqual(['Area: Work', 'Search']);
 
     act(() => byLabel(renderer, 'Area: Work').props.onPress());
     const [options, choose] = vi.mocked(
@@ -116,6 +124,22 @@ describe('Notebook tab screens', () => {
       await settle();
       expect(allText(renderer)).toContain(title);
     }
+  });
+
+  it('More divides the rows in each group', async () => {
+    const renderer = await render(
+      <Providers>
+        <MoreScreen />
+      </Providers>,
+    );
+    const divided = (label: string) =>
+      [byLabel(renderer, label).props.style]
+        .flat(Infinity)
+        .some((rule) => rule?.borderTopWidth > 0);
+    expect(divided('Default area, Work')).toBe(false);
+    expect(divided('Daily templates')).toBe(true);
+    expect(divided('Add a passkey')).toBe(false);
+    expect(divided('Sign out of Notebook')).toBe(true);
   });
 
   it('More shows the account and signs out', async () => {
