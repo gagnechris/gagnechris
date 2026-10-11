@@ -30,6 +30,7 @@ import {
   type SecureStoreLike,
 } from '../src/auth/tokenStore';
 import { SessionProvider, type AuthBackend } from '../src/session';
+import { SpaceProvider } from '../src/space';
 
 export function memoryStore(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -143,7 +144,9 @@ export const Providers = ({
 }) => (
   <SessionProvider backend={backend} wipe={wipe}>
     <Api outbox={outbox}>
-      <AreaProvider store={store}>{children}</AreaProvider>
+      <AreaProvider store={store}>
+        <SpaceProvider store={store}>{children}</SpaceProvider>
+      </AreaProvider>
     </Api>
   </SessionProvider>
 );
