@@ -96,7 +96,9 @@ test.describe('signed-in apps on a phone', () => {
     seed,
   }) => {
     const post = await seed.post({ title: 'A draft post title for a phone' });
-    const project = await seed.project({ name: 'Phone project' });
+    // Default names and slugs are long unbroken words, as real slugs can be.
+    const project = await seed.project();
+    await seed.publishedProject({ stage: 'live' });
     for (const path of [
       '/',
       `/posts/${post.id}`,
@@ -112,10 +114,22 @@ test.describe('signed-in apps on a phone', () => {
   test('Notebook screens fit, with 44px controls and 16px fields', async ({
     page,
     apps,
+    prefix,
     seed,
   }) => {
     const note = await seed.note({ title: 'Phone note', bodyMarkdown: 'Hi' });
     const task = await seed.task({ title: 'Phone task' });
+    const later = new Date(Date.now() + 20 * 86_400_000);
+    const source = await seed.note({
+      title: `${prefix} source`,
+      bodyMarkdown: '',
+    });
+    await seed.task({
+      title: `${prefix} later`,
+      startDate: later.toLocaleDateString('en-CA'),
+      noteId: source.id,
+    });
+    await seed.task({ title: `${prefix} someday`, someday: true });
     for (const path of [
       '/today',
       '/upcoming',
