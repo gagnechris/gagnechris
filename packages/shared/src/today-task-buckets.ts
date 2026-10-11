@@ -3,6 +3,7 @@ import {
   daysBetween,
   localDayOf,
   relativeDayLabel,
+  weekdayName,
 } from './calendar.js';
 import { newestById } from './newest-by-id.js';
 import { isOpenTaskStatus, type Note, type Task } from './schemas.js';
@@ -180,4 +181,12 @@ export function comingUpShortLabel(date: string, day: string): string {
 /** Snooze counts from the later of the page's day and today. */
 export function snoozeBaseDay(day: string, today: string): string {
   return day > today ? day : today;
+}
+
+/** Today's footer, without its leading arrow. */
+export function carryFooterText(count: number, nextDay: string): string {
+  const weekday = weekdayName(nextDay, 'long');
+  return count === 0
+    ? `Nothing carries over to ${weekday}`
+    : `${count === 1 ? '1 open task' : `${count} open tasks`} will carry to ${weekday} if not done`;
 }

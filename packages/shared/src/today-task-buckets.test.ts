@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { Task } from './schemas.js';
 import {
   bucketTodayTasks,
+  carryFooterText,
   comingUpDayLabel,
   comingUpWindow,
   snoozeBaseDay,
@@ -214,4 +215,16 @@ describe('comingUpWindow', () => {
     expect(comingUpWindow(1)).toBe('the next day');
     expect(comingUpWindow(10)).toBe('the next 10 days');
   });
+});
+
+test('carryFooterText counts what carries to the next day', () => {
+  expect(carryFooterText(0, '2026-10-03')).toBe(
+    'Nothing carries over to Saturday',
+  );
+  expect(carryFooterText(1, '2026-10-03')).toBe(
+    '1 open task will carry to Saturday if not done',
+  );
+  expect(carryFooterText(3, '2026-10-03')).toBe(
+    '3 open tasks will carry to Saturday if not done',
+  );
 });
