@@ -520,7 +520,7 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
   const infra = commit('infra/lib/stacks/data-stack.ts');
   const web = commit('apps/web/src/main.tsx');
   const runbook = commit('infra/RUNBOOK.md');
-  const goSource = commit('go/internal/observability/logger.go');
+  const goSource = commit('services/api/internal/observability/logger.go');
   const publicUi = commit('packages/public-ui/src/home/HomeBody.tsx');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');

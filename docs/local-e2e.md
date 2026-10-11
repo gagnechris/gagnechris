@@ -37,7 +37,7 @@ afterwards:
    `gagnechris-e2e-<run>`
 2. Site root `e2e/.stack/<run>/site` (`E2E_SITE_ROOT`), seeded from `apps/web/dist` when a
    build exists, else `scripts/local/minimal-shell.html`
-3. The Go API (`services/api/local/api.ts` builds `go/cmd/api` and runs it
+3. The Go API (`scripts/local/api.ts` builds `services/api/cmd/api` and runs it
    behind a front server that applies the publisher rebuild and media CORS)
    and static site (`static-server.ts`, `E2E_SITE_URL`), which runs the real
    apex viewer-request function and returns its redirects with their headers.
@@ -117,7 +117,7 @@ Import `test` and `expect` from `e2e/fixtures.ts`:
 Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin`, `notebook` and `user-admin` (Full Admin).
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
 and sends `Authorization: Bearer local:<userId>`; the Go API
-(`API_CLAIMS_MODE=local`, `go/internal/api/localclaims.go`) turns that
+(`API_CLAIMS_MODE=local`, `services/api/internal/api/localclaims.go`) turns that
 into ID-token claims with `sub=<userId>` for the matched route's app
 (`user-admin` on `/api/admin/users`, `site-admin` on the rest of `/api/admin`,
 `notebook` on `/api/notebook`), so
@@ -202,23 +202,23 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 
 ## Layout
 
-| Path                                  | Role                                                                 |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| `docker-compose.local.yml`            | Official DynamoDB Local image                                        |
-| `scripts/local/dev.sh`                | One-command admin (`npm run local:dev`)                              |
-| `scripts/local/env.sh`                | Safe env (source before local tools)                                 |
-| `scripts/local/bootstrap-table.ts`    | Create `gagnechris-local` + GSIs                                     |
-| `scripts/local/lib.sh`                | `wait_dynamodb` and `wait_http` for the local scripts                |
-| `scripts/local/wait-dynamodb.ts`      | Waits for DynamoDB Local (local scripts, e2e stack, CI)              |
-| `scripts/local/seed-shell.sh`         | Copy `apps/web/dist` → `.local-site`                                 |
-| `scripts/local/e2e.sh`                | `npm run e2e:local`: builds if needed, runs the `api` project        |
-| `scripts/local/minimal-shell.html`    | Publisher shell when `apps/web/dist` is missing                      |
-| `e2e/`                                | Playwright config, stack global setup, fixtures, specs               |
-| `services/api/local/api.ts`           | Builds and runs the Go API behind a front server                     |
-| `services/api/local/site-hooks.ts`    | Front-server hooks: media CORS preflight, publisher rebuild          |
-| `services/api/local/static-server.ts` | Serves `.local-site` through the real CloudFront functions           |
-| `infra/lib/cloudfront/harness.ts`     | Runs the CloudFront functions as deployed (local server, edge tests) |
-| `.local-site/`                        | Filesystem stand-in for the S3 site bucket (gitignored)              |
-| `.local-kvs.json`                     | Stand-in for the slug KeyValueStore (gitignored)                     |
+| Path                               | Role                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `docker-compose.local.yml`         | Official DynamoDB Local image                                        |
+| `scripts/local/dev.sh`             | One-command admin (`npm run local:dev`)                              |
+| `scripts/local/env.sh`             | Safe env (source before local tools)                                 |
+| `scripts/local/bootstrap-table.ts` | Create `gagnechris-local` + GSIs                                     |
+| `scripts/local/lib.sh`             | `wait_dynamodb` and `wait_http` for the local scripts                |
+| `scripts/local/wait-dynamodb.ts`   | Waits for DynamoDB Local (local scripts, e2e stack, CI)              |
+| `scripts/local/seed-shell.sh`      | Copy `apps/web/dist` → `.local-site`                                 |
+| `scripts/local/e2e.sh`             | `npm run e2e:local`: builds if needed, runs the `api` project        |
+| `scripts/local/minimal-shell.html` | Publisher shell when `apps/web/dist` is missing                      |
+| `e2e/`                             | Playwright config, stack global setup, fixtures, specs               |
+| `scripts/local/api.ts`             | Builds and runs the Go API behind a front server                     |
+| `scripts/local/site-hooks.ts`      | Front-server hooks: media CORS preflight, publisher rebuild          |
+| `scripts/local/static-server.ts`   | Serves `.local-site` through the real CloudFront functions           |
+| `infra/lib/cloudfront/harness.ts`  | Runs the CloudFront functions as deployed (local server, edge tests) |
+| `.local-site/`                     | Filesystem stand-in for the S3 site bucket (gitignored)              |
+| `.local-kvs.json`                  | Stand-in for the slug KeyValueStore (gitignored)                     |
 
 Publisher uses `SITE_STORAGE=filesystem` locally; the prod Lambda uses S3 + CloudFront invalidation. Locally the publisher writes the slug KeyValueStore keys to `LOCAL_KVS_FILE` (set by `env.sh`), and the static server answers the viewer-request function's KVS reads from it. Like CloudFront, the static server runs viewer-response only on responses below 400.

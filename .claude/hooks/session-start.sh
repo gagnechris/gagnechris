@@ -24,8 +24,8 @@ npm install --no-audit --no-fund
 # npm ci: an install would rewrite the mobile lockfile's workspace link metadata.
 npm ci --prefix apps/mobile --no-audit --no-fund
 
-# The image's Go fetches the toolchain go/go.mod pins (GOTOOLCHAIN=auto).
+# The image's Go fetches the toolchain services/api/go.mod pins (GOTOOLCHAIN=auto).
 if command -v go >/dev/null; then
-  go -C go mod download
-  go -C go/tools mod download
+  go -C services/api mod download
+  go -C services/api/tools mod download
 fi

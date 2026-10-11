@@ -37,7 +37,7 @@ function buildGoApi(): () => void {
   if (process.env.GO_API_BIN) return () => {};
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gagnechris-go-api-'));
   const bin = path.join(dir, 'api');
-  execSync(`go -C go build -o ${JSON.stringify(bin)} ./cmd/api`, {
+  execSync(`go -C services/api build -o ${JSON.stringify(bin)} ./cmd/api`, {
     cwd: repoRoot,
     stdio: 'inherit',
   });

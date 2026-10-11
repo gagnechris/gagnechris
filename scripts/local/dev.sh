@@ -58,7 +58,7 @@ if curl -sf "http://127.0.0.1:${LOCAL_API_PORT}/api/health" >/dev/null 2>&1; the
   echo "==> Local API already running on :${LOCAL_API_PORT}"
 else
   echo "==> Start local Go API on :${LOCAL_API_PORT} (built once; restart to pick up Go changes)"
-  npx tsx services/api/local/api.ts &
+  npx tsx scripts/local/api.ts &
   API_PID=$!
   STARTED_API=1
   # The Go API builds first.
@@ -75,7 +75,7 @@ if site_listening; then
   echo "==> Local site already running on :${LOCAL_SITE_PORT}"
 else
   echo "==> Start local site on :${LOCAL_SITE_PORT}"
-  npx tsx services/api/local/static-server.ts &
+  npx tsx scripts/local/static-server.ts &
   SITE_PID=$!
   STARTED_SITE=1
   for i in $(seq 1 40); do

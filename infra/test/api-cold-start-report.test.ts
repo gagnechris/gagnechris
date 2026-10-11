@@ -20,7 +20,10 @@ function row(fields: Record<string, string>): QueryResults[number] {
 
 describe('API cold-start report', () => {
   it('queries the log keys the handler writes', () => {
-    const app = readFileSync(join(REPO_ROOT, 'go/internal/api/app.go'), 'utf8');
+    const app = readFileSync(
+      join(REPO_ROOT, 'services/api/internal/api/app.go'),
+      'utf8',
+    );
     expect(app).toContain('log.Info("request"');
     expect(app).toContain('"route", ');
     expect(app).toContain('"bundleReadyMs", ');

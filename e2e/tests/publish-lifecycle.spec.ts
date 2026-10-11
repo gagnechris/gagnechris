@@ -321,7 +321,7 @@ test('the local site, like CloudFront, skips viewer-response on an origin 4xx', 
   const port = await freePort();
   const probe = spawn(
     join(REPO_ROOT, 'node_modules', '.bin', 'tsx'),
-    ['services/api/local/static-server.ts'],
+    ['scripts/local/static-server.ts'],
     {
       cwd: REPO_ROOT,
       env: {

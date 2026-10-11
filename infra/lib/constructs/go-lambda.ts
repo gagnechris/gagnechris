@@ -20,7 +20,7 @@ import {
 } from './lambda-guardrails.js';
 import { REPO_ROOT } from './node-lambda.js';
 
-export const GO_MODULE_ROOT = join(REPO_ROOT, 'go');
+export const GO_MODULE_ROOT = join(REPO_ROOT, 'services/api');
 
 const GO_BUILD_ENV = {
   CGO_ENABLED: '0',
@@ -51,7 +51,7 @@ export interface GoLambdaProps
     LambdaGuardrailProps {
   /** Directory under `<moduleRoot>/cmd` holding the function's `main` package. */
   readonly cmd: string;
-  /** Go module to build from; defaults to the repo's `go/` module. */
+  /** Go module to build from; defaults to `services/api`. */
   readonly moduleRoot?: string;
   readonly logRetention?: RetentionDays;
 }

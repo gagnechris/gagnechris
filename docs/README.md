@@ -51,8 +51,7 @@ npm run e2e:browser
 
 ```
 apps/web/              React/Vite site + admin
-go/                    Go Lambdas: the HTTP API (cmd/api), the restore-test validator
-services/api/          Local Go API runner and the API's black-box HTTP suite
+services/api/          Go API (cmd/api, internal/), the restore-test validator, the black-box HTTP suite (test/)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 packages/shared/       Domain schemas/types; `/render`, `/openapi` subpaths
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site

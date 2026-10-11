@@ -290,11 +290,9 @@ export async function startStack(): Promise<Stack> {
       }),
     );
 
-    const apiLogs = start('api', join(BIN, 'tsx'), [
-      'services/api/local/api.ts',
-    ]);
+    const apiLogs = start('api', join(BIN, 'tsx'), ['scripts/local/api.ts']);
     const siteLogs = start('site', join(BIN, 'tsx'), [
-      'services/api/local/static-server.ts',
+      'scripts/local/static-server.ts',
     ]);
     const webDir = join(REPO_ROOT, 'apps', 'web');
     const vite = (app: string, port: number, args: string[] = []) => {

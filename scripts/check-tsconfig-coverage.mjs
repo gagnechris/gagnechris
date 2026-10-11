@@ -13,7 +13,7 @@ const workspaces = [
   'packages/ops',
   'packages/app-core',
   'packages/public-ui',
-  'services/api',
+  'services/api/test',
   'services/publisher',
   'infra',
   'e2e',

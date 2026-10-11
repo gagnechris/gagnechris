@@ -1,5 +1,5 @@
 name: Setup
-description: Node from .nvmrc, Go from go/go.mod, npm and Go caches, and npm ci (run after actions/checkout)
+description: Node from .nvmrc, Go from services/api/go.mod, npm and Go caches, and npm ci (run after actions/checkout)
 inputs:
   ignore-scripts:
     description: >-
@@ -20,8 +20,8 @@ runs:
     - name: Setup Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version-file: go/go.mod
-        cache-dependency-path: go/**/go.sum
+        go-version-file: services/api/go.mod
+        cache-dependency-path: services/api/**/go.sum
 
     - name: Install dependencies
       shell: bash

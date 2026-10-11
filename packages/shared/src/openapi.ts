@@ -1092,7 +1092,7 @@ export function buildOpenApiDocument() {
           { url: 'https://gagnechris.com', description: 'Production' },
           {
             url: 'http://localhost:8787',
-            description: 'Local API (services/api/local/api.ts)',
+            description: 'Local API (scripts/local/api.ts)',
           },
         ],
       }),

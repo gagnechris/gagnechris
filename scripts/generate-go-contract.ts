@@ -1,5 +1,5 @@
 /**
- * Writes go/internal/contract/contract.json: what the Go code must agree on
+ * Writes services/api/internal/contract/contract.json: what the Go code must agree on
  * with the TypeScript packages (item schemas, key formats, metric names), with
  * sample rows built by the TypeScript builders so Go tests read real shapes.
  *
@@ -146,7 +146,7 @@ import { legacyResumeContent } from '@gagnechris/shared/fixtures/legacy-resume';
 
 const OUT = join(
   dirname(fileURLToPath(import.meta.url)),
-  '../go/internal/contract/contract.json',
+  '../services/api/internal/contract/contract.json',
 );
 
 const ITEM_SCHEMAS: Record<
