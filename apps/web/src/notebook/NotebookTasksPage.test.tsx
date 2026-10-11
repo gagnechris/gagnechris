@@ -44,29 +44,40 @@ vi.mock('../workspace/api/client', () => ({
             open?: string;
             startOn?: string;
             startAfter?: string;
+            startBefore?: string;
             someday?: string;
+            undated?: string;
+            limit?: number;
+            cursor?: string;
           };
         };
       },
     ) => {
       if (path === '/api/notebook/tasks') {
-        // Honour the filters the UI sends, like the API.
+        // Honour the filters and paging the UI sends, like the API.
         const q = init?.params?.query ?? {};
+        const matches = state.tasks.filter(
+          (t) =>
+            !t.deleted &&
+            (q.status
+              ? t.status === q.status
+              : q.open !== 'true' ||
+                t.status === 'todo' ||
+                t.status === 'in_progress') &&
+            (!q.startOn || t.startDate === q.startOn) &&
+            (!q.startAfter ||
+              (t.startDate !== null && t.startDate > q.startAfter)) &&
+            (!q.startBefore ||
+              (t.startDate !== null && t.startDate < q.startBefore)) &&
+            (!q.someday || t.someday === (q.someday === 'true')) &&
+            (!q.undated || (!t.someday && t.startDate === null)),
+        );
+        const start = Number(q.cursor ?? 0);
+        const end = start + (q.limit ?? 50);
         return {
           data: {
-            items: state.tasks.filter(
-              (t) =>
-                !t.deleted &&
-                (q.status
-                  ? t.status === q.status
-                  : q.open !== 'true' ||
-                    t.status === 'todo' ||
-                    t.status === 'in_progress') &&
-                (!q.startOn || t.startDate === q.startOn) &&
-                (!q.startAfter ||
-                  (t.startDate !== null && t.startDate > q.startAfter)) &&
-                (!q.someday || t.someday === (q.someday === 'true')),
-            ),
+            items: matches.slice(start, end),
+            nextCursor: end < matches.length ? String(end) : undefined,
           },
           error: undefined,
           response: { status: 200 },
@@ -405,5 +416,55 @@ describe('NotebookTasksPage', () => {
     const titles = [...open.querySelectorAll('li')].map((li) => li.textContent);
     expect(titles[0]).toContain('Overdue');
     expect(titles[1]).toContain('Shown tomorrow');
+  });
+
+  describe('show-on filters page on the server', () => {
+    const today = localDateString();
+    const mk = (i: number, startDate: string | null): Task => ({
+      id: `01TASKSHOW${String(i).padStart(16, '0')}`,
+      userId: 'u1',
+      area: 'work',
+      title: `task ${i}`,
+      description: '',
+      priority: 'med',
+      status: 'todo',
+      dueDate: null,
+      startDate,
+      someday: false,
+      completedAt: null,
+      noteId: null,
+      tags: [],
+      version: 1,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      updatedAt: '2026-09-01T12:00:00.000Z',
+      deleted: false,
+    });
+    const nextYear = addDays(today, 365);
+
+    test.each([
+      ['week', today],
+      ['earlier', addDays(today, -3)],
+      ['none', null],
+    ])(
+      '?show=%s finds matches beyond the first 50 open tasks',
+      async (show, startDate) => {
+        state.tasks = [
+          ...Array.from({ length: 50 }, (_, i) => mk(i, nextYear)),
+          ...[50, 51, 52].map((i) => mk(i, startDate)),
+        ];
+        renderTasks(`/tasks?show=${show}`);
+
+        const open = await screen.findByRole('list', { name: 'Open tasks' });
+        expect(open.querySelectorAll('li')).toHaveLength(3);
+        expect(open).toHaveTextContent('task 52');
+        expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+      },
+    );
+
+    test('a filter with no matches says so', async () => {
+      state.tasks = [mk(1, nextYear)];
+      renderTasks('/tasks?show=week');
+      expect(await screen.findByText('No tasks match.')).toBeInTheDocument();
+    });
   });
 });

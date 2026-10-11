@@ -4,7 +4,6 @@ import {
   useTasksQuery,
   useQuickAddTask,
   useTaskToggle,
-  type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
 import {
@@ -12,6 +11,7 @@ import {
   sortTasksForList,
   taskDue,
   taskShowOnParam,
+  taskShowOnQuery,
   type TaskPriority,
   type TaskShowOnFilter,
   type TaskStatus,
@@ -52,26 +52,14 @@ export default function NotebookTasksPage() {
     );
   const [showCompleted, setShowCompleted] = useState(false);
 
-  const listQuery: {
-    area?: NotebookArea;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    startOn?: string;
-    startAfter?: string;
-    someday?: boolean;
-    open?: boolean;
-    today: string;
-    limit: number;
-  } = {
+  const listQuery = {
     area,
     today,
     limit: 50,
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+    ...taskShowOnQuery(showOn, today),
   };
-  if (status) listQuery.status = status;
-  if (priority) listQuery.priority = priority;
-  if (showOn === 'today') listQuery.startOn = today;
-  if (showOn === 'later') listQuery.startAfter = today;
-  if (showOn === 'someday') listQuery.someday = true;
 
   // Default view reads open tasks only; Completed loads when expanded, so a
   // pile of done tasks can never push open ones off the page.
@@ -224,7 +212,7 @@ export default function NotebookTasksPage() {
       {!tasksQuery.isPending &&
       openItems.length === 0 &&
       doneItems.length === 0 &&
-      (status || showCompleted) ? (
+      (status || priority || showOn || showCompleted) ? (
         <p className="admin-hint">No tasks match.</p>
       ) : null}
 

@@ -11,7 +11,13 @@ export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type AutosaveResult<TEntity> =
   | { ok: true; entity: TEntity }
-  | { ok: false; status: number; error?: string; current?: TEntity };
+  | {
+      ok: false;
+      status: number;
+      error?: string;
+      message?: string;
+      current?: TEntity;
+    };
 
 export type FlushResult = 'clean' | 'pending' | 'error';
 
@@ -231,7 +237,9 @@ export function useQueuedAutosave<TDraft, TEntity>({
                 ? (codeMessage ?? conflictMessageRef.current)
                 : result.status === 413
                   ? tooLargeMessageRef.current
-                  : `Save failed (${result.status}).`,
+                  : result.status === 400 && result.message
+                    ? result.message
+                    : `Save failed (${result.status}).`,
             );
             outcome = 'error';
             break;

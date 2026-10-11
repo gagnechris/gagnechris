@@ -51,6 +51,24 @@ describe('apple-app-site-association', () => {
     ]);
   });
 
+  it('opens Admin editor pages in the app and keeps web sign-in out', () => {
+    const admin = aasa('public-admin');
+    expect(admin.applinks?.details).toEqual([
+      {
+        appIDs: [APP_ID],
+        components: [
+          { '/': '/auth/*', exclude: true },
+          { '/': '/posts/*' },
+          { '/': '/projects/*' },
+          { '/': '/home' },
+          { '/': '/resume' },
+          { '/': '/settings/users' },
+        ],
+      },
+    ]);
+    expect(admin.webcredentials).toBeUndefined();
+  });
+
   // ASWebAuthenticationSession returns an https callback only to an app the
   // callback host lists under webcredentials; applinks don't count.
   it('associates the app with the Notebook host for the https sign-in callback', () => {

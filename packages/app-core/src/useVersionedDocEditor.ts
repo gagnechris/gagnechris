@@ -192,6 +192,7 @@ export function useVersionedDocController<
           ok: false as const,
           status: err.status,
           error: err.error,
+          message: err.message,
           current,
         };
       }
