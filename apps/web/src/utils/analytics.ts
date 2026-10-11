@@ -8,11 +8,14 @@ declare global {
 
 const canTrack = () => typeof window !== 'undefined' && Boolean(window.gtag);
 
-export const trackPageView = (url: string) => {
+export const trackPageView = (path: string) => {
   const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
   if (!canTrack() || !measurementId) return;
-  window.gtag('config', measurementId, {
-    page_path: url,
+  window.gtag('event', 'page_view', {
+    send_to: measurementId,
+    page_location: window.location.href,
+    page_path: path,
+    page_title: document.title,
   });
 };
 

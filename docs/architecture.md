@@ -353,6 +353,7 @@ The sync union and OpenAPI list only `note` / `task`. Notes HTTP routes live und
 ## Analytics stay off the signed-in apps
 
 - GA4 loads only in the public shells of the production build: `analyticsPlugin` (`apps/web/scripts/analyticsPlugin.ts`) adds gtag.js and writes `/ga.js` only when the public build runs with `GA_MEASUREMENT_ID`, which only `scripts/deploy-web.sh` sets (read from the process environment, never a `.env` file). Dev servers, `npm run preview`, local and e2e builds load no GA, and `e2e/tests/no-analytics.spec.ts` fails on any request to a Google Analytics host from the public site, the admin app or Notebook. The admin and Notebook shells never include it (`check:web-shells`), and the apex serves no signed-in page: old `/admin*` and `/auth*` URLs 301 to the app hosts at the edge.
+- Page views: `/ga.js` configures GA with `send_page_view: false`, and `RouteTracker` sends one `page_view` event (location, path, title) per route, the cold load included. It sends from a layout effect, after the page's `usePageHead` has set the title and before any page's mount effect, so a page event such as the resume `view` follows its page_view. The GA4 property's enhanced measurement must have **Page changes based on browser history events** turned off (Admin → Data streams → the web stream → Enhanced measurement → Page views → Show advanced settings); with it on, every client navigation counts twice. `analyticsPageViews.test.tsx` runs `/ga.js` and checks one page_view per load and per navigation.
 
 ## Dates and locale
 

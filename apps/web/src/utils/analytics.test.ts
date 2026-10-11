@@ -28,13 +28,17 @@ describe('analytics utilities', () => {
   });
 
   describe('trackPageView', () => {
-    test('calls gtag with correct config parameters', () => {
+    test('sends a page_view event for the page', () => {
       vi.stubEnv('VITE_GA_MEASUREMENT_ID', 'G-TEST123');
+      document.title = 'Test page';
       trackPageView('/test-page');
       vi.unstubAllEnvs();
 
-      expect(mockGtag).toHaveBeenCalledWith('config', 'G-TEST123', {
+      expect(mockGtag).toHaveBeenCalledWith('event', 'page_view', {
+        send_to: 'G-TEST123',
+        page_location: window.location.href,
         page_path: '/test-page',
+        page_title: 'Test page',
       });
     });
 
