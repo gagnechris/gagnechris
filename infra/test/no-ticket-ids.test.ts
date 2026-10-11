@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 describe('the repo', () => {
-  // .cursor/rules/comments-and-docs.mdc: history and ticket ids live in git and Linear.
+  // docs/agent-rules/comments-and-docs.md: history and ticket ids live in git and Linear.
   it('has no Linear ticket ids in tracked files', () => {
     const grep = spawnSync(
       'git',

@@ -1,8 +1,3 @@
----
-description: Branch and PR workflow for Linear tickets
-alwaysApply: true
----
-
 # Git workflow
 
 - One Linear ticket → one branch → one PR into `main`. Do not commit or push directly to `main`.

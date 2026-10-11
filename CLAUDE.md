@@ -20,7 +20,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
 - `scripts/` — local stack (`local/api.ts` builds and runs the Go API behind the local site hooks), web deploy, branch protection
-- `docs/` — architecture, development, data model, adding a Notebook or publishable entity (`docs/adding-an-entity.md`), local E2E
+- `docs/` — architecture, development, data model, adding a Notebook or publishable entity (`docs/adding-an-entity.md`), local E2E, agent rules (`docs/agent-rules/`)
 
 ## Commands
 
@@ -53,8 +53,9 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
 - Use the Linear issue `gitBranchName` for the branch. Use a separate `git worktree` per ticket when other agents or sessions share the checkout.
 - Merge only after CI is green on the PR.
-- **Definition of done:** ticket is Done only after merge, deploy finished, and **each** acceptance criterion verified live, with evidence per AC in Linear (a 200 or 401 isn't evidence). Read your own diff before merging, and check that tests fail when the fix is reverted. See `.cursor/rules/definition-of-done.mdc`.
-- **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `.cursor/rules/aws-changes.mdc`.
+- **Definition of done:** ticket is Done only after merge, deploy finished, and **each** acceptance criterion verified live, with evidence per AC in Linear (a 200 or 401 isn't evidence). Read your own diff before merging, and check that tests fail when the fix is reverted. See `docs/agent-rules/definition-of-done.md`.
+- **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `docs/agent-rules/aws-changes.md`.
+- **Agent rules:** `docs/agent-rules/` holds the detailed rules, including `engineer-brief.md`, the brief an implementing agent gets from the coordinating session.
 - **Docs:** if a change affects setup, architecture, commands, or infra, update the relevant doc (`docs/`, root `README.md`, `CLAUDE.md`, or `infra/RUNBOOK.md`) in the same PR.
 
 ## Hosting & Integrations

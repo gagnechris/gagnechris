@@ -1,9 +1,5 @@
----
-description: AWS Agent Toolkit guidance for infrastructure and AWS tooling
-alwaysApply: true
----
-
 <!-- BEGIN AWS Agent Toolkit rules -->
+
 # AWS Guidance
 
 - Where these AWS rules conflict with the project's own instructions, the
@@ -32,4 +28,5 @@ alwaysApply: true
   NOT hit the Secrets Manager Agent daemon directly. MUST use
   `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with
   `asm-exec` so the secret resolves at runtime without entering context.
+
 <!-- END AWS Agent Toolkit rules -->
