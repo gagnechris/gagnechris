@@ -58,8 +58,6 @@
     "postPk({postId})": "POST#{postId}",
     "slugPk({slug})": "SLUG#{slug}",
     "slugPostSk()": "POST",
-    "tagPk({tag})": "TAG#{tag}",
-    "tagSk({publishedAt},{postId})": "TS#{publishedAt}#POST#{postId}",
     "statusGsi1Pk({status})": "STATUS#{status}",
     "statusGsi1Sk({sortTs},{postId})": "TS#{sortTs}#POST#{postId}",
     "projectPk({projectId})": "PROJECT#{projectId}",
