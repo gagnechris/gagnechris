@@ -748,7 +748,7 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 ## Admin and Notebook apps
 
-- CMS: `https://admin.gagnechris.com` (Posts at `/`, `/projects`, `/home`, `/resume`, `/settings/users`). Notebook: `https://notebook.gagnechris.com` (`/` opens Today; `/upcoming`, `/notes`, `/tasks`, `/settings/templates`). There is no public login link.
+- CMS: `https://admin.gagnechris.com` (Posts at `/`, `/pages` with `/home` and `/resume`, `/projects`, `/settings/users`). Notebook: `https://notebook.gagnechris.com` (`/` opens Today; `/upcoming`, `/notes`, `/tasks`, `/settings/templates`). There is no public login link.
 - **Add a passkey** in either app's account menu (iOS: More) opens managed login's add-passkey page for that app's client.
 - Each app signs in with its own Cognito client through managed login (`signInWithRedirect`, auth code + PKCE) and returns to the page that started sign-in. Opening the second app within an hour of signing in to the first is silent; after that it asks once, then stays signed in for 30 days.
 - Tokens are in that origin's `localStorage` (`CognitoIdentityServiceProvider.<clientId>.*`). API calls send the **ID token** (`aud` = that app's client).

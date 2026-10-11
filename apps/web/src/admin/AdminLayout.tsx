@@ -14,8 +14,12 @@ const SECTIONS: ShellNavSection[] = [
     label: 'Public site',
     items: [
       { to: '/', label: 'Posts', icon: 'posts', end: true },
-      { to: '/home', label: 'Home page', tabLabel: 'Home', icon: 'home' },
-      { to: '/resume', label: 'Resume', icon: 'resume' },
+      {
+        to: '/pages',
+        label: 'Pages',
+        icon: 'pages',
+        childPaths: ['/home', '/resume'],
+      },
       { to: '/projects', label: 'Projects', icon: 'projects' },
     ],
   },
