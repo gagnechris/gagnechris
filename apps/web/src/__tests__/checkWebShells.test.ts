@@ -9,6 +9,7 @@ import {
   checkWebShells,
   demoChunkProblems,
   PUBLIC_ENTRY_ASSETS,
+  PUBLIC_ENTRY_JS_BUDGET,
 } from '../../scripts/checkWebShells';
 
 const GA_ID = 'G-X';
@@ -60,6 +61,9 @@ function webRoot(files: Record<string, string>): string {
     [`dist${FONT}`]: FONT_BYTES,
     'dist/assets/index-abc.css': `@font-face{font-family:Serif;src:url('${FONT}') format('woff2')}`,
     'dist/.vite/manifest.json': JSON.stringify(MANIFEST),
+    'dist/assets/index-abc.js': 'import"./shared-abc.js";',
+    'dist/assets/shared-abc.js': 'export const a=1;',
+    'dist/assets/index-def.js': 'class ZodError extends Error{}',
     'dist-admin/index.html': APP_SHELL,
     'dist-notebook/index.html': APP_SHELL,
     'dist-notebook/manifest.json': JSON.stringify({
@@ -291,6 +295,37 @@ describe('checkWebShells', () => {
     expect(problems).toEqual([
       `assets/index-abc.css loads a font that is not in dist: ${url}`,
     ]);
+  });
+
+  it('allows zod in a lazy chunk but not in the entry or its static imports', () => {
+    expect(
+      check(
+        webRoot({
+          'dist/assets/shared-abc.js': 'class ZodError extends Error{}',
+        }),
+      ),
+    ).toEqual(['assets/shared-abc.js bundles zod into every public page']);
+  });
+
+  it('fails when the entry JS outgrows its budget', () => {
+    const problems = check(
+      webRoot({
+        'dist/assets/shared-abc.js': 'x'.repeat(PUBLIC_ENTRY_JS_BUDGET),
+      }),
+    );
+    expect(problems).toEqual([
+      expect.stringMatching(
+        new RegExp(
+          `^the public entry JS is \\d+ bytes \\(budget ${PUBLIC_ENTRY_JS_BUDGET}\\)$`,
+        ),
+      ),
+    ]);
+  });
+
+  it('fails when a chunk on the entry graph is not in dist', () => {
+    expect(check(webRoot({ 'dist/assets/shared-abc.js': '\0delete' }))).toEqual(
+      ['assets/shared-abc.js is in the manifest but not in dist'],
+    );
   });
 
   it('fails when the public build manifest is missing', () => {
