@@ -89,7 +89,11 @@ npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # Option B pages, KVS keys, publish routes and publisher-owned S3 keys from publisher targets (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
-npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there; demos only in lazy chunks; app shells load bundled scripts only (CI)
+npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
+npm run check:rn-bundles            # packages mobile imports bundle without Node-only or banned imports (CI)
+npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)
+npm run check:tsconfig-coverage     # each workspace's typecheck covers every .ts file in it (CI)
+npm run check:case-collisions       # no tracked paths or module stems that differ only by case (CI)
 npm run e2e:local     # publish lifecycle smoke (Playwright api project, own stack)
 npm run e2e:browser   # Playwright (Chromium + WebKit) against its own local stack
 ```
@@ -113,20 +117,23 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `VITE_API_TARGET`                           | Dev only: set `prod` to proxy `/api` to production                                                                                                                                                                                                                                    |
 | `VITE_LOCAL_API_ORIGIN`                     | Dev only: local API origin (set by `scripts/local/env.sh`)                                                                                                                                                                                                                            |
 | `VITE_LOCAL_SITE_ORIGIN`                    | Dev only: publisher static origin for `/__site` (publisher pages). Builds ignore it and fetch same-origin paths, as in prod                                                                                                                                                           |
+| `GA_MEASUREMENT_ID`                         | Public build only, read from the process environment (not `.env` files): a GA4 measurement ID turns on Google Analytics. `scripts/deploy-web.sh` sets it; unset, the build loads no GA                                                                                                |
 | `VITE_AUTH_MODE`                            | Dev only: `local` fakes sign-in; **forbidden in production builds**                                                                                                                                                                                                                   |
 | `VITE_PUBLIC_SITE_ORIGIN`                   | Origin the admin app links public pages to (View live, preview links; new tab, `rel="noopener noreferrer"`) and loads Home and Resume preview images from. Default: `https://gagnechris.com` in builds, `http://localhost:5173` in dev; browser e2e sets the local site               |
 | `VITE_ADMIN_ORIGIN`, `VITE_NOTEBOOK_ORIGIN` | Where the admin and Notebook apps link each other under Your apps (shown only to users in the other app's group). Default: `https://admin.gagnechris.com` and `https://notebook.gagnechris.com` in builds, `http://localhost:5174` and `:5175` in dev; browser e2e sets its own ports |
 
 ### Local stack (`scripts/local/env.sh`)
 
-| Variable                             | Default / notes                                       |
-| ------------------------------------ | ----------------------------------------------------- |
-| `DYNAMODB_LOCAL_HOST_PORT`           | `8000` (host port Compose publishes)                  |
-| `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:${DYNAMODB_LOCAL_HOST_PORT}`        |
-| `DATA_TABLE_NAME`                    | `gagnechris-local` (refuses `gagnechris-prod`)        |
-| `SITE_BUCKET_NAME`                   | Repo `.local-site/` filesystem “bucket”               |
-| `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                       |
-| `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees) |
+| Variable                             | Default / notes                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------- |
+| `DYNAMODB_LOCAL_HOST_PORT`           | `8000` (host port Compose publishes)                                             |
+| `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:${DYNAMODB_LOCAL_HOST_PORT}`                                   |
+| `DATA_TABLE_NAME`                    | `gagnechris-local` (refuses `gagnechris-prod`)                                   |
+| `SITE_BUCKET_NAME`                   | Repo `.local-site/` filesystem “bucket”                                          |
+| `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                                                  |
+| `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees)                            |
+| `USER_DIRECTORY`                     | `memory`: in-memory stand-in for the Cognito user pool behind `/api/admin/users` |
+| `LOCAL_KVS_FILE`                     | Repo `.local-kvs.json`: stand-in for the CloudFront KeyValueStore slug allowlist |
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: outside Lambda the Go API logs the mail it sends (contact form, resume download) and appends it as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`contact.Outbox` in `services/api/internal/contact`).
 
@@ -147,7 +154,7 @@ Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRA
 
 - Region: `us-east-1`
 - Account from credentials / `CDK_ACCOUNT`
-- `ALERTS_EMAIL` for Guardrails when synthesizing Guardrails-related stacks
+- `ALERTS_EMAIL` (or `-c alertsEmail=you@example.com`) is required for every synth
 - Web deploy: `npm run deploy:web` (or CI on merge to `main`)
 
 ## Troubleshooting
