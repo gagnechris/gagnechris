@@ -9,7 +9,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import MoreScreen from '../app/(tabs)/more/index';
 import AdminMoreScreen from '../app/admin/more/index';
-import AdminPostsScreen from '../app/admin/posts/index';
+import AdminPagesScreen from '../app/admin/pages/index';
 import Index from '../app/index';
 import NotesScreen from '../app/(tabs)/notes/index';
 import TasksScreen from '../app/(tabs)/tasks/index';
@@ -240,12 +240,12 @@ describe('Spaces', () => {
   it('Admin tabs not in the app yet open on the web', async () => {
     const renderer = await render(
       <Providers>
-        <AdminPostsScreen />
+        <AdminPagesScreen />
       </Providers>,
     );
     act(() => byLabel(renderer, 'Open on the web').props.onPress());
     expect(openBrowserAsync).toHaveBeenCalledWith(
-      'https://admin.gagnechris.com/posts',
+      'https://admin.gagnechris.com/home',
     );
   });
 

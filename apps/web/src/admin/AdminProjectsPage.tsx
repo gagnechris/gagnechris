@@ -7,11 +7,11 @@ import {
 } from '@gagnechris/shared';
 import {
   errorMessage,
+  newPlaceholderSlug,
   useCreateProjectMutation,
   useCreateStarterProjectsMutation,
   useProjectsQuery,
 } from '@gagnechris/app-core';
-import { newPlaceholderSlug } from './placeholderSlug';
 import { NEW_PROJECT_NAME } from './projectDraft';
 import { Button } from '../kit/Button';
 import { StatusBadge } from '../kit/StatusBadge';

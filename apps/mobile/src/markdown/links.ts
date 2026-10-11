@@ -11,14 +11,23 @@ import { Linking } from 'react-native';
 /** Root-relative note links and images resolve against the Notebook host, as on the web. */
 export const NOTEBOOK_ORIGIN = `https://notebook.${APEX_DOMAIN}`;
 
-export const resolveMarkdownUrl = (href: string): string | null => {
+/** Post links and images resolve against the public site, where they are published. */
+export const PUBLIC_SITE_ORIGIN = `https://${APEX_DOMAIN}`;
+
+export const resolveMarkdownUrl = (
+  href: string,
+  origin: string = NOTEBOOK_ORIGIN,
+): string | null => {
   if (!isSafeLinkHref(href, POST_LINK_SCHEMES)) return null;
-  return isSitePath(href) ? `${NOTEBOOK_ORIGIN}${href}` : href;
+  return isSitePath(href) ? `${origin}${href}` : href;
 };
 
 /** Web pages open in SFSafariViewController; `mailto:` and `tel:` go to the system. */
-export const openMarkdownLink = async (href: string): Promise<void> => {
-  const url = resolveMarkdownUrl(href);
+export const openMarkdownLink = async (
+  href: string,
+  origin: string = NOTEBOOK_ORIGIN,
+): Promise<void> => {
+  const url = resolveMarkdownUrl(href, origin);
   if (!url) return;
   try {
     if (/^https?:/i.test(url)) {
