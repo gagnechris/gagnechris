@@ -1,5 +1,5 @@
 import { Alert } from 'react-native';
-import { addPasskey, canAddPasskey } from '../../../src/auth/passkey';
+import { addPasskeyFromMore, canAddPasskey } from '../../../src/auth/passkey';
 import { signOutWarning } from '../../../src/cache';
 import { useSession } from '../../../src/session';
 import { color } from '../../../src/theme';
@@ -29,7 +29,7 @@ const AdminMoreScreen = () => {
           <Row
             title="Add a passkey"
             accessibilityHint="Opens the sign-in page to save a passkey for this account"
-            onPress={() => void addPasskey()}
+            onPress={() => void addPasskeyFromMore()}
             trailing={
               <Icon name="chevron.right" size={14} color={color.muted} />
             }

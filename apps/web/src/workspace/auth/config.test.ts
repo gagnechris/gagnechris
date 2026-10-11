@@ -79,4 +79,20 @@ describe('addPasskeyUrl', () => {
       redirect_uri: `${window.location.origin}/auth/callback`,
     });
   });
+  test('renews the managed-login session with a fresh sign-in back to the callback', async () => {
+    vi.stubEnv('VITE_COGNITO_AUTH_DOMAIN', 'auth.example.com');
+    const { renewManagedLoginUrl, setAuthClientId } = await loadConfig();
+    setAuthClientId('admin-client');
+    const url = new URL(renewManagedLoginUrl());
+    expect(`${url.origin}${url.pathname}`).toBe(
+      'https://auth.example.com/oauth2/authorize',
+    );
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      client_id: 'admin-client',
+      redirect_uri: `${window.location.origin}/auth/callback`,
+      response_type: 'code',
+      scope: 'openid email profile',
+      prompt: 'login',
+    });
+  });
 });

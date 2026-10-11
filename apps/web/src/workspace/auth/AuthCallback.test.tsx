@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import AuthCallback from './AuthCallback';
-import { RETURN_TO_KEY } from './session';
+import { passkeyCallbackStep, RETURN_TO_KEY } from './session';
 
 vi.mock('aws-amplify/auth', () => ({
   fetchAuthSession: vi.fn(async () => ({ tokens: { idToken: 'id-token' } })),
@@ -13,7 +13,11 @@ vi.mock('aws-amplify/auth', () => ({
 vi.mock('aws-amplify/utils', () => ({
   Hub: { listen: () => () => undefined },
 }));
-vi.mock('./config', () => ({ ensureAmplifyConfigured: vi.fn() }));
+vi.mock('./config', () => ({
+  addPasskeyUrl: () => 'https://auth.example.com/passkeys/add',
+  ensureAmplifyConfigured: vi.fn(),
+  renewManagedLoginUrl: () => 'https://auth.example.com/oauth2/authorize',
+}));
 
 const renderCallback = () =>
   render(
@@ -32,6 +36,7 @@ const renderCallback = () =>
 describe('AuthCallback', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    window.history.replaceState(null, '', '/auth/callback?code=x&state=y');
   });
 
   test("lands on the app's home after sign-in", async () => {
@@ -44,5 +49,19 @@ describe('AuthCallback', () => {
     renderCallback();
     expect(await screen.findByText('Deep-linked note')).toBeInTheDocument();
     expect(window.sessionStorage.getItem(RETURN_TO_KEY)).toBeNull();
+  });
+
+  test('says so when the passkey page still finds no session after signing in', async () => {
+    passkeyCallbackStep('?result=invalid_session&first');
+    window.history.replaceState(
+      null,
+      '',
+      '/auth/callback?result=invalid_session',
+    );
+    renderCallback();
+    expect(
+      await screen.findByText(/Couldn’t open the passkey page/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('App home')).not.toBeInTheDocument();
   });
 });
