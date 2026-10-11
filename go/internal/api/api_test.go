@@ -233,6 +233,43 @@ func TestAuth(t *testing.T) {
 	}
 }
 
+func TestAdminAuthAcrossClients(t *testing.T) {
+	ta := newTestApp(t,
+		Route{Method: "GET", Pattern: "/admin/posts", Auth: SiteAdmin, Handler: ok(map[string]any{})},
+		Route{Method: "GET", Pattern: "/admin/users", Auth: UserAdmin, Handler: ok(map[string]any{})},
+	)
+	iosAccess := func(groups string) map[string]string {
+		return map[string]string{"sub": "u1", "token_use": "access", "client_id": "ios", "cognito:groups": groups}
+	}
+	adminWeb := func(groups string) map[string]string {
+		return map[string]string{"sub": "u1", "token_use": "id", "aud": "admin-web", "cognito:groups": groups}
+	}
+	cases := []struct {
+		name    string
+		path    string
+		claims  map[string]string
+		status  int
+		message string
+	}{
+		{"ios site-admin", "/api/admin/posts", iosAccess("[site-admin]"), 200, ""},
+		{"ios without site-admin", "/api/admin/posts", iosAccess("[notebook]"), 403, "Requires the site-admin group"},
+		{"ios user-admin", "/api/admin/users", iosAccess("[user-admin]"), 200, ""},
+		{"ios site-admin on users", "/api/admin/users", iosAccess("[site-admin]"), 403, "Requires the user-admin group"},
+		{"admin web site-admin", "/api/admin/posts", adminWeb("[site-admin]"), 200, ""},
+		{"admin web site-admin on users", "/api/admin/users", adminWeb("[site-admin]"), 403, "Requires the user-admin group"},
+		{"notebook web", "/api/admin/posts", notebookClaims("[site-admin]"), 403, "Token is not from the admin app client"},
+	}
+	for _, c := range cases {
+		res := ta.do("GET", c.path, c.claims, nil)
+		if res.Status != c.status {
+			t.Errorf("%s: status %d, want %d", c.name, res.Status, c.status)
+		}
+		if c.message != "" && bodyOf(t, res)["message"] != c.message {
+			t.Errorf("%s: body %s", c.name, res.Body)
+		}
+	}
+}
+
 func TestNewRouterRejectsMisdeclaredAuth(t *testing.T) {
 	defer func() {
 		if recover() == nil {

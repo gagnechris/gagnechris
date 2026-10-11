@@ -143,11 +143,11 @@ export class ApiStack extends Stack {
     userPool.grant(this.apiFunction, ...USER_ADMIN_COGNITO_ACTIONS);
 
     // One authorizer per prefix so a token from the other web app's client
-    // gets a gateway 401. The iOS app calls Notebook, so its client is in that
-    // audience only; groups still gate every route in the Lambda.
+    // gets a gateway 401. The iOS app has both spaces, so its client is in
+    // both audiences; groups still gate every route in the Lambda.
     const issuer = `https://cognito-idp.${Stack.of(this).region}.amazonaws.com/${userPool.userPoolId}`;
     const adminAuthorizer = new HttpJwtAuthorizer('CognitoJwtAdmin', issuer, {
-      jwtAudience: [adminWebClientId],
+      jwtAudience: [adminWebClientId, iosClientId],
       identitySource: ['$request.header.Authorization'],
     });
     const notebookAuthorizer = new HttpJwtAuthorizer(

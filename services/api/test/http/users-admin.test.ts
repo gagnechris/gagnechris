@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import type { ManagedUser } from '@gagnechris/shared';
-import { siteAdmin, userAdmin } from './support/claims.js';
+import { idToken, siteAdmin, userAdmin } from './support/claims.js';
 import { useApi } from './support/harness.js';
 
 const OWNER = 'owner';
@@ -356,12 +356,32 @@ describe('users and access', () => {
     ).toBe(200);
   });
 
-  it('needs the user-admin group', async () => {
-    const res = await call('GET', '/admin/users', undefined, siteAdmin());
-    expect(res).toEqual({
+  it('needs the user-admin group, from the admin web or iOS client', async () => {
+    const forbidden = {
       status: 403,
       body: { error: 'forbidden', message: 'Requires the user-admin group' },
-    });
+    };
+    expect(await call('GET', '/admin/users', undefined, siteAdmin())).toEqual(
+      forbidden,
+    );
+    expect(
+      await call(
+        'GET',
+        '/admin/users',
+        undefined,
+        idToken('ios-admin', 'ios', ['site-admin', 'notebook']),
+      ),
+    ).toEqual(forbidden);
+    expect(
+      (
+        await call(
+          'GET',
+          '/admin/users',
+          undefined,
+          idToken(OWNER, 'ios', ['user-admin']),
+        )
+      ).status,
+    ).toBe(200);
   });
 });
 
