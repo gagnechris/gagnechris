@@ -525,9 +525,42 @@ describe('tasks parity over HTTP (DynamoDB Local)', () => {
     expect(deleted.etag).toBe('"5"');
     expect(deleted.body).toMatchObject({ deleted: true, version: 5 });
     expect((await call('GET', path)).status).toBe(404);
-    expect(
-      (await call('PUT', path, { body: { title: 'x' }, ifMatch: '*' })).status,
-    ).toBe(404);
+
+    // Writes to a tombstone answer the shape the iOS outbox restores from;
+    // with If-Match the same tombstone comes back as a 412.
+    const tombstone = expect.objectContaining({
+      id: TASK_A,
+      deleted: true,
+      version: 5,
+    });
+    const deletedConflict = {
+      error: 'deleted',
+      message: `task ${TASK_A} was deleted`,
+      currentVersion: 5,
+      current: tombstone,
+    };
+    const put = await call('PUT', path, { body: { version: 4, title: 'x' } });
+    expect(put.status).toBe(409);
+    expect(put.body).toEqual(deletedConflict);
+    const complete = await call('POST', `${path}/complete`, {
+      body: { version: 4 },
+    });
+    expect(complete.status).toBe(409);
+    expect(complete.body).toEqual(deletedConflict);
+    const replayedDelete = await call('DELETE', path, {
+      body: { version: 4 },
+    });
+    expect(replayedDelete.status).toBe(409);
+    expect(replayedDelete.body).toEqual(deletedConflict);
+    const starOnTombstone = await call('PUT', path, {
+      body: { title: 'x' },
+      ifMatch: '*',
+    });
+    expect(starOnTombstone.status).toBe(412);
+    expect(starOnTombstone.body).toMatchObject({
+      error: 'precondition_failed',
+      current: tombstone,
+    });
   });
 
   it('answers validation errors with field codes', async () => {

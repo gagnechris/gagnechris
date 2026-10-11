@@ -50,6 +50,10 @@ export default function NotebookTaskPage() {
     toPayload: (current) => taskPayloadFromDraft(current),
     conflictMessage:
       'Conflict — another device updated this task. Reload and try again.',
+    conflictMessages: {
+      deleted:
+        'Another device deleted this task. Copy what you typed to keep it.',
+    },
     loadErrorFallback: 'Could not load task.',
     delete: {
       confirm: 'Delete this task? It will disappear from your list.',

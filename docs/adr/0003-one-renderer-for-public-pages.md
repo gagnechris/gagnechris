@@ -49,7 +49,17 @@ All numbers come from the posts index spike, on an Apple Silicon Mac with Node 2
 
 Of the 235,572 added bytes, `react-dom` is 225,403, `react` 8,563 and `public-ui` 1,525. Without the define, esbuild bundles both React builds and Lambda (which sets no `NODE_ENV`) would run the development one.
 
-**Publisher cold start.** Module load of the whole bundle (`require` in a fresh `node` with `--enable-source-maps`, 40 runs, two interleaved rounds): p50 155.2 ms before, 162.3 ms after, so about +7 ms. Of that, loading React and `react-dom/server` alone is 7.6 ms, and the first render of a 40-post index costs 3.5 ms against 0.3 ms for the string renderer (warm: 0.16 ms against 0.09 ms). The Lambda has 512 MB on arm64, which gets a fraction of a vCPU, so expect a few times that on a cold start (an estimate of roughly 20 to 35 ms); the `Init Duration` in the publisher's `REPORT` lines after deploy gives the real figure. The publisher consumes a DynamoDB stream, so its cold start is never on a visitor's request.
+**Publisher cold start.** Module load of the whole bundle (`require` in a fresh `node` with `--enable-source-maps`, 40 runs, two interleaved rounds): p50 155.2 ms before, 162.3 ms after, so about +7 ms. Of that, loading React and `react-dom/server` alone is 7.6 ms, and the first render of a 40-post index costs 3.5 ms against 0.3 ms for the string renderer (warm: 0.16 ms against 0.09 ms). The Lambda has 512 MB on arm64, which gets a fraction of a vCPU, so expect a few times that on a cold start (an estimate of roughly 20 to 35 ms).
+
+Measured in production (`Init Duration` from the publisher's `REPORT` lines, Logs Insights; the log group keeps 14 days):
+
+| Publisher build        | Cold starts | p50      | p95      |
+| ---------------------- | ----------- | -------- | -------- |
+| String renderer        | 225         | 1,099 ms | 1,225 ms |
+| React posts index only | 32          | 1,172 ms | 1,258 ms |
+| Every page on React    | 10          | 897 ms   | 1,239 ms |
+
+The spread between windows is within the noise of a cold start (518 to 1,367 ms on the string renderer alone), so React adds no measurable init time. The publisher consumes a DynamoDB stream, so its cold start is never on a visitor's request.
 
 **Public entry.** `dist/assets/index-*.js` went from 466,223 to 467,741 bytes (gzip -9: 142,465 to 143,078, +613). `hydrateRoot` lives in the `react-dom/client` module the entry already ships. The CSS, `jsx-runtime` and `preload-helper` chunks are byte-for-byte unchanged.
 
@@ -77,7 +87,7 @@ Strings that match the publisher's HTML (`services/publisher/test/render.test.ts
 
 ## 4. Hydration mismatches
 
-A mismatch is not a broken page: React 19 throws the server DOM away and renders on the client, which is what `createRoot` does on every page today, and reports it to `onRecoverableError` (the console, for now). The strategy is to keep the first client render a pure function of the published page:
+A mismatch is not a broken page: React 19 throws the server DOM away and renders on the client, which is what `createRoot` does on every page today, and reports it to `onRecoverableError`, which logs it and sends a `hydration_error` event to GA with the path and error kind. The strategy is to keep the first client render a pure function of the published page:
 
 - **Props are what the page prints.** View models hold formatted strings (dates as `Sep 28`, `datetime` values, year labels) in display order, so the parser reads back the exact props. The old posts parser read only the date from `datetime` and sorted again, which tied posts published on the same UTC day and broke the tie on id, so a cold load could swap them; the view model fixes that (`PostsIndexBody.test.tsx` covers the case).
 - **No clock, locale or time zone in render.** Dates are UTC already. The footer year is the one exception today: `useFooterYear` returns the published year as `useSyncExternalStore`'s server snapshot, so hydration matches and the live year renders straight after (`coldLoadParity.test.tsx` runs it a year later).
@@ -133,12 +143,12 @@ Each step moves one page, or one shared part, into `public-ui` with its view mod
 
 ## 9. Risks
 
-- **Publisher size and cold start:** +9.7% bundle and some tens of milliseconds of init on the 512 MB Lambda (§2). Acceptable for a stream consumer; worth reading `Init Duration` after the first deploy.
+- **Publisher size and cold start:** +9.7% bundle (§2). Acceptable for a stream consumer; production `Init Duration` shows no measurable increase (§2).
 - **`NODE_ENV`:** the define also turns on production branches in every other bundled library (1,469 fewer bytes outside React). `publisher-bundle.test.ts` pins that only production React is bundled.
 - **One React copy:** server and client must run the same React release, or the server markup can drift from what the client expects. The root lockfile has one hoisted `react` and `react-dom`; keep `public-ui`'s React as a peer dependency.
 - **Serialisation:** React's spelling differs from the string renderers (`dateTime`, `&#x27;`, `<!-- -->`). Anything that string-matches published HTML must expect it; parsers and CSS are unaffected.
 - **`tsx`:** the local API and the e2e stack run the publisher through `tsx`, which reads one tsconfig for every file and would compile `public-ui`'s JSX to `React.createElement` with no `React` in scope. Each `.tsx` file in the package starts with `/** @jsxRuntime automatic */`, and `src/server.test.ts` fails on a file without it.
-- **Silent fallbacks:** a mismatch costs the hydration benefit but shows no error to visitors, so a regression could go unnoticed. The tests in §4 catch it before merge; reporting `onRecoverableError` to analytics would catch it in production.
+- **Silent fallbacks:** a mismatch costs the hydration benefit but shows no error to visitors, so a regression could go unnoticed. The tests in §4 catch it before merge, and the `hydration_error` GA event shows it in production.
 - **Deploy order:** CDK (publisher) and the web build deploy in one pipeline, so for a short time new HTML can meet the old app or the reverse. The worst case is today's client render.
 
 ## Follow-up tickets

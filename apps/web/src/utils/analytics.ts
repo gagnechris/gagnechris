@@ -51,6 +51,24 @@ const trackNamedEvent = (
   }
 };
 
+const hydrationErrorKind = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : '';
+  const mismatch =
+    /server rendered (HTML|text) didn't match/.exec(message)?.[1] ??
+    /^Minified React error #418;.*args\[\]=(HTML|text)/.exec(message)?.[1];
+  if (mismatch) return `${mismatch.toLowerCase()}_mismatch`;
+  const code = /^Minified React error #(\d+);/.exec(message)?.[1];
+  return code ? `react_${code}` : 'other';
+};
+
+// React's message can include a diff of the page, so only its kind is sent.
+export const trackHydrationError = (path: string, error: unknown) => {
+  trackNamedEvent('hydration_error', {
+    page_path: path,
+    error_kind: hydrationErrorKind(error),
+  });
+};
+
 export const trackBearsGamePick = (game: BearsGame, from: BearsGameFrom) => {
   trackNamedEvent('bears_game_pick', { game, from });
 };

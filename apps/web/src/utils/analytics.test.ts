@@ -8,6 +8,7 @@ import {
   trackBearsGameStart,
   trackBearsGameComplete,
   trackBearsTipLinkClick,
+  trackHydrationError,
 } from './analytics';
 
 const mockGtag = vi.fn();
@@ -177,6 +178,31 @@ describe('analytics utilities', () => {
       }).not.toThrow();
 
       globalThis.window = originalWindow;
+    });
+  });
+
+  describe('trackHydrationError', () => {
+    test.each([
+      [
+        'Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message',
+        'html_mismatch',
+      ],
+      [
+        'Minified React error #418; visit https://react.dev/errors/418?args[]=text&args[]= for the full message',
+        'text_mismatch',
+      ],
+      [
+        'Minified React error #423; visit https://react.dev/errors/423 for the full message',
+        'react_423',
+      ],
+      ['Something else', 'other'],
+    ])('%s is sent as %s', (message, kind) => {
+      trackHydrationError('/resume', new Error(message));
+
+      expect(mockGtag).toHaveBeenCalledWith('event', 'hydration_error', {
+        page_path: '/resume',
+        error_kind: kind,
+      });
     });
   });
 });

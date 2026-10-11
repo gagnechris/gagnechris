@@ -14,6 +14,22 @@ export {
   type PostDraftFields,
 } from './postDraft.js';
 export { isPlaceholderSlug, newPlaceholderSlug } from './placeholderSlug.js';
+export {
+  emptyProjectDraft,
+  emptyProjectLink,
+  hasProjectDraftErrors,
+  hasProjectPublishErrors,
+  NEW_PROJECT_NAME,
+  projectDraftFromProject,
+  projectHrefError,
+  projectLinkErrors,
+  projectOrderError,
+  projectPayload,
+  projectPreviewImageError,
+  type ProjectDraftFields,
+  type ProjectLinkDraft,
+  type ProjectLinkErrors,
+} from './projectDraft.js';
 export { useLatest } from './useLatest.js';
 export {
   clearPendingFlushes,

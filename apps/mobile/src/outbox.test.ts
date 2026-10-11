@@ -242,6 +242,38 @@ describe('the outbox', () => {
     expect(server.state.taskStore.get(T1)?.noteId).toBe(day);
   });
 
+  it('keeps queued writes through an expired session and sends them after sign-in', async () => {
+    setOnline(false);
+    await putNote('n1', { version: 1, bodyMarkdown: 'written offline' });
+
+    // The refresh token expired while offline, so the drain goes out unsigned.
+    server.state.refuseWrites = {
+      status: 401,
+      body: { error: 'unauthorized', message: 'Unauthorized' },
+    };
+    setOnline(true);
+    await activeOutbox()!.drain();
+    expect(server.state.requests).toContain('PUT /api/notebook/notes/n1');
+    expect(outboxFailedCount()).toBe(0);
+    expect(outboxPendingCount()).toBe(1);
+
+    // An online write while signed out waits in line instead of failing.
+    const reply = await putNote('n1', {
+      version: 1,
+      bodyMarkdown: 'written offline, then more',
+    });
+    expect(reply.data?.bodyMarkdown).toBe('written offline, then more');
+    expect(outboxFailedCount()).toBe(0);
+
+    await stopOutbox();
+    server.state.refuseWrites = null;
+    await open();
+    expect(outboxPendingCount() + outboxFailedCount()).toBe(0);
+    expect(server.state.store.get('n1')?.bodyMarkdown).toBe(
+      'written offline, then more',
+    );
+  });
+
   it('holds writes once the server requires a newer app', async () => {
     setUpgradeRequired('2.0.0');
     const reply = await putNote('n1', { version: 1, bodyMarkdown: 'later' });

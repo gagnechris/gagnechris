@@ -193,6 +193,21 @@ describe('task conflicts', () => {
     expect(cachedTask(T1)?.deleted).toBe(true);
     expect(outboxConflicts()).toEqual([]);
   });
+
+  it('treats a re-sent delete that already landed as applied', async () => {
+    setOnline(false);
+    // The phone's first DELETE reached the server, but its response did not.
+    server.deleteTask(T1);
+    await client.DELETE('/api/notebook/tasks/{id}', {
+      params: { path: { id: T1 } },
+      body: { version: 1 },
+    });
+    await sync();
+
+    expect(outboxConflicts()).toEqual([]);
+    expect(outboxPendingCount() + outboxFailedCount()).toBe(0);
+    expect(cachedTask(T1)?.deleted).toBe(true);
+  });
 });
 
 describe('note conflicts', () => {

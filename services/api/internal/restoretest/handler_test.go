@@ -102,7 +102,7 @@ func completed(detail map[string]any) string {
 	d := map[string]any{
 		"restoreJobId":       "job-1",
 		"status":             "COMPLETED",
-		"resourceType":       "DynamoDB",
+		"resourceType":       "DynamoDB.FullyManaged",
 		"createdResourceArn": tableArnOfTest,
 	}
 	for k, v := range detail {
@@ -354,10 +354,19 @@ func TestDailyFlagsARecoveryPoint26HoursOldOrMissing(t *testing.T) {
 	}
 }
 
-func TestDailyFlagsNoSuccessfulValidationIn8Days(t *testing.T) {
-	h, _ := runDaily(t, func(f *FreshnessDeps) { f.NewestSuccessfulValidation = fixedTime(hoursAgo(8*24 + 1)) })
-	if v, _ := h.metric(t, "RestoreValidationMissing"); v != 1 {
-		t.Errorf("RestoreValidationMissing = %v", v)
+func TestDailyFlagsAMissedWeeklyRunOnTheSameDay(t *testing.T) {
+	for _, c := range []struct {
+		newest time.Time
+		want   float64
+	}{
+		// Last week's run started at 09:00; this week's has not validated by 12:00.
+		{hoursAgo(7*24 + 3), 1},
+		{hoursAgo(7 * 24), 0},
+	} {
+		h, _ := runDaily(t, func(f *FreshnessDeps) { f.NewestSuccessfulValidation = fixedTime(c.newest) })
+		if v, _ := h.metric(t, "RestoreValidationMissing"); v != c.want {
+			t.Errorf("newest %v: RestoreValidationMissing = %v", c.newest, v)
+		}
 	}
 }
 
@@ -371,7 +380,7 @@ func TestDailyFlagsADeletedRestoreTestingPlan(t *testing.T) {
 	}
 }
 
-func TestDailyGivesANewPlan8DaysForItsFirstValidation(t *testing.T) {
+func TestDailyGivesANewPlanAWeekForItsFirstValidation(t *testing.T) {
 	h, _ := runDaily(t, func(f *FreshnessDeps) {
 		f.NewestSuccessfulValidation = fixedTime(time.Time{})
 		f.RestoreTestingPlanCreatedAt = func(context.Context) (time.Time, error) { return hoursAgo(2 * 24), nil }

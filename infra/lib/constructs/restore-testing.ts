@@ -227,7 +227,8 @@ export class AppTableRestoreTesting extends Construct {
         detailType: ['Restore Job State Change'],
         detail: {
           status: ['COMPLETED'],
-          resourceType: ['DynamoDB'],
+          // Tables on advanced DynamoDB backup report DynamoDB.FullyManaged.
+          resourceType: ['DynamoDB', 'DynamoDB.FullyManaged'],
         },
       },
       targets: [new LambdaFunction(this.validator, { retryAttempts: 2 })],
@@ -328,7 +329,7 @@ export class AppTableRestoreTesting extends Construct {
       {
         alarmName: `${prefix}-restore-validation-missing`,
         alarmDescription:
-          'No restore test of the app table validated SUCCESSFUL in 8 days: the plan did not run, found no recovery point, or the validator never ran (RUNBOOK Weekly restore testing)',
+          'No restore test of the app table validated SUCCESSFUL in a week: the plan did not run, found no recovery point, or the validator never ran (RUNBOOK Weekly restore testing)',
         serviceName: RESTORE_TEST_SERVICE_NAME,
         metricName: RESTORE_TEST_METRICS.validationMissing,
         alertsTopic,
