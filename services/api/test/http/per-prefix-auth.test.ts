@@ -182,7 +182,7 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     expect(await rowKeys()).toEqual(before);
   });
 
-  it('iOS client: notebook group reads and writes Notebook data, no group opens site content', async () => {
+  it('iOS client: each group opens its own space and nothing else', async () => {
     const iosNotebook = token(clientId('ios'), '[notebook]');
     expect(await writeNotebookData(iosNotebook)).toEqual([201, 201]);
     const list = await call(iosNotebook, 'GET', '/api/notebook/notes');
@@ -190,18 +190,25 @@ describe('per-prefix authorization (DynamoDB Local)', () => {
     expect(list.body.items).toHaveLength(1);
 
     const before = await rowKeys();
-    const iosAll = token(clientId('ios'), '[site-admin notebook user-admin]');
-    for (const claims of [iosNotebook, iosAll]) {
-      const { post, home, homeUpdate } = await writeSiteContent(claims);
-      expect([post.status, home.status, homeUpdate.status]).toEqual([
-        403, 403, 403,
-      ]);
-    }
-    const noGroup = token(clientId('ios'), '[site-admin]');
-    expect((await call(noGroup, 'GET', '/api/notebook/notes')).status).toBe(
+    const denied = await writeSiteContent(iosNotebook);
+    expect([
+      denied.post.status,
+      denied.home.status,
+      denied.homeUpdate.status,
+    ]).toEqual([403, 403, 403]);
+    const iosSiteAdmin = token(clientId('ios'), '[site-admin]');
+    expect(
+      (await call(iosSiteAdmin, 'GET', '/api/notebook/notes')).status,
+    ).toBe(403);
+    expect((await call(iosSiteAdmin, 'GET', '/api/admin/users')).status).toBe(
       403,
     );
     expect(await rowKeys()).toEqual(before);
+
+    const { post, home, homeUpdate } = await writeSiteContent(iosSiteAdmin);
+    expect([post.status, home.status, homeUpdate.status]).toEqual([
+      201, 200, 200,
+    ]);
   });
 
   it('web client + admin group reads and writes nothing, even with AUTH_LEGACY_WEB_CLIENT_ID set', async () => {

@@ -24,15 +24,16 @@ type authPolicy struct {
 	prefix      string
 	group       string
 	clientIDEnv string
-	trustsIOS   bool
 }
 
+// The iOS app has both spaces, so its client is trusted on every prefix; the
+// group still decides.
 const iosClientIDEnv = "IOS_CLIENT_ID"
 
 var authPolicies = map[Auth]authPolicy{
 	SiteAdmin: {prefix: "/admin", group: "site-admin", clientIDEnv: "ADMIN_WEB_CLIENT_ID"},
 	UserAdmin: {prefix: "/admin", group: "user-admin", clientIDEnv: "ADMIN_WEB_CLIENT_ID"},
-	Notebook:  {prefix: "/notebook", group: "notebook", clientIDEnv: "NOTEBOOK_WEB_CLIENT_ID", trustsIOS: true},
+	Notebook:  {prefix: "/notebook", group: "notebook", clientIDEnv: "NOTEBOOK_WEB_CLIENT_ID"},
 }
 
 const userAdminPath = "/admin/users"
@@ -103,10 +104,7 @@ func authorize(auth Auth, claims map[string]string) *Response {
 	}
 	policy := authPolicies[auth]
 	clientID := TokenClientID(claims)
-	trusted := []string{envClientID(policy.clientIDEnv)}
-	if policy.trustsIOS {
-		trusted = append(trusted, envClientID(iosClientIDEnv))
-	}
+	trusted := []string{envClientID(policy.clientIDEnv), envClientID(iosClientIDEnv)}
 	if clientID != "" && slices.Contains(trusted, clientID) {
 		if slices.Contains(ClaimGroups(claims["cognito:groups"]), policy.group) {
 			return nil

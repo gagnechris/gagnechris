@@ -17,7 +17,7 @@
 | Refresh lifetime | 30 days from sign-in, with rotation on. Rotation does not extend it. No change for iOS.                                                                                                                                                |
 | Face ID          | No Face ID unlock in v1.                                                                                                                                                                                                               |
 | Auth callback    | `gagnechris://auth/callback` in simulator and dev builds now. `https://notebook.gagnechris.com/ios/auth/callback` before the first TestFlight build, and the custom scheme is removed from the `ios` client then.                      |
-| API audience     | The `/api/notebook` JWT authorizer and router accept the `ios` client when sign-in ships. `/api/admin` does not, until the Admin space.                                                                                                |
+| API audience     | The `/api/notebook` and `/api/admin` JWT authorizers and the router accept the `ios` client; groups gate every route.                                                                                                                  |
 | Later outbox     | Persistent FIFO outbox in expo-sqlite with per-entity coalescing and dependencies; 412 is field merge for tasks and server-wins plus a kept local copy for note bodies; 410 never drops pending edits; 426 pauses writes.              |
 
 ## 1. Stack
@@ -154,7 +154,7 @@ TestFlight needs the Apple Team ID, and so does the HTTPS callback, so they ship
 
 ### API audience
 
-When sign-in ships, the `/api/notebook` authorizer's `jwtAudience` and the router's client check accept the `ios` client ID, and `/api/admin` doesn't until the Admin space exists. This replaces the rule that the `ios` client stays out of every API audience until universal links ([ADR 0002](./0002-admin-notebook-subdomains.md), the comment in `infra/lib/stacks/api-stack.ts`): simulator sign-in against prod needs it, and the custom-scheme exposure lasts only until the first TestFlight build.
+The `/api/notebook` and `/api/admin` authorizers' `jwtAudience` and the router's client check accept the `ios` client ID, because the app has a Notebook and an Admin space. The client is public and its callbacks are https only, returned to the app the notebook host's AASA names, so an `ios` token is as hard to mint as a web one. The `notebook`, `site-admin` and `user-admin` groups still gate every route, whichever client the token comes from.
 
 ## 6. Later milestone: offline outbox
 

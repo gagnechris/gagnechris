@@ -574,12 +574,12 @@ describe('app hosts: API Gateway', () => {
     return byRoute;
   }
 
-  it('pins each prefix to its audience: admin-web on admin, notebook-web and ios on notebook', () => {
+  it('pins each prefix to its audience: admin-web and ios on admin, notebook-web and ios on notebook', () => {
     const byRoute = authorizersByRoute(built.api);
     for (const [keys, audience] of [
       [
         ['ANY /api/admin', 'ANY /api/admin/{proxy+}'],
-        ['cognitoadminwebclientid'],
+        ['cognitoadminwebclientid', 'cognitoiosclientid'],
       ],
       [
         ['ANY /api/notebook', 'ANY /api/notebook/{proxy+}'],
@@ -596,7 +596,8 @@ describe('app hosts: API Gateway', () => {
         );
       }
     }
-    expect(byRoute['ANY /api/admin']).not.toMatch(/ios|notebook|dev/i);
+    expect(byRoute['ANY /api/admin']).not.toMatch(/notebook|dev/i);
+    expect(byRoute['ANY /api/notebook']).not.toMatch(/admin|dev/i);
     expect(JSON.stringify(byRoute)).not.toMatch(
       /DevClient|cognitodevclientid|ImportValue|UserPoolWebClient/,
     );
