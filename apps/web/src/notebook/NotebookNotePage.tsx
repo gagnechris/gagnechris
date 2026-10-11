@@ -37,6 +37,10 @@ export default function NotebookNotePage() {
     toPayload: (current) => notePayloadFromDraft(current),
     conflictMessage:
       'Conflict — another device updated this note. Reload and try again.',
+    conflictMessages: {
+      deleted:
+        'Another device deleted this note. Copy what you typed to keep it.',
+    },
     loadErrorFallback: 'Could not load note.',
     delete: {
       confirm: 'Delete this page? It will disappear from your list.',

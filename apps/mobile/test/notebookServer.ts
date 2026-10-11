@@ -183,10 +183,11 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
   };
 
   /** A write to an entity another device deleted, as the API answers it. */
-  const deletedConflict = (current: Note | Task) => {
+  const deletedConflict = (kind: 'note' | 'task', current: Note | Task) => {
     state.conflicts += 1;
     return json(409, {
       error: 'deleted',
+      message: `${kind} ${current.id} was deleted`,
       current,
       currentVersion: current.version,
     });
@@ -438,7 +439,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (note && input.method === 'PUT') {
       const current = store.get(note[1]!);
       if (!current) return json(404, { error: 'not_found' });
-      if (current.deleted) return deletedConflict(current);
+      if (current.deleted) return deletedConflict('note', current);
       const body = (await input.json()) as Partial<Note> & { version: number };
       const result = put(store, current, body);
       if (result instanceof Response) return result;
@@ -451,7 +452,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     if (note && input.method === 'DELETE') {
       const current = store.get(note[1]!);
       if (!current) return json(404, { error: 'not_found' });
-      if (current.deleted) return deletedConflict(current);
+      if (current.deleted) return deletedConflict('note', current);
       const result = put(store, current, {
         ...((await input.json()) as { version: number }),
         deleted: true,
@@ -482,7 +483,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       const current = taskStore.get(id!);
       if (!current) return json(404, { error: 'not_found' });
       if (current.deleted && input.method !== 'GET')
-        return deletedConflict(current);
+        return deletedConflict('task', current);
       if (input.method === 'GET') {
         return current.deleted
           ? json(404, { error: 'not_found' })

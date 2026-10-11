@@ -367,7 +367,7 @@ func (r *notesRepo) updateDaily(ctx context.Context, userID, area, date string, 
 		return applyNoteUpdate(existing, fields, now)
 	})
 	var notFound *api.NotFoundError
-	if err == nil || !errors.As(err, &notFound) && !errors.Is(err, errNotThisDay) {
+	if err == nil || !errors.As(err, &notFound) && !errors.Is(err, errNotThisDay) && !isDeletedConflict(err) {
 		return n, err
 	}
 	current, err := r.getDaily(ctx, userID, area, date)
@@ -421,4 +421,9 @@ func matchesDailyCreate(n Note, f dailyFields) bool {
 		str(f.title) == n.Title && str(f.bodyMarkdown) == n.BodyMarkdown &&
 		(f.pinned != nil && *f.pinned) == n.Pinned &&
 		slices.Equal(NormalizeTags(tags), n.Tags)
+}
+
+func isDeletedConflict(err error) bool {
+	var conflict *api.ConflictError
+	return errors.As(err, &conflict) && conflict.Code == api.CodeDeleted
 }
