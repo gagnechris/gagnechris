@@ -32,7 +32,7 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 
 `app/index.tsx` redirects to the last space used (`gagnechris.space` in AsyncStorage, written when a space's tab bar mounts) if the user still has it, else to their first space: `/today` or `/admin/posts`. The Notebook paths match the notebook web paths.
 
-A task or note opened from inside a tab is pushed on that tab's stack (`useDetailRoutes` in `src/notebook/detailRoutes.ts`), so Back returns to where it was opened: from Today a task opens at `/today/task/:id`, from a note at `/notes/task/:id`. On its own tab, and from screens outside the tabs (search, conflicts), it opens at `/tasks/:id` or `/notes/:id`, the paths universal links use.
+A task or note opened from inside a tab is pushed on that tab's stack (`useDetailRoutes` in `src/notebook/detailRoutes.ts`), so Back returns to where it was opened: from Today a task opens at `/today/task/:id`, from a note at `/notes/task/:id`. On its own tab, and from screens outside the tabs (search, conflicts), it opens at `/tasks/:id` or `/notes/:id`, the paths universal links use. Today, Upcoming, Notes and Tasks set `unstable_settings.anchor` to `index`, and search and conflicts push with `withAnchor`, so a detail opened that way, or from a universal link, has its tab's list under it.
 
 - **Gate:** `rootGuards` in `src/session.tsx` drives `Stack.Protected`: a signed-in user sees the spaces their groups open, one with no space sees No access, a signed-out user sees sign-in.
 - **Session:** `SessionProvider` takes an `AuthBackend` and a `wipe` callback; `getToken` goes to one `createApiClient` instance. See [Sign-in](#sign-in).
