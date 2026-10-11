@@ -121,7 +121,6 @@ jobs:
               - 'packages/data/**'
               - 'packages/ops/**'
               - 'packages/shared/**'
-              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'
@@ -148,7 +147,7 @@ jobs:
 
       - name: Build the Go API
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
-        run: go -C go build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
+        run: go -C services/api build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
 
       - name: API HTTP suite
         if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
@@ -160,7 +159,7 @@ jobs:
           AWS_ENDPOINT_URL_DYNAMODB: http://127.0.0.1:8001
           COMPOSE_PROJECT_NAME: gagnechris-ci
           SKIP_DYNAMODB_INTEGRATION_SETUP: '1'
-        run: npm run test:integration -w @gagnechris/api
+        run: npm run test:integration -w @gagnechris/api-tests
 
       - name: Stop CI DynamoDB Local
         if: always() && (github.event_name == 'push' || steps.filter.outputs.api == 'true')
@@ -188,7 +187,6 @@ jobs:
               - 'services/api/**'
               - 'services/publisher/**'
               - 'packages/**'
-              - 'go/**'
               - 'package.json'
               - 'package-lock.json'
               - 'tsconfig.base.json'

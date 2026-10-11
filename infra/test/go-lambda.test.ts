@@ -118,7 +118,7 @@ describe('GoLambda', () => {
 });
 
 describe('Go toolchain pin', () => {
-  it('builds the fixture with the same Go version as the go/ module', () => {
+  it('builds the fixture with the same Go version as the services/api module', () => {
     expect(goVersion(FIXTURE_MODULE)).toBe(goVersion(GO_MODULE_ROOT));
   });
 });

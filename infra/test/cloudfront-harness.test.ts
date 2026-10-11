@@ -27,7 +27,7 @@ describe('the CloudFront harness', () => {
 
   it('runs the local static server', () => {
     expect(
-      readFileSync(join(ROOT, 'services/api/local/static-server.ts'), 'utf8'),
+      readFileSync(join(ROOT, 'scripts/local/static-server.ts'), 'utf8'),
     ).toContain("from '@gagnechris/infra/cloudfront-harness'");
   });
 });
