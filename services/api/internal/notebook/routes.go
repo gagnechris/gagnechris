@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"time"
-	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
@@ -82,11 +82,10 @@ func calendarDay(s string) string {
 }
 
 // The size checks report zod's messages, since a 413 carries the first one.
-
-func utf16Len(s string) int { return len(utf16.Encode([]rune(s))) }
+// Lengths count code points, as zod does.
 
 func maxChars(v *api.Validator, key, s string, limit int) {
-	if utf16Len(s) > limit {
+	if utf8.RuneCountInString(s) > limit {
 		v.FailWith(key, api.CodeTooBig, "Too big: expected string to have <="+strconv.Itoa(limit)+" characters")
 	}
 }
@@ -103,7 +102,7 @@ func text(v *api.Validator, key string, required bool) (string, bool) {
 func title(v *api.Validator, key string, minLen int, required bool) (string, bool) {
 	s, ok := v.String(key, required, false)
 	if ok {
-		if utf16Len(s) < minLen {
+		if utf8.RuneCountInString(s) < minLen {
 			v.Fail(key, api.CodeTooSmall)
 		}
 		maxChars(v, key, s, contract.Data.Notebook.TitleMaxLength)

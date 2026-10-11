@@ -604,6 +604,24 @@ describe('tasks parity over HTTP (DynamoDB Local)', () => {
       fields: { description: 'too_big' },
     });
 
+    // Limits count code points: each emoji is two UTF-16 units.
+    const emojiTitle = '😀'.repeat(300);
+    const emojiTag = '😀'.repeat(50);
+    expect(
+      await createTask({ id: TASK_A, title: emojiTitle, tags: [emojiTag] }),
+    ).toMatchObject({ body: { title: emojiTitle, tags: [emojiTag] } });
+    expect(
+      await post({ id: TASK_B, area: 'work', title: `${emojiTitle}x` }),
+    ).toMatchObject({ status: 413, body: { fields: { title: 'too_big' } } });
+    expect(
+      await post({
+        id: TASK_B,
+        area: 'work',
+        title: 'x',
+        tags: [`${emojiTag}x`],
+      }),
+    ).toMatchObject({ status: 413, body: { fields: { 'tags.0': 'too_big' } } });
+
     const badJson = await h.api.request('POST', '/api/notebook/tasks', {
       body: '{not json',
       claims: notebookUser(USER),
