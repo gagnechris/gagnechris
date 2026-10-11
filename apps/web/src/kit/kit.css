@@ -387,3 +387,32 @@ label.admin-btn:has(+ .admin-visually-hidden:focus-visible) {
   color: var(--neutral-800);
   background: transparent;
 }
+
+.task-check {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Phones: iOS Safari zooms into a focused field under 16px, and a finger
+   needs a 44px target. */
+@media (max-width: 767px) {
+  :where(input, select, textarea),
+  .admin-input,
+  .admin-chips__input {
+    font-size: max(16px, 1em);
+  }
+
+  .admin-btn,
+  .admin-check {
+    min-height: 44px;
+  }
+
+  /* The label is the hit area; negative margins keep the row's spacing. */
+  .task-check {
+    min-width: 44px;
+    min-height: 44px;
+    margin: -12px;
+  }
+}

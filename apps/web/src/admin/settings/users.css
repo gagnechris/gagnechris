@@ -608,3 +608,14 @@
   font-size: var(--text-sm);
   font-weight: 500;
 }
+
+@media (max-width: 767px) {
+  .users-btn--small {
+    min-height: 44px;
+  }
+
+  .users-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
