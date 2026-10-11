@@ -276,6 +276,7 @@ describe('GET /api/admin/projects/:id', () => {
   });
 
   it('answers 500 data_integrity for a corrupt row', async () => {
+    h.corruptRow(keys.project.meta('01K6G0000000000000000PRJ02'));
     await seed('01K6G0000000000000000PRJ02', { links: [{ label: '' }] });
     const res = await call(
       'GET',
@@ -471,6 +472,7 @@ describe('GET /api/admin/projects', () => {
     };
     await seed(id, { ...published, pitch: 'Edited' });
     await seed(id, { ...published, sk: 'PUBLISHED', gsi1pk: undefined });
+    h.corruptRow(keys.project.meta('01K6G0000000000000000PRJ04'));
     await seed('01K6G0000000000000000PRJ04', { ...published, stage: 'nope' });
 
     const { items } = await ok('GET', '/api/admin/projects');

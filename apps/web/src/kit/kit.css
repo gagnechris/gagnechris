@@ -394,6 +394,157 @@ label.admin-btn:has(+ .admin-visually-hidden:focus-visible) {
   background: transparent;
 }
 
+/* Phones only: the desktop table scrolls in its box, which would clip the menu. */
+th.admin-table__actions,
+td.admin-table__actions {
+  display: none;
+}
+
+.admin-row-actions {
+  position: relative;
+  display: inline-block;
+}
+
+.admin-row-actions__toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-row-actions__toggle:hover,
+.admin-row-actions__toggle[aria-expanded='true'] {
+  background: var(--neutral-100);
+}
+
+.admin-row-actions__menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 11rem;
+  padding: 4px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.admin-row-actions__menu button {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--neutral-800);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-row-actions__menu button:hover {
+  background: var(--neutral-100);
+}
+
+/* Phones: the posts table becomes a list of rows. */
+@media (max-width: 767px) {
+  .admin-table-box {
+    overflow: visible;
+  }
+
+  .admin-table,
+  .admin-table tbody {
+    display: block;
+    min-width: 0;
+  }
+
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .admin-table tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 2px var(--space-2);
+    padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--neutral-100);
+  }
+
+  .admin-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-table tbody td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .admin-table tbody td:first-child {
+    grid-column: 1;
+    padding-left: 0;
+  }
+
+  /* The title link covers the row; the row menu sits above it. */
+  .admin-table__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .admin-table__title {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-table tbody td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .admin-table tbody td.admin-table__slug {
+    display: none;
+  }
+
+  .admin-table tbody td.admin-table__date {
+    grid-column: 1;
+    grid-row: 3;
+    width: auto;
+    font-size: var(--text-caption);
+    text-align: left;
+    white-space: normal;
+  }
+
+  .admin-table tbody td.admin-table__actions {
+    display: block;
+    position: relative;
+    z-index: 1;
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    width: auto;
+    padding-right: 0;
+  }
+}
+
 .task-check {
   flex: none;
   display: inline-flex;

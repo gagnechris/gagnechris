@@ -181,6 +181,15 @@ func snippetAround(text units, q string) (units, []Range, bool) {
 	return snippet, []Range{{Start: matchStart, End: matchStart + len(needle)}}, true
 }
 
+// leadingSnippet is the start of text, for a hit whose match is elsewhere.
+func leadingSnippet(text units) units {
+	flat := collapseTrim(text)
+	if len(flat) <= 2*snippetRadius {
+		return flat
+	}
+	return append(collapseTrim(flat[:2*snippetRadius:2*snippetRadius]), '…')
+}
+
 func isWord(c uint16) bool {
 	return c == '_' || c >= '0' && c <= '9' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
 }
@@ -226,15 +235,16 @@ type ranked struct {
 	matches []Range
 }
 
-// rankFields scores the best of title (×3), tags (×2) and body (×1).
+// rankFields scores the best of title (×3), tags (×2) and body (×1). A title
+// hit's snippet comes from the body, since clients already show the title.
 func rankFields(q, title, body string, tags []string) (ranked, bool) {
 	needle := lower(encode(q))
 	if len(needle) == 0 {
 		return ranked{}, false
 	}
 	var best ranked
-	found := false
-	for _, f := range []struct {
+	found, titleBest := false, false
+	for i, f := range []struct {
 		text   string
 		weight int
 	}{{title, 3}, {strings.Join(tags, " "), 2}, {body, 1}} {
@@ -256,11 +266,19 @@ func rankFields(q, title, body string, tags []string) (ranked, bool) {
 		}
 		if !found || score > best.score {
 			best = ranked{score: score, snippet: snippet, matches: matches}
-			found = true
+			found, titleBest = true, i == 0
 		}
 	}
 	if !found {
 		return ranked{}, false
+	}
+	if titleBest {
+		text := encode(body)
+		if snippet, matches, ok := snippetAround(text, q); ok {
+			best.snippet, best.matches = snippet, matches
+		} else {
+			best.snippet, best.matches = leadingSnippet(text), []Range{}
+		}
 	}
 	if t := api.TrimJS(title); t != "" {
 		best.title = t

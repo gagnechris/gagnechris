@@ -4,6 +4,7 @@ import routesSource from '../routes.tsx?raw';
 import adminRoutesSource from '../admin/routes.tsx?raw';
 import notebookRoutesSource from '../notebook/routes.tsx?raw';
 import lazyRouteSource from '../routing/lazyRoute.ts?raw';
+import lazyFallbackSource from '../components/LazyFallback.tsx?raw';
 import landingSource from '../pages/DontFeedTheBears.tsx?raw';
 
 describe('route chunks', () => {
@@ -38,7 +39,6 @@ describe('route chunks', () => {
   // RR skips HydrateFallback returned from lazy() during initial hydration, so
   // it must be a static sibling of `lazy`.
   test('lazy routes declare HydrateFallback statically via lazyRoute()', () => {
-    expect(routesSource).toMatch(/HydrateFallback:\s*LazyFallback/);
     expect(lazyRouteSource).toMatch(
       /HydrateFallback = opts\.fallback \?\? LazyFallback/,
     );
@@ -53,5 +53,12 @@ describe('route chunks', () => {
         /return\s*\{\s*Component:[^}]*HydrateFallback/,
       );
     }
+  });
+
+  // The public root hydrates from the prerender, so a root fallback never shows.
+  test('the public routes set no root loading fallback', () => {
+    expect(routesSource).not.toMatch(/HydrateFallback:/);
+    expect(routesSource).not.toMatch(/\{[^}]*\bLazyFallback\b[^}]*\}/);
+    expect(lazyFallbackSource).not.toMatch(/admin-loading/);
   });
 });

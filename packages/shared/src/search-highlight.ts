@@ -36,3 +36,9 @@ export function highlightParts(
   }
   return parts;
 }
+
+/** A hit's snippet, or '' when it would only repeat the title. */
+export const searchHitDetail = (hit: {
+  title: string;
+  snippet: string;
+}): string => (hit.snippet.trim() === hit.title.trim() ? '' : hit.snippet);

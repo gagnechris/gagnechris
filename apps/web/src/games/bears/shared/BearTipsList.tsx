@@ -14,6 +14,7 @@ const BearTipsList = ({ onTipLinkClick }: BearTipsListProps) => (
           href={t.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Source: ${t.title} (opens in a new tab)`}
           onClick={onTipLinkClick}
         >
           Source

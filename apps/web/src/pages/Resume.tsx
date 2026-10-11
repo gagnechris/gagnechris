@@ -5,8 +5,8 @@ import { ResumePageBody, ResumeUnavailableBody } from '@gagnechris/public-ui';
 import { trackResumeDownload, trackResumeView } from '../utils/analytics';
 import {
   documentResumeView,
-  fallbackResumeView,
   loadPublishedResume,
+  unavailableResumeView,
   type ResumeView,
 } from '../resume/publishedResume';
 import { createPublicApiClient } from '../api/public-client';
@@ -16,19 +16,19 @@ import './Resume.css';
 import PageHead from '../components/PageHead';
 
 function Resume() {
+  const [attempt, setAttempt] = useState(0);
+  // A new key makes usePublishedView fetch /resume/ again.
   const published = usePublishedView(
-    'resume',
+    `resume:${attempt}`,
     documentResumeView,
     loadPublishedResume,
   );
-  // Null only after client-side navigation, until /resume/ arrives; never the
-  // bundled default first.
   const resume: ResumeView | null =
     published.status === 'ready'
       ? published.view
-      : published.status === 'loading'
-        ? null
-        : fallbackResumeView();
+      : published.status === 'missing'
+        ? unavailableResumeView()
+        : null;
   const [showBearNote, setShowBearNote] = useState(false);
 
   useEffect(() => {
@@ -56,12 +56,27 @@ function Resume() {
   );
 
   if (!resume) {
+    const failed = published.status === 'error';
     return (
-      <main className="resume-page" aria-busy>
+      <main className="resume-page" aria-busy={!failed}>
         {head}
         <header className="resume-intro">
           <h1 className="resume-intro__title">{RESUME_PAGE_TITLE}</h1>
         </header>
+        {failed ? (
+          <div className="resume-load-error" role="alert">
+            <p>
+              Could not load the resume. Check your connection and try again.
+            </p>
+            <button
+              type="button"
+              className="resume-load-error__retry"
+              onClick={() => setAttempt((n) => n + 1)}
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
       </main>
     );
   }

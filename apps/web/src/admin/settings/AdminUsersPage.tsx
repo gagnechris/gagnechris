@@ -194,7 +194,16 @@ export default function AdminUsersPage() {
               {users.map((user) => {
                 const name = displayName(user);
                 return (
-                  <tr key={user.id} className="users-row">
+                  <tr
+                    key={user.id}
+                    className="users-row"
+                    onClick={(event) => {
+                      // Edit stays the keyboard path; a tap anywhere else on the row opens it too.
+                      if (!(event.target as Element).closest('button, a')) {
+                        setEditingId(user.id);
+                      }
+                    }}
+                  >
                     <td>
                       <div className="users-person">
                         <UserAvatar user={user} />
