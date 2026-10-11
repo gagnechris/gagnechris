@@ -18,8 +18,14 @@ export class SessionExpiredError extends Error {
 
 /** What differs between Cognito and the local API's fake auth. */
 export type TokenIssuer = {
-  /** `null` when the user closed the sign-in sheet. */
-  signIn(options: { newAccount: boolean }): Promise<StoredTokens | null>;
+  /**
+   * `null` when the user closed the sign-in sheet. `reauth` asks for the
+   * passkey even when managed login still has a session.
+   */
+  signIn(options: {
+    newAccount: boolean;
+    reauth?: boolean;
+  }): Promise<StoredTokens | null>;
   /** Throws `SessionExpiredError` when the refresh token is refused. */
   refresh(refreshToken: string): Promise<StoredTokens>;
   revoke(refreshToken: string): Promise<void>;
@@ -124,6 +130,24 @@ export function createAuthBackend({
         user,
         differentUser: previousSub !== null && previousSub !== user.sub,
       };
+    },
+
+    // A refreshed ID token keeps the first sign-in's auth_time, so a change
+    // that needs a recent sign-in takes new tokens for the same account.
+    async reauthenticate() {
+      const signedInAs = current && issuer.user(current.idToken)?.sub;
+      if (!signedInAs) return false;
+      const fresh = await issuer.signIn({ newAccount: false, reauth: true });
+      if (!fresh) return false;
+      if (issuer.user(fresh.idToken)?.sub !== signedInAs) {
+        await issuer.revoke(fresh.refreshToken).catch(() => {});
+        return false;
+      }
+      session += 1;
+      await settleRefresh();
+      await tokens.write(fresh);
+      current = fresh;
+      return true;
     },
 
     async signOut() {

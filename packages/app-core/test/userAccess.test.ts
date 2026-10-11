@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import type { ManagedUser } from '@gagnechris/shared';
-import { ApiError } from '@gagnechris/app-core';
 import {
+  ApiError,
   accessChange,
   displayName,
   formatAdded,
   hasApp,
   initials,
   userErrorMessage,
-} from './userAccess';
+} from '../src/index.js';
 
 const sam = { name: 'Sam Rivera', email: 'sam@example.com' };
 

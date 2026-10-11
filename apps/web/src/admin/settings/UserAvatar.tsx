@@ -1,5 +1,5 @@
 import type { ManagedUser } from '@gagnechris/shared';
-import { initials } from './userAccess';
+import { initials } from '@gagnechris/app-core';
 
 export function UserAvatar({
   user,

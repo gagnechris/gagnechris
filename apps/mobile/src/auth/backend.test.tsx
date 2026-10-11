@@ -338,3 +338,37 @@ describe('token refresh', () => {
     expect((await backend.signIn())?.differentUser).toBe(false);
   });
 });
+
+describe('reauthenticate', () => {
+  it('takes new tokens for the same account and asks for the passkey', async () => {
+    const issuer = fakeIssuer();
+    const { backend, secure } = setup(issuer);
+    await backend.signIn();
+    vi.mocked(issuer.signIn).mockResolvedValueOnce({
+      idToken: 'id:alice:fresh',
+      refreshToken: 'rt-fresh',
+    });
+    expect(await backend.reauthenticate()).toBe(true);
+    expect(issuer.signIn).toHaveBeenLastCalledWith({
+      newAccount: false,
+      reauth: true,
+    });
+    expect(await backend.getToken()).toBe('id:alice:fresh');
+    expect(secure.data.get(KEYCHAIN_KEYS.refreshToken)).toBe('rt-fresh');
+  });
+
+  it('keeps the session when another account signs in, or the sheet is closed', async () => {
+    const issuer = fakeIssuer();
+    const { backend } = setup(issuer);
+    await backend.signIn();
+    vi.mocked(issuer.signIn).mockResolvedValueOnce({
+      idToken: 'id:bob:1',
+      refreshToken: 'rt-bob',
+    });
+    expect(await backend.reauthenticate()).toBe(false);
+    expect(issuer.revoke).toHaveBeenCalledWith('rt-bob');
+    vi.mocked(issuer.signIn).mockResolvedValueOnce(null);
+    expect(await backend.reauthenticate()).toBe(false);
+    expect(await backend.getToken()).toBe('id:alice:1');
+  });
+});

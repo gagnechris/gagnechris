@@ -14,8 +14,9 @@ import EditUserDrawer from './EditUserDrawer';
 import InviteUserDialog from './InviteUserDialog';
 import { UserAvatar } from './UserAvatar';
 import { useUserChange } from './useUserChange';
-import { changeToast, takePendingChange } from './userChange';
+import { takePendingChange } from './userChange';
 import {
+  changeToast,
   displayName,
   formatAdded,
   hasApp,
@@ -24,7 +25,7 @@ import {
   LEVEL_ORDER,
   STATUS_LABELS,
   userErrorMessage,
-} from './userAccess';
+} from '@gagnechris/app-core';
 import './users.css';
 
 const TOAST_MS = 2600;

@@ -6,13 +6,14 @@ import { AccessLevelRadios } from './AccessLevelRadios';
 import { UserAvatar } from './UserAvatar';
 import { useModal } from './useModal';
 import { useUserChange } from './useUserChange';
-import { changeToast, type UserChange } from './userChange';
 import {
   accessChange,
+  changeToast,
+  type UserChange,
   displayName,
   formatAdded,
   userErrorMessage,
-} from './userAccess';
+} from '@gagnechris/app-core';
 
 type Props = {
   user: ManagedUser;

@@ -43,7 +43,7 @@ export function cognitoIssuer(config: CognitoConfig): TokenIssuer {
   const { clientId, redirectUri } = config;
 
   return {
-    async signIn({ newAccount }) {
+    async signIn({ newAccount, reauth = false }) {
       const request = new AuthRequest({
         clientId,
         redirectUri,
@@ -53,7 +53,9 @@ export function cognitoIssuer(config: CognitoConfig): TokenIssuer {
         codeChallengeMethod: CodeChallengeMethod.S256,
         // A shared session would sign the last account straight back in.
         extraParams:
-          newAccount && !config.ephemeralSession ? { prompt: 'login' } : {},
+          reauth || (newAccount && !config.ephemeralSession)
+            ? { prompt: 'login' }
+            : {},
       });
       const result = await request.promptAsync(discovery, {
         preferEphemeralSession: config.ephemeralSession,

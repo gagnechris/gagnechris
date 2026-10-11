@@ -503,6 +503,7 @@ describe('sign-out', () => {
         return () => {};
       },
       markInstalled: async () => {},
+      reauthenticate: async () => false,
     };
     let signOut!: () => Promise<void>;
     const Probe = ({

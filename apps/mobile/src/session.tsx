@@ -29,6 +29,8 @@ export type AuthBackend = {
   signIn(options?: { newAccount?: boolean }): Promise<SignInResult | null>;
   /** Revokes the refresh token and deletes the Keychain items. */
   signOut(): Promise<void>;
+  /** Signs the same account in again; false when cancelled or a different account signed in. */
+  reauthenticate(): Promise<boolean>;
   getToken: TokenProvider;
   /** Called when a refresh is refused; the session ends without a wipe. */
   onExpired(listener: () => void): () => void;
@@ -47,6 +49,7 @@ type SessionState = {
   expired: boolean;
   signIn: (options?: { newAccount?: boolean }) => Promise<void>;
   signOut: () => Promise<void>;
+  reauthenticate: () => Promise<boolean>;
   getToken: TokenProvider;
 };
 
@@ -123,6 +126,7 @@ export const SessionProvider = ({
       expired,
       signIn,
       signOut,
+      reauthenticate: backend.reauthenticate,
       getToken: backend.getToken,
     }),
     [status, user, expired, signIn, signOut, backend],

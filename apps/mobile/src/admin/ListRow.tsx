@@ -1,5 +1,5 @@
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 
 type Props = {
@@ -8,15 +8,35 @@ type Props = {
   /** Tags or stack, on their own line. */
   tags: readonly string[];
   divider?: boolean;
-  onPress: () => void;
+  /** Without it the row is plain text. */
+  onPress?: () => void;
 };
 
 export const ListRow = ({ title, meta, tags, divider, onPress }: Props) => {
   const tagLine = tags.join(', ');
+  const label = [title, meta, tagLine].filter(Boolean).join(', ');
+  const body = (
+    <>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.meta}>{meta}</Text>
+      {tagLine ? <Text style={styles.tags}>{tagLine}</Text> : null}
+    </>
+  );
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityLabel={label}
+        style={[styles.row, divider && styles.divider]}
+      >
+        {body}
+      </View>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[title, meta, tagLine].filter(Boolean).join(', ')}
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
@@ -24,9 +44,7 @@ export const ListRow = ({ title, meta, tags, divider, onPress }: Props) => {
         pressed && styles.pressed,
       ]}
     >
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.meta}>{meta}</Text>
-      {tagLine ? <Text style={styles.tags}>{tagLine}</Text> : null}
+      {body}
     </Pressable>
   );
 };

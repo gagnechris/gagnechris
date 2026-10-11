@@ -1,15 +1,13 @@
 import { useCallback } from 'react';
 import {
-  useSetUserAccessMutation,
-  useUserActionMutation,
-} from '@gagnechris/app-core';
-import { getAuthTime, redirectToSignIn } from '../../workspace/auth/session';
-import {
   isReauthRequired,
   isRecentSignIn,
-  savePendingChange,
+  useSetUserAccessMutation,
+  useUserActionMutation,
   type UserChange,
-} from './userChange';
+} from '@gagnechris/app-core';
+import { getAuthTime, redirectToSignIn } from '../../workspace/auth/session';
+import { savePendingChange } from './userChange';
 
 export type ChangeOutcome = 'done' | 'confirming';
 

@@ -62,6 +62,25 @@ export {
   type ResumeDraftFields,
   type RoleDates,
 } from './resumeDraft.js';
+export {
+  accessChange,
+  displayName,
+  firstName,
+  formatAdded,
+  hasApp,
+  initials,
+  LEVEL_APPS,
+  LEVEL_DESCRIPTIONS,
+  LEVEL_ORDER,
+  STATUS_LABELS,
+  userErrorMessage,
+} from './userAccess.js';
+export {
+  changeToast,
+  isReauthRequired,
+  isRecentSignIn,
+  type UserChange,
+} from './userChange.js';
 export { useLatest } from './useLatest.js';
 export {
   clearPendingFlushes,

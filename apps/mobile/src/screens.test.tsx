@@ -1,5 +1,4 @@
 import type { ComponentType } from 'react';
-import { openBrowserAsync } from 'expo-web-browser';
 import { ActionSheetIOS, Alert, Linking } from 'react-native';
 import {
   act,
@@ -185,6 +184,7 @@ describe('Admin screens', () => {
     ['Pages', AdminPagesScreen],
     ['Home page', AdminHomePageScreen],
     ['Resume', AdminResumeScreen],
+    ['Users', AdminUsersScreen],
   ] as const)('%s has labelled, scalable controls', async (_, Screen) => {
     vi.stubGlobal(
       'fetch',
@@ -275,18 +275,6 @@ describe('Spaces', () => {
     );
     await settle();
     expect(data.get(SPACE_STORAGE_KEY)).toBe('admin');
-  });
-
-  it('Admin tabs not in the app yet open on the web', async () => {
-    const renderer = await render(
-      <Providers>
-        <AdminUsersScreen />
-      </Providers>,
-    );
-    act(() => byLabel(renderer, 'Open on the web').props.onPress());
-    expect(openBrowserAsync).toHaveBeenCalledWith(
-      'https://admin.gagnechris.com/settings/users',
-    );
   });
 
   it('shows the Users tab only to user admins', () => {
