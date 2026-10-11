@@ -71,7 +71,7 @@ function gtag() {
   dataLayer.push(arguments);
 }
 gtag('js', new Date());
-gtag('config', 'G-TEST123');
+gtag('config', 'G-TEST123', { send_page_view: false });
 `);
   });
 
