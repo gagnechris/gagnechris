@@ -1,5 +1,6 @@
 import { pageTitle, siteUrl } from '@gagnechris/shared';
 import { PostsIndexBody } from '@gagnechris/public-ui';
+import { POSTS_INDEX_DESCRIPTION } from '@gagnechris/shared/public-pages';
 import { documentPostsIndex, loadPostsIndex } from '../posts/publishedPosts';
 import { usePublishedView } from '../prerender/usePublishedView';
 import './PostsIndex.css';
@@ -14,7 +15,11 @@ function PostsIndex() {
 
   return (
     <>
-      <PageHead title={pageTitle('Posts')} url={siteUrl('/posts')} />
+      <PageHead
+        title={pageTitle('Posts')}
+        url={siteUrl('/posts')}
+        description={POSTS_INDEX_DESCRIPTION}
+      />
       <PostsIndexBody
         years={published.status === 'ready' ? published.view : []}
         message={

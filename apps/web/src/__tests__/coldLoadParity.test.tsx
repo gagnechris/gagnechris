@@ -7,7 +7,11 @@ import {
   pageTitle,
   projectPageView,
 } from '@gagnechris/shared/render';
-import { selectHomeProjects } from '@gagnechris/shared';
+import { projectPageTitle, selectHomeProjects } from '@gagnechris/shared';
+import {
+  POSTS_INDEX_DESCRIPTION,
+  PROJECTS_INDEX_DESCRIPTION,
+} from '@gagnechris/shared/public-pages';
 import {
   renderHomePrerenderHtml,
   renderPostPageBodyHtml,
@@ -142,11 +146,15 @@ const headOf = (html: string): string =>
   new DOMParser().parseFromString(html, 'text/html').head.innerHTML;
 
 /** As the publisher writes them; the custom SEO titles must survive the mount. */
-const publishedHead = (path: string, title: string): string =>
+const publishedHead = (
+  path: string,
+  title: string,
+  description = 'Published description.',
+): string =>
   headOf(
     applyPageMeta(SHELL, {
       title,
-      description: 'Published description.',
+      description,
       url: `https://gagnechris.com${path === '/' ? '' : path}`,
       type: path.startsWith('/posts/') ? 'article' : 'website',
     }),
@@ -154,9 +162,20 @@ const publishedHead = (path: string, title: string): string =>
 
 const HEADS: Record<string, string> = {
   '/': publishedHead('/', 'Home SEO title'),
-  '/projects': publishedHead('/projects', pageTitle('Projects')),
-  '/projects/posts': publishedHead('/projects/posts', pageTitle('Posts')),
-  '/posts': publishedHead('/posts', pageTitle('Posts')),
+  '/projects': publishedHead(
+    '/projects',
+    pageTitle('Projects'),
+    PROJECTS_INDEX_DESCRIPTION,
+  ),
+  '/projects/posts': publishedHead(
+    '/projects/posts',
+    projectPageTitle('Posts'),
+  ),
+  '/posts': publishedHead(
+    '/posts',
+    pageTitle('Posts'),
+    POSTS_INDEX_DESCRIPTION,
+  ),
   '/posts/hello-world': publishedHead('/posts/hello-world', 'Post SEO title'),
   '/resume': publishedHead('/resume', 'Resume SEO title'),
 };

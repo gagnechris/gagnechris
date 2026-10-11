@@ -3,7 +3,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, test } from 'vitest';
 import { projectPageView } from '@gagnechris/shared/render';
 import { SAMPLE_PROJECTS } from '@gagnechris/shared/fixtures/sample-projects';
-import type { Project, ProjectPageView } from '@gagnechris/shared';
+import {
+  projectPageTitle,
+  type Project,
+  type ProjectPageView,
+} from '@gagnechris/shared';
 import { ProjectPageBody, PublicLinkContext } from '@gagnechris/public-ui';
 import { renderProjectPageBodyHtml } from '@gagnechris/public-ui/server';
 import SiteLink from '../components/SiteLink';
@@ -86,6 +90,7 @@ describe('projectPageViewFromDocument', () => {
       )!;
       expect(parsed).toEqual({
         ...view,
+        head: { title: projectPageTitle(view.name) },
         buildLog: view.buildLog.map((p) => ({
           ...p,
           publishedAt: p.publishedAt?.slice(0, 10) ?? null,

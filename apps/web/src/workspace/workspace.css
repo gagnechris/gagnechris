@@ -411,6 +411,10 @@
     align-items: stretch;
   }
 
+  .workspace--rail .workspace-sidebar {
+    align-items: stretch;
+  }
+
   .workspace-desktop,
   .workspace-nav__heading,
   .workspace-nav__count,
@@ -1074,6 +1078,7 @@
 
 .admin-post-editor {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
@@ -1258,6 +1263,8 @@
 /* Home / Resume: form + live preview side by side on wide screens. */
 .admin-editor-split {
   display: grid;
+  /* The preview renders the public page, which must not widen the form. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
   align-items: start;
 }
@@ -1318,6 +1325,7 @@
 
 .admin-form-card {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   padding: var(--space-4) 1.25rem;
   border: 1px solid var(--neutral-200);
@@ -1490,6 +1498,9 @@
 
 .admin-repeat {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* A fieldset is otherwise as wide as its widest content. */
+  min-inline-size: 0;
   gap: var(--space-4);
   border: 1px solid var(--neutral-200);
   border-radius: var(--radius-md);
@@ -1505,6 +1516,7 @@
 
 .admin-repeat__item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--neutral-200);
@@ -1729,12 +1741,14 @@
   }
 
   .notebook-today__area {
+    min-width: 0;
     max-width: 7.5rem;
   }
 
   .notebook-today__phone-tools {
     display: flex;
     gap: var(--space-2);
+    min-width: 0;
     margin-left: auto;
   }
 
@@ -2061,4 +2075,60 @@
   color: var(--primary-600);
   font-size: var(--text-sm);
   font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .workspace-segmented {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+
+  .admin-status-filter {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .admin-panel__header > * {
+    min-width: 0;
+  }
+
+  .admin-panel h1 {
+    overflow-wrap: break-word;
+  }
+
+  .workspace-segmented__option,
+  .admin-status-filter .workspace-segmented__option {
+    min-height: 44px;
+  }
+
+  .workspace-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .admin-prefixed__input,
+  .admin-cover__url .admin-input {
+    font-size: max(16px, 1em);
+  }
+
+  .admin-input {
+    min-width: 0;
+    min-height: 44px;
+  }
+
+  .admin-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-seo > summary,
+  .admin-notebook-completed > summary,
+  .notebook-today__calendar > summary {
+    padding-block: 12px;
+  }
 }
