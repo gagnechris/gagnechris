@@ -65,6 +65,8 @@ function hasIdToken(job: Job, workflow: Workflow): boolean {
   return typeof perms === 'object' && perms['id-token'] === 'write';
 }
 
+const readsSecret = (job: Job) => /\bsecrets\./.test(JSON.stringify(job));
+
 function stepIndex(job: Job, predicate: (step: Step) => boolean): number {
   return (job.steps ?? []).findIndex(predicate);
 }
@@ -109,11 +111,11 @@ describe('GitHub Actions supply chain', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('never runs install scripts in a job that can mint an OIDC token', () => {
+  it('never runs install scripts in a job that can mint an OIDC token or reads a secret', () => {
     const offenders: string[] = [];
     for (const { path, doc } of workflows) {
       for (const [jobId, job] of Object.entries(doc.jobs)) {
-        if (!hasIdToken(job, doc)) continue;
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
         for (const step of job.steps ?? []) {
           const label = `${path}#${jobId}/${step.name ?? step.uses}`;
           if (
@@ -492,7 +494,7 @@ describe('prod-stack-activity.sh', () => {
   });
 });
 
-describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
+describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', () => {
   const repo = tempDir();
   const git = (...args: string[]) =>
     execFileSync('git', args, {
@@ -535,6 +537,16 @@ describe('check-deploy-ancestry.sh and deploy-paths.sh', () => {
     expect(
       runScript('check-deploy-ancestry.sh', [side, web], {}, repo).status,
     ).toBe(1);
+  });
+
+  it('releases only an ios-v* tag on a commit on main', () => {
+    const release = (ref: string, sha: string) =>
+      runScript('check-release-ref.sh', [ref, sha, 'main'], {}, repo).status;
+    expect(release('refs/tags/ios-v1.2.0', infra)).toBe(0);
+    expect(release('refs/tags/ios-v1.2.0', side)).toBe(1);
+    expect(release('refs/heads/main', infra)).toBe(1);
+    expect(release('refs/heads/side', side)).toBe(1);
+    expect(release('refs/tags/v1.2.0', infra)).toBe(1);
   });
 
   it('fails when the deployed SHA cannot be found, instead of deploying all', () => {
@@ -672,5 +684,38 @@ describe('deploy-lag.sh', () => {
       repo,
     );
     expect(r.stdout).toMatch(/^alert=true\n/);
+  });
+});
+
+describe('iOS release', () => {
+  const release = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ios-release.yml'))
+    .jobs.release! as GatedJob;
+  const environments = JSON.parse(
+    readFileSync(join(ROOT, 'scripts', 'github-environments.json'), 'utf8'),
+  ) as {
+    environments: {
+      name: string;
+      deployment_branch_policy: { custom_branch_policies: boolean };
+      custom_branch_policies: { name: string; type: string }[];
+    }[];
+  };
+
+  it('checks the ref before installing anything', () => {
+    const check = stepIndex(release, (s) =>
+      (s.run ?? '').includes('scripts/ci/check-release-ref.sh'),
+    );
+    const setup = stepIndex(release, (s) => s.uses === SETUP_ACTION);
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(setup);
+    expect(release.steps![0]!.with?.['fetch-depth']).toBe(0);
+  });
+
+  it('runs in a testflight environment limited to ios-v* tags', () => {
+    expect(release.environment).toBe('testflight');
+    const env = environments.environments.find((e) => e.name === 'testflight');
+    expect(env?.deployment_branch_policy.custom_branch_policies).toBe(true);
+    expect(env?.custom_branch_policies).toEqual([
+      { name: 'ios-v*', type: 'tag' },
+    ]);
   });
 });

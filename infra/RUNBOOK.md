@@ -140,7 +140,7 @@ gh variable set AWS_PITR_REHEARSAL_ROLE_ARN --body 'arn:aws:iam::ACCOUNT:role/ga
 gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 ```
 
-2. Lock the GitHub `prod` environment to `main` only:
+2. Create the GitHub environments from `scripts/github-environments.json` (`prod` deploys from `main` only; `testflight` from `ios-v*` tags only):
 
 ```bash
 bash scripts/apply-github-environments.sh
@@ -160,7 +160,7 @@ bash scripts/apply-branch-protection.sh
        - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK and/or web, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy, including `*.md` under `infra/` (markdown never changes synth).
          - `infra/test/ci-workflows.test.ts` pins this: a docs-only head after an infra commit whose build never deployed gives `cdk=true` from `deployed-sha` (a `HEAD~1` base would give `cdk=false`).
        - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all`, `scripts/deploy-web.sh`, and finally writes `deployed-sha`. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
-     - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write` installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
+     - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write`, and every job that reads a `secrets.*` value (the TestFlight release), installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` or secret-reading job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
 Prod only — there is no staging environment.
@@ -821,19 +821,21 @@ For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/lo
 
 ## iOS release (TestFlight)
 
-The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions): it runs the mobile checks, then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
+The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions with such a tag picked as the ref). It refuses any other ref and any tag whose commit is not on `main`, installs both lockfiles with `--ignore-scripts` (the job holds `EXPO_TOKEN`), runs the mobile checks, then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
 
 **One-time setup**
 
 1. App Store Connect: an app record for bundle ID `com.gagnechris.mobile` (needed for TestFlight even without a listing). Fill in only what TestFlight asks for: name, beta description, a privacy policy URL (external testing requires one; the site has no privacy page), and export compliance (standard HTTPS only; `app.json` sets `ios.config.usesNonExemptEncryption` to false, which writes `ITSAppUsesNonExemptEncryption`, so builds skip the question).
 2. Put the record's Apple ID (the number under App Information) in `apps/mobile/eas.json` as `submit.production.ios.ascAppId`. It is not secret. The workflow stops with a message until it is set.
 3. App Store Connect API key (Users and Access → Integrations, App Manager role): upload it to EAS with `npx eas-cli credentials --platform ios` (App Store Connect API Key → add), so it never leaves EAS. Never put the `.p8` in the repo, Linear or a GitHub secret.
-4. Expo access token (expo.dev → Account settings → Access tokens, a robot user if you prefer): add it as `EXPO_TOKEN` in a GitHub environment named `testflight` (Settings → Environments), which the release job uses. Restrict the environment to tags `ios-v*` if you like.
+4. Expo access token (expo.dev → Account settings → Access tokens, a robot user if you prefer): add it as `EXPO_TOKEN` in the GitHub `testflight` environment (Settings → Environments), which the release job uses. `bash scripts/apply-github-environments.sh` creates that environment and limits it to `ios-v*` tags; it keeps the environment's secrets.
 
 **Release**
 
+Tag a commit that is already on `main`:
+
 ```bash
-git tag ios-v1.0.0 && git push origin ios-v1.0.0
+git tag ios-v1.0.0 origin/main && git push origin ios-v1.0.0
 ```
 
 The job takes about as long as the EAS build (20 to 40 minutes). App Store Connect processes the build for a few more minutes before TestFlight offers it.
