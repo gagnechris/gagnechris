@@ -200,6 +200,23 @@ describe('StayWildGame', () => {
       ).toBeInTheDocument();
     });
 
+    test('the rotate screen links to Camp Rules', () => {
+      portrait = true;
+      renderGame();
+
+      const prompt = screen.getByRole('region', {
+        name: 'Turn your phone sideways',
+      });
+      expect(
+        within(prompt).getByRole('link', {
+          name: 'Or play Camp Rules in portrait',
+        }),
+      ).toHaveAttribute(
+        'href',
+        expect.stringMatching(/^\/dont-feed-the-bears\/camp/),
+      );
+    });
+
     test('turning to portrait pauses, and resume waits for landscape', () => {
       renderGame();
       start();
@@ -295,6 +312,7 @@ describe('StayWildGame', () => {
   });
 
   test('a run always ends with the end card and is reported', () => {
+    stubMedia(() => false);
     renderGame();
     start();
 

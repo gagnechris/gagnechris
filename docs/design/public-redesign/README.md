@@ -430,6 +430,15 @@ Wider viewports keep the desktop game.
 | Not as drawn | The back link, Sound and Skip to the bear tips stay above the HUD; the noise line stays under the HUD stats; the other game keeps "Now play as the bear"; Random camp and Back to Don’t Feed the Bears stay under the actions |
 | Not built    | The artboard's haptic on save and on share in the iOS app: the app does not embed the site                                                                                                                                    |
 
+### Stay Wild on phones
+
+Stay Wild plays in landscape on touch screens (`pointer: coarse`). In
+portrait, a panel on the warm `#f6e3c8` ground replaces the game: a rotate
+icon, "Turn your phone sideways", one line of copy, and a 44px "Or play Camp
+Rules in portrait" link to Camp Rules. The stage, the keyboard line, Sound and
+Skip to the bear tips are hidden while it shows. Turning to portrait pauses a
+run; it resumes only in landscape.
+
 ## Colours
 
 | Token           | Value   | Use                                                                |
