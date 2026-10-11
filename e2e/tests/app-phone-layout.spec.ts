@@ -143,6 +143,7 @@ test.describe('signed-in apps on a phone', () => {
       '/resume',
       '/projects',
       `/projects/${project.id}`,
+      '/settings/users',
     ]) {
       await expectPhoneReady(page, new URL(path, apps.admin).href);
     }
