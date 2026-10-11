@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useHydrated } from '../prerender/useHydrated';
 
 const TEXT_SCALES = [0.9, 1, 1.15, 1.3] as const;
@@ -42,8 +43,8 @@ const ShareIcon = () => (
 );
 
 /**
- * The phone reading bar: text size and Share. Client-only, so the
- * prerendered post is the same with or without it.
+ * The phone reading bar: text size and Share. Client-only and portaled to
+ * the body, so the hydrated root still matches the prerendered post.
  */
 export const ReadingBar = ({ title }: { title: string }) => {
   const hydrated = useHydrated();
@@ -93,8 +94,8 @@ export const ReadingBar = ({ title }: { title: string }) => {
     }
   };
 
-  return (
-    <div className="reading-bar">
+  return createPortal(
+    <aside className="reading-bar" aria-label="Reading">
       <span className="reading-bar__label">Text size</span>
       <div className="reading-bar__actions">
         <button
@@ -127,6 +128,7 @@ export const ReadingBar = ({ title }: { title: string }) => {
       <p className="reading-bar__notice" role="status">
         {notice}
       </p>
-    </div>
+    </aside>,
+    document.body,
   );
 };

@@ -46,12 +46,22 @@ test.describe('a published post', () => {
 
   test('phone: the reading bar resizes the text and copies the link', async ({
     page,
-    context,
   }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    // No share sheet to drive, and WebKit has no clipboard permission to
+    // grant: take the copy path and record what was copied.
     await page.addInitScript(() => {
-      // Desktop browsers have no share sheet to drive; take the copy path.
-      Object.defineProperty(navigator, 'share', { value: undefined });
+      const w = window as unknown as { copied: string[] };
+      w.copied = [];
+      const proto = Navigator.prototype as unknown as Record<string, unknown>;
+      delete proto.share;
+      Object.defineProperty(proto, 'clipboard', {
+        configurable: true,
+        get: () => ({
+          writeText: async (text: string) => {
+            w.copied.push(text);
+          },
+        }),
+      });
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${site()}/posts/${slug}`);
@@ -70,6 +80,11 @@ test.describe('a published post', () => {
     expect(box!.y + box!.height).toBeCloseTo(844, 0);
     await page.getByRole('button', { name: 'Share' }).click();
     await expect(page.getByRole('status')).toHaveText('Link copied');
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { copied: string[] }).copied,
+      ),
+    ).toEqual([page.url()]);
 
     await page.setViewportSize({ width: 1024, height: 844 });
     await expect(bar).toBeHidden();
