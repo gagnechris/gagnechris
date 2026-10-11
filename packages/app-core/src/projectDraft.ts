@@ -133,17 +133,14 @@ export const hasProjectPublishErrors = (draft: ProjectDraftFields): boolean =>
   hasProjectDraftErrors(draft) || projectPreviewImageError(draft) !== undefined;
 
 /**
- * An invalid field sends the project's saved value instead, so autosave never
- * stores something the API would reject and the typed text stays on screen.
+ * An invalid field sends the project's saved value instead (an invalid link
+ * row is left out), so autosave never stores something the API would reject
+ * and the typed text stays on screen.
  */
 export const projectPayload = (
   draft: ProjectDraftFields,
   saved: Project,
 ): Omit<UpdateProjectRequest, 'version'> => {
-  const linksInvalid = draft.links.some((link) => {
-    const errors = projectLinkErrors(link);
-    return errors.label !== undefined || errors.url !== undefined;
-  });
   const href = draft.href.trim();
   return {
     name: draft.name.trim() || NEW_PROJECT_NAME,
@@ -154,11 +151,16 @@ export const projectPayload = (
     previewImage: draft.previewImage.trim() || null,
     bodyMarkdown: draft.bodyMarkdown,
     stack: draft.stack,
-    links: linksInvalid
-      ? saved.links
-      : draft.links
-          .filter((link) => !isBlankLink(link))
-          .map((link) => ({ label: link.label.trim(), url: link.url.trim() })),
+    links: draft.links
+      .filter((link) => {
+        const errors = projectLinkErrors(link);
+        return (
+          !isBlankLink(link) &&
+          errors.label === undefined &&
+          errors.url === undefined
+        );
+      })
+      .map((link) => ({ label: link.label.trim(), url: link.url.trim() })),
     demo: draft.demo || null,
     order: projectOrderError(draft.orderText)
       ? saved.order

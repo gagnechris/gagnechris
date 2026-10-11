@@ -7,6 +7,8 @@ export const browserConfirm: ConfirmFn = (message) =>
 
 export type VersionedDocShellOptions = {
   dirty: boolean;
+  /** Typed values a save leaves out (invalid fields), so a clean save is not enough to leave. */
+  unsavedFields?: boolean;
   busy: boolean;
   save: () => unknown;
   suppressLeaveGuardRef: { current: boolean };
@@ -15,7 +17,8 @@ export type VersionedDocShellOptions = {
 };
 
 export function useVersionedDocShell({
-  dirty,
+  dirty: savePending,
+  unsavedFields = false,
   busy,
   save,
   suppressLeaveGuardRef,
@@ -23,6 +26,8 @@ export function useVersionedDocShell({
 }: VersionedDocShellOptions) {
   const saveRef = useLatest(save);
   const publishRef = useLatest(publish);
+  const unsavedFieldsRef = useLatest(unsavedFields);
+  const dirty = savePending || unsavedFields;
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -47,7 +52,7 @@ export function useVersionedDocShell({
     handlingRef.current = true;
     void (async () => {
       const saved = await Promise.resolve(saveRef.current()).then(
-        (outcome) => outcome === 'clean',
+        (outcome) => outcome === 'clean' && !unsavedFieldsRef.current,
         () => false,
       );
       const leave =
@@ -62,7 +67,7 @@ export function useVersionedDocShell({
         blocker.reset();
       }
     })();
-  }, [blocker, saveRef]);
+  }, [blocker, saveRef, unsavedFieldsRef]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

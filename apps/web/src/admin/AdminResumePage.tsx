@@ -79,6 +79,7 @@ const AdminResumePage = () => {
       'Unpublish the resume? The live page keeps the last published HTML.',
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
+    hasUnsavedFields: hasExperienceRangeError,
     beforePublish: (): boolean => {
       const role = undatedErrors[0];
       setPublishBlockedRoleId(role?.id ?? null);
@@ -102,11 +103,7 @@ const AdminResumePage = () => {
       loadingLabel="Loading resume…"
       leading={<h1>Resume</h1>}
       viewLiveHref={() => publicUrl('/resume')}
-      actionBar={{
-        // An invalid range is saved as the role's last saved dates, so a clean
-        // save does not mean everything typed is on the server.
-        dirty: actionBarProps.dirty || hasExperienceRangeError(draft),
-      }}
+      actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         blockedRole ? (
           <p className="admin-panel__error" role="alert">

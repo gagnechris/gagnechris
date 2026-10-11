@@ -16,6 +16,8 @@ type Options<TEntity extends VersionedEditorEntity, TDraft, TParams> = Omit<
   /** Completes "another save updated …", e.g. "this post". */
   subject: string;
   uniqueSlug?: boolean;
+  /** Invalid fields the payload sends as their saved values. */
+  hasUnsavedFields?: (draft: TDraft) => boolean;
   delete?: {
     confirm: string;
     mutate: (version: number) => Promise<void>;

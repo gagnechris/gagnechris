@@ -55,14 +55,20 @@ const backToRoles = () =>
 
 function renderResume() {
   const router = createMemoryRouter(
-    [{ path: '/resume', element: <AdminResumePage /> }],
+    [
+      { path: '/resume', element: <AdminResumePage /> },
+      { path: '/', element: <p>Posts list</p> },
+    ],
     { initialEntries: ['/resume'] },
   );
-  return render(
-    <QueryClientTestProvider>
-      <RouterProvider router={router} />
-    </QueryClientTestProvider>,
-  );
+  return {
+    ...render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    ),
+    router,
+  };
 }
 
 describe('AdminResumePage autosave', () => {
@@ -351,6 +357,30 @@ describe('AdminResumePage structured dates', () => {
     await waitFor(() =>
       expect(screen.getByRole('status')).toHaveTextContent('Saved'),
     );
+  });
+
+  test('an end before start keeps the leave guard up after the save', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { router } = renderResume();
+    await openRole('Architect');
+    fireEvent.change(screen.getByLabelText(/^End month/), {
+      target: { value: '2013-01' },
+    });
+    await vi.advanceTimersByTimeAsync(PAST_AUTOSAVE_MS);
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
+
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+
+    await act(() => router.navigate('/'));
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Your changes could not be saved. Leave without saving?',
+      ),
+    );
+    expect(screen.queryByText('Posts list')).not.toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 
   test('an end before start after a saved edit sends the newer saved dates', async () => {

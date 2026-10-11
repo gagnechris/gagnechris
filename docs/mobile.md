@@ -90,7 +90,7 @@ The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEdito
 
 The Admin Projects tab lists projects in their public order with stage, status, where the card links (`projectCardHref`) and the order number. With none, Create starter projects adds the Posts, Notebook and Don’t Feed the Bears drafts; the + button creates a draft at the end of the list.
 
-The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead, and the save state stays Edited. Publish refuses while a field is invalid or a project with a demo has no preview image.
+The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead (a bad link row is left out), and the save state stays Edited. Publish refuses while a field is invalid or a project with a demo has no preview image.
 
 ## Search
 
