@@ -300,6 +300,8 @@
   place-items: center;
   width: 2rem;
   height: 2rem;
+  /* The global button padding leaves a 2rem border-box no room for the icon. */
+  padding: 0;
   border: 0;
   border-radius: 6px;
   background: transparent;

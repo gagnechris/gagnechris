@@ -31,6 +31,28 @@ test('the admin app serves the CMS from its own root, without Notebook', async (
   ).toBeVisible();
 });
 
+test('the account row icons are centered in their buttons', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await signIn();
+  for (const [origin, title] of [
+    [apps.admin, 'Admin'],
+    [apps.notebook, 'Notebook'],
+  ] as const) {
+    await page.goto(origin);
+    const button = page.getByRole('button', { name: `Sign out of ${title}` });
+    await expect(button).toBeVisible();
+    const [box, icon] = await Promise.all([
+      button.boundingBox(),
+      button.locator('svg').boundingBox(),
+    ]);
+    expect(icon!.x + icon!.width / 2).toBeCloseTo(box!.x + box!.width / 2, 0);
+    expect(icon!.y + icon!.height / 2).toBeCloseTo(box!.y + box!.height / 2, 0);
+  }
+});
+
 test('the Notebook app opens on Today and deep-links to its own pages', async ({
   page,
   apps,
