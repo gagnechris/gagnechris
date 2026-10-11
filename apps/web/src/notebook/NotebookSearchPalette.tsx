@@ -13,6 +13,7 @@ import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { areaQueryParam } from './notebookAreaPreference';
 import type { NotebookAreaFilter } from './notebookAreaPreference';
+import { noteHref } from './noteHref';
 
 type Props = {
   onClose: () => void;
@@ -70,8 +71,12 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
     hits.push({
       key: `note-${h.id}`,
       group: 'Notes',
-      // A daily note is written on Today, which keeps its date and area.
-      to: h.date ? `/today?date=${h.date}&area=${h.area}` : `/notes/${h.id}`,
+      to: noteHref({
+        id: h.id,
+        type: h.date ? 'daily' : 'page',
+        date: h.date ?? null,
+        area: h.area,
+      }),
       title: title(h.title, h.area),
       detail: highlight(h.snippet, h.matches),
     });

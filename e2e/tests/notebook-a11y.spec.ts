@@ -48,10 +48,10 @@ test('axe finds nothing on Today, Notes, Tasks, a task and the search palette', 
   await expectNoViolations(page, 'Tasks');
 
   await page.goto(`${apps.notebook}/tasks/${task.id}`);
-  const linked = page.getByRole('combobox', { name: 'Linked note' });
+  await page.getByRole('combobox', { name: 'Linked note' }).fill('Planning');
   await expect(
-    linked.locator('option', { hasText: note.data!.title }),
-  ).toHaveCount(1);
+    page.getByRole('option', { name: note.data!.title }),
+  ).toBeVisible();
   await expectNoViolations(page, 'Task');
 
   await page.keyboard.press('ControlOrMeta+k');
@@ -119,9 +119,8 @@ test('a task links to a note picked by title', async ({
 
   await signIn();
   await page.goto(`${apps.notebook}/tasks/${task.id}`);
-  await page
-    .getByRole('combobox', { name: 'Linked note' })
-    .selectOption({ label: note.data!.title });
+  await page.getByRole('combobox', { name: 'Linked note' }).fill('Garden');
+  await page.getByRole('option', { name: note.data!.title }).click();
   await page.keyboard.press('ControlOrMeta+s');
 
   await expect

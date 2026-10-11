@@ -488,6 +488,8 @@ Notes and tasks use only GSI1–3; they need no further indexes.
 
 API surface: Notebook repositories use the generic `versioned` store (`services/api/internal/notebook/versioned.go`), whose get/mutate/delete take the owner's `userId` and the record id; posts and projects use id-only keys through `store.PublishableStore`. Query cursor keys are chosen per query (`store.PageQuery.CursorKeys`). Use `USER#…#AREA#*` on GSI1 so Notebook lists never scan post `STATUS#*` partitions. Calendar `from`/`to` queries use the `DATE#` prefix only so freeform pages (`PAGE#…`) are excluded.
 
+**Mentions:** `GET /api/notebook/notes?taskId=<ulid>` lists the notes whose `taskIds` hold that task (a filter on each page, no key condition), which the task page's Mentioned in reads.
+
 **List paging:** `GET /api/notebook/notes` without `area` walks the Work then Personal partitions with a composite `mp.` cursor instead of merging one page per area. Pages are grouped by partition, not globally sorted; clients that need a global order sort after loading. `limit` is a maximum: notes and tasks list pages also stop at about 1 MB of JSON (`PAGE_BYTE_BUDGET`, well under Lambda's 6 MB response cap) and return `nextCursor`, so clients must keep paging until `nextCursor` is absent. A single-partition cursor is the raw DynamoDB key. A malformed or foreign cursor → **400**.
 
 **Batch read:** `POST /api/notebook/notes/batch` with JSON body `ids` (1 to 100 ULIDs) returns `items`, the caller's live notes among them in request order, from one BatchGetItem. Deleted and unknown ids are left out, as their `GET` would 404. Today's and Upcoming's source-note chips read notes this way.

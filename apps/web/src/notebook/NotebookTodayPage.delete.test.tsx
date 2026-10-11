@@ -212,19 +212,16 @@ describe('Today after deleting its daily note', () => {
       await screen.findByRole('textbox', { name: 'Note body' }),
     ).toHaveValue('old text');
 
-    await act(async () => {
-      await router.navigate(`/notes/${OLD_ID}`);
-    });
-    await screen.findByDisplayValue('old text');
     await user.click(screen.getByRole('button', { name: 'Delete' }));
-    expect(await screen.findByText('Notes list')).toBeInTheDocument();
     expect(state.note?.deleted).toBe(true);
 
-    await act(async () => {
-      await router.navigate('/today?date=2026-10-02');
-    });
-    const editor = await screen.findByRole('textbox', { name: 'Note body' });
-    expect(editor).toHaveValue('');
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Note body' })).toHaveValue(
+        '',
+      ),
+    );
+    const editor = screen.getByRole('textbox', { name: 'Note body' });
+    expect(router.state.location.pathname).toBe('/today');
     expect(screen.getByText(/Not saved yet/)).toBeInTheDocument();
 
     await user.type(editor, 'fresh start');
@@ -239,5 +236,23 @@ describe('Today after deleting its daily note', () => {
     expect(state.puts[0]).toMatchObject({ bodyMarkdown: 'fresh start' });
     expect(state.puts[0]?.version).toBeUndefined();
     expect(screen.queryByText(/Conflict/)).not.toBeInTheDocument();
+  });
+
+  test('a daily note opened by id is edited on Today', async () => {
+    const router = renderNotebook();
+    await screen.findByRole('textbox', { name: 'Note body' });
+
+    await act(async () => {
+      await router.navigate(`/notes/${OLD_ID}`);
+    });
+    await waitFor(() =>
+      expect(
+        router.state.location.pathname + router.state.location.search,
+      ).toBe('/today?date=2026-10-02&area=work'),
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Note body' }),
+    ).toHaveValue('old text');
+    expect(screen.queryByRole('textbox', { name: 'Title' })).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import {
   isTemplateStartedDaily,
   startDailyNoteBlank,
   useDailyNoteDatesQuery,
+  useDeleteNoteMutation,
   useTaskPatch,
   useTaskToggle,
   type NotebookArea,
@@ -98,6 +99,7 @@ function TodayEditor({
   onNoteReady,
   highlightTaskId,
   onHighlighted,
+  onDeleted,
 }: {
   area: NotebookArea;
   date: string;
@@ -110,7 +112,9 @@ function TodayEditor({
   onNoteReady: (ready: boolean) => void;
   highlightTaskId: string | null;
   onHighlighted: () => void;
+  onDeleted: () => void;
 }) {
+  const deleteMutation = useDeleteNoteMutation();
   const {
     draft,
     updateDraft,
@@ -122,6 +126,8 @@ function TodayEditor({
     dirty,
     saveState,
     replaceFromEntity,
+    busy,
+    runDelete,
   } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
     params: { area, date, carryIn: date === today },
@@ -140,6 +146,15 @@ function TodayEditor({
         'Another tab or device already started this daily note. Copy what you typed, then reload to open it.',
     },
     loadErrorFallback: 'Could not load daily note.',
+    delete: {
+      confirm:
+        'Delete this daily note? Its tasks stay in your list; the day starts empty.',
+      mutate: async (version) => {
+        if (entity)
+          await deleteMutation.mutateAsync({ id: entity.id, version });
+      },
+      onDeleted,
+    },
   });
 
   const unsaved = dirty || saveState === 'saving';
@@ -195,6 +210,16 @@ function TodayEditor({
             isNew={entity.version === 0}
           />
         </div>
+        {entity.version > 0 ? (
+          <button
+            type="button"
+            className="admin-btn"
+            disabled={busy}
+            onClick={() => void runDelete()}
+          >
+            Delete
+          </button>
+        ) : null}
       </div>
       {saveError ? (
         <p className="admin-panel__error" role="alert">
@@ -254,6 +279,7 @@ export default function NotebookTodayPage() {
   const [noteReady, setNoteReady] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
+  const [editorGeneration, setEditorGeneration] = useState(0);
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -482,7 +508,8 @@ export default function NotebookTodayPage() {
           </button>
           {writingArea ? (
             <TodayEditor
-              key={`${writingArea}:${date}`}
+              // A new key after a delete: a fresh editor on the day's placeholder.
+              key={`${writingArea}:${date}:${editorGeneration}`}
               area={writingArea}
               date={date}
               today={today}
@@ -492,6 +519,7 @@ export default function NotebookTodayPage() {
               onNoteReady={setNoteReady}
               highlightTaskId={highlightTaskId}
               onHighlighted={clearHighlight}
+              onDeleted={() => setEditorGeneration((n) => n + 1)}
             />
           ) : (
             <>

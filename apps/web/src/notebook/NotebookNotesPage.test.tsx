@@ -59,6 +59,11 @@ vi.mock('../workspace/api/client', () => ({
       }
       return { data: undefined, error: {}, response: { status: 404 } };
     },
+    POST: async () => ({
+      data: undefined,
+      error: { error: 'bad_request', message: 'Notebook is full' },
+      response: { status: 400 },
+    }),
   }),
 }));
 
@@ -204,5 +209,34 @@ describe('NotebookNotesPage', () => {
         expect.stringMatching(/^Pinned page/),
       ]),
     );
+  });
+
+  test('a daily note opens on Today and a page in the page editor', async () => {
+    server.notes = [
+      note(1, { title: 'A page' }),
+      note(2, {
+        type: 'daily',
+        date: '2026-09-02',
+        title: '',
+      }),
+    ];
+    renderNotes();
+    expect(await screen.findByRole('link', { name: /A page/ })).toHaveAttribute(
+      'href',
+      `/notes/${ULID('5N', 1)}`,
+    );
+    expect(
+      screen.getByRole('link', { name: /Wednesday, Sep 2/ }),
+    ).toHaveAttribute('href', '/today?date=2026-09-02&area=work');
+  });
+
+  test('a failed New page says why', async () => {
+    const user = userEvent.setup();
+    renderNotes();
+    await user.click(await screen.findByRole('button', { name: 'New page' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Notebook is full',
+    );
+    expect(screen.getByRole('button', { name: 'New page' })).toBeEnabled();
   });
 });
