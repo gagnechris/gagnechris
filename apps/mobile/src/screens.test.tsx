@@ -9,7 +9,9 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import MoreScreen from '../app/(tabs)/more/index';
 import AdminMoreScreen from '../app/admin/more/index';
+import AdminHomePageScreen from '../app/admin/pages/home';
 import AdminPagesScreen from '../app/admin/pages/index';
+import AdminUsersScreen from '../app/admin/users/index';
 import AdminPostScreen from '../app/admin/posts/[id]';
 import AdminPostsScreen from '../app/admin/posts/index';
 import AdminProjectScreen from '../app/admin/projects/[id]';
@@ -179,6 +181,8 @@ describe('Admin screens', () => {
     ['Post', AdminPostScreen],
     ['Projects', AdminProjectsScreen],
     ['Project', AdminProjectScreen],
+    ['Pages', AdminPagesScreen],
+    ['Home page', AdminHomePageScreen],
   ] as const)('%s has labelled, scalable controls', async (_, Screen) => {
     vi.stubGlobal(
       'fetch',
@@ -274,12 +278,12 @@ describe('Spaces', () => {
   it('Admin tabs not in the app yet open on the web', async () => {
     const renderer = await render(
       <Providers>
-        <AdminPagesScreen />
+        <AdminUsersScreen />
       </Providers>,
     );
     act(() => byLabel(renderer, 'Open on the web').props.onPress());
     expect(openBrowserAsync).toHaveBeenCalledWith(
-      'https://admin.gagnechris.com/home',
+      'https://admin.gagnechris.com/settings/users',
     );
   });
 

@@ -13,6 +13,12 @@ export {
   postPayload,
   type PostDraftFields,
 } from './postDraft.js';
+export {
+  emptyHomeDraft,
+  homeDraftFromHome,
+  homePayload,
+  type HomeDraftFields,
+} from './homeDraft.js';
 export { isPlaceholderSlug, newPlaceholderSlug } from './placeholderSlug.js';
 export {
   emptyProjectDraft,

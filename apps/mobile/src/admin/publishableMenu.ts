@@ -7,10 +7,11 @@ type Options = {
   hasUnpublishedChanges: boolean;
   onDiscard: () => void;
   onUnpublish: () => void;
-  onDelete: () => void;
+  /** Omitted for a page that can't be deleted. */
+  onDelete?: () => void;
 };
 
-/** The ⋯ menu of a post or project editor. */
+/** The ⋯ menu of a publishable editor. */
 export function showPublishableMenu({
   liveUrl,
   hasUnpublishedChanges,
@@ -29,11 +30,14 @@ export function showPublishableMenu({
     }
     items.push({ label: 'Unpublish', run: onUnpublish });
   }
-  items.push({ label: 'Delete', run: onDelete, destructive: true });
+  if (onDelete) {
+    items.push({ label: 'Delete', run: onDelete, destructive: true });
+  }
+  if (items.length === 0) return;
   ActionSheetIOS.showActionSheetWithOptions(
     {
       options: [...items.map((item) => item.label), 'Cancel'],
-      destructiveButtonIndex: items.length - 1,
+      destructiveButtonIndex: onDelete ? items.length - 1 : undefined,
       cancelButtonIndex: items.length,
     },
     (index) => items[index]?.run(),

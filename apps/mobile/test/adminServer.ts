@@ -1,4 +1,5 @@
-import type { Post, Project } from '@gagnechris/app-core';
+import type { Home, Post, Project, Resume } from '@gagnechris/app-core';
+import { DEFAULT_HOME, DEFAULT_RESUME } from '@gagnechris/shared';
 
 export const makePost = (id: string, fields: Partial<Post> = {}): Post => ({
   id,
@@ -59,8 +60,20 @@ const summary = ({
 
 export const UPLOAD_URL = 'https://uploads.test/put';
 
-/** The admin Posts and Projects APIs, site media uploads and a photo's local file. */
-export function adminServer(posts: Post[], projects: Project[] = []) {
+export const makeHome = (fields: Partial<Home> = {}): Home => ({
+  ...DEFAULT_HOME,
+  status: 'published',
+  publishedAt: '2026-10-01T09:00:00.000Z',
+  version: 1,
+  ...fields,
+});
+
+/** The admin Posts, Projects, Home and Resume APIs, site media uploads and a photo's local file. */
+export function adminServer(
+  posts: Post[],
+  projects: Project[] = [],
+  pages: { home?: Home; resume?: Resume } = {},
+) {
   const store = new Map(posts.map((post) => [post.id, post]));
   const projectStore = new Map(
     projects.map((project) => [project.id, project]),
@@ -68,6 +81,10 @@ export function adminServer(posts: Post[], projects: Project[] = []) {
   const state = {
     store,
     projectStore,
+    pages: {
+      home: pages.home ?? makeHome(),
+      resume: pages.resume ?? { ...DEFAULT_RESUME, version: 1 },
+    } as { home: Home; resume: Resume },
     calls: [] as string[],
     uploads: [] as { contentType: string; contentLength: number }[],
   };
@@ -141,6 +158,28 @@ export function adminServer(posts: Post[], projects: Project[] = []) {
       store.set(post.id, post);
       return json(201, post);
     }
+    const page = url.pathname.match(
+      /^\/api\/admin\/(home|resume)(?:\/(publish|unpublish|discard))?$/,
+    );
+    if (page) {
+      const key = page[1] as 'home' | 'resume';
+      const current = state.pages[key];
+      if (input.method === 'GET') return json(200, current);
+      const body = (await input.json()) as Record<string, unknown> & {
+        version: number;
+      };
+      if (body.version !== current.version) {
+        return json(412, {
+          error: 'version_conflict',
+          current,
+          currentVersion: current.version,
+        });
+      }
+      const { version: _version, ...fields } = body;
+      const next = transition(current, page[2], fields);
+      state.pages[key] = next as never;
+      return json(200, next);
+    }
     const match = url.pathname.match(
       /^\/api\/admin\/(posts|projects)\/([^/]+)(?:\/(publish|unpublish|discard))?$/,
     );
@@ -162,16 +201,38 @@ export function adminServer(posts: Post[], projects: Project[] = []) {
       });
     }
     const { version: _version, ...fields } = body;
-    const action = match[3];
+    const next =
+      input.method === 'DELETE'
+        ? {
+            ...current,
+            status: 'deleted',
+            version: current.version + 1,
+            updatedAt: now(),
+          }
+        : transition(current, match[3], fields);
+    map.set(next.id, next as Post | Project);
+    return json(200, next);
+  };
+
+  type Publishable = {
+    status: string;
+    publishedAt: string | null;
+    hasUnpublishedChanges: boolean;
+    version: number;
+    updatedAt: string;
+  };
+  function transition<T extends Publishable>(
+    current: T,
+    action: string | undefined,
+    fields: Record<string, unknown>,
+  ): T {
     const next = {
       ...current,
       ...(action ? {} : fields),
       version: current.version + 1,
       updatedAt: now(),
-    } as Post | Project;
-    if (input.method === 'DELETE') {
-      next.status = 'deleted';
-    } else if (action === 'publish') {
+    };
+    if (action === 'publish') {
       next.status = 'published';
       next.publishedAt = current.publishedAt ?? now();
       next.hasUnpublishedChanges = false;
@@ -183,9 +244,8 @@ export function adminServer(posts: Post[], projects: Project[] = []) {
     } else if (current.status === 'published') {
       next.hasUnpublishedChanges = true;
     }
-    map.set(next.id, next);
-    return json(200, next);
-  };
+    return next;
+  }
 
   return { fetch, state };
 }

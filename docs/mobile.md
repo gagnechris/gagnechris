@@ -26,7 +26,8 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 | `app/admin/_layout.tsx`                                            | Admin tab bar: Posts, Pages, Projects, Users (only with `user-admin`), More                                                 |
 | `app/admin/posts/index.tsx`, `app/admin/posts/[id].tsx`            | `/admin/posts` and `/admin/posts/:id`: the post list and editor (see [Posts](#posts))                                       |
 | `app/admin/projects/index.tsx`, `app/admin/projects/[id].tsx`      | `/admin/projects` and `/admin/projects/:id`: the project list and editor (see [Projects](#projects))                        |
-| `app/admin/{pages,users}/index.tsx`                                | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
+| `app/admin/pages/index.tsx`, `app/admin/pages/home.tsx`            | `/admin/pages` and `/admin/pages/home`: the page list and Home editor (see [Pages](#pages))                                 |
+| `app/admin/users/index.tsx`                                        | `/admin/users`: opens Users on `admin.gagnechris.com` until the screen is in the app                                        |
 | `app/admin/more/index.tsx`                                         | `/admin/more`: account, Your apps, Add a passkey, sign out                                                                  |
 | `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                            |
 
@@ -91,6 +92,10 @@ The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEdito
 The Admin Projects tab lists projects in their public order with stage, status, where the card links (`projectCardHref`) and the order number. With none, Create starter projects adds the Posts, Notebook and Don’t Feed the Bears drafts; the + button creates a draft at the end of the list.
 
 The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead, and the save state stays Edited. Publish refuses while a field is invalid or a project with a demo has no preview image.
+
+## Pages
+
+The Admin Pages tab lists the Home page and Resume with their publish status; pull to refresh. Home page opens the native editor: Name, Title, About me, and an SEO title and description under Search and sharing, saved like the other admin editors, with Publish, Discard, View on site and Unpublish. Resume opens the admin web page in an in-app browser until its editor is in the app. The Home draft fields and payload come from `homeDraft.ts` in `@gagnechris/app-core`, shared with the web editor.
 
 ## Search
 

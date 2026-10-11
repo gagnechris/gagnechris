@@ -11,14 +11,14 @@ type HeaderProps = {
   actionBar: VersionedEntityActionBarProps;
   offline: boolean;
   ready: boolean;
-  preview: boolean;
-  onTogglePreview: () => void;
-  onDetails: () => void;
-  onMenu: () => void;
+  preview?: boolean;
+  onTogglePreview?: () => void;
+  onDetails?: () => void;
+  onMenu?: () => void;
   menuLabel: string;
 };
 
-/** Save state, Preview, Details and ⋯ for a post or project editor's header. */
+/** Save state, then Preview, Details and ⋯ when given, for a publishable editor's header. */
 export const EditorHeaderButtons = ({
   actionBar,
   offline,
@@ -33,37 +33,43 @@ export const EditorHeaderButtons = ({
     <Text style={styles.saveState} accessibilityLiveRegion="polite">
       {saveLabel(actionBar.saveState, actionBar.dirty, offline)}
     </Text>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Preview"
-      accessibilityState={{ selected: preview }}
-      onPress={onTogglePreview}
-      style={styles.headerButton}
-      disabled={!ready}
-    >
-      <Icon
-        name={preview ? 'eye.fill' : 'eye'}
-        color={preview ? color.accent : color.ink}
-      />
-    </Pressable>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Details"
-      onPress={onDetails}
-      style={styles.headerButton}
-      disabled={!ready}
-    >
-      <Icon name="slider.horizontal.3" color={color.ink} />
-    </Pressable>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={menuLabel}
-      onPress={onMenu}
-      style={styles.headerButton}
-      disabled={!ready}
-    >
-      <Icon name="ellipsis.circle" color={color.ink} />
-    </Pressable>
+    {onTogglePreview ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Preview"
+        accessibilityState={{ selected: preview }}
+        onPress={onTogglePreview}
+        style={styles.headerButton}
+        disabled={!ready}
+      >
+        <Icon
+          name={preview ? 'eye.fill' : 'eye'}
+          color={preview ? color.accent : color.ink}
+        />
+      </Pressable>
+    ) : null}
+    {onDetails ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Details"
+        onPress={onDetails}
+        style={styles.headerButton}
+        disabled={!ready}
+      >
+        <Icon name="slider.horizontal.3" color={color.ink} />
+      </Pressable>
+    ) : null}
+    {onMenu ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={menuLabel}
+        onPress={onMenu}
+        style={styles.headerButton}
+        disabled={!ready}
+      >
+        <Icon name="ellipsis.circle" color={color.ink} />
+      </Pressable>
+    ) : null}
   </View>
 );
 
