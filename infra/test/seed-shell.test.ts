@@ -4,6 +4,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -50,6 +51,7 @@ describe('scripts/local/seed-shell.sh', () => {
       'sitemap.xml',
     ];
     for (const key of [...published, 'stale.html']) write(join(site, key));
+    write(join(site, 'index.html'), 'old prerender');
 
     const result = spawnSync(
       'bash',
@@ -66,5 +68,7 @@ describe('scripts/local/seed-shell.sh', () => {
     }
     expect(existsSync(join(site, 'stale.html'))).toBe(false);
     expect(existsSync(join(site, '_shell.html'))).toBe(true);
+    // Nothing republishes locally, so `/` gets the new build's shell.
+    expect(readFileSync(join(site, 'index.html'), 'utf8')).toBe('new shell');
   });
 });

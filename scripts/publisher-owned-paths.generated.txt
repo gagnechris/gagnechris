@@ -3,6 +3,7 @@
 # scripts/deploy-web.sh and scripts/local/seed-shell.sh keep these keys.
 blog/*
 home/*
+index.html
 projects/*
 resume.pdf
 resume/*

@@ -149,9 +149,9 @@ describe('publisher-owned S3 keys', () => {
     });
 
     const owned = collectS3OutputPatterns(publishTargets).map(awsSyncGlob);
-    // `_shell.html` and `index.html` are the web deploy's own files.
+    // `_shell.html` is the web deploy's own file.
     const written = [...storage.objects.keys()].filter(
-      (key) => key !== '_shell.html' && key !== 'index.html',
+      (key) => key !== '_shell.html',
     );
     expect(written).toEqual(
       expect.arrayContaining([
@@ -159,6 +159,7 @@ describe('publisher-owned S3 keys', () => {
         'projects/notebook/index.html',
         'resume.pdf',
         'home/last-published.json',
+        'index.html',
       ]),
     );
     for (const key of written) {
