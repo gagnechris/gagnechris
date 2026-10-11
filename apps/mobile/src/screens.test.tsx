@@ -5,7 +5,7 @@ import {
   type ReactTestInstance,
   type ReactTestRenderer,
 } from 'react-test-renderer';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MoreScreen from '../app/(tabs)/more/index';
 import AdminMoreScreen from '../app/admin/more/index';
 import AdminHomePageScreen from '../app/admin/pages/home';
@@ -18,7 +18,10 @@ import AdminProjectScreen from '../app/admin/projects/[id]';
 import AdminProjectsScreen from '../app/admin/projects/index';
 import Index from '../app/index';
 import NotesScreen from '../app/(tabs)/notes/index';
+import TaskScreen from '../app/(tabs)/tasks/[id]';
 import TasksScreen from '../app/(tabs)/tasks/index';
+import NoteScreen from '../app/(tabs)/notes/[id]';
+import SearchScreen from '../app/search';
 import TodayScreen from '../app/(tabs)/today/index';
 import UpcomingScreen from '../app/(tabs)/upcoming/index';
 import AdminLayout from '../app/admin/_layout';
@@ -35,6 +38,8 @@ import {
 } from '../test/render';
 import { addPasskeyFromMore } from './auth/passkey';
 import { adminServer, makePost, makeProject } from '../test/adminServer';
+import { expectAccessible } from '../test/accessible';
+import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { router, searchParams } from '../test/router';
 import { canManageUsers, SPACE_STORAGE_KEY, useRememberSpace } from './space';
 import { MIN_TARGET } from './theme';
@@ -43,42 +48,6 @@ vi.mock('./auth/passkey', () => ({
   canAddPasskey: true,
   addPasskeyFromMore: vi.fn(async () => undefined),
 }));
-
-const flatStyle = (style: unknown): Record<string, unknown> =>
-  Array.isArray(style)
-    ? Object.assign({}, ...style.map(flatStyle))
-    : style && typeof style === 'object'
-      ? (style as Record<string, unknown>)
-      : {};
-
-const hosts = (renderer: ReactTestRenderer, type: string) =>
-  renderer.root.findAll((node) => node.type === type);
-
-/** What VoiceOver and Dynamic Type need from every screen. */
-function expectAccessible(renderer: ReactTestRenderer) {
-  for (const pressable of hosts(renderer, 'Pressable')) {
-    expect(pressable.props.accessibilityLabel, 'labelled control').toEqual(
-      expect.any(String),
-    );
-    expect(pressable.props.accessibilityRole, 'control role').toMatch(
-      /^(button|tab)$/,
-    );
-    expect(flatStyle(pressable.props.style).minHeight).toBeGreaterThanOrEqual(
-      MIN_TARGET,
-    );
-  }
-  for (const text of hosts(renderer, 'Text')) {
-    // A line cap or a scaling cap is what clips text at XXL.
-    expect(text.props.numberOfLines).toBeUndefined();
-    expect(text.props.allowFontScaling).not.toBe(false);
-    expect(text.props.maxFontSizeMultiplier).toBeUndefined();
-    const style = flatStyle(text.props.style);
-    expect(style.height, 'fixed text height').toBeUndefined();
-  }
-  for (const icon of hosts(renderer, 'SymbolView')) {
-    expect(icon.props.accessible).toBe(false);
-  }
-}
 
 const headers = (renderer: ReactTestRenderer) =>
   renderer.root.findAll(
@@ -203,6 +172,115 @@ describe('Admin screens', () => {
     await settle(10);
     expect(allText(renderer)).not.toBe('');
     expectAccessible(renderer);
+    act(() => renderer.unmount());
+  });
+});
+
+describe('Notebook screens with data', () => {
+  const LONG =
+    'Write the long-form review of the quarter, with every chapter and the appendix tables';
+  const HOME = '01NOTE0000000000000000000H';
+  const DAILY = '01NOTE0000000000000000000D';
+  const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
+  const B = '01HTASKBBBBBBBBBBBBBBBBBBB';
+  const C = '01HTASKCCCCCCCCCCCCCCCCCCC';
+
+  beforeEach(() => {
+    vi.useFakeTimers({ now: new Date(2026, 9, 2, 9), toFake: ['Date'] });
+    vi.stubGlobal(
+      'fetch',
+      notebookServer(
+        [
+          makeNote(HOME, `Plan\n{{task:${B}}}\nThe review needs a draft.`, {
+            title: 'Quarter plan',
+            taskIds: [B],
+          }),
+          makeNote(DAILY, `{{task:${A}}}`, {
+            type: 'daily',
+            date: '2026-10-02',
+            title: '',
+            taskIds: [A],
+          }),
+        ],
+        [
+          makeTask(A, LONG, { noteId: DAILY, startDate: '2026-10-02' }),
+          makeTask(B, `${LONG} (home)`, {
+            noteId: HOME,
+            startDate: '2026-10-05',
+            priority: 'high',
+            dueDate: '2026-10-06',
+          }),
+          makeTask(C, 'Someday idea', { someday: true }),
+        ],
+      ).fetch,
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it.each<[string, ComponentType, Record<string, string>, string]>([
+    ['Today', TodayScreen, {}, LONG],
+    ['Upcoming', UpcomingScreen, {}, LONG],
+    ['Notes', NotesScreen, {}, 'Quarter plan'],
+    ['Tasks', TasksScreen, {}, LONG],
+    ['Task detail', TaskScreen, { id: B }, 'Quarter plan'],
+    ['Note', NoteScreen, { id: HOME }, LONG],
+  ])('%s keeps its rows accessible', async (_, Screen, params, shown) => {
+    searchParams.current = params;
+    const renderer = await render(
+      <Providers>
+        <Screen />
+      </Providers>,
+    );
+    await settle(15);
+    expect(allText(renderer)).toContain(shown);
+    expectAccessible(renderer);
+    act(() => renderer.unmount());
+  });
+
+  it('Search keeps its hits accessible', async () => {
+    const renderer = await render(
+      <Providers>
+        <SearchScreen />
+      </Providers>,
+    );
+    act(() =>
+      byLabel(renderer, 'Search notes and tasks').props.onChangeText('review'),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    await settle(15);
+    expect(allText(renderer)).toContain('Quarter plan');
+    expectAccessible(renderer);
+    act(() => renderer.unmount());
+  });
+
+  it('Upcoming offers the home note to VoiceOver with a 44pt target', async () => {
+    const renderer = await render(
+      <Providers>
+        <UpcomingScreen />
+      </Providers>,
+    );
+    await settle(15);
+    const row = byLabel(renderer, `${LONG} (home), Quarter plan, due Tue`);
+    expect(row.props.accessibilityActions).toContainEqual({
+      name: 'openNote',
+      label: 'Open Quarter plan',
+    });
+    act(() =>
+      row.props.onAccessibilityAction({
+        nativeEvent: { actionName: 'openNote' },
+      }),
+    );
+    expect(router.push).toHaveBeenCalledWith(`/notes/${HOME}`);
+
+    const chip = byLabel(renderer, 'Open Quarter plan');
+    const { minHeight } = [chip.props.style].flat()[0] as { minHeight: number };
+    expect(
+      minHeight + chip.props.hitSlop.top + chip.props.hitSlop.bottom,
+    ).toBeGreaterThanOrEqual(MIN_TARGET);
     act(() => renderer.unmount());
   });
 });

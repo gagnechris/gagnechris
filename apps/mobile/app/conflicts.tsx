@@ -48,7 +48,7 @@ const ConflictsScreen = () => {
         ) : null}
         {conflicts.map((conflict) => (
           <View key={conflict.entityId} style={styles.item}>
-            <Text style={styles.title} numberOfLines={2}>
+            <Text style={styles.title}>
               {titleOf(
                 conflict,
                 findCached(queryClient, conflict.entity, conflict.entityId),

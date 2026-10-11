@@ -8,7 +8,8 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { color, font } from '../theme';
+import { color, font, MIN_TARGET } from '../theme';
+import { Excerpt } from '../ui/Excerpt';
 import { Section } from '../ui/Section';
 
 /** Every note that embeds the task, home note first, as on web. */
@@ -67,9 +68,9 @@ export const TaskMentions = ({
                 {when ? <Text style={styles.when}>{`  ${when}`}</Text> : null}
               </Text>
               {context ? (
-                <Text style={styles.context} numberOfLines={3}>
+                <Excerpt style={styles.context} lines={3}>
                   {context}
-                </Text>
+                </Excerpt>
               ) : null}
             </Pressable>
           );
@@ -81,6 +82,7 @@ export const TaskMentions = ({
 
 const styles = StyleSheet.create({
   row: {
+    minHeight: MIN_TARGET,
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[3],
     gap: tokens.space[1],
