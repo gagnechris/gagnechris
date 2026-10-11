@@ -4,7 +4,9 @@ import {
   type DraftPublishAutosave,
   type DraftPublishDoc,
   type DraftPublishHold,
+  type DraftPublishRequests,
 } from '../src/useDraftPublishEditor.js';
+import { ApiError } from '../src/query/api.js';
 import { useQueuedAutosave } from '../src/useQueuedAutosave.js';
 import { act, renderHook, useState } from './renderHook.js';
 import { useCallback, useRef, useState as useReactState } from 'react';
@@ -458,5 +460,78 @@ describe('useDraftPublishEditor publish flushes edits made before the click', ()
     });
     expect(performSave).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useDraftPublishEditor publish errors', () => {
+  const renderPublishing = (
+    publish: DraftPublishRequests<Entity>['publish'],
+  ) => {
+    const setSaveError = vi.fn();
+    const { result } = renderHook(() =>
+      useDraftPublishEditor<Entity>({
+        autosave: {
+          save: async () => 'clean',
+          setSaveState: () => {},
+          setSaveError,
+          getEditGen: () => 0,
+          getLastSavedGen: () => 0,
+          markClean: () => {},
+          awaitInFlight: async () => 'clean',
+        },
+        doc: {
+          dirty: false,
+          setDirty: () => {},
+          onEntityMeta: () => {},
+          onReplaceDraft: () => {},
+        },
+        requests: {
+          publish,
+          unpublish: publish,
+          discard: publish,
+        },
+        confirmMessages: { unpublish: 'unpublish?', discard: 'discard?' },
+        confirm: async () => true,
+        hold: {
+          withHold: async (fn) => {
+            await fn();
+          },
+          isBusy: () => false,
+        },
+      }),
+    );
+    return { result, setSaveError };
+  };
+
+  test("shows the API's message for a 400", async () => {
+    const message = 'A project with a demo needs a preview image';
+    const { result, setSaveError } = renderPublishing(async () => ({
+      error: new ApiError(message, 400, 'bad_request'),
+      response: { status: 400 },
+    }));
+    await act(async () => {
+      await result.current.runPublish();
+    });
+    expect(setSaveError).toHaveBeenCalledWith(message);
+  });
+
+  test('keeps the status text for a 5xx or a network error', async () => {
+    const server = renderPublishing(async () => ({
+      error: new ApiError('Internal error', 500),
+      response: { status: 500 },
+    }));
+    await act(async () => {
+      await server.result.current.runPublish();
+    });
+    expect(server.setSaveError).toHaveBeenCalledWith('Publish failed (500).');
+
+    const offline = renderPublishing(async () => ({
+      error: new TypeError('Failed to fetch'),
+      response: { status: 0 },
+    }));
+    await act(async () => {
+      await offline.result.current.runPublish();
+    });
+    expect(offline.setSaveError).toHaveBeenCalledWith('Publish failed (0).');
   });
 });

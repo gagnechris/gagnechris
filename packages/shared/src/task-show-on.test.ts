@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { matchesTaskShowOn, taskShowOnParam } from './task-show-on.js';
+import { taskMatchesSchedule } from './task-schedule.js';
+import {
+  matchesTaskShowOn,
+  TASK_SHOW_ON_FILTERS,
+  taskShowOnParam,
+  taskShowOnQuery,
+} from './task-show-on.js';
 
 // Thursday.
 const TODAY = '2026-10-01';
@@ -33,5 +39,27 @@ describe('matchesTaskShowOn', () => {
     expect(taskShowOnParam('week')).toBe('week');
     expect(taskShowOnParam('soon')).toBe('');
     expect(taskShowOnParam(null)).toBe('');
+  });
+});
+
+describe('taskShowOnQuery', () => {
+  it('asks the server for exactly what each filter shows', () => {
+    const tasks = [
+      task(null),
+      task(null, true),
+      ...['2026-09-27', '2026-09-30', TODAY, '2026-10-02', '2026-10-03'].map(
+        (day) => task(day),
+      ),
+      task('2026-10-04'),
+      task('2027-01-01'),
+    ];
+    for (const showOn of TASK_SHOW_ON_FILTERS) {
+      const query = taskShowOnQuery(showOn, TODAY);
+      for (const t of tasks) {
+        expect(taskMatchesSchedule(t, query), `${showOn} ${t.startDate}`).toBe(
+          matchesTaskShowOn(t, showOn, TODAY),
+        );
+      }
+    }
   });
 });

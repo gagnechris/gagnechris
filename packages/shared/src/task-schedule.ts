@@ -8,6 +8,7 @@ export type TaskScheduleFilter = {
   startAfter?: string;
   startBefore?: string;
   someday?: boolean;
+  undated?: boolean;
 };
 
 /** Today's rule: a null startDate means now; someday tasks never show. */
@@ -24,6 +25,9 @@ export function taskMatchesSchedule(
   filter: TaskScheduleFilter,
 ): boolean {
   if (filter.someday !== undefined && filter.someday !== task.someday) {
+    return false;
+  }
+  if (filter.undated && (task.someday || task.startDate !== null)) {
     return false;
   }
   if (filter.startOn !== undefined && task.startDate !== filter.startOn) {

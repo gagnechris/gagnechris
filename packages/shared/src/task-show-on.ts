@@ -1,5 +1,6 @@
 import { addDays, weekdayOf } from './calendar.js';
 import type { Task } from './schemas.js';
+import type { TaskScheduleFilter } from './task-schedule.js';
 
 export const TASK_SHOW_ON_FILTERS = [
   '',
@@ -54,4 +55,30 @@ export function matchesTaskShowOn(
     return task.startDate >= today && task.startDate <= endOfLocalWeek(today);
   }
   return true;
+}
+
+/** The list query for a show-on filter, so the server pages only the matches. */
+export function taskShowOnQuery(
+  showOn: TaskShowOnFilter,
+  today: string,
+): TaskScheduleFilter {
+  switch (showOn) {
+    case 'earlier':
+      return { startBefore: today };
+    case 'today':
+      return { startOn: today };
+    case 'week':
+      return {
+        startAfter: addDays(today, -1),
+        startBefore: addDays(endOfLocalWeek(today), 1),
+      };
+    case 'later':
+      return { startAfter: today };
+    case 'none':
+      return { undated: true };
+    case 'someday':
+      return { someday: true };
+    case '':
+      return {};
+  }
 }

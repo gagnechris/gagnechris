@@ -116,9 +116,10 @@ describe('native build config', () => {
     ]);
   });
 
-  it('associates the notebook host for universal links and the https sign-in callback', () => {
+  it('associates the app hosts for universal links and the notebook host for the https sign-in callback', () => {
     expect(app.ios.associatedDomains).toEqual([
       'applinks:notebook.gagnechris.com',
+      'applinks:admin.gagnechris.com',
       'webcredentials:notebook.gagnechris.com',
       'webcredentials:gagnechris.com',
     ]);

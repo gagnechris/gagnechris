@@ -390,7 +390,7 @@ describe('useQueuedAutosave recovery', () => {
       version: number,
     ) => Promise<
       | { ok: true; entity: { version: number } }
-      | { ok: false; status: number; error?: string }
+      | { ok: false; status: number; error?: string; message?: string }
     >,
     retrySignals?: (retry: () => void) => () => void,
     { held = false }: { held?: boolean } = {},
@@ -494,6 +494,33 @@ describe('useQueuedAutosave recovery', () => {
     await flush();
 
     expect(performSave).not.toHaveBeenCalled();
+  });
+
+  test("shows the API's message for a 400 and the status for a 5xx", async () => {
+    vi.useFakeTimers();
+    let status = 400;
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status,
+      message: 'Unknown project id: 01X',
+    }));
+    const { result } = renderEdited(performSave);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(result.current.saveError).toBe('Unknown project id: 01X');
+
+    status = 500;
+    act(() => {
+      result.current.bumpEdit();
+      result.current.setDraft('b');
+      result.current.setDirty(true);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(result.current.saveError).toBe('Save failed (500).');
+    vi.useRealTimers();
   });
 
   test('retries a network failure on the retry signal without a new edit', async () => {
