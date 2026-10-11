@@ -137,15 +137,21 @@ func IsTransactionConflict(err error) bool {
 
 const transactionConflictRetries = 4
 
-// Backoff is full jitter on 20, 40, 80, 160 ms so racing writers spread out.
-func Backoff(ctx context.Context, attempt int) error {
-	d := time.Duration(rand.Float64() * float64(20*time.Millisecond) * float64(int(1)<<attempt))
+// Sleep waits d unless ctx ends first. Tests swap it to skip the waits.
+var Sleep = func(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
 	select {
-	case <-time.After(d):
+	case <-timer.C:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+// Backoff is full jitter on 20, 40, 80, 160 ms so racing writers spread out.
+func Backoff(ctx context.Context, attempt int) error {
+	return Sleep(ctx, time.Duration(rand.Float64()*float64(20*time.Millisecond)*float64(int(1)<<attempt)))
 }
 
 // RetryTransactionConflicts resends a transaction that lost only to a
@@ -191,10 +197,8 @@ func (t *Table) BatchGet(ctx context.Context, keys []Item, consistent bool) ([]I
 			if attempt == batchGetMaxAttempts {
 				return nil, fmt.Errorf("DynamoDB BatchGet still has UnprocessedKeys after %d attempts", batchGetMaxAttempts)
 			}
-			select {
-			case <-time.After(25 * time.Millisecond << (attempt - 1)):
-			case <-ctx.Done():
-				return nil, ctx.Err()
+			if err := Sleep(ctx, 25*time.Millisecond<<(attempt-1)); err != nil {
+				return nil, err
 			}
 		}
 	}
