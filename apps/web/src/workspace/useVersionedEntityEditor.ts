@@ -13,25 +13,28 @@ export function useVersionedEntityEditor<
   },
   TDraft,
   TParams,
->(
-  options: Omit<
-    VersionedEntityEditorOptions<TEntity, TDraft, TParams>,
-    'confirm'
-  >,
-) {
+>({
+  hasUnsavedFields,
+  ...options
+}: Omit<VersionedEntityEditorOptions<TEntity, TDraft, TParams>, 'confirm'> & {
+  /** Fields the payload leaves out as typed (invalid), which a save cannot store. */
+  hasUnsavedFields?: (draft: TDraft) => boolean;
+}) {
   const editor = useVersionedEntityEditorCore({
     ...options,
     confirm: browserConfirm,
     retrySignals: browserRetrySignals,
   });
+  const unsavedFields = hasUnsavedFields?.(editor.draft) ?? false;
 
   useVersionedDocShell({
     dirty: editor.dirty,
+    unsavedFields,
     busy: editor.busy,
     save: editor.save,
     suppressLeaveGuardRef: editor.suppressLeaveGuardRef,
     publish: editor.runPublish,
   });
 
-  return editor;
+  return { ...editor, unsavedFields };
 }

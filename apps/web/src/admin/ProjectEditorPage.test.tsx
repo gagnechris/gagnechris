@@ -209,7 +209,7 @@ describe('ProjectEditorPage fields', () => {
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument();
   });
 
-  test('links use the schema’s URL rules: an invalid URL shows an error and the saved links are kept', async () => {
+  test('links use the schema’s URL rules: an invalid URL shows an error and is left out of the save', async () => {
     const user = userEvent.setup();
     renderEditor();
     await screen.findByDisplayValue('Notebook');
@@ -241,6 +241,38 @@ describe('ProjectEditorPage fields', () => {
         { label: 'Demo', url: '/notebook' },
       ],
     });
+  });
+
+  test('an invalid link keeps the leave guard up and other link edits still save', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const router = renderEditor();
+    await screen.findByDisplayValue('Notebook');
+
+    await user.click(screen.getByRole('button', { name: 'Add link' }));
+    const labels = screen.getAllByLabelText('Label');
+    const urls = screen.getAllByLabelText('URL');
+    await user.type(labels[0]!, ' code');
+    await user.type(labels[1]!, 'Site');
+    await user.type(urls[1]!, 'example.com');
+    await save(user);
+    expect(lastPutBody()).toMatchObject({
+      links: [{ label: 'Repo code', url: 'https://github.com/gagnechris' }],
+    });
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
+
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+
+    await act(() => router.navigate('/projects'));
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Your changes could not be saved. Leave without saving?',
+      ),
+    );
+    expect(screen.queryByText('Projects list')).not.toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 
   test('a link with a URL but no label asks for a label', async () => {

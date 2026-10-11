@@ -125,7 +125,7 @@ const postMatches = (
     : true;
 };
 
-/** `seedUnfiltered` writes the unfiltered list even before its first fetch, so a create shows up immediately. */
+// An unfetched list stays unfetched: seeding it with one row would hide the rest.
 const upsertIntoListCaches = <T extends { id: string; version: number }>(
   queryClient: QueryClient,
   listKey: readonly unknown[],
@@ -133,22 +133,14 @@ const upsertIntoListCaches = <T extends { id: string; version: number }>(
   {
     removed,
     matches,
-    seedUnfiltered = false,
   }: {
     removed: boolean;
     matches: (entity: T, filters: Record<string, unknown>) => ListMatch;
-    seedUnfiltered?: boolean;
   },
 ): void => {
-  if (seedUnfiltered) {
-    queryClient.setQueryData<Paged<T>>(listKey, (prev) =>
-      upsertInPages(prev, entity, { removed, matches: matches(entity, {}) }),
-    );
-  }
   for (const [key, data] of queryClient.getQueriesData<Paged<T>>({
     queryKey: listKey,
   })) {
-    if (seedUnfiltered && key.length === listKey.length) continue;
     if (!isInfinite(data)) continue;
     queryClient.setQueryData<Paged<T>>(
       key,
@@ -180,7 +172,6 @@ export const setCachedPost = (queryClient: QueryClient, post: Post): void => {
     {
       removed: post.status === 'deleted',
       matches: postMatches,
-      seedUnfiltered: true,
     },
   );
   // Counts come from the server on the first page; refetch them next time a list mounts.

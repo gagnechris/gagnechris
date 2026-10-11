@@ -393,6 +393,7 @@ describe('useQueuedAutosave recovery', () => {
       | { ok: false; status: number; error?: string }
     >,
     retrySignals?: (retry: () => void) => () => void,
+    { held = false }: { held?: boolean } = {},
   ) => {
     const versionRef = { current: 1 };
     const hook = renderHook(() => {
@@ -415,11 +416,12 @@ describe('useQueuedAutosave recovery', () => {
       return { ...autosave, setDraft, setDirty, dirty };
     });
     act(() => {
+      if (held) hook.result.current.setAutosaveHeld(true);
       hook.result.current.bumpEdit();
       hook.result.current.setDraft('typed');
       hook.result.current.setDirty(true);
     });
-    return hook;
+    return { ...hook, versionRef };
   };
 
   test('flushes unsaved edits on unmount instead of dropping them', async () => {
@@ -434,6 +436,48 @@ describe('useQueuedAutosave recovery', () => {
 
     expect(performSave).toHaveBeenCalledTimes(1);
     expect(performSave.mock.calls[0]).toEqual(['typed', 1]);
+  });
+
+  test('an edit typed during a held Publish is saved once it settles, after unmount', async () => {
+    const performSave = vi.fn(async (_draft: string, version: number) => ({
+      ok: true as const,
+      entity: { version: version + 1 },
+    }));
+    const { result, unmount, versionRef } = renderEdited(
+      performSave,
+      undefined,
+      {
+        held: true,
+      },
+    );
+    const { setAutosaveHeld } = result.current;
+
+    unmount();
+    await flush();
+    expect(performSave).not.toHaveBeenCalled();
+
+    versionRef.current = 3;
+    setAutosaveHeld(false);
+    await flush();
+    expect(performSave).toHaveBeenCalledTimes(1);
+    expect(performSave.mock.calls[0]).toEqual(['typed', 3]);
+  });
+
+  test('nothing is sent after a held Discard that marked the editor clean', async () => {
+    const performSave = vi.fn(async () => ({
+      ok: true as const,
+      entity: { version: 2 },
+    }));
+    const { result, unmount } = renderEdited(performSave, undefined, {
+      held: true,
+    });
+    const { setAutosaveHeld, markClean } = result.current;
+
+    unmount();
+    markClean();
+    setAutosaveHeld(false);
+    await flush();
+    expect(performSave).not.toHaveBeenCalled();
   });
 
   test('does not save on unmount when nothing is pending', async () => {

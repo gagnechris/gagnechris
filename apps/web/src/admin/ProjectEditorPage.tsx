@@ -55,6 +55,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
       },
       redirectTo: '/projects',
     },
+    hasUnsavedFields: hasProjectDraftErrors,
     beforePublish: () => {
       setPublishBlocked(publishInvalid);
       return !publishInvalid;
@@ -66,7 +67,6 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
   });
   const { uploadImage, uploadBodyImages } = useImageUpload(editor.setSaveError);
 
-  const draftInvalid = hasProjectDraftErrors(draft);
   const publishInvalid = hasProjectPublishErrors(draft);
 
   return (
@@ -84,11 +84,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
           ? publicUrl(project.href ?? `/projects/${project.slug}`)
           : null
       }
-      actionBar={{
-        // Invalid fields are saved as their last saved values, so a clean save
-        // does not mean everything typed is on the server.
-        dirty: actionBarProps.dirty || draftInvalid,
-      }}
+      actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         publishBlocked && publishInvalid ? (
           <p className="admin-panel__error" role="alert">

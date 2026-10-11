@@ -41,9 +41,16 @@ const listItems = (queryClient: QueryClient): PostSummary[] => {
   return data?.pages.flatMap((p) => p.items) ?? [];
 };
 
+const seedList = (queryClient: QueryClient) =>
+  queryClient.setQueryData(queryKeys.posts.list(), {
+    pages: [{ items: [] }],
+    pageParams: [undefined],
+  });
+
 describe('post cache helpers', () => {
   test('setCachedPost upserts list (summary row) + detail; deleted status drops from list', () => {
     const queryClient = new QueryClient();
+    seedList(queryClient);
     setCachedPost(queryClient, draftPost);
     expect(queryClient.getQueryData(queryKeys.posts.detail('01POST'))).toEqual(
       draftPost,
@@ -71,6 +78,7 @@ describe('post cache helpers', () => {
 
   test('setCachedPost keeps a newer version when a stale write arrives', () => {
     const queryClient = new QueryClient();
+    seedList(queryClient);
     const v2 = { ...draftPost, version: 2, title: 'Newer' };
     setCachedPost(queryClient, v2);
     setCachedPost(queryClient, { ...draftPost, version: 1, title: 'Stale' });
@@ -78,6 +86,13 @@ describe('post cache helpers', () => {
       v2,
     );
     expect(listItems(queryClient)).toEqual([summary(v2)]);
+  });
+
+  test('saving a post opened by link leaves the unfetched Posts list alone', () => {
+    const queryClient = new QueryClient();
+    setCachedPost(queryClient, draftPost);
+    setCachedPost(queryClient, { ...draftPost, version: 2, title: 'Edited' });
+    expect(queryClient.getQueryData(queryKeys.posts.list())).toBeUndefined();
   });
 });
 

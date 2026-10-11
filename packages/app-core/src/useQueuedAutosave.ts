@@ -137,9 +137,16 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const signalledSinceSendRef = useRef(false);
   const retryNowRef = useRef<(() => void) | null>(null);
 
+  const releaseWaitersRef = useRef<(() => void)[]>([]);
+
   const setAutosaveHeld = useCallback((next: boolean) => {
     heldRef.current = next;
     setHeld(next);
+    if (!next) {
+      const waiters = releaseWaitersRef.current;
+      releaseWaitersRef.current = [];
+      for (const release of waiters) release();
+    }
   }, []);
 
   const bumpEdit = useCallback(() => {
@@ -308,12 +315,23 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const saveRef = useLatest(save);
   useEffect(
     () => () => {
-      if (heldRef.current) return;
-      if (!dirtyRef.current && editGenRef.current === lastSavedGenRef.current)
-        return;
+      const unsaved = () => editGenRef.current !== lastSavedGenRef.current;
+      const heldAtUnmount = heldRef.current;
+      if (!unsaved() && (heldAtUnmount || !dirtyRef.current)) return;
+      // Edits typed during Publish, Unpublish or Discard go out once it
+      // settles, on the version it produced. Discard and Delete mark the
+      // editor clean, so nothing is sent after them.
+      const released = heldAtUnmount
+        ? new Promise<void>((resolve) => {
+            releaseWaitersRef.current.push(resolve);
+          })
+        : Promise.resolve();
+      const stillUnsaved = () => !heldAtUnmount || unsaved();
       const key = queueKeyRef.current;
       if (!key) {
-        void saveRef.current();
+        void released.then(() => {
+          if (stillUnsaved()) void saveRef.current();
+        });
         return;
       }
       // save() keeps working after unmount: it reads refs, and React ignores
@@ -347,6 +365,11 @@ export function useQueuedAutosave<TDraft, TEntity>({
       };
       const run = (async (): Promise<FlushResult> => {
         try {
+          await released;
+          if (!stillUnsaved()) {
+            resolvePendingFlush(key, entry);
+            return 'clean';
+          }
           for (let attempt = 1; ; attempt += 1) {
             signalled = false;
             const outcome = await saveRef.current();
