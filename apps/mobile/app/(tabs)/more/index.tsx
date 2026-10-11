@@ -7,6 +7,7 @@ import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useArea } from '../../../src/area';
+import { addPasskey, canAddPasskey } from '../../../src/auth/passkey';
 import { signOutWarning } from '../../../src/cache';
 import { displayName, initials, useSession } from '../../../src/session';
 import { color, font } from '../../../src/theme';
@@ -94,6 +95,16 @@ const MoreScreen = () => {
       </Section>
 
       <Section title="Account">
+        {canAddPasskey ? (
+          <Row
+            title="Add a passkey"
+            accessibilityHint="Opens the sign-in page to save a passkey for this account"
+            onPress={() => void addPasskey()}
+            trailing={
+              <Icon name="chevron.right" size={14} color={color.muted} />
+            }
+          />
+        ) : null}
         <Row
           title="Sign out of Notebook"
           destructive

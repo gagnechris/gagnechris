@@ -6,7 +6,13 @@ import { accessLevel } from './access';
 import type { AuthUser } from './auth/session';
 import { WorkspaceFrame, type ShellNavSection } from './WorkspaceShell';
 
-vi.mock('./auth/session', () => ({ signOutUser: vi.fn() }));
+const { openAddPasskey } = vi.hoisted(() => ({ openAddPasskey: vi.fn() }));
+
+vi.mock('./auth/session', () => ({
+  canAddPasskey: () => true,
+  openAddPasskey,
+  signOutUser: vi.fn(),
+}));
 
 const SECTIONS: ShellNavSection[] = [
   {
@@ -142,6 +148,10 @@ describe('WorkspaceFrame', () => {
     expect(
       within(sheet).getByRole('button', { name: 'Sign out of Admin' }),
     ).toBeInTheDocument();
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Add a passkey' }),
+    );
+    expect(openAddPasskey).toHaveBeenCalledTimes(1);
 
     await user.click(
       within(screen.getByRole('navigation', { name: 'Admin' })).getByRole(

@@ -60,3 +60,23 @@ describe('ensureAmplifyConfigured', () => {
     expect(configure).not.toHaveBeenCalled();
   });
 });
+
+describe('addPasskeyUrl', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("opens managed login's add-passkey page for this app's client and callback", async () => {
+    vi.stubEnv('VITE_COGNITO_AUTH_DOMAIN', 'auth.example.com');
+    const { addPasskeyUrl, setAuthClientId } = await loadConfig();
+    setAuthClientId('admin-client');
+    const url = new URL(addPasskeyUrl());
+    expect(`${url.origin}${url.pathname}`).toBe(
+      'https://auth.example.com/passkeys/add',
+    );
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      client_id: 'admin-client',
+      redirect_uri: `${window.location.origin}/auth/callback`,
+    });
+  });
+});
