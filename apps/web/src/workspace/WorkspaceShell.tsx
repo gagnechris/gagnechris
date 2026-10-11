@@ -217,7 +217,7 @@ export function WorkspaceFrame({
           className="workspace-icon-button"
           aria-label="Add a passkey"
           title="Add a passkey"
-          onClick={openAddPasskey}
+          onClick={() => void openAddPasskey()}
         >
           <ShellIcon name="passkey" />
         </button>

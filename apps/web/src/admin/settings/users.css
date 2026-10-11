@@ -103,6 +103,7 @@
   width: 2.25rem;
   height: 2.25rem;
   flex: none;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-md);
   background: transparent;
@@ -112,6 +113,8 @@
 
 .users-icon-btn:hover {
   background: var(--neutral-100);
+  transform: none;
+  box-shadow: none;
 }
 
 .users-link-btn {

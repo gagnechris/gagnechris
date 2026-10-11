@@ -4,7 +4,7 @@ import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import { ensureAmplifyConfigured } from './config';
-import { takeReturnTo } from './session';
+import { takeAddPasskeyAfterSignIn, takeReturnTo } from './session';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -19,6 +19,11 @@ export default function AuthCallback() {
         return;
       }
       settled = true;
+      const addPasskey = takeAddPasskeyAfterSignIn();
+      if (addPasskey) {
+        window.location.assign(addPasskey);
+        return;
+      }
       navigate(takeReturnTo(), { replace: true });
     };
 
@@ -29,6 +34,14 @@ export default function AuthCallback() {
       settled = true;
       setError(message);
     };
+
+    const params = new URLSearchParams(window.location.search);
+    const returnedError =
+      params.get('error_description') ?? params.get('error');
+    if (returnedError) {
+      fail(returnedError);
+      return;
+    }
 
     ensureAmplifyConfigured();
 
