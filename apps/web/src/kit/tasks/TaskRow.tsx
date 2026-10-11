@@ -33,18 +33,27 @@ type TaskRowProps = {
   meta: ReactNode;
   /** Without a route the title is plain text. */
   to?: string;
+  /** Buttons after the title, such as Snooze and Drop. */
+  actions?: ReactNode;
   /** `list` strikes through done and dropped tasks and labels in-progress and dropped ones; `today` is the compact panel row. */
   variant: 'list' | 'today';
 };
 
 const titleLinkStyle: CSSProperties = {
-  flex: 1,
+  flex: '1 1 6rem',
   minWidth: 0,
   textDecoration: 'none',
   color: 'inherit',
 };
 
-export function TaskRow({ task, onToggle, meta, to, variant }: TaskRowProps) {
+export function TaskRow({
+  task,
+  onToggle,
+  meta,
+  to,
+  actions,
+  variant,
+}: TaskRowProps) {
   const list = variant === 'list';
   const closed = task.status === 'done' || task.status === 'dropped';
   const body = (
@@ -89,6 +98,7 @@ export function TaskRow({ task, onToggle, meta, to, variant }: TaskRowProps) {
         ) : (
           <span style={titleLinkStyle}>{body}</span>
         )}
+        {actions ? <span className="task-row__actions">{actions}</span> : null}
       </div>
     </li>
   );

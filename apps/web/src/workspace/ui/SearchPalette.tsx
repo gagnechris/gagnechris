@@ -104,6 +104,13 @@ export default function SearchPalette({
             }}
           />
           {toolbar}
+          <button
+            type="button"
+            className="workspace-search__cancel"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
         </div>
 
         <div className="workspace-search__status" aria-live="polite">

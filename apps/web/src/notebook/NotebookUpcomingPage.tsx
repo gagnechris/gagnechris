@@ -13,12 +13,14 @@ import {
   formatTaskDay,
   groupUpcomingTasks,
   noteChipLabel,
+  snoozeBaseDay,
   type SourceNote,
   taskDue,
   type TaskLineDraft,
 } from '@gagnechris/shared';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
+import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import {
   areaQueryParam,
@@ -215,6 +217,16 @@ export default function NotebookUpcomingPage() {
                     >
                       Do today
                     </button>
+                    <span className="task-row__actions">
+                      <TaskRowActions
+                        title={task.title}
+                        snoozeFrom={snoozeBaseDay(
+                          task.startDate ?? today,
+                          today,
+                        )}
+                        onSnooze={(schedule) => void patch(task, schedule)}
+                      />
+                    </span>
                   </li>
                 );
               })}
