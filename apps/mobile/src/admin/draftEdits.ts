@@ -1,5 +1,4 @@
 import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
-import type { PostDraftFields } from '@gagnechris/app-core';
 import type { Selection, TextEdit } from '../notebook/toolbarEdits';
 
 /** An uploaded image goes in as its own paragraph, replacing any selection. */
@@ -23,12 +22,14 @@ export function insertImage(
   };
 }
 
-/** With `followSlug`, the slug tracks the title until it is edited by hand. */
-export const withTitle = (
-  draft: PostDraftFields,
-  title: string,
+/** With `followSlug`, the slug tracks `key` until it is edited by hand. */
+export const withSlugSource = <T extends { slug: string }>(
+  draft: T,
+  key: Exclude<keyof T, 'slug'>,
+  value: string,
   followSlug: boolean,
-): PostDraftFields =>
-  followSlug
-    ? { ...draft, title, slug: slugify(title) || EMPTY_SLUG_FALLBACK }
-    : { ...draft, title };
+): T => ({
+  ...draft,
+  [key]: value,
+  ...(followSlug ? { slug: slugify(value) || EMPTY_SLUG_FALLBACK } : {}),
+});

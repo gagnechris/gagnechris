@@ -77,7 +77,7 @@ Strings that match the publisher's HTML (`services/publisher/test/render.test.ts
 
 ## 4. Hydration mismatches
 
-A mismatch is not a broken page: React 19 throws the server DOM away and renders on the client, which is what `createRoot` does on every page today, and reports it to `onRecoverableError` (the console, for now). The strategy is to keep the first client render a pure function of the published page:
+A mismatch is not a broken page: React 19 throws the server DOM away and renders on the client, which is what `createRoot` does on every page today, and reports it to `onRecoverableError`, which logs it and sends a `hydration_error` event to GA with the path and error kind. The strategy is to keep the first client render a pure function of the published page:
 
 - **Props are what the page prints.** View models hold formatted strings (dates as `Sep 28`, `datetime` values, year labels) in display order, so the parser reads back the exact props. The old posts parser read only the date from `datetime` and sorted again, which tied posts published on the same UTC day and broke the tie on id, so a cold load could swap them; the view model fixes that (`PostsIndexBody.test.tsx` covers the case).
 - **No clock, locale or time zone in render.** Dates are UTC already. The footer year is the one exception today: `useFooterYear` returns the published year as `useSyncExternalStore`'s server snapshot, so hydration matches and the live year renders straight after (`coldLoadParity.test.tsx` runs it a year later).
@@ -138,7 +138,7 @@ Each step moves one page, or one shared part, into `public-ui` with its view mod
 - **One React copy:** server and client must run the same React release, or the server markup can drift from what the client expects. The root lockfile has one hoisted `react` and `react-dom`; keep `public-ui`'s React as a peer dependency.
 - **Serialisation:** React's spelling differs from the string renderers (`dateTime`, `&#x27;`, `<!-- -->`). Anything that string-matches published HTML must expect it; parsers and CSS are unaffected.
 - **`tsx`:** the local API and the e2e stack run the publisher through `tsx`, which reads one tsconfig for every file and would compile `public-ui`'s JSX to `React.createElement` with no `React` in scope. Each `.tsx` file in the package starts with `/** @jsxRuntime automatic */`, and `src/server.test.ts` fails on a file without it.
-- **Silent fallbacks:** a mismatch costs the hydration benefit but shows no error to visitors, so a regression could go unnoticed. The tests in §4 catch it before merge; reporting `onRecoverableError` to analytics would catch it in production.
+- **Silent fallbacks:** a mismatch costs the hydration benefit but shows no error to visitors, so a regression could go unnoticed. The tests in §4 catch it before merge, and the `hydration_error` GA event shows it in production.
 - **Deploy order:** CDK (publisher) and the web build deploy in one pipeline, so for a short time new HTML can meet the old app or the reverse. The worst case is today's client render.
 
 ## Follow-up tickets

@@ -10,6 +10,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import MoreScreen from '../app/(tabs)/more/index';
 import AdminMoreScreen from '../app/admin/more/index';
 import AdminPagesScreen from '../app/admin/pages/index';
+import AdminPostScreen from '../app/admin/posts/[id]';
+import AdminPostsScreen from '../app/admin/posts/index';
+import AdminProjectScreen from '../app/admin/projects/[id]';
+import AdminProjectsScreen from '../app/admin/projects/index';
 import Index from '../app/index';
 import NotesScreen from '../app/(tabs)/notes/index';
 import TasksScreen from '../app/(tabs)/tasks/index';
@@ -27,7 +31,8 @@ import {
   signedInBackend,
 } from '../test/render';
 import { addPasskeyFromMore } from './auth/passkey';
-import { router } from '../test/router';
+import { adminServer, makePost, makeProject } from '../test/adminServer';
+import { router, searchParams } from '../test/router';
 import { canManageUsers, SPACE_STORAGE_KEY, useRememberSpace } from './space';
 import { MIN_TARGET } from './theme';
 
@@ -163,6 +168,35 @@ describe('Notebook tab screens', () => {
       buttons.find((b) => b.text === 'Sign out')!.onPress!(),
     );
     expect(signOut).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Admin screens', () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it.each([
+    ['Posts', AdminPostsScreen],
+    ['Post', AdminPostScreen],
+    ['Projects', AdminProjectsScreen],
+    ['Project', AdminProjectScreen],
+  ] as const)('%s has labelled, scalable controls', async (_, Screen) => {
+    vi.stubGlobal(
+      'fetch',
+      adminServer(
+        [makePost('x', { tags: ['go'] })],
+        [makeProject('x', { stack: ['Go'] })],
+      ).fetch,
+    );
+    searchParams.current = { id: 'x' };
+    const renderer = await render(
+      <Providers>
+        <Screen />
+      </Providers>,
+    );
+    await settle(10);
+    expect(allText(renderer)).not.toBe('');
+    expectAccessible(renderer);
+    act(() => renderer.unmount());
   });
 });
 

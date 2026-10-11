@@ -59,11 +59,15 @@ const summary = ({
 
 export const UPLOAD_URL = 'https://uploads.test/put';
 
-/** The admin Posts API, site media uploads and a photo's local file. */
-export function postsServer(posts: Post[], projects: Project[] = []) {
+/** The admin Posts and Projects APIs, site media uploads and a photo's local file. */
+export function adminServer(posts: Post[], projects: Project[] = []) {
   const store = new Map(posts.map((post) => [post.id, post]));
+  const projectStore = new Map(
+    projects.map((project) => [project.id, project]),
+  );
   const state = {
     store,
+    projectStore,
     calls: [] as string[],
     uploads: [] as { contentType: string; contentLength: number }[],
   };
@@ -101,7 +105,18 @@ export function postsServer(posts: Post[], projects: Project[] = []) {
       });
     }
     if (route === 'GET /api/admin/projects') {
-      return json(200, { items: projects });
+      return json(200, { items: [...projectStore.values()] });
+    }
+    if (route === 'POST /api/admin/projects') {
+      const body = (await input.json()) as Partial<Project>;
+      const project = makeProject(`new-${nextId++}`, {
+        status: 'draft',
+        publishedAt: null,
+        ...body,
+        updatedAt: now(),
+      });
+      projectStore.set(project.id, project);
+      return json(201, project);
     }
     if (route === 'GET /api/admin/posts') {
       const status = url.searchParams.get('status');
@@ -127,12 +142,18 @@ export function postsServer(posts: Post[], projects: Project[] = []) {
       return json(201, post);
     }
     const match = url.pathname.match(
-      /^\/api\/admin\/posts\/([^/]+)(?:\/(publish|unpublish|discard))?$/,
+      /^\/api\/admin\/(posts|projects)\/([^/]+)(?:\/(publish|unpublish|discard))?$/,
     );
-    const current = match ? store.get(match[1]!) : undefined;
+    const map = (match?.[1] === 'projects' ? projectStore : store) as Map<
+      string,
+      Post | Project
+    >;
+    const current = match ? map.get(match[2]!) : undefined;
     if (!match || !current) return json(404, { error: 'not_found' });
     if (input.method === 'GET') return json(200, current);
-    const body = (await input.json()) as Partial<Post> & { version: number };
+    const body = (await input.json()) as Record<string, unknown> & {
+      version: number;
+    };
     if (body.version !== current.version) {
       return json(412, {
         error: 'version_conflict',
@@ -141,13 +162,13 @@ export function postsServer(posts: Post[], projects: Project[] = []) {
       });
     }
     const { version: _version, ...fields } = body;
-    const action = match[2];
-    const next: Post = {
+    const action = match[3];
+    const next = {
       ...current,
       ...(action ? {} : fields),
       version: current.version + 1,
       updatedAt: now(),
-    };
+    } as Post | Project;
     if (input.method === 'DELETE') {
       next.status = 'deleted';
     } else if (action === 'publish') {
@@ -162,7 +183,7 @@ export function postsServer(posts: Post[], projects: Project[] = []) {
     } else if (current.status === 'published') {
       next.hasUnpublishedChanges = true;
     }
-    store.set(next.id, next);
+    map.set(next.id, next);
     return json(200, next);
   };
 

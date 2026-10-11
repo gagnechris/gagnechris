@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest';
-import { hydratesPrerender } from './mountApp';
+import { act, createElement } from 'react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { hydratesPrerender, mountApp } from './mountApp';
 
 const root = (html: string) => {
   const el = document.createElement('div');
@@ -57,5 +58,50 @@ describe('hydratesPrerender', () => {
     ],
   ])('%s over %s hydrates: %s', (path, body, hydrates) => {
     expect(hydratesPrerender(published(body), path)).toBe(hydrates);
+  });
+});
+
+describe('mountApp hydration error reporting', () => {
+  const gtag = vi.fn();
+  let unmount: (() => void) | undefined;
+
+  const hydrate = async (serverText: string, clientText: string) => {
+    window.gtag = gtag;
+    const container = published(`<p>${serverText}</p>`);
+    document.body.append(container);
+    await act(async () => {
+      const root = mountApp(
+        container,
+        createElement('p', null, clientText),
+        '/posts',
+      );
+      unmount = () => root.unmount();
+    });
+  };
+
+  afterEach(() => {
+    act(() => unmount?.());
+    unmount = undefined;
+    document.body.innerHTML = '';
+    gtag.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  test('a mismatch sends the path and the kind of error, never the page', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await hydrate('Published text', 'Other text');
+
+    expect(gtag).toHaveBeenCalledTimes(1);
+    expect(gtag).toHaveBeenCalledWith('event', 'hydration_error', {
+      page_path: '/posts',
+      error_kind: 'text_mismatch',
+    });
+    expect(JSON.stringify(gtag.mock.calls)).not.toMatch(/Published|Other/);
+  });
+
+  test('a clean hydrate sends nothing', async () => {
+    await hydrate('Same text', 'Same text');
+
+    expect(gtag).not.toHaveBeenCalled();
   });
 });

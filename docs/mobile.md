@@ -25,7 +25,8 @@ The app has two spaces, each with its own tab bar: Notebook (`app/(tabs)`) and A
 | `app/dev/markdown.tsx`                                             | Dev builds only (see [Markdown](#markdown))                                                                                 |
 | `app/admin/_layout.tsx`                                            | Admin tab bar: Posts, Pages, Projects, Users (only with `user-admin`), More                                                 |
 | `app/admin/posts/index.tsx`, `app/admin/posts/[id].tsx`            | `/admin/posts` and `/admin/posts/:id`: the post list and editor (see [Posts](#posts))                                       |
-| `app/admin/{pages,projects,users}/index.tsx`                       | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
+| `app/admin/projects/index.tsx`, `app/admin/projects/[id].tsx`      | `/admin/projects` and `/admin/projects/:id`: the project list and editor (see [Projects](#projects))                        |
+| `app/admin/{pages,users}/index.tsx`                                | `/admin/<tab>`: opens that admin page on `admin.gagnechris.com` until the screen is in the app                              |
 | `app/admin/more/index.tsx`                                         | `/admin/more`: account, Your apps, Add a passkey, sign out                                                                  |
 | `app/no-access.tsx`, `app/sign-in.tsx`                             | Outside the tabs                                                                                                            |
 
@@ -84,6 +85,12 @@ The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEdito
 - **Photos.** Photo and the cover image open the photo library (`expo-image-picker`, with the compatible representation so HEIC comes back as JPEG), upload through `POST /api/admin/media/upload-url` and the presigned `PUT`, and insert `![name](/media/…)` as its own paragraph or set the cover. Images over 10 MB or of a type the site doesn't serve are refused with a message.
 - **Actions.** Publish (or Publish changes) sits under the header while there is something to publish. The ⋯ menu has View on site and Share link for a published post, Discard unpublished changes, Unpublish and Delete, each confirmed first.
 - Posts aren't in the persisted cache or the outbox: the Admin space needs a connection, and a save that fails retries when the connection returns.
+
+## Projects
+
+The Admin Projects tab lists projects in their public order with stage, status, where the card links (`projectCardHref`) and the order number. With none, Create starter projects adds the Posts, Notebook and Don’t Feed the Bears drafts; the + button creates a draft at the end of the list.
+
+The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead, and the save state stays Edited. Publish refuses while a field is invalid or a project with a demo has no preview image.
 
 ## Search
 
