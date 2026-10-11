@@ -931,6 +931,11 @@ export const ListTasksQuerySchema = z
       .transform((v) => v === 'true')
       .optional()
       .describe('Only someday tasks (true) or only scheduled tasks (false)'),
+    undated: z
+      .enum(['true'])
+      .transform(() => true)
+      .optional()
+      .describe('Only tasks with no startDate that are not someday'),
     noteId: z.string().min(1).optional().describe('Tasks linked to a note'),
     open: z
       .enum(['true', 'false'])
@@ -965,6 +970,13 @@ export const ListTasksQuerySchema = z
         code: 'custom',
         message: 'Someday tasks have no startDate',
         path: ['someday'],
+      });
+    }
+    if (query.undated && (query.someday === true || ranges.length > 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Undated tasks have no startDate and are not someday',
+        path: ['undated'],
       });
     }
   });

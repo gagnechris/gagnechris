@@ -8,6 +8,8 @@ import {
   areaQueryParam,
   isOpenTaskStatus,
   matchesTaskShowOn,
+  sortTasksForList,
+  taskShowOnQuery,
   NOTEBOOK_AREA_FILTERS,
   NOTEBOOK_AREA_LABELS,
   TASK_SHOW_ON_FILTERS,
@@ -78,14 +80,15 @@ const TasksScreen = () => {
     today,
     limit: 50,
     ...(status === 'open' ? { open: true } : { status }),
-    ...(showOn === 'today' ? { startOn: today } : {}),
-    ...(showOn === 'later' ? { startAfter: today } : {}),
-    ...(showOn === 'someday' ? { someday: true } : {}),
+    ...taskShowOnQuery(showOn, today),
   });
   const items = useMemo(
     () =>
-      (tasks.data?.pages.flatMap((p) => p.items) ?? []).filter(
-        (t) => inStatus(t, status) && matchesTaskShowOn(t, showOn, today),
+      sortTasksForList(
+        (tasks.data?.pages.flatMap((p) => p.items) ?? []).filter(
+          (t) => inStatus(t, status) && matchesTaskShowOn(t, showOn, today),
+        ),
+        today,
       ),
     [tasks.data, status, showOn, today],
   );

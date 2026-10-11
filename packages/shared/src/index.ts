@@ -183,9 +183,11 @@ export {
   TASK_SHOW_ON_FILTERS,
   TASK_SHOW_ON_LABELS,
   taskShowOnParam,
+  taskShowOnQuery,
   type TaskShowOnFilter,
 } from './task-show-on.js';
 export { taskDue, type TaskDue } from './task-due.js';
+export { compareTasksForList, sortTasksForList } from './task-list-order.js';
 export {
   openTaskDateQuery,
   taskDateMenuIds,
