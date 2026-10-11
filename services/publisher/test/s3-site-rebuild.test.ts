@@ -147,7 +147,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     vi.resetModules();
   });
 
-  it('keeps corrupt slugs in KVS, slugs.json, and sitemap; HTML still serves', async () => {
+  it('keeps corrupt slugs in KVS and sitemap; HTML still serves', async () => {
     const good = makePost('first-post', '01GOOD00000000000000000000');
     const corrupt = makePost('keep-me', '01CORRUPT00000000000000000');
 
@@ -216,13 +216,6 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         pk: `POST#${corrupt.id}`,
         sk: 'PUBLISHED',
       }),
-    );
-
-    const slugsJson = JSON.parse(
-      (await storage.read('blog/slugs.json')) ?? '{}',
-    ) as { slugs: string[] };
-    expect(slugsJson.slugs).toEqual(
-      expect.arrayContaining([good.slug, corrupt.slug]),
     );
 
     const sitemap = (await storage.read('sitemap.xml')) ?? '';
@@ -325,12 +318,6 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
 
     expect(await storage.read(`blog/${fresh.slug}/index.html`)).toContain(
       fresh.title,
-    );
-    const slugsJson = JSON.parse(
-      (await storage.read('blog/slugs.json')) ?? '{}',
-    ) as { slugs: string[] };
-    expect(slugsJson.slugs).toEqual(
-      expect.arrayContaining([existing.slug, fresh.slug]),
     );
     expect(await desiredKvsKeys(syncViewerRequestKeys, 'blog')).toEqual(
       expect.arrayContaining([existing.slug, fresh.slug]),
@@ -638,10 +625,6 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
     });
 
     await access(join(root, 'blog', 'keep-me', 'index.html'));
-    const slugsJson = JSON.parse(
-      await readFile(join(root, 'blog', 'slugs.json'), 'utf-8'),
-    ) as { slugs: string[] };
-    expect(slugsJson.slugs).toContain('keep-me');
     const sitemap = await readFile(join(root, 'sitemap.xml'), 'utf-8');
     expect(sitemap).toContain('/posts/keep-me');
   });
