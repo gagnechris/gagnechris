@@ -170,6 +170,65 @@ describe('sign-out', () => {
   });
 });
 
+describe('sign-out during a token refresh', () => {
+  const pendingRefresh = () => {
+    let resolveRefresh!: () => void;
+    const issuer = fakeIssuer({
+      expiresAt: () => 0,
+      refresh: vi.fn(
+        (rt: string) =>
+          new Promise<StoredTokens>((resolve) => {
+            resolveRefresh = () =>
+              resolve({ idToken: 'id:alice:2', refreshToken: `${rt}+` });
+          }),
+      ),
+    });
+    return { issuer, resolve: () => resolveRefresh() };
+  };
+
+  it('drops the refreshed tokens', async () => {
+    const { issuer, resolve } = pendingRefresh();
+    const { backend, secure, storage } = setup(issuer);
+    await backend.restore();
+    await backend.signIn();
+    await backend.markInstalled();
+
+    const token = backend.getToken();
+    await vi.waitFor(() => expect(issuer.refresh).toHaveBeenCalled());
+    const signingOut = backend.signOut();
+    resolve();
+    await signingOut;
+
+    expect(await token).toBeNull();
+    expect(issuer.revoke).toHaveBeenCalledWith('rt-1+');
+    expect(secure.data.get(KEYCHAIN_KEYS.refreshToken)).toBeUndefined();
+    expect(secure.data.get(KEYCHAIN_KEYS.idToken)).toBeUndefined();
+    expect(await backend.getToken()).toBeNull();
+    const relaunched = setup(fakeIssuer(), secure, storage);
+    expect(await relaunched.backend.restore()).toBeNull();
+  });
+
+  it('keeps a new sign-in over the old session’s refresh', async () => {
+    const { issuer, resolve } = pendingRefresh();
+    const { backend, secure } = setup(issuer);
+    await backend.restore();
+    await backend.signIn();
+
+    const token = backend.getToken();
+    await vi.waitFor(() => expect(issuer.refresh).toHaveBeenCalled());
+    vi.mocked(issuer.signIn).mockResolvedValueOnce({
+      idToken: 'id:bob:1',
+      refreshToken: 'rt-bob',
+    });
+    const signingIn = backend.signIn();
+    resolve();
+    await signingIn;
+
+    expect(await token).toBeNull();
+    expect(secure.data.get(KEYCHAIN_KEYS.refreshToken)).toBe('rt-bob');
+  });
+});
+
 describe('token refresh', () => {
   it('5 concurrent 401s cause one refresh', async () => {
     let resolveRefresh!: () => void;
