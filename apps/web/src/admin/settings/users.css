@@ -214,6 +214,8 @@
 }
 
 .users-table-wrap {
+  /* Keeps visually hidden headers inside the scroll clip. */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--neutral-200);
   border-radius: 0.75rem;
