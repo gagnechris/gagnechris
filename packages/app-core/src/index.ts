@@ -19,7 +19,11 @@ export {
   homePayload,
   type HomeDraftFields,
 } from './homeDraft.js';
-export { isPlaceholderSlug, newPlaceholderSlug } from './placeholderSlug.js';
+export {
+  isPlaceholderSlug,
+  newPlaceholderSlug,
+  slugWasPublished,
+} from './placeholderSlug.js';
 export {
   emptyProjectDraft,
   emptyProjectLink,

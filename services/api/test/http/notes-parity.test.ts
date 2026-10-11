@@ -425,6 +425,29 @@ describe('notes parity over HTTP (DynamoDB Local)', () => {
       fields: { title: 'too_big' },
     });
 
+    const emojiTitle = '😀'.repeat(300);
+    const emojiTag = '😀'.repeat(50);
+    expect(
+      await post({
+        id: PAGE_ID,
+        area: 'work',
+        type: 'page',
+        title: emojiTitle,
+        tags: [emojiTag],
+      }),
+    ).toMatchObject({
+      status: 201,
+      body: { title: emojiTitle, tags: [emojiTag] },
+    });
+    expect(
+      await post({
+        id: PAGE_ID_2,
+        area: 'work',
+        type: 'page',
+        title: `${emojiTitle}x`,
+      }),
+    ).toMatchObject({ status: 413, body: { fields: { title: 'too_big' } } });
+
     const badDate = await call(
       'GET',
       '/api/notebook/notes/daily/work/2026-02-30',

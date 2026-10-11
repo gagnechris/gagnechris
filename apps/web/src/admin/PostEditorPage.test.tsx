@@ -503,12 +503,67 @@ describe('PostEditorPage delete', () => {
     expect(slug).toHaveValue('dawn');
   });
 
+  test('a new post’s slug stops following the title once it is published', async () => {
+    const user = userEvent.setup();
+    const draft = { ...basePost, title: 'Untitled', slug: 'untitled-a1b2c3' };
+    get.mockResolvedValue({
+      data: draft,
+      error: undefined,
+      response: { status: 200 },
+    });
+    put.mockImplementation(
+      (_path: string, { body }: { body: Record<string, unknown> }) =>
+        Promise.resolve({
+          data: { ...draft, ...body, version: (body.version as number) + 1 },
+          error: undefined,
+          response: { status: 200 },
+        }),
+    );
+    post.mockImplementation(() =>
+      Promise.resolve({
+        data: {
+          ...draft,
+          title: 'Hello',
+          slug: 'hello',
+          status: 'published',
+          publishedAt: '2026-09-27T01:00:00.000Z',
+          version: 3,
+        },
+        error: undefined,
+        response: { status: 200 },
+      }),
+    );
+    renderEditor();
+    await screen.findByDisplayValue('Untitled');
+    expect(
+      screen.getByText('Follows the title until you edit it.'),
+    ).toBeInTheDocument();
+
+    const title = screen.getByLabelText('Title');
+    await user.clear(title);
+    await user.type(title, 'Hello');
+    expect(screen.getByLabelText('Slug')).toHaveValue('hello');
+
+    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    await screen.findByRole('button', { name: 'Unpublish' });
+
+    await user.type(title, ' again');
+    expect(screen.getByLabelText('Slug')).toHaveValue('hello');
+    expect(
+      screen.queryByText('Follows the title until you edit it.'),
+    ).not.toBeInTheDocument();
+  });
+
   test('a real slug stays put when the title changes', async () => {
     const user = userEvent.setup();
     renderEditor();
     await screen.findByDisplayValue('Hello');
     await user.type(screen.getByLabelText('Title'), ' world');
     expect(screen.getByLabelText('Slug')).toHaveValue('hello');
+    expect(
+      screen.queryByText('Follows the title until you edit it.'),
+    ).not.toBeInTheDocument();
   });
 
   test('slug collision shows slug-taken message, not Reload', async () => {

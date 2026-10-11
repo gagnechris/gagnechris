@@ -58,7 +58,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     },
   });
   const { draft, save, saveError } = editor;
-  const { setField, setSlugManual } = useDraftFields(editor, {
+  const { setField, slugManual, setSlugManual } = useDraftFields(editor, {
     slugFrom: 'title',
   });
   const { uploadImage, uploadBodyImages } = useImageUpload(editor.setSaveError);
@@ -99,6 +99,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
           <PostEditorDetails
             draft={draft}
             setField={setField}
+            slugManual={slugManual}
             setSlugManual={setSlugManual}
             onSave={() => void save()}
             onUploadImage={uploadImage}

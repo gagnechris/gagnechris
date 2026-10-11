@@ -26,6 +26,8 @@ type Props = {
   onClose: () => void;
   draft: PostDraftFields;
   onChange: (update: (prev: PostDraftFields) => PostDraftFields) => void;
+  /** Whether the slug still follows the title. */
+  slugFollows: boolean;
   onSlugEdited: () => void;
   onChooseCover: () => void;
   uploading: boolean;
@@ -38,6 +40,7 @@ export const PostDetailsSheet = ({
   onClose,
   draft,
   onChange,
+  slugFollows,
   onSlugEdited,
   onChooseCover,
   uploading,
@@ -71,7 +74,9 @@ export const PostDetailsSheet = ({
           set('slug', slug);
         }}
       />
-      <FieldHint>Follows the title until you edit it.</FieldHint>
+      {slugFollows && (
+        <FieldHint>Follows the title until you edit it.</FieldHint>
+      )}
 
       <ChipsField
         label="Tags"

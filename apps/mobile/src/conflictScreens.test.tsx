@@ -200,4 +200,29 @@ describe('the conflicts list', () => {
     expect(allText(renderer)).toContain('Everything is synced.');
     expect(Alert.alert).not.toHaveBeenCalled();
   });
+
+  it('opens a copy saved from the list with the Notes list under it', async () => {
+    serve([makeNote(NOTE, 'shared text')]);
+    searchParams.current = { id: NOTE };
+    const renderer = await open(
+      <>
+        <NoteScreen />
+        <ConflictsScreen />
+      </>,
+    );
+    server.editNote(NOTE, { bodyMarkdown: 'web text' });
+    act(() => input(renderer, 'Note body').props.onChangeText('phone text'));
+    await waitForConflict(renderer, 'Changed on another device (text)');
+    const saveCopy = renderer.root.findAll(
+      (node) =>
+        typeof node.type === 'string' &&
+        node.props.accessibilityLabel === 'Save mine as a new page',
+    );
+    await act(async () => saveCopy.at(-1)!.props.onPress());
+    await settle(10);
+    expect(router.push).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/notes\//),
+      { withAnchor: true },
+    );
+  });
 });

@@ -3,6 +3,7 @@ import {
   hasProjectDraftErrors,
   hasProjectPublishErrors,
   isPlaceholderSlug,
+  slugWasPublished,
   projectDraftFromProject,
   projectPayload,
   projectResource,
@@ -90,11 +91,12 @@ const ProjectScreen = () => {
     draftRef.current = draft;
   });
   useSaveOnBackground(dirty, save);
+  const slugFollows = followSlug && !slugWasPublished(entity);
 
   const setName = useCallback(
     (name: string) =>
-      updateDraft((prev) => withSlugSource(prev, 'name', name, followSlug)),
-    [updateDraft, followSlug],
+      updateDraft((prev) => withSlugSource(prev, 'name', name, slugFollows)),
+    [updateDraft, slugFollows],
   );
   const setBody = useCallback(
     (bodyMarkdown: string) =>

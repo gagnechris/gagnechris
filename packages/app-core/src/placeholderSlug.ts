@@ -7,3 +7,9 @@ export const newPlaceholderSlug = (prefix: 'untitled' | 'untitled-project') =>
 export const isPlaceholderSlug = (slug: string): boolean =>
   /^untitled(?:-project)?(?:-[a-z0-9]{6})?$/.test(slug) ||
   slug === EMPTY_SLUG_FALLBACK;
+
+/** Once live, a slug is a public URL, so it no longer follows the title. */
+export const slugWasPublished = (entity: object | null | undefined): boolean =>
+  !!entity &&
+  (('status' in entity && entity.status === 'published') ||
+    ('publishedAt' in entity && entity.publishedAt != null));
