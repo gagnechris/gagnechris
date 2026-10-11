@@ -70,6 +70,14 @@ func (s store) consumeSESSend(ctx context.Context) (bool, error) {
 		contract.Data.API.SESGlobalDailyCap, keys.TTLEndOfUTCDay(at))
 }
 
+// consumeResumeSESSend counts against the same daily total but stops at a
+// lower cap, so resume notices never use up the contact form's mail.
+func (s store) consumeResumeSESSend(ctx context.Context) (bool, error) {
+	at := s.now()
+	return s.tryIncrement(ctx, keys.RateSESGlobalPk(), keys.RateDaySk(at),
+		contract.Data.API.ResumeNotifySESDailyCap, keys.TTLEndOfUTCDay(at))
+}
+
 func (s store) claimResumeNotifyIP(ctx context.Context, ip string) (bool, error) {
 	at := s.now()
 	return s.tryIncrement(ctx, keys.RateResumeIPPk(ip), keys.RateDaySk(at), 1, keys.TTLEndOfUTCDay(at))

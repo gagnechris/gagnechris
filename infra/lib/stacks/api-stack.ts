@@ -341,6 +341,22 @@ export class ApiStack extends Stack {
       metricName: 'SyncCorruptRow',
       alertsTopic,
     });
+    emfServiceAlarm(this, 'ApiContactEmailFailed', {
+      alarmName: `gagnechris-${config.name}-api-contact-email-failed`,
+      alarmDescription:
+        'A contact message was saved but SES failed to mail it (the visitor got a 502)',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'ContactEmailFailed',
+      alertsTopic,
+    });
+    emfServiceAlarm(this, 'ApiSesCapReached', {
+      alarmName: `gagnechris-${config.name}-api-ses-cap-reached`,
+      alarmDescription:
+        'The daily email cap is used up: contact messages are saved but not mailed until the next UTC day',
+      serviceName: API_SERVICE_NAME,
+      metricName: 'SesCapReached',
+      alertsTopic,
+    });
     // Notebook ops: a burst of 409/412s means autosave or sync is fighting
     // itself (two devices, or a client bug), not a single stale tab.
     metricAlarm(this, 'ApiWriteConflictSpike', {
