@@ -5,6 +5,7 @@ import {
   type Root,
   type RootOptions,
 } from 'react-dom/client';
+import { trackHydrationError } from '../utils/analytics';
 
 const PRERENDER_START = 'prerender:start';
 
@@ -37,7 +38,13 @@ export function mountApp(
   options?: Pick<RootOptions, 'onRecoverableError'>,
 ): Root {
   if (hydratesPrerender(container, pathname)) {
-    return hydrateRoot(container, app, options);
+    return hydrateRoot(container, app, {
+      onRecoverableError: (error) => {
+        trackHydrationError(pathname, error);
+        console.error(error);
+      },
+      ...options,
+    });
   }
   const root = createRoot(container, options);
   root.render(app);
