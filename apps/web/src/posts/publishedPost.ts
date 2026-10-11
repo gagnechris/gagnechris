@@ -3,11 +3,12 @@ import type { PostArticleView } from '@gagnechris/shared/render';
 import {
   fetchPrerender,
   fromPrerender,
-  prerenderedTitle,
+  prerenderedHead,
+  type PrerenderedHead,
 } from '../prerender/documentPrerender';
 import { publishedPostPageUrl } from './publishedPosts';
 
-export type PostView = PostArticleView & { headTitle: string };
+export type PostView = PostArticleView & { head: PrerenderedHead };
 
 export function postViewFromDocument(root: ParentNode): PostView | null {
   const article = root.querySelector('article.blog-post-prerender');
@@ -19,7 +20,7 @@ export function postViewFromDocument(root: ParentNode): PostView | null {
   return {
     slug: article.getAttribute('data-slug') ?? '',
     title,
-    headTitle: prerenderedTitle(root) ?? pageTitle(title),
+    head: prerenderedHead(root, pageTitle(title)),
     date: time?.getAttribute('datetime') || time?.textContent?.trim() || '',
     excerpt: article.querySelector('.post-excerpt')?.textContent?.trim() ?? '',
     minutes: Number(
