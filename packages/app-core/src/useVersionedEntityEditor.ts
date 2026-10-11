@@ -99,18 +99,23 @@ export function useVersionedEntityEditor<
     retrySignals,
   });
   const { getBoundVersion } = controller;
+  const {
+    publish: publishMutator,
+    unpublish: unpublishMutator,
+    discard: discardMutator,
+  } = lifecycle;
 
   const publish = useCallback(
-    () => lifecycle.publish({ version: getBoundVersion() }),
-    [lifecycle.publish, getBoundVersion],
+    () => publishMutator({ version: getBoundVersion() }),
+    [publishMutator, getBoundVersion],
   );
   const unpublish = useCallback(
-    () => lifecycle.unpublish({ version: getBoundVersion() }),
-    [lifecycle.unpublish, getBoundVersion],
+    () => unpublishMutator({ version: getBoundVersion() }),
+    [unpublishMutator, getBoundVersion],
   );
   const discard = useCallback(
-    () => lifecycle.discard({ version: getBoundVersion() }),
-    [lifecycle.discard, getBoundVersion],
+    () => discardMutator({ version: getBoundVersion() }),
+    [discardMutator, getBoundVersion],
   );
 
   const { runPublish, runUnpublish, runDiscard } = useDraftPublishEditor({
