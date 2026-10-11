@@ -6595,6 +6595,9 @@ type ListNotesQuery struct {
 	// Limit Page size (1-100; default 50)
 	Limit *int `json:"limit,omitempty"`
 
+	// TaskID Notes that embed this task
+	TaskID *string `json:"taskId,omitempty"`
+
 	// To Inclusive end date (yyyy-mm-dd) for calendar ranges
 	To *string `json:"to,omitempty"`
 
@@ -10932,6 +10935,9 @@ type GetAPINotebookNotesParams struct {
 
 	// Type Filter by daily or page notes
 	Type *GetAPINotebookNotesParamsType `form:"type,omitempty" json:"type,omitempty"`
+
+	// TaskID Notes that embed this task
+	TaskID *string `form:"taskId,omitempty" json:"taskId,omitempty"`
 
 	// Cursor Opaque pagination cursor from a previous list response
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`

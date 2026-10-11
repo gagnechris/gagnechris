@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { noteResource, useDeleteNoteMutation } from '@gagnechris/app-core';
 import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -10,6 +10,7 @@ import {
   notePayloadFromDraft,
 } from './noteDraft';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import { noteHref } from './noteHref';
 
 export default function NotebookNotePage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -72,6 +73,11 @@ export default function NotebookNotePage() {
         <p>Loading note…</p>
       </section>
     );
+  }
+
+  // One editor per daily note: Today's, with its date and area.
+  if (entity.type === 'daily' && entity.date) {
+    return <Navigate to={noteHref(entity)} replace />;
   }
 
   return (

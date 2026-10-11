@@ -226,8 +226,8 @@ func (r *notesRepo) delete(ctx context.Context, userID, id string, expected api.
 
 // listNotesQuery is ListNotesQuerySchema.
 type listNotesQuery struct {
-	area, from, to, noteType, cursor string
-	limit                            int
+	area, from, to, noteType, taskID, cursor string
+	limit                                    int
 }
 
 type skRange struct{ from, to string }
@@ -285,10 +285,18 @@ func gsi1Page[T any](ctx context.Context, table *data.Table, pk string, rng *skR
 	return page, nil
 }
 
+// keep is the filter with no key condition: notes that embed taskID.
+func (q listNotesQuery) keep() func(Note) bool {
+	if q.taskID == "" {
+		return nil
+	}
+	return func(n Note) bool { return slices.Contains(n.TaskIDs, q.taskID) }
+}
+
 func (r *notesRepo) list(ctx context.Context, userID string, q listNotesQuery, onCorrupt func(*api.DataIntegrityError)) (store.Page[Note], error) {
 	fetch := func(area, cursor string, limit, budget int) (store.Page[Note], error) {
 		return gsi1Page(ctx, r.table, keys.NotebookAreaGSI1Pk(userID, area), noteRange(q), cursor, limit, budget,
-			r.base.parse, func(n Note) bool { return n.Deleted }, nil, onCorrupt)
+			r.base.parse, func(n Note) bool { return n.Deleted }, q.keep(), onCorrupt)
 	}
 	if q.area != "" {
 		return fetch(q.area, q.cursor, q.limit, store.PageByteBudget)

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
+  errorMessage,
   useCreateNoteMutation,
   useLoadAllPages,
   useNotesQuery,
@@ -22,6 +23,7 @@ import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
+import { noteHref } from './noteHref';
 
 type TypeFilter = 'all' | NoteType;
 
@@ -87,16 +89,20 @@ export default function NotebookNotesPage() {
   }, [notesQuery.data, q, today]);
 
   const createPage = async () => {
-    const note = await createMutation.mutateAsync({
-      id: createUlid(),
-      area: areaForNewItem(areaFilter),
-      type: 'page',
-      title: 'Untitled',
-      bodyMarkdown: '',
-      tags: [],
-      pinned: false,
-    });
-    void navigate(`/notes/${note.id}`);
+    try {
+      const note = await createMutation.mutateAsync({
+        id: createUlid(),
+        area: areaForNewItem(areaFilter),
+        type: 'page',
+        title: 'Untitled',
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+      });
+      void navigate(`/notes/${note.id}`);
+    } catch {
+      // The mutation's error is rendered below.
+    }
   };
 
   const loading = notesQuery.isPending || notesQuery.hasNextPage;
@@ -134,6 +140,11 @@ export default function NotebookNotesPage() {
           </button>
         </div>
       </div>
+      {createMutation.error ? (
+        <p className="admin-panel__error" role="alert">
+          {errorMessage(createMutation.error, 'Could not create the page.')}
+        </p>
+      ) : null}
       {exportError ? (
         <p className="admin-panel__error" role="alert">
           Export failed: {exportError}
@@ -180,10 +191,7 @@ export default function NotebookNotesPage() {
                 const firstLine = noteFirstLine(note.bodyMarkdown);
                 return (
                   <li key={note.id} data-note-id={note.id}>
-                    <Link
-                      to={`/notes/${note.id}`}
-                      className="notebook-notes__row"
-                    >
+                    <Link to={noteHref(note)} className="notebook-notes__row">
                       <span className="notebook-notes__title">
                         {noteTitle(note)}
                       </span>

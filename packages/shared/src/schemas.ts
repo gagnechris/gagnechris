@@ -745,6 +745,7 @@ export const ListNotesQuerySchema = z.object({
     'Inclusive end date (yyyy-mm-dd) for calendar ranges',
   ),
   type: NoteTypeSchema.optional().describe('Filter by daily or page notes'),
+  taskId: UlidSchema.optional().describe('Notes that embed this task'),
   cursor: z
     .string()
     .min(1)

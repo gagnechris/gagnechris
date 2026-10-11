@@ -2046,6 +2046,11 @@
             ],
             "description": "Filter by daily or page notes"
           },
+          "taskId": {
+            "type": "string",
+            "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+            "description": "Notes that embed this task"
+          },
           "cursor": {
             "type": "string",
             "minLength": 1,
@@ -16049,6 +16054,17 @@
             "required": false,
             "description": "Filter by daily or page notes",
             "name": "type",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+              "description": "Notes that embed this task"
+            },
+            "required": false,
+            "description": "Notes that embed this task",
+            "name": "taskId",
             "in": "query"
           },
           {

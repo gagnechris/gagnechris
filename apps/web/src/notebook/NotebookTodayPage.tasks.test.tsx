@@ -303,7 +303,7 @@ describe('Today tasks', () => {
       within(row.closest('li')!).getByRole('link', {
         name: 'Thu note · 1 day',
       }),
-    ).toHaveAttribute('href', `/notes/${NOTE_ULID(1)}`);
+    ).toHaveAttribute('href', '/today?date=2026-10-01&area=work');
     expect(placesOf('Draft sidebar nav spec')).toEqual(['still-open']);
     expect(screen.getByTestId('carry-footer')).toHaveTextContent(
       '1 open task will carry to Saturday if not done',

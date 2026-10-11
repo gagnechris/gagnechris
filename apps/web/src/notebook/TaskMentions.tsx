@@ -7,6 +7,7 @@ import {
   noteTitle,
   taskMentions,
 } from '@gagnechris/shared';
+import { noteHref } from './noteHref';
 import { useLocalToday } from './useLocalToday';
 
 type Props = {
@@ -18,7 +19,7 @@ type Props = {
 export function TaskMentions({ taskId, homeNoteId }: Props) {
   const today = useLocalToday();
   // Every area: a note can embed a task from the other one.
-  const notesQuery = useNotesQuery({ limit: 100 });
+  const notesQuery = useNotesQuery({ taskId, limit: 100 });
   useLoadAllPages(notesQuery);
 
   const mentions = useMemo(() => {
@@ -43,7 +44,7 @@ export function TaskMentions({ taskId, homeNoteId }: Props) {
         <ul className="notebook-mentions__list">
           {mentions.map(({ note, context, home }) => (
             <li key={note.id} data-note-id={note.id}>
-              <Link to={`/notes/${note.id}`} className="notebook-mentions__row">
+              <Link to={noteHref(note)} className="notebook-mentions__row">
                 <span className="notebook-mentions__title">
                   {noteTitle(note)}
                   {home ? <span className="admin-badge">home</span> : null}

@@ -358,6 +358,34 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     }
   });
 
+  it('taskId lists only the notes that embed the task, in every area', async () => {
+    const task = await createTask(A);
+    const other = await createTask(A);
+    const page = await createPage(A, {
+      bodyMarkdown: `Plan\n{{task:${task.id}}}`,
+    });
+    const daily = await putDaily(A, 'personal', day(-3), {
+      bodyMarkdown: `{{task:${other.id}}}\n{{task:${task.id}}}`,
+    });
+    await createPage(A, { bodyMarkdown: `{{task:${other.id}}}` });
+    await createPage(B, { bodyMarkdown: `{{task:${task.id}}}` });
+
+    const found = await listAll(
+      A,
+      '/api/notebook/notes',
+      {
+        taskId: String(task.id),
+      },
+      1,
+    );
+    expect(ids(found)).toEqual(ids([page, daily]));
+
+    const bad = await call(A, 'GET', '/api/notebook/notes', {
+      query: { taskId: 'not-a-ulid' },
+    });
+    expect(bad.status).toBe(400);
+  });
+
   it('daily notes: delete frees the day, recreate takes it, and only pages move area', async () => {
     const first = await putDaily(A, 'work', '2026-10-02', {
       bodyMarkdown: 'first',

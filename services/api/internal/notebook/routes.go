@@ -242,6 +242,7 @@ func (h handlers) listNotes(ctx context.Context, r *api.Request) (*api.Response,
 	q.from, _ = v.String("from", false, false, calendarDay)
 	q.to, _ = v.String("to", false, false, calendarDay)
 	q.noteType, _ = v.Enum("type", false, NoteTypes...)
+	q.taskID, _ = v.ULID("taskId", false)
 	q.cursor, _ = v.String("cursor", false, false, api.MinLen(1))
 	q.limit = pageLimit(v)
 	if err := v.ErrWith("Invalid query parameters"); err != nil {
