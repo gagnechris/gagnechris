@@ -24,7 +24,7 @@ test('list pages put the action above a 32px title and hide eyebrows', async ({
   await expect(
     page.getByRole('main').getByText('Site', { exact: true }),
   ).toBeHidden();
-  const newPost = page.getByRole('button', { name: 'New post' });
+  const newPost = page.getByRole('button', { name: 'New post', exact: true });
   expect((await box(newPost)).y).toBeLessThan((await box(title)).y);
   expect((await box(newPost)).height).toBeGreaterThanOrEqual(44);
 
