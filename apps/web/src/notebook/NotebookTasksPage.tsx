@@ -9,6 +9,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   matchesTaskShowOn,
+  sortTasksForList,
   taskDue,
   taskShowOnParam,
   type TaskPriority,
@@ -91,7 +92,10 @@ export default function NotebookTasksPage() {
       : (completedQuery.data?.pages.flatMap((page) => page.items) ?? []);
     const matches = (t: Task) => matchesTaskShowOn(t, showOn, today);
     return {
-      openItems: main.filter((t) => t.status !== 'done' && matches(t)),
+      openItems: sortTasksForList(
+        main.filter((t) => t.status !== 'done' && matches(t)),
+        today,
+      ),
       doneItems: completed.filter((t) => t.status === 'done' && matches(t)),
     };
   }, [tasksQuery.data, completedQuery.data, status, showOn, today]);
