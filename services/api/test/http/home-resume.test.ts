@@ -55,6 +55,7 @@ describe('GET /api/admin/home', () => {
   });
 
   it('answers 500 data_integrity for a corrupt row', async () => {
+    h.corruptRow(keys.singleton.home.meta());
     await put({ ...keys.singleton.home.meta(), entityType: 'home' });
     const res = await call('GET', '/api/admin/home');
     expect(res.status).toBe(500);
@@ -347,6 +348,7 @@ describe('/api/admin/resume', () => {
   });
 
   it('answers 500 data_integrity for stored content that fails the schema', async () => {
+    h.corruptRow(keys.singleton.resume.meta());
     await put({
       ...keys.singleton.resume.meta(),
       entityType: 'resume',
