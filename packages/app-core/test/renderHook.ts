@@ -20,20 +20,22 @@ export function renderHook<TResult>(
   }
 
   const Wrapper = options?.wrapper;
-  const element = Wrapper
-    ? createElement(Wrapper, null, createElement(HookHost))
-    : createElement(HookHost);
+  // A fresh element each time, so rerender runs the hook again.
+  const element = () =>
+    Wrapper
+      ? createElement(Wrapper, null, createElement(HookHost))
+      : createElement(HookHost);
 
   let root!: ReactTestRenderer;
   act(() => {
-    root = create(element);
+    root = create(element());
   });
 
   return {
     result,
     rerender: () => {
       act(() => {
-        root.update(element);
+        root.update(element());
       });
     },
     unmount: () => {
