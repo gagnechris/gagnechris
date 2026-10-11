@@ -17,6 +17,8 @@ export function useModal<T extends HTMLElement>(
   });
 
   useEffect(() => {
+    // Unattached while a phone shows the content in a BottomSheet instead.
+    if (!ref.current) return;
     const trigger =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
