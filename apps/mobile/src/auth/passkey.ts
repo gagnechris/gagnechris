@@ -13,8 +13,8 @@ export function addPasskeyUrl(config: CognitoConfig): string {
 }
 
 /**
- * The sheet is ephemeral like sign-in, so managed login asks the user to sign
- * in before adding the passkey.
+ * The sheet shares sign-in's session, so managed login adds the passkey to the
+ * signed-in user without asking them to sign in again.
  */
 export async function addPasskey(): Promise<void> {
   await openAuthSessionAsync(
