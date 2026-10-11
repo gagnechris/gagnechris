@@ -216,6 +216,16 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     };
   };
 
+  /** As the API's checkLinkedNote: a task may only link a live note. */
+  const unknownNote = (noteId: unknown) =>
+    typeof noteId === 'string' && (store.get(noteId)?.deleted ?? true);
+  const linkedNoteMissing = () =>
+    json(400, {
+      error: 'bad_request',
+      message: 'noteId must reference an existing note',
+      fields: { noteId: 'not_found' },
+    });
+
   const fetch = async (input: Request): Promise<Response> => {
     const url = new URL(input.url);
     const route = `${input.method} ${url.pathname}`;
@@ -468,6 +478,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
         id: string;
         title: string;
       };
+      if (unknownNote(body.noteId)) return linkedNoteMissing();
       const created = makeTask(body.id, body.title, {
         ...body,
         createdAt: now(),
@@ -489,6 +500,8 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
           : json(200, current);
       }
       const body = (await input.json()) as Partial<Task> & { version: number };
+      if (!action && input.method === 'PUT' && unknownNote(body.noteId))
+        return linkedNoteMissing();
       const fields: Partial<Task> & { version: number } =
         action === '/complete'
           ? { version: body.version, status: 'done', completedAt: now() }

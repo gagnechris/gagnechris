@@ -247,9 +247,29 @@ export class Outbox {
         blocked.add(op.entityId);
         continue;
       }
-      return op;
+      return this.creatorQueuedBehind(op) ?? op;
     }
     return undefined;
+  }
+
+  /**
+   * The op that puts a task's linked note on the server, when it waits behind
+   * the task: a task typed into a new day's note offline is queued before the
+   * note's first save, and the API refuses a task whose note doesn't exist.
+   */
+  private creatorQueuedBehind(op: Op): Op | undefined {
+    if (op.entity !== 'task' || typeof op.body.noteId !== 'string') return;
+    const noteId = op.body.noteId;
+    const first = this.ops.find(
+      (other) => other.entity === 'note' && other.entityId === noteId,
+    );
+    if (
+      first &&
+      first.seq > op.seq &&
+      first.state !== 'failed' &&
+      (first.kind === 'create' || first.kind === 'daily')
+    )
+      return first;
   }
 
   /** Sends queued ops in order until the queue is empty or a send can't finish. */

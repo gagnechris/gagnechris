@@ -224,6 +224,24 @@ describe('the outbox', () => {
     ).toBe('phone text');
   });
 
+  it('sends a new daily note before a task typed into it offline', async () => {
+    const day = '01J0000000000000000000DAY1';
+    setOnline(false);
+    // The task line converts before the note's first autosave.
+    await postTask({ id: T1, area: 'work', title: 'Call Sam', noteId: day });
+    await client.PUT('/api/notebook/notes/daily/{area}/{date}', {
+      params: { path: { area: 'work', date: '2026-10-02' } },
+      body: { id: day, bodyMarkdown: `{{task:${T1}}}` } as never,
+    });
+
+    setOnline(true);
+    await activeOutbox()!.drain();
+    expect(outboxFailedCount()).toBe(0);
+    expect(outboxPendingCount()).toBe(0);
+    expect(server.state.store.get(day)?.bodyMarkdown).toBe(`{{task:${T1}}}`);
+    expect(server.state.taskStore.get(T1)?.noteId).toBe(day);
+  });
+
   it('holds writes once the server requires a newer app', async () => {
     setUpgradeRequired('2.0.0');
     const reply = await putNote('n1', { version: 1, bodyMarkdown: 'later' });
