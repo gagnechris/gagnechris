@@ -1,8 +1,3 @@
----
-description: Sparse code comments; docs state only what currently exists
-alwaysApply: true
----
-
 # Comments and docs
 
 - Comment only a non-obvious why: a constraint, a workaround, a surprising decision, an invariant that is easy to break.

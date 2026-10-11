@@ -1,8 +1,3 @@
----
-description: Definition of done for tickets — verify live before closing
-alwaysApply: true
----
-
 # Definition of done
 
 A ticket is **Done** only when all of the following are true:
@@ -15,6 +10,7 @@ A ticket is **Done** only when all of the following are true:
    - Playwright output against the change, or a screenshot for UI.
 
    A page returning 200 or an API returning 401 proves the deploy is up. It doesn't prove any criterion.
+
 4. Evidence is pasted into a Linear comment on the ticket, AC by AC, **before** moving it to Done. If an AC can't be verified (for example, it needs a device), say so in the comment and leave the ticket open, or record it as accepted with a reason.
 5. Before merging, read your own PR diff once end to end, and confirm each AC is covered by a test that **fails when the fix is reverted**.
 6. Never reword an AC to match what was built. If the AC was wrong, change it in Linear with a note explaining why.

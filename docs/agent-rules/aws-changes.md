@@ -1,8 +1,3 @@
----
-description: Never hand-edit AWS resources; adopt via CDK import instead
-alwaysApply: true
----
-
 # AWS changes
 
 - Never create, modify, or delete AWS resources outside CDK/CI — including with the `gagnechris-admin` SSO profile.
