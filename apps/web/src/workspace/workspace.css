@@ -2047,6 +2047,14 @@
     min-width: 0;
   }
 
+  .admin-panel__header > * {
+    min-width: 0;
+  }
+
+  .admin-panel h1 {
+    overflow-wrap: break-word;
+  }
+
   .workspace-segmented__option,
   .admin-status-filter .workspace-segmented__option {
     min-height: 44px;

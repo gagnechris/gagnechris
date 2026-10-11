@@ -17,6 +17,7 @@ const measure = (page: Page) =>
         r.width > 0 &&
         r.height > 0 &&
         cs.visibility !== 'hidden' &&
+        el.checkVisibility() &&
         !inPreview(el)
       );
     };
@@ -41,6 +42,30 @@ const measure = (page: Page) =>
       )
       .map((el) => `${el.tagName.toLowerCase()}.${[...el.classList].join('.')}`)
       .slice(0, 5);
+    // Content past the main column's padding; fonts vary by machine, so a
+    // near miss here can scroll sideways elsewhere.
+    const scrollsInside = (el: Element, root: Element) => {
+      for (let a = el.parentElement; a && a !== root; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX !== 'visible') return true;
+      }
+      return false;
+    };
+    const main = document.querySelector('main');
+    const mainRight = main
+      ? main.getBoundingClientRect().right -
+        parseFloat(getComputedStyle(main).paddingRight)
+      : vw;
+    const pastColumn = main
+      ? [...main.querySelectorAll<HTMLElement>('*')]
+          .filter(
+            (el) =>
+              visible(el) &&
+              el.getBoundingClientRect().right > mainRight + 1 &&
+              !scrollsInside(el, main),
+          )
+          .map(name)
+          .slice(0, 5)
+      : [];
     const smallTargets = [
       ...document.querySelectorAll(
         'button, select, summary, [role=tab], [role=radio], input[type=checkbox]',
@@ -63,6 +88,7 @@ const measure = (page: Page) =>
     return {
       overflow: page.scrollWidth - vw,
       wide,
+      pastColumn,
       smallTargets: [...new Set(smallTargets)],
       smallFields: [...new Set(smallFields)],
     };
@@ -78,6 +104,7 @@ const expectPhoneReady = async (page: Page, url: string) => {
       m.overflow,
       `${url} at ${width}px scrolls sideways: ${m.wide.join(', ')}`,
     ).toBe(0);
+    expect(m.pastColumn, `${url} at ${width}px: past the column`).toEqual([]);
     if (width === 375) {
       expect(m.smallTargets, `${url}: controls under 44px`).toEqual([]);
       expect(m.smallFields, `${url}: fields under 16px`).toEqual([]);

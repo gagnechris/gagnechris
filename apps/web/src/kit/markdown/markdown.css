@@ -545,6 +545,11 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 }
 
 @media (max-width: 767px) {
+  .markdown-toolbar {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
   .markdown-toggle {
     min-height: 44px;
   }
