@@ -82,7 +82,8 @@ export type PublishTarget = {
   adminSoftDelete?: boolean;
   /**
    * Every S3 key this target writes or deletes, as `aws s3 sync --exclude`
-   * patterns. Web deploys and the local seed keep these keys.
+   * patterns. Web deploys and the local seed keep these keys, and the
+   * publisher's IAM role can put and delete only these.
    */
   s3Outputs: readonly string[];
   matches(scope: RebuildScope): boolean;

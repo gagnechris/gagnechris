@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   emptyPostDraft,
@@ -14,6 +14,9 @@ import {
   PostEditorTitle,
 } from './PostEditorSections';
 import { publicUrl } from './publicUrl';
+import { BottomSheet } from '../kit/BottomSheet';
+import { Button } from '../kit/Button';
+import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { EditorError, EditorFrame, EditorNotice } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
@@ -34,6 +37,8 @@ function PostEditorPageInner({ postId }: { postId: string }) {
   const deleteMutation = useDeletePostMutation();
   const projectsQuery = useProjectsQuery();
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const editor = useAdminEntityEditor({
     resource: postResource,
@@ -63,6 +68,19 @@ function PostEditorPageInner({ postId }: { postId: string }) {
   });
   const { uploadImage, uploadBodyImages } = useImageUpload(editor.setSaveError);
 
+  const details = (
+    <PostEditorDetails
+      draft={draft}
+      setField={setField}
+      slugManual={slugManual}
+      setSlugManual={setSlugManual}
+      onSave={() => void save()}
+      onUploadImage={uploadImage}
+      projects={projectsQuery.data}
+      projectsError={projectsQuery.error ? 'Could not load projects.' : null}
+    />
+  );
+
   return (
     <EditorFrame
       editor={editor}
@@ -75,6 +93,17 @@ function PostEditorPageInner({ postId }: { postId: string }) {
       }
       viewLiveHref={(post) =>
         post.status === 'published' ? publicUrl(`/posts/${post.slug}`) : null
+      }
+      actionBar={
+        phone
+          ? {
+              menuActions: (
+                <Button onClick={() => setDetailsOpen(true)}>
+                  Post details
+                </Button>
+              ),
+            }
+          : undefined
       }
       placesSaveError
     >
@@ -96,18 +125,16 @@ function PostEditorPageInner({ postId }: { postId: string }) {
             />
           </div>
 
-          <PostEditorDetails
-            draft={draft}
-            setField={setField}
-            slugManual={slugManual}
-            setSlugManual={setSlugManual}
-            onSave={() => void save()}
-            onUploadImage={uploadImage}
-            projects={projectsQuery.data}
-            projectsError={
-              projectsQuery.error ? 'Could not load projects.' : null
-            }
-          />
+          {!phone ? (
+            details
+          ) : detailsOpen ? (
+            <BottomSheet
+              title="Post details"
+              onClose={() => setDetailsOpen(false)}
+            >
+              {details}
+            </BottomSheet>
+          ) : null}
         </div>
       )}
     </EditorFrame>

@@ -42,7 +42,7 @@ test.describe('admin phone layout at 390px', () => {
     const dialog = page.getByRole('dialog', { name: 'Invite user' });
     await dialog.getByLabel('Name').fill(name);
     await dialog.getByLabel('Email').fill(`${prefix}-phone@e2e.test`);
-    await dialog.getByRole('button', { name: 'Send invite' }).click();
+    await dialog.getByRole('button', { name: 'Send', exact: true }).click();
     await expect(dialog).toBeHidden();
 
     await expectNoOverflow(page);

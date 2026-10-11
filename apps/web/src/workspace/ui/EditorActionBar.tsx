@@ -8,6 +8,7 @@ export type EditorActionBarProps = VersionedEntityActionBarProps & {
   leading?: ReactNode;
   viewLiveHref?: string | null;
   extraActions?: ReactNode;
+  menuActions?: ReactNode;
 };
 
 export function EditorActionBar({
@@ -23,11 +24,13 @@ export function EditorActionBar({
   onDiscard,
   onSave,
   extraActions,
+  menuActions,
 }: EditorActionBarProps) {
   const showPublish = status === 'draft' || hasUnpublishedChanges;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const actions = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -58,6 +61,7 @@ export function EditorActionBar({
       <div className="admin-actions" ref={actions}>
         {/* Phones only: the secondary actions fold into this menu. */}
         <button
+          ref={toggle}
           type="button"
           className="admin-actions__toggle"
           aria-label="More actions"
@@ -72,11 +76,14 @@ export function EditorActionBar({
           className="admin-actions__more"
           data-open={menuOpen || undefined}
           onClick={(event) => {
-            if ((event.target as Element).closest('a, button')) {
+            if (menuOpen && (event.target as Element).closest('a, button')) {
               setMenuOpen(false);
+              // The menu hides; a sheet the action opens returns focus here.
+              toggle.current?.focus();
             }
           }}
         >
+          {menuActions}
           {extraActions}
           {viewLiveHref ? (
             <Button

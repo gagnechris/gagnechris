@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import {
   emptyProjectLink,
   projectHrefError,
@@ -24,7 +24,9 @@ import {
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
+import { BottomSheet } from '../kit/BottomSheet';
 import { Field, Select, TextArea, TextInput } from '../kit/Field';
+import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { Repeater } from '../workspace/ui/Repeater';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { ChipsInput } from './editor/ChipsInput';
@@ -55,8 +57,122 @@ export function ProjectEditorFields({
   onSave,
   onUploadPreview,
 }: Props) {
+  const phone = useMediaQuery(PHONE_QUERY);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const hrefError = projectHrefError(draft.href);
   const orderError = projectOrderError(draft.orderText);
+  const secondaryInvalid =
+    Boolean(hrefError || orderError) ||
+    draft.links.some((link) => {
+      const errors = projectLinkErrors(link);
+      return Boolean(errors.label || errors.url);
+    });
+
+  const secondary = (
+    <>
+      <ChipsInput
+        label="Stack"
+        listLabel="Stack items"
+        removeLabel={(item) => `Remove ${item}`}
+        placeholder="Add, then Enter"
+        fullPlaceholder="Stack is full"
+        inputMaxLength={PROJECT_STACK_ITEM_MAX_LENGTH * 4}
+        maxItems={PROJECT_STACK_MAX}
+        maxItemLength={PROJECT_STACK_ITEM_MAX_LENGTH}
+        value={draft.stack}
+        onChange={(stack) => setField('stack', stack)}
+      />
+      <div className="admin-project-row">
+        <Field label="Demo">
+          <Select
+            value={draft.demo}
+            onChange={(e) =>
+              setField('demo', e.target.value as ProjectDemo | '')
+            }
+          >
+            <option value="">None</option>
+            {PROJECT_DEMO_IDS.map((id) => (
+              <option key={id} value={id}>
+                {DEMO_LABELS[id]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Order" hint="Lower numbers are listed first">
+          <TextInput
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={PROJECT_ORDER_MAX}
+            step={1}
+            value={draft.orderText}
+            aria-invalid={orderError ? true : undefined}
+            onChange={(e) => setField('orderText', e.target.value)}
+          />
+          {orderError ? (
+            <span className="admin-field-error">{orderError}</span>
+          ) : null}
+        </Field>
+      </div>
+      <Field
+        label="Link card to…"
+        hint="Optional. When set, the project card links here and replaces the project page."
+      >
+        <TextInput
+          value={draft.href}
+          maxLength={LINK_HREF_MAX_LENGTH}
+          placeholder="/dont-feed-the-bears or https://…"
+          aria-invalid={hrefError ? true : undefined}
+          onChange={(e) => setField('href', e.target.value)}
+        />
+        {hrefError ? (
+          <span className="admin-field-error">{hrefError}</span>
+        ) : null}
+      </Field>
+    </>
+  );
+
+  const links = (
+    <Repeater
+      legend="Links"
+      items={draft.links}
+      onChange={(next) => setField('links', next)}
+      createItem={emptyProjectLink}
+      addLabel="Add link"
+      removeLabel="Remove link"
+      reorderable
+      renderItem={(link, { update }) => {
+        const errors = projectLinkErrors(link);
+        return (
+          <div className="admin-project-row">
+            <Field label="Label">
+              <TextInput
+                value={link.label}
+                maxLength={PROJECT_LINK_LABEL_MAX_LENGTH}
+                aria-invalid={errors.label ? true : undefined}
+                onChange={(e) => update({ label: e.target.value })}
+              />
+              {errors.label ? (
+                <span className="admin-field-error">{errors.label}</span>
+              ) : null}
+            </Field>
+            <Field label="URL">
+              <TextInput
+                value={link.url}
+                maxLength={LINK_HREF_MAX_LENGTH}
+                placeholder="https://… or /path"
+                aria-invalid={errors.url ? true : undefined}
+                onChange={(e) => update({ url: e.target.value })}
+              />
+              {errors.url ? (
+                <span className="admin-field-error">{errors.url}</span>
+              ) : null}
+            </Field>
+          </div>
+        );
+      }}
+    />
+  );
 
   return (
     <form
@@ -129,106 +245,32 @@ export function ProjectEditorFields({
           onChange={(path) => setField('previewImage', path)}
           onUpload={onUploadPreview}
         />
-        <ChipsInput
-          label="Stack"
-          listLabel="Stack items"
-          removeLabel={(item) => `Remove ${item}`}
-          placeholder="Add, then Enter"
-          fullPlaceholder="Stack is full"
-          inputMaxLength={PROJECT_STACK_ITEM_MAX_LENGTH * 4}
-          maxItems={PROJECT_STACK_MAX}
-          maxItemLength={PROJECT_STACK_ITEM_MAX_LENGTH}
-          value={draft.stack}
-          onChange={(stack) => setField('stack', stack)}
-        />
-        <div className="admin-project-row">
-          <Field label="Demo">
-            <Select
-              value={draft.demo}
-              onChange={(e) =>
-                setField('demo', e.target.value as ProjectDemo | '')
-              }
-            >
-              <option value="">None</option>
-              {PROJECT_DEMO_IDS.map((id) => (
-                <option key={id} value={id}>
-                  {DEMO_LABELS[id]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Order" hint="Lower numbers are listed first">
-            <TextInput
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={PROJECT_ORDER_MAX}
-              step={1}
-              value={draft.orderText}
-              aria-invalid={orderError ? true : undefined}
-              onChange={(e) => setField('orderText', e.target.value)}
-            />
-            {orderError ? (
-              <span className="admin-field-error">{orderError}</span>
+        {phone ? (
+          <button
+            type="button"
+            className="admin-sheet-open"
+            onClick={() => setSheetOpen(true)}
+          >
+            Stack, demo, order and links
+            {secondaryInvalid ? (
+              <span className="admin-field-error">Needs a fix</span>
             ) : null}
-          </Field>
-        </div>
-        <Field
-          label="Link card to…"
-          hint="Optional. When set, the project card links here and replaces the project page."
-        >
-          <TextInput
-            value={draft.href}
-            maxLength={LINK_HREF_MAX_LENGTH}
-            placeholder="/dont-feed-the-bears or https://…"
-            aria-invalid={hrefError ? true : undefined}
-            onChange={(e) => setField('href', e.target.value)}
-          />
-          {hrefError ? (
-            <span className="admin-field-error">{hrefError}</span>
-          ) : null}
-        </Field>
+          </button>
+        ) : (
+          secondary
+        )}
       </div>
 
-      <Repeater
-        legend="Links"
-        items={draft.links}
-        onChange={(next) => setField('links', next)}
-        createItem={emptyProjectLink}
-        addLabel="Add link"
-        removeLabel="Remove link"
-        reorderable
-        renderItem={(link, { update }) => {
-          const errors = projectLinkErrors(link);
-          return (
-            <div className="admin-project-row">
-              <Field label="Label">
-                <TextInput
-                  value={link.label}
-                  maxLength={PROJECT_LINK_LABEL_MAX_LENGTH}
-                  aria-invalid={errors.label ? true : undefined}
-                  onChange={(e) => update({ label: e.target.value })}
-                />
-                {errors.label ? (
-                  <span className="admin-field-error">{errors.label}</span>
-                ) : null}
-              </Field>
-              <Field label="URL">
-                <TextInput
-                  value={link.url}
-                  maxLength={LINK_HREF_MAX_LENGTH}
-                  placeholder="https://… or /path"
-                  aria-invalid={errors.url ? true : undefined}
-                  onChange={(e) => update({ url: e.target.value })}
-                />
-                {errors.url ? (
-                  <span className="admin-field-error">{errors.url}</span>
-                ) : null}
-              </Field>
-            </div>
-          );
-        }}
-      />
+      {phone ? null : links}
+      {phone && sheetOpen ? (
+        <BottomSheet
+          title="Project details"
+          onClose={() => setSheetOpen(false)}
+        >
+          {secondary}
+          {links}
+        </BottomSheet>
+      ) : null}
     </form>
   );
 }
