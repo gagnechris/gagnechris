@@ -104,7 +104,8 @@ Integrity rules:
 - Publisher base-table reads and API 409 conflict re-reads use `ConsistentRead: true`.
 - List cursors require an exact key set with string values; GSI cursors must match the queried `gsi1pk` status partition. The admin posts list walks the `published` then `draft` partitions with `store.WalkPartitions`, so its cursor is the composite `mp.` form. Sync/list cursors that escape their partition or `since` bound return **400**.
 - Client input errors (`api.BadRequest`, `api.ErrInvalidCursor`, `api.InvalidHeader`, an unparseable JSON body; `services/api/internal/api/errors.go`) → **400**. A stored row that fails to parse is a **500** `data_integrity`.
-- Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current`.
+- Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current`. So does the check that a task's `noteId` names a live note, so a task created right after its note never gets a 400.
+- A single-item write that hits an item another request's transaction holds (`TransactionConflictException`, which the SDK doesn't retry) is a version **409** with `current`, like a failed condition.
 - Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken`.
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
 
