@@ -184,22 +184,31 @@ const TEST_SRC_DIR = 'src/__tests__/';
  * nothing on the entry's static import graph pulls in, so a page without a
  * demo loads none of its JS.
  */
+/** Manifest keys of the entry chunk and everything it imports statically. */
+function entryStaticKeys(
+  manifest: Record<string, ManifestChunk>,
+): Set<string> | null {
+  const entry = Object.entries(manifest).find(([, c]) => c.isEntry);
+  if (!entry) return null;
+  const keys = new Set<string>();
+  const queue = [entry[0]];
+  while (queue.length) {
+    const key = queue.pop()!;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    queue.push(...(manifest[key]?.imports ?? []));
+  }
+  return keys;
+}
+
 export function demoChunkProblems(
   manifest: Record<string, ManifestChunk>,
   demoEntries: readonly string[],
 ): string[] {
   const problems: string[] = [];
-  const entry = Object.entries(manifest).find(([, c]) => c.isEntry);
-  if (!entry) return ['the public build manifest has no entry chunk'];
+  const staticKeys = entryStaticKeys(manifest);
+  if (!staticKeys) return ['the public build manifest has no entry chunk'];
 
-  const staticKeys = new Set<string>();
-  const queue = [entry[0]];
-  while (queue.length) {
-    const key = queue.pop()!;
-    if (staticKeys.has(key)) continue;
-    staticKeys.add(key);
-    queue.push(...(manifest[key]?.imports ?? []));
-  }
   for (const key of staticKeys) {
     const src = manifest[key]?.src ?? key;
     if (src.startsWith(DEMO_SRC_DIR)) {
@@ -219,6 +228,42 @@ export function demoChunkProblems(
     } else if (!chunk.isDynamicEntry) {
       problems.push(`${src} is not loaded with a dynamic import()`);
     }
+  }
+  return problems;
+}
+
+/** Raw bytes of the JS every public page runs before any lazy chunk. */
+export const PUBLIC_ENTRY_JS_BUDGET = 400_000;
+
+// zod keeps this class name through minification; the shared schemas pull zod
+// in, so it marks the `@gagnechris/shared` barrel landing on every page.
+const ZOD_MARKER = 'ZodError';
+
+export function entryBundleProblems(
+  dist: string,
+  manifest: Record<string, ManifestChunk>,
+): string[] {
+  const staticKeys = entryStaticKeys(manifest);
+  if (!staticKeys) return [];
+  const problems: string[] = [];
+  let bytes = 0;
+  for (const key of staticKeys) {
+    const file = manifest[key]?.file;
+    if (!file?.endsWith('.js')) continue;
+    const body = read(path.join(dist, file));
+    if (body === null) {
+      problems.push(`${file} is in the manifest but not in dist`);
+      continue;
+    }
+    bytes += Buffer.byteLength(body);
+    if (body.includes(ZOD_MARKER)) {
+      problems.push(`${file} bundles zod into every public page`);
+    }
+  }
+  if (bytes > PUBLIC_ENTRY_JS_BUDGET) {
+    problems.push(
+      `the public entry JS is ${bytes} bytes (budget ${PUBLIC_ENTRY_JS_BUDGET})`,
+    );
   }
   return problems;
 }
@@ -271,12 +316,9 @@ export function checkWebShells(webRoot: string, gaId?: string): string[] {
   const manifest = read(path.join(dist, '.vite', 'manifest.json'));
   if (manifest === null) problems.push('dist/.vite/manifest.json is missing');
   else {
-    problems.push(
-      ...demoChunkProblems(
-        JSON.parse(manifest) as Record<string, ManifestChunk>,
-        demoEntries(webRoot),
-      ),
-    );
+    const parsed = JSON.parse(manifest) as Record<string, ManifestChunk>;
+    problems.push(...demoChunkProblems(parsed, demoEntries(webRoot)));
+    problems.push(...entryBundleProblems(dist, parsed));
   }
 
   for (const app of ['dist-admin', 'dist-notebook']) {
@@ -321,6 +363,6 @@ if (
     process.exit(1);
   }
   console.log(
-    'Web shells OK: GA only with GA_MEASUREMENT_ID, no inline script, only the allowed entry assets and one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
+    'Web shells OK: GA only with GA_MEASUREMENT_ID, no inline script, only the allowed entry assets, entry JS within budget and without zod, one self-hosted font preload on the public shell, fonts named for their content, demos only in lazy chunks, app shells load bundled scripts only.',
   );
 }

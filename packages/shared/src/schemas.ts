@@ -1,6 +1,6 @@
 import * as z from 'zod';
 import { isCalendarDay } from './calendar.js';
-import { API_SERVICE_NAME } from './constants.js';
+import { API_SERVICE_NAME, PROJECT_DEMO_IDS } from './constants.js';
 import {
   isSafeLinkHref,
   POST_LINK_SCHEMES,
@@ -415,8 +415,6 @@ export type ResumeDownloadNotifyResponse = z.infer<
 export const ProjectStageSchema = z.enum(['idea', 'building', 'live']);
 
 export type ProjectStage = z.infer<typeof ProjectStageSchema>;
-
-export const PROJECT_DEMO_IDS = ['posts', 'notebook'] as const;
 
 export const ProjectDemoSchema = z.enum(PROJECT_DEMO_IDS);
 

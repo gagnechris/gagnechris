@@ -1,13 +1,19 @@
 import { clearPendingFlushes } from '@gagnechris/app-core';
+import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { ActionSheetIOS, Alert, View } from 'react-native';
-import { act, type ReactTestRenderer } from 'react-test-renderer';
+import {
+  act,
+  type ReactTestInstance,
+  type ReactTestRenderer,
+} from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TaskScreen from '../app/(tabs)/tasks/[id]';
 import TodayScreen from '../app/(tabs)/today/index';
 import UpcomingScreen from '../app/(tabs)/upcoming/index';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
 import { router, searchParams } from '../test/router';
+import { safeAreaInsets } from '../test/safeArea';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
 
 const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
@@ -110,7 +116,7 @@ describe('Task detail', () => {
     expect(banner(renderer)).toBe('1 still open, 0 coming up. Show list');
   });
 
-  it('lists every note that embeds the task, home note first, and opens it', async () => {
+  it('lists every note that embeds the task, home note first, and opens it (a daily one on Today)', async () => {
     serve(
       [
         makeNote(OTHER, 'Nothing here'),
@@ -134,8 +140,17 @@ describe('Task detail', () => {
       'Planning (created here), Thu',
       'Friday, Oct 2, Called, left a message',
     ]);
+    // The server finds the mentions; the app never pages the whole notebook.
+    expect(server.state.noteQueries).not.toHaveLength(0);
+    for (const query of server.state.noteQueries) {
+      expect(query).toContain(`taskId=${A}`);
+    }
+    act(() => rows[0]!.props.onPress());
+    expect(router.push).toHaveBeenCalledWith(`/notes/${HOME}`);
     act(() => rows[1]!.props.onPress());
-    expect(router.push).toHaveBeenCalledWith(`/notes/${LATER}`);
+    expect(router.navigate).toHaveBeenCalledWith(
+      '/today?date=2026-10-02&area=personal',
+    );
   });
 
   it('keeps field edits after a relaunch', async () => {
@@ -174,6 +189,20 @@ describe('Task detail', () => {
     expect(Haptics.impactAsync).toHaveBeenCalled();
     expect(server.state.taskStore.get(A)!.status).toBe('done');
     expect(byLabel(renderer, 'Reopen task')).toBeDefined();
+  });
+
+  it('sits the bottom bar on the tab bar, which already clears the home indicator', async () => {
+    safeAreaInsets.current = { top: 59, right: 0, bottom: 34, left: 0 };
+    serve([], [makeTask(A, 'Call Sam')]);
+    const renderer = await launch(TaskScreen);
+    const paddingOf = (node: ReactTestInstance) =>
+      ([node.props.style].flat(Infinity) as { paddingBottom?: number }[])
+        .map((rule) => rule?.paddingBottom)
+        .findLast((value) => value !== undefined);
+    let bar: ReactTestInstance | null = byLabel(renderer, 'Complete task');
+    while (bar && paddingOf(bar) === undefined) bar = bar.parent;
+    const paddingBottom = bar ? paddingOf(bar) : undefined;
+    expect(paddingBottom).toBe(tokens.space[2]);
   });
 
   it('deletes from ⋯ after a confirm', async () => {

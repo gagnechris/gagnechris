@@ -18,8 +18,8 @@ export const deleteNoteMessage = (note: Pick<Note, 'type'>) =>
 
 /** Pin / Unpin and Delete for a note row, each confirmed. */
 export function useNoteRowActions() {
-  const pin = usePinNoteMutation();
-  const remove = useDeleteNoteMutation();
+  const { mutateAsync: pin } = usePinNoteMutation();
+  const { mutateAsync: remove } = useDeleteNoteMutation();
 
   const actionsFor = useCallback(
     (note: Note): RowAction[] => {
@@ -40,7 +40,7 @@ export function useNoteRowActions() {
               );
               if (!ok) return;
               try {
-                await pin.mutateAsync({ note, pinned: !pinned });
+                await pin({ note, pinned: !pinned });
               } catch {
                 showError(
                   'Could not change the pin',
@@ -62,7 +62,7 @@ export function useNoteRowActions() {
               );
               if (!ok) return;
               try {
-                await remove.mutateAsync({
+                await remove({
                   id: note.id,
                   version: note.version,
                 });

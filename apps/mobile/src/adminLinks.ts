@@ -4,6 +4,7 @@ const ROUTES: [RegExp, (id: string) => string][] = [
   [/^\/posts\/([^/]+)$/, (id) => `/admin/posts/${id}`],
   [/^\/projects\/([^/]+)$/, (id) => `/admin/projects/${id}`],
   [/^\/projects$/, () => '/admin/projects'],
+  [/^\/pages$/, () => '/admin/pages'],
   [/^\/home$/, () => '/admin/pages/home'],
   [/^\/resume$/, () => '/admin/pages/resume'],
   [/^\/settings\/users$/, () => '/admin/users'],

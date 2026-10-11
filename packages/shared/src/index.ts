@@ -14,6 +14,7 @@ export {
   RESTORE_TEST_TABLE_PREFIX,
   SES_GLOBAL_DAILY_CAP,
   RESUME_NOTIFY_SES_DAILY_CAP,
+  PROJECT_DEMO_IDS,
 } from './constants.js';
 export {
   pageTitle,

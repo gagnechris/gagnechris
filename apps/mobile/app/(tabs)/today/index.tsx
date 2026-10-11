@@ -9,12 +9,14 @@ import {
   addDays,
   carryFooterText,
   formatCalendarDay,
+  isCalendarDay,
+  isNotebookAreaFilter,
   snoozeBaseDay,
   weekdayName,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../../../src/area';
@@ -35,9 +37,23 @@ const TodayScreen = () => {
   const router = useRouter();
   const { openTask, openNote } = useDetailRoutes();
   const today = useLocalToday();
-  const { area } = useArea();
+  const { area, setArea } = useArea();
   // Null follows the device's day, so midnight moves it on.
   const [picked, setPicked] = useState<string | null>(null);
+  // A daily note opened from elsewhere (dailyNotePath) lands here.
+  const params = useLocalSearchParams<{ date?: string; area?: string }>();
+  const link =
+    params.date || params.area ? `${params.date}|${params.area}` : null;
+  const [seenLink, setSeenLink] = useState<string | null>(null);
+  if (link !== seenLink) {
+    setSeenLink(link);
+    if (params.date && isCalendarDay(params.date)) setPicked(params.date);
+  }
+  useEffect(() => {
+    if (!params.date && !params.area) return;
+    if (params.area && isNotebookAreaFilter(params.area)) setArea(params.area);
+    router.setParams({ date: undefined, area: undefined });
+  }, [params.date, params.area, router, setArea]);
   // Midnight can make the picked day today; from then on, follow the device.
   if (picked === today) setPicked(null);
   const date = picked ?? today;
@@ -129,6 +145,7 @@ const TodayScreen = () => {
           <Text style={styles.title}>{heading}</Text>
         </View>
         <View style={styles.headerActions}>
+          <AreaChip />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Search"
@@ -137,7 +154,6 @@ const TodayScreen = () => {
           >
             <Icon name="magnifyingglass" size={20} color={color.ink} />
           </Pressable>
-          <AreaChip />
         </View>
       </View>
       <View style={styles.dayNav}>

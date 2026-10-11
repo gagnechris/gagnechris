@@ -68,3 +68,5 @@ export const RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES = [
   'createdAt',
   'updatedAt',
 ] as const;
+
+export const PROJECT_DEMO_IDS = ['posts', 'notebook'] as const;

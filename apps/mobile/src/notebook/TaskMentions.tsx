@@ -1,4 +1,8 @@
-import { useLoadAllPages, useNotesQuery } from '@gagnechris/app-core';
+import {
+  useLoadAllPages,
+  useNotesQuery,
+  type Note,
+} from '@gagnechris/app-core';
 import {
   noteDay,
   noteDayLabel,
@@ -22,10 +26,10 @@ export const TaskMentions = ({
   taskId: string;
   homeNoteId: string | null;
   today: string;
-  onOpenNote: (id: string) => void;
+  onOpenNote: (note: Note) => void;
 }) => {
   // Every area: a note can embed a task from the other one.
-  const notes = useNotesQuery({ limit: 100 });
+  const notes = useNotesQuery({ taskId, limit: 100 });
   useLoadAllPages(notes);
   const mentions = useMemo(
     () =>
@@ -60,7 +64,7 @@ export const TaskMentions = ({
                 .filter(Boolean)
                 .join(', ')}
               accessibilityHint="Opens the note"
-              onPress={() => onOpenNote(note.id)}
+              onPress={() => onOpenNote(note)}
               style={[styles.row, index > 0 && styles.divider]}
             >
               <Text style={styles.title}>
