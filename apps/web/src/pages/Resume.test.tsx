@@ -79,16 +79,37 @@ describe('Resume Page', () => {
     );
   });
 
-  test('falls back to the default content when the page cannot load', async () => {
+  test('a failed load shows an error with retry, not the default resume', async () => {
+    let fail = true;
+    stubFetch(async () =>
+      fail
+        ? { ok: false, status: 503 }
+        : page(renderResumePrerenderHtml(PUBLISHED))(),
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<Resume />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load the resume.',
+    );
+    expect(document.body.textContent).not.toContain(DEFAULT_SUMMARY_START);
+    expect(screen.queryByRole('heading', { name: 'Experience' })).toBeNull();
+
+    fail = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Published summary.')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('a missing page reads as unavailable, not the default resume', async () => {
     stubFetch(async () => ({ ok: false, status: 404 }));
     renderWithProviders(<Resume />);
 
     expect(
-      await screen.findByText(DEFAULT_SUMMARY_START, { exact: false }),
+      await screen.findByText('Resume available on request.'),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Experience' }),
-    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain(DEFAULT_SUMMARY_START);
   });
 
   test('an unpublished resume says it is available on request, with no download', async () => {

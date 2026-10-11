@@ -521,6 +521,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['packages/app-core/**/*.{ts,tsx}'],
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: reactHooks.configs.recommended.rules,
+  },
+  {
     files: ['packages/shared/src/markdown-ast.ts'],
     rules: markdownAstRestrictedImports,
   },

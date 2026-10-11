@@ -11,6 +11,7 @@ import {
   tomorrowOf,
 } from '@gagnechris/shared';
 import { TaskDateMenu } from './TaskDateMenu';
+import './todayPanels.css';
 
 const PICK_RANGE = { from: 0, to: 0, kind: 'start' } as const;
 
@@ -20,10 +21,18 @@ type Props = {
   baseDay: string;
   onChoose: (schedule: TaskSchedule) => void;
   disabled?: boolean;
+  /** A text button that opens the menu upward, for a bar at the bottom of the screen. */
+  label?: string;
 };
 
 /** A select-only combobox: the trigger keeps focus and owns the keys. */
-export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
+export function SnoozeMenu({
+  title,
+  baseDay,
+  onChoose,
+  disabled,
+  label,
+}: Props) {
   const baseId = useId();
   const ids = taskDateMenuIds(baseId);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -76,7 +85,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
 
   return (
     <span
-      className="today-snooze"
+      className={label ? 'today-snooze today-snooze--up' : 'today-snooze'}
       onBlur={(e) => {
         if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
         close();
@@ -86,7 +95,9 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
         ref={triggerRef}
         type="button"
         role="combobox"
-        className="today-row__icon-btn today-row__icon-btn--more"
+        className={
+          label ? 'admin-btn' : 'today-row__icon-btn today-row__icon-btn--more'
+        }
         aria-label={`Snooze ${title} to another day`}
         title="Snooze to another day"
         aria-haspopup="listbox"
@@ -99,6 +110,7 @@ export function SnoozeMenu({ title, baseDay, onChoose, disabled }: Props) {
         onClick={() => (open ? close() : setOpen(true))}
         onKeyDown={onKeyDown}
       >
+        {label}
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
           <path
             d="M4 6l4 4 4-4"

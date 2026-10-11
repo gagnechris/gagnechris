@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   useTasksQuery,
   useQuickAddTask,
+  useTaskPatch,
   useTaskToggle,
   type Task,
 } from '@gagnechris/app-core';
 import {
   matchesTaskShowOn,
+  snoozeBaseDay,
   sortTasksForList,
   taskDue,
   taskShowOnParam,
@@ -26,10 +28,30 @@ import {
 } from '../kit/tasks/taskOptions';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
+import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
+import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { useLocalToday } from './useLocalToday';
 
 import type { NotebookOutletContext } from './NotebookLayout';
+
+type TaskChip = 'open' | 'today' | 'upcoming' | 'someday' | 'done';
+
+const TASK_CHIPS: { value: TaskChip; label: string }[] = [
+  { value: 'open', label: 'Open' },
+  { value: 'today', label: 'Today' },
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'someday', label: 'Someday' },
+  { value: 'done', label: 'Done' },
+];
+
+const CHIP_SHOW_ON: Record<TaskChip, TaskShowOnFilter> = {
+  open: '',
+  today: 'today',
+  upcoming: 'later',
+  someday: 'someday',
+  done: '',
+};
 
 export default function NotebookTasksPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
@@ -72,6 +94,23 @@ export default function NotebookTasksPage() {
   );
   const quickAddTask = useQuickAddTask(areaFilter);
   const { toggle: toggleTask, error: toggleError } = useTaskToggle();
+  const { patch, error: patchError } = useTaskPatch();
+  const actionError = quickAddTask.error ?? toggleError ?? patchError;
+
+  // The phone filters: each chip stands for one combination of the selects.
+  const chip: TaskChip | '' =
+    status === 'done' && !priority && !showOn
+      ? 'done'
+      : !status && !priority
+        ? (TASK_CHIPS.find(
+            (c) => c.value !== 'done' && CHIP_SHOW_ON[c.value] === showOn,
+          )?.value ?? '')
+        : '';
+  const pickChip = (next: TaskChip) => {
+    setStatus(next === 'done' ? 'done' : '');
+    setPriority('');
+    setShowOn(CHIP_SHOW_ON[next]);
+  };
 
   const { openItems, doneItems } = useMemo(() => {
     const main = tasksQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -143,13 +182,22 @@ export default function NotebookTasksPage() {
       {quickAddTask.hint ? (
         <p className="admin-hint">{quickAddTask.hint}</p>
       ) : null}
-      {(quickAddTask.error ?? toggleError) ? (
+      {actionError ? (
         <p className="admin-panel__error" role="alert">
-          {quickAddTask.error ?? toggleError}
+          {actionError}
         </p>
       ) : null}
 
-      <div className="admin-toolbar">
+      <SegmentedRadio<TaskChip | ''>
+        label="Show tasks"
+        className="notebook-tasks__chips"
+        options={TASK_CHIPS}
+        value={chip}
+        onChange={(next) => {
+          if (next) pickChip(next);
+        }}
+      />
+      <div className="admin-toolbar notebook-tasks__filters">
         <label className="admin-field">
           <span className="admin-field__label">Status</span>
           <select
@@ -227,6 +275,16 @@ export default function NotebookTasksPage() {
               task={task}
               today={today}
               onToggle={() => toggleComplete(task)}
+              actions={
+                task.status === 'dropped' ? null : (
+                  <TaskRowActions
+                    title={task.title}
+                    snoozeFrom={snoozeBaseDay(task.startDate ?? today, today)}
+                    onSnooze={(schedule) => void patch(task, schedule)}
+                    onDrop={() => void patch(task, { status: 'dropped' })}
+                  />
+                )
+              }
             />
           ))}
         </ul>
@@ -287,15 +345,18 @@ function TaskListRow({
   task,
   today,
   onToggle,
+  actions,
 }: {
   task: Task;
   today: string;
   onToggle: () => void;
+  actions?: ReactNode;
 }) {
   return (
     <TaskRow
       task={task}
       onToggle={onToggle}
+      actions={actions}
       to={`/tasks/${task.id}`}
       variant="list"
       meta={
