@@ -1,12 +1,20 @@
 import { useLayoutEffect } from 'react';
+import {
+  SITE_DEFAULT_DESCRIPTION,
+  SITE_OG_IMAGE_PATH,
+  siteUrl,
+} from '@gagnechris/shared';
 
 export type PageHead = {
   title: string;
   /** Null for pages that must not be indexed. */
   url: string | null;
-  description?: string;
-  image?: string;
+  /** Omitted: the site default, so a previous page's value never lingers. */
+  description?: string | undefined;
+  image?: string | undefined;
 };
+
+const DEFAULT_IMAGE = siteUrl(SITE_OG_IMAGE_PATH);
 
 const setMeta = (attr: 'name' | 'property', key: string, content: string) => {
   let meta = document.head.querySelector(`meta[${attr}="${key}"]`);
@@ -28,20 +36,21 @@ const removeHead = (selector: string) =>
  * `<link>` elements: React 19 hoists those as extra tags, and its `<title>`
  * goes first, replacing the publisher's SEO title.
  */
-export function usePageHead({ title, url, description, image }: PageHead) {
+export function usePageHead({
+  title,
+  url,
+  description = SITE_DEFAULT_DESCRIPTION,
+  image = DEFAULT_IMAGE,
+}: PageHead) {
   useLayoutEffect(() => {
     if (document.title !== title) document.title = title;
     setMeta('property', 'og:title', title);
     setMeta('name', 'twitter:title', title);
-    if (description !== undefined) {
-      setMeta('name', 'description', description);
-      setMeta('property', 'og:description', description);
-      setMeta('name', 'twitter:description', description);
-    }
-    if (image !== undefined) {
-      setMeta('property', 'og:image', image);
-      setMeta('name', 'twitter:image', image);
-    }
+    setMeta('name', 'description', description);
+    setMeta('property', 'og:description', description);
+    setMeta('name', 'twitter:description', description);
+    setMeta('property', 'og:image', image);
+    setMeta('name', 'twitter:image', image);
 
     if (url === null) {
       removeHead('link[rel="canonical"], meta[property="og:url"]');

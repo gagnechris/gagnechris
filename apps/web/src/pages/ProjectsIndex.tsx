@@ -1,5 +1,6 @@
 import { pageTitle, PROJECTS_PATH, siteUrl } from '@gagnechris/shared';
 import { ProjectsIndexBody } from '@gagnechris/public-ui';
+import { PROJECTS_INDEX_DESCRIPTION } from '@gagnechris/shared/public-pages';
 import {
   documentProjectsIndex,
   loadPublishedProjects,
@@ -22,7 +23,11 @@ function ProjectsIndex() {
   if (published.status === 'missing') return <NotFound />;
   return (
     <>
-      <PageHead title={pageTitle('Projects')} url={siteUrl(PROJECTS_PATH)} />
+      <PageHead
+        title={pageTitle('Projects')}
+        url={siteUrl(PROJECTS_PATH)}
+        description={PROJECTS_INDEX_DESCRIPTION}
+      />
       <ProjectsIndexBody
         projects={published.status === 'ready' ? published.view : []}
         message={

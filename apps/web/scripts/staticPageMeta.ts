@@ -10,12 +10,15 @@ import {
   renderNotFoundPageHtml,
 } from '@gagnechris/public-ui/server';
 import {
+  CONTACT_DESCRIPTION,
   NOT_FOUND_DESCRIPTION,
   NOT_FOUND_TITLE,
 } from '@gagnechris/shared/public-pages';
 import {
   pageTitle,
   SITE_AUTHOR_NAME,
+  SITE_DEFAULT_DESCRIPTION,
+  SITE_OG_IMAGE_PATH,
   siteUrl,
 } from '@gagnechris/shared/site-config';
 import {
@@ -35,8 +38,7 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
   {
     routePath: '',
     title: `${SITE_AUTHOR_NAME} - Engineering Leader`,
-    description:
-      'Chris Gagne is an Engineering Leader at Ro with 20+ years of experience in software engineering, building modern web technologies to solve critical business problems.',
+    description: SITE_DEFAULT_DESCRIPTION,
   },
   {
     routePath: 'resume',
@@ -47,15 +49,14 @@ export const STATIC_PAGE_META: StaticPageMeta[] = [
   {
     routePath: 'contact',
     title: pageTitle('Contact'),
-    description:
-      'Contact Chris Gagne — engineering leadership, software collaboration, and speaking.',
+    description: CONTACT_DESCRIPTION,
   },
   BEARS_PAGE_META.landing,
   BEARS_PAGE_META.camp,
   BEARS_PAGE_META.wild,
 ];
 
-const DEFAULT_OG_IMAGE = siteUrl('/og-image.jpg');
+const DEFAULT_OG_IMAGE = siteUrl(SITE_OG_IMAGE_PATH);
 
 function removeCanonical(html: string): string {
   return html.replace(/<link\s[^>]*?rel=["']canonical["'][^>]*>\s*/i, () => '');

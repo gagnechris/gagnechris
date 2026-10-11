@@ -10,7 +10,6 @@ import {
   ADMIN_EDITOR_BUDGET,
   editorBundlePlugin,
 } from './scripts/editorBundlePlugin.ts';
-import { sitemapPlugin } from './scripts/sitemapPlugin.ts';
 import { staticPagesPlugin } from './scripts/staticPagesPlugin.ts';
 import { appOrigin, WEB_APPS, webAppFromEnv } from './scripts/webApps.ts';
 
@@ -126,7 +125,6 @@ export default defineConfig(({ mode, command }) => {
           react(),
           appShellPlugin(app.html),
           analyticsPlugin(gaId),
-          sitemapPlugin(),
           staticPagesPlugin(),
           bundleBoundaryPlugin(),
           editorBundlePlugin(null),
