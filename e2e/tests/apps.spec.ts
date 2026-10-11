@@ -12,9 +12,9 @@ test('the admin app serves the CMS from its own root, without Notebook', async (
     'href',
     '/',
   );
-  await expect(nav.getByRole('link', { name: 'Resume' })).toHaveAttribute(
+  await expect(nav.getByRole('link', { name: 'Pages' })).toHaveAttribute(
     'href',
-    '/resume',
+    '/pages',
   );
   await expect(nav.getByRole('link', { name: 'Notebook' })).toHaveCount(0);
   const yourApps = page.getByRole('navigation', { name: 'Your apps' });
@@ -155,4 +155,36 @@ test('on a phone the Notebook nav is a bottom tab bar with a More sheet', async 
   await tabs.getByRole('link', { name: 'Notes' }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+});
+
+test('on a phone the admin tabs are Posts, Pages, Projects, Users and More', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await signIn();
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto(apps.admin);
+  const tabs = page.locator('.workspace-nav__item:visible');
+  await expect(tabs).toHaveText([
+    /Posts/,
+    /Pages/,
+    /Projects/,
+    /Users/,
+    /More/,
+  ]);
+
+  await page.getByRole('link', { name: 'Pages' }).click();
+  await page.getByRole('link', { name: /Home page/ }).click();
+  await expect(page).toHaveURL(/\/home$/);
+  await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(
+    /workspace-nav__item--active/,
+  );
+
+  await page.goto(`${apps.admin}/pages`);
+  await page.getByRole('link', { name: /Resume/ }).click();
+  await expect(page).toHaveURL(/\/resume$/);
+  await expect(page.getByRole('link', { name: 'Pages' })).toHaveClass(
+    /workspace-nav__item--active/,
+  );
 });
