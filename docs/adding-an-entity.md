@@ -24,7 +24,7 @@ The contract is defined in TypeScript (wire schemas, keys, stored rows) and the 
 | 1   | `packages/shared/src/schemas.ts`                                                    | wire schemas + sync variant                               |
 | 2   | `packages/shared/src/openapi.ts`                                                    | components + `registerNotebookEntityPaths`                |
 | 3   | `packages/data/src/keys.ts`                                                         | primary and list key builders                             |
-| 4   | `packages/data/src/items.ts`                                                        | stored item schema + mappers                              |
+| 4   | `packages/data/src/items.ts`                                                        | stored item schema, mappers, content equality             |
 | 5   | `scripts/generate-go-contract.ts`                                                   | keys, item schema, sample row and API samples             |
 | 6   | `services/api/internal/keys/keys.go`, `keys_test.go`                                | Go key builders                                           |
 | 7   | `services/api/internal/notebook/items.go`, `apicheck.go`, `versioned.go`            | Go struct, row parse / build, response check, entity glue |
@@ -98,7 +98,7 @@ Declare `BookmarkSchema` after `NotebookTitleSchema` / `NotebookTextSchema` (the
 
 ## 2. OpenAPI — `packages/shared/src/openapi.ts`
 
-Import the schemas, register the named components next to the other Notebook ones, and register the paths:
+Import the schemas, register the named components next to the other Notebook ones, add the sync variant to the registered `SyncChange` union (each variant is registered inside it so it is a `$ref`; an inlined union nested in a union generates no usable Go type), and register the paths:
 
 ```ts
 registry.register('Bookmark', BookmarkSchema);
@@ -106,7 +106,15 @@ registry.register('BookmarkListResponse', BookmarkListResponseSchema);
 registry.register('CreateBookmarkRequest', CreateBookmarkRequestSchema);
 registry.register('UpdateBookmarkRequest', UpdateBookmarkRequestSchema);
 registry.register('ListBookmarksQuery', ListBookmarksQuerySchema);
-registry.register('BookmarkSyncChange', BookmarkSyncChangeSchema);
+
+const syncChange = registry.register(
+  'SyncChange',
+  z.discriminatedUnion('type', [
+    registry.register('NoteSyncChange', NoteSyncChangeSchema),
+    registry.register('TaskSyncChange', TaskSyncChangeSchema),
+    registry.register('BookmarkSyncChange', BookmarkSyncChangeSchema),
+  ]),
+);
 
 registerNotebookEntityPaths(registry, {
   path: '/api/notebook/bookmarks',
@@ -205,6 +213,8 @@ export function buildBookmarkMetaItem(b: Bookmark): BookmarkMetaItem {
   };
 }
 ```
+
+Add a `bookmarkContentEqual(a, b)` beside `taskContentEqual` for the copy-back (step 13).
 
 `VersionedMetaFieldsSchema` already allows `version`, timestamps, `deleted`, `createHash`, sync keys, `ttl`, and the GSI1/GSI2 attributes. Sync keys, `createHash`, and `ttl` are written by the Go store, not by the row builder. Import `Bookmark` from `@gagnechris/shared` and `keys`, `bookmarksGsi1Pk`, `bookmarkGsi1Sk` from `./keys.js`.
 
@@ -451,7 +461,7 @@ The HTTP suite runs against the built Go API on DynamoDB Local. `useApi('bookmar
 A synced type has to be covered in three more places, or the weekly restore test, "restore my notes" and search silently skip it. `packages/ops/test/synced-type-coverage.test.ts` fails until every `SYNC_CHANGE_TYPES` entry is in all of them:
 
 - **Restore test** (Go, `services/api/internal/restoretest`): add `'bookmark'` to `RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES` and `RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES` (the row has `createdAt` / `updatedAt`) in `packages/shared/src/constants.ts`, with the contract entries from step 5, and run `npm run go:generate`. Add a `keyRules` entry in `services/api/internal/restoretest/validate.go` built on `keys.BookmarkPk`; `NewValidator` fails without one, and `TestValidatorCoversExactlyTheContractTypes` checks the rules against the contract.
-- **Copy-back** (`packages/ops/src/copy-back.ts`): add `'bookmark'` to `COPY_BACK_TYPES`, then the `KEY_FOR`, `parseEntity`, `contentEqual`, `typeOfItem`, `scanSourceRows` prefix and `storedItem` builder branches. Extend `services/api/test/http/ops-copy-back.test.ts`, which restores rows into a live table and reads them back through the API.
+- **Copy-back** (`packages/ops/src/copy-back.ts`): add `'bookmark'` to `COPY_BACK_TYPES`, then the `KEY_FOR`, `parseEntity`, `contentEqual`, `typeOfItem`, `scanSourceRows` prefix and `storedItem` builder branches (`contentEqual` uses `bookmarkContentEqual` from step 4). Extend `services/api/test/http/ops-copy-back.test.ts`, which restores rows into a live table and reads them back through the API.
 - **Search** (`services/api/internal/search/routes.go`): add a `BookmarksPage` to `notebook.Reader` (`services/api/internal/notebook/list.go`), collect the user's live bookmarks with `notebook.CollectPages`, rank them with `rankFields`, and return a `bookmarks` hit list. Add `'bookmark'` to the `type` enum of `NotebookSearchHitSchema` and a `bookmarks` field to `NotebookSearchResponseSchema` (`packages/shared/src/schemas.ts`; run `npm run openapi`), and cover it in `services/api/test/http/search.test.ts`.
 
 ## Verify
@@ -472,7 +482,7 @@ npm run test:integration -w @gagnechris/api-tests   # HTTP suite on DynamoDB Loc
 
 Not required for a working API entity:
 
-- **Client data layer** (`packages/app-core`): fetch / mutate functions and derived types in `src/query/api.ts` (`components['schemas']['Bookmark']`), query keys in `src/query/keys.ts`, a `setCachedBookmark` in `src/query/cache.ts` built on `upsertIntoListCaches` with a filter predicate, a resource in `src/query/bookmarks.ts` via `createVersionedResource` (with `tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE`, the save error for a 413), and exports in `src/index.ts` (5 files).
+- **Client data layer** (`packages/app-core`): fetch / mutate functions and derived types in `src/query/api.ts` (`components['schemas']['Bookmark']`), query keys in `src/query/keys.ts`, a `setCachedBookmark` in `src/query/cache.ts` built on `upsertIntoListCaches` with a `matches` predicate, a resource in `src/query/bookmarks.ts` via `createVersionedResource` (with `tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE`, the save error for a 413), and exports in `src/index.ts` (5 files).
 - **Docs**: add the key layout to `docs/data-model.md`.
 
 ## Publishable site entity
@@ -491,27 +501,27 @@ There is no public API: the read side is static HTML in S3. API Gateway already 
 
 ### Files
 
-| #   | File                                                                                                                                 | Change                                                                                      |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| 1   | `packages/shared/src/schemas.ts`                                                                                                     | input fields, entity, `Create = fields.extend(…)`, `updateRequestSchema(fields)`, list      |
-| 2   | `packages/shared/src/openapi.ts`                                                                                                     | components + `registerPublishablePaths` (`collection` for list / create / delete)           |
-| 3   | `packages/data/src/keys.ts`                                                                                                          | `<THING>#<id>`, slug-claim partition, published GSI1 partition                              |
-| 4   | `packages/data/src/items.ts`                                                                                                         | META item schema, `metaTo…`, `build…MetaItem`, `build…PublishedItem`, `…ContentEqual`       |
-| 5   | `packages/data/src/site-publish.ts`                                                                                                  | a `<thing>Ids` member of `SitePublishIdSet` and `SitePublishState`                          |
-| 6   | `services/api/internal/<things>`                                                                                                     | new: Go struct, row parse / build, `store.PublishableConfig`, routes                        |
-| 7   | `services/api/cmd/api/main.go`                                                                                                       | append `<things>.Routes(table, nil)`                                                        |
-| 8   | `packages/shared/src/<thing>-html.ts`, `render.ts`                                                                                   | page markup (render entry only; add it to `sharedDomainIgnores` in `eslint.config.js`)      |
-| 9   | `services/publisher/src/catalog.ts`, `rebuild.ts`, `publish-targets/types.ts`                                                        | a `CatalogSpec` (GSI1 ids ∪ the site publish row's `<thing>Ids`)                            |
-| 10  | `services/publisher/src/publish-targets/targets/<things>.target.ts`                                                                  | new: target, plus a `registry.ts` entry                                                     |
-| 11  | `services/publisher/src/publish-targets/targets/sitemap.target.ts`, `render.ts`                                                      | sitemap entries                                                                             |
-| 12  | `services/publisher/src/rebuild-scope.ts`                                                                                            | add the type to `KNOWN_ENTITY_TYPES`                                                        |
-| 13  | `infra/lib/stacks/publisher-stack.ts`                                                                                                | `LeadingKeys` for `<THING>#*` and the published GSI1 partition                              |
-| 14  | `packages/shared/src/constants.ts`, `scripts/generate-go-contract.ts`, `services/api/internal/{keys,restoretest}`                    | restore-test entity lists, contract keys / schema / samples, Go key builders and key rule   |
-| 15  | `apps/web/src/routes.tsx`                                                                                                            | a route, or the SPA mount replaces the prerender with the 404                               |
-| 16  | `packages/app-core/src/query/{api,keys,cache,<things>}.ts`, `src/index.ts`                                                           | fetch / mutate, keys, `setCached<Thing>`, `createDraftPublishResource` + `tooLargeMessage`  |
-| 17  | `apps/web/src/admin/{Admin<Things>Page,<Thing>EditorPage}.tsx`, `<thing>Draft.ts`, `routes.tsx`, `AdminLayout.tsx`                   | list, draft module, editor on `useAdminEntityEditor` + `EditorFrame`, routes and a nav link |
-| 18  | `services/api/test/http/<things>.test.ts`                                                                                            | new: HTTP suite test                                                                        |
-| —   | `openapi.json`, `schema.d.ts`, `apitypes.gen.go`, `contract.json`, `viewer-request-function.js`, `publish-admin-routes.generated.ts` | generated by `npm run openapi` and `npm run publish-surface:generate`                       |
+| #   | File                                                                                                                                     | Change                                                                                                                                                              |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `packages/shared/src/schemas.ts`                                                                                                         | input fields, entity, `Create = fields.extend(…)`, `updateRequestSchema(fields)`, list                                                                              |
+| 2   | `packages/shared/src/openapi.ts`                                                                                                         | components + `registerPublishablePaths` (`collection` for list / create / delete)                                                                                   |
+| 3   | `packages/data/src/keys.ts`                                                                                                              | `<THING>#<id>`, slug-claim partition, published GSI1 partition                                                                                                      |
+| 4   | `packages/data/src/items.ts`                                                                                                             | META item schema, `metaTo…`, `build…MetaItem`, `build…PublishedItem`, `…ContentEqual`                                                                               |
+| 5   | `packages/data/src/site-publish.ts`                                                                                                      | a `<thing>Ids` member of `SitePublishIdSet` and `SitePublishState`                                                                                                  |
+| 6   | `services/api/internal/<things>`                                                                                                         | new: Go struct, row parse / build, `store.PublishableConfig`, routes                                                                                                |
+| 7   | `services/api/cmd/api/main.go`                                                                                                           | append `<things>.Routes(table, nil)`                                                                                                                                |
+| 8   | `packages/shared/src/<thing>-page.ts`, `render.ts`; `packages/public-ui/src/<things>/`, `server.tsx`; `services/publisher/src/render.ts` | page view (render entry only; add it to `sharedDomainIgnores` in `eslint.config.js`), page body components and their `render…PrerenderHtml`, the shell-wrapped page |
+| 9   | `services/publisher/src/catalog.ts`, `rebuild.ts`, `publish-targets/types.ts`                                                            | a `CatalogSpec` (GSI1 ids ∪ the site publish row's `<thing>Ids`)                                                                                                    |
+| 10  | `services/publisher/src/publish-targets/targets/<things>.target.ts`                                                                      | new: target, plus a `registry.ts` entry                                                                                                                             |
+| 11  | `services/publisher/src/publish-targets/targets/sitemap.target.ts`, `render.ts`                                                          | sitemap entries                                                                                                                                                     |
+| 12  | `services/publisher/src/rebuild-scope.ts`                                                                                                | only for per-id scope: add the type to `KNOWN_ENTITY_TYPES` with its own branch (projects collect `projectIds`)                                                     |
+| 13  | `infra/lib/stacks/publisher-stack.ts`                                                                                                    | `LeadingKeys` for `<THING>#*` and the published GSI1 partition                                                                                                      |
+| 14  | `packages/shared/src/constants.ts`, `scripts/generate-go-contract.ts`, `services/api/internal/{keys,restoretest}`                        | restore-test entity lists, contract keys / schema / samples, Go key builders and key rule                                                                           |
+| 15  | `apps/web/src/routes.tsx`, `src/pages/<Thing>Page.tsx`                                                                                   | a route whose page hydrates the public-ui body, or the SPA mount replaces the prerender with the 404                                                                |
+| 16  | `packages/app-core/src/query/{api,keys,cache,<things>}.ts`, `src/index.ts`                                                               | fetch / mutate, keys, `setCached<Thing>`, `createDraftPublishResource` + `tooLargeMessage: siteTooLargeMessage(…)`                                                  |
+| 17  | `apps/web/src/admin/{Admin<Things>Page,<Thing>EditorPage,<Thing>EditorFields}.tsx`, `<thing>Draft.ts`, `routes.tsx`, `AdminLayout.tsx`   | list, draft module, editor on `useAdminEntityEditor` + `EditorFrame`, routes and a nav link                                                                         |
+| 18  | `services/api/test/http/<things>.test.ts`                                                                                                | new: HTTP suite test                                                                                                                                                |
+| —   | `openapi.json`, `schema.d.ts`, `apitypes.gen.go`, `contract.json`, `viewer-request-function.js`, `publish-admin-routes.generated.ts`     | generated by `npm run openapi` and `npm run publish-surface:generate`                                                                                               |
 
 ### Data
 
@@ -542,8 +552,8 @@ The editor is built from the shared pieces in `apps/web/src/admin/editor/`, as `
 - **`useAdminEntityEditor`**: the resource (`projectResource`), draft mappers and payload builder, the confirm texts, a `subject` for the conflict message ("this project"), `uniqueSlug` for the slug-taken message, and `delete: { confirm, mutate, redirectTo }`.
 - **`useDraftFields(editor, { slugFrom: 'name' })`**: `setField` (a value or an updater) and `setSlugManual`. With `slugFrom`, the slug follows that field until the Slug input is edited; a loaded entity whose slug is still a placeholder (`placeholderSlug.ts`) keeps following.
 - **`EditorFrame`**: the load-error, loading and save-error states, the action bar with View live and Delete, and `notices` for page-specific alerts. Render the form in its `children(entity)`; `EditorNotice` is the missing-id panel.
-- **`useImageUpload(editor.setSaveError)`**: `uploadImage` for an `ImageUploadField` (its errors show under the field) and `uploadBodyImages` for `MarkdownBodyEditor` (its errors show as the save error). Both upload to `/media` through `uploadImages`.
-- **Widgets**: `ChipsInput` for list-of-strings fields, `ImageUploadField` (`dropzone` or `thumbnail`), `SegmentedRadio` (`workspace/ui`) for a small enum, and `BodyPreview` for a markdown body rendered as its public page.
+- **`useImageUpload(editor.setSaveError)`**: `uploadImage` for an `ImageUploadField` (its errors show under the field) and `uploadBodyImages` for `MarkdownBodyEditor` (its errors show as the save error). Both go through `uploadImages`: a presigned URL from `POST /api/admin/media/upload-url`, then a `PUT` of the file.
+- **Widgets**: `ChipsInput` for list-of-strings fields, `ImageUploadField` (`layout: 'dropzone' | 'thumbnail'`), `SegmentedRadio` (`workspace/ui`) for a small enum, and `MarkdownBodyEditor` (`kit/markdown`) with a `LazyBodyPreview` that renders the body as its public page. Projects keep the form fields in `ProjectEditorFields.tsx`.
 
 `e2e/tests/admin-projects.spec.ts` drives create, edit, upload, publish, unpublish, delete and a slug conflict through the admin against the local publisher; `admin-post-flows.spec.ts` does the same for posts and adds Publish changes, Discard changes, a two-tab conflict, ⌘⏎ in the body and the leave guard.
 

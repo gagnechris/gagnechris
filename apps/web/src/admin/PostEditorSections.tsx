@@ -1,5 +1,6 @@
 import { useEffect, useId, type FormEvent, type RefObject } from 'react';
 import type { components } from '@gagnechris/api-client';
+import { parsePostTags, type PostDraftFields } from '@gagnechris/app-core';
 import {
   MAX_SLUG_LENGTH,
   PROJECT_STAGE_LABELS,
@@ -12,7 +13,6 @@ import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
 import { publicImageSrc } from './publicUrl';
-import { parsePostTags, type PostDraftFields } from './postDraft';
 
 type Project = components['schemas']['Project'];
 

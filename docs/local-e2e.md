@@ -14,7 +14,7 @@ Run the Blog CMS API + publisher against **DynamoDB Local** and a filesystem sit
 npm run e2e:local
 ```
 
-This builds `apps/web` with Cognito placeholders if `apps/web/dist` is missing, then runs the `api` Playwright project (`e2e/tests/publish-lifecycle.spec.ts`) on the private stack described below. Nothing touches `npm run local:dev`'s table or `.local-site/`. The spec uses Playwright's `request` and the `Seed` fixture, with no browser. It covers publishing, editing and unpublishing a post, Home and a project (prerendered pages, listings, the sitemap, the legacy `/blog` redirect, orphan cleanup), the HTML 404 for unknown page URLs, that the built app never fetches `/__site` (only the Vite dev server proxies it), and that the static server, like CloudFront, skips viewer-response on an origin 4xx.
+This builds `apps/web` with Cognito placeholders if `apps/web/dist/_shell.html` is missing, then runs the `api` Playwright project (`e2e/tests/publish-lifecycle.spec.ts`) on the private stack described below. Nothing touches `npm run local:dev`'s table or `.local-site/`. The spec uses Playwright's `request` and the `Seed` fixture, with no browser. It covers publishing, editing and unpublishing a post, Home and a project (prerendered pages, listings, the sitemap, the legacy `/blog` redirect, orphan cleanup), the HTML 404 for unknown page URLs, that the built app never fetches `/__site` (only the Vite dev server proxies it), and that the static server, like CloudFront, skips viewer-response on an origin 4xx.
 
 Without an `apps/web` build (the stack then serves `scripts/local/minimal-shell.html`) the spec skips. `npm run e2e:local -- --ui` and other Playwright flags pass through.
 
@@ -36,7 +36,8 @@ afterwards:
    `gagnechris.e2e=1`, bound to `127.0.0.1` only), table
    `gagnechris-e2e-<run>`
 2. Site root `e2e/.stack/<run>/site` (`E2E_SITE_ROOT`), seeded from `apps/web/dist` when a
-   build exists, else `scripts/local/minimal-shell.html`
+   build exists (a build made with `GA_MEASUREMENT_ID` fails the setup), else
+   `apps/web/public` plus `scripts/local/minimal-shell.html`
 3. The Go API (`scripts/local/api.ts` builds `services/api/cmd/api` and runs it
    behind a front server that applies the publisher rebuild and media CORS)
    and static site (`static-server.ts`, `E2E_SITE_URL`), which runs the real
@@ -104,19 +105,19 @@ other run is active).
 
 Import `test` and `expect` from `e2e/fixtures.ts`:
 
-| Fixture  | What it gives you                                                                                                                                                                            |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')`                                                                                                      |
-| `prefix` | Unique per test; slugs and titles from `seed` start with it                                                                                                                                  |
-| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)                                                                                                                   |
-| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                                                                                                                          |
-| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                                                                                                                          |
-| `seed`   | API seeding as `users.owner`: `post`, `publishedPost`, `project`, `publishedProject`, `note`, `daily`, `task` (inputs typed from `@gagnechris/api-client`), and `seed.api` for anything else |
-| `seedAs` | `seedAs(user)` seeds as another user                                                                                                                                                         |
+| Fixture  | What it gives you                                                                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')`                                                                                                                                              |
+| `prefix` | Unique per test; slugs and titles from `seed` start with it                                                                                                                                                                          |
+| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)                                                                                                                                                           |
+| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                                                                                                                                                                  |
+| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                                                                                                                                                                  |
+| `seed`   | API seeding as `users.owner`: `post`, `publishedPost`, `project`, `publishedProject`, `note`, `daily`, `dailyTemplate`, `blankDailyTemplates`, `task` (inputs typed from `@gagnechris/api-client`), and `seed.api` for anything else |
+| `seedAs` | `seedAs(user)` seeds as another user                                                                                                                                                                                                 |
 
 Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin`, `notebook` and `user-admin` (Full Admin).
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)
-and sends `Authorization: Bearer local:<userId>`; the Go API
+and send `Authorization: Bearer local:<userId>`; the Go API
 (`API_CLAIMS_MODE=local`, `services/api/internal/api/localclaims.go`) turns that
 into ID-token claims with `sub=<userId>` for the matched route's app
 (`user-admin` on `/api/admin/users`, `site-admin` on the rest of `/api/admin`,
@@ -155,7 +156,7 @@ This starts DynamoDB Local (if needed), bootstraps `gagnechris-local`, seeds a p
 
 Open `http://localhost:5174` for the CMS and `http://localhost:5175` for Notebook. After publish, `http://localhost:5173/posts/<slug>` uses the Vite public app (with HMR). `PostPage` loads publisher HTML via `/__site/posts/<slug>/` (proxied to `:4177`). Ctrl+C stops Vite and processes this script started (Docker stays up).
 
-Optional: `npm run build && npm run local:seed-shell` once if you want full SPA assets in the publisher shell.
+Run `npm run build` first for full SPA assets in the publisher shell: `local:dev` copies `apps/web/dist` into `.local-site` on each start (keeping publisher-owned paths). `npm run local:seed-shell` does the same copy while the stack runs.
 
 ### Resume CMS
 
@@ -211,6 +212,7 @@ Prod admin: `npm run dev:prod-api` (explicit + banner).
 | `scripts/local/lib.sh`             | `wait_dynamodb` and `wait_http` for the local scripts                |
 | `scripts/local/wait-dynamodb.ts`   | Waits for DynamoDB Local (local scripts, e2e stack, CI)              |
 | `scripts/local/seed-shell.sh`      | Copy `apps/web/dist` → `.local-site`                                 |
+| `scripts/local/rebuild-site.ts`    | Rebuilds the published site from DynamoDB (`local:dev` start)        |
 | `scripts/local/e2e.sh`             | `npm run e2e:local`: builds if needed, runs the `api` project        |
 | `scripts/local/minimal-shell.html` | Publisher shell when `apps/web/dist` is missing                      |
 | `e2e/`                             | Playwright config, stack global setup, fixtures, specs               |

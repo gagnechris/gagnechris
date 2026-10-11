@@ -7,7 +7,9 @@ Attribute names are lowercase. Keys use string partition/sort values with `#`
 separators so entity types never collide.
 
 **Key builders, item zod schemas, and mappers** live in `@gagnechris/data`
-(`packages/data`). API and publisher must import those helpers — do not hard-code
+(`packages/data`). The publisher, ops tools and tests import those helpers; the
+Go API builds keys with `services/api/internal/keys`, which `keys_test.go`
+holds to the builders through the generated contract. Do not hard-code
 `POST#…`, `PROJECT#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current`
 in application code.
 
@@ -18,12 +20,16 @@ in application code.
 | `pk`                | Partition key                                                                                            |
 | `sk`                | Sort key                                                                                                 |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (posts by date, projects by order)                                                 |
-| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows still mirror pk/sk        |
+| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows also mirror pk/sk         |
 | `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                        |
 | `entityType`        | Discriminator (`post`, `slug`, `project`, `resume`, `home`, `contact`, `removedUser`, `note`, `task`, …) |
 
-Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). PITR and
-deletion protection on. Removal policy: `RETAIN`.
+All three GSIs project `ALL`. The table definition (`APP_TABLE` in
+`packages/data/src/table.ts`) is shared by CDK and the local bootstrap.
+
+Billing: on-demand. Streams: `NEW_AND_OLD_IMAGES` (publisher). TTL attribute:
+`ttl`. PITR and deletion protection on, plus a daily AWS Backup with 7-day
+retention. Removal policy: `RETAIN`.
 
 ## Posts
 
@@ -78,21 +84,20 @@ posts cannot claim the same slug.
 | `entityType` | `slugRedirect`              |
 
 On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
-update `META.slug`. The publisher does not serve redirects; the API/admin
-treats redirect slugs as reserved.
+update `META.slug`. Nothing reads `REDIRECT` rows: the publisher does not serve
+redirects and the API has no lookup by slug. A redirected slug is not
+reserved: another post can claim it, and its `REDIRECT` row stays.
 
 ### Access patterns (posts)
 
 | Need                    | How                                                                                                                                                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Get by `postId`         | `GetItem` `POST#id` / `META` (+ compare to `PUBLISHED` for `hasUnpublishedChanges`)                                                                                                                                |
-| Get by slug             | `GetItem` `SLUG#slug` / `POST` → then `META` (or follow `REDIRECT`)                                                                                                                                                |
+| Get by `postId`         | `BatchGetItem` `POST#id` / `META` and `PUBLISHED` (compared for `hasUnpublishedChanges`)                                                                                                                           |
 | List all (admin)        | Query GSI1 `STATUS#published` then `STATUS#draft` (META only, summary attributes via `ProjectionExpression`), page in that order; the flag comes from META, and a META row without it is compared with `PUBLISHED` |
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
 | List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
-| List by tag (published) | See tag items below                                                                                                                                                                                                |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED` and its tag rows, drop slug claim                                                                                                                                    |
 | Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
 ### Tag index items
@@ -100,8 +105,7 @@ treats redirect slugs as reserved.
 For each tag on a **published** post, maintain:
 
 `TAG#<tag>` / `TS#<publishedAt>#POST#<postId>` with `gsi2pk`/`gsi2sk` mirroring
-pk/sk so items remain GSI-projectable. List-by-tag still uses the table primary
-key. Notebook tasks linked to a note also use GSI2 with owner-scoped partitions
+pk/sk. Notebook tasks linked to a note also use GSI2 with owner-scoped partitions
 (`USER#<sub>#NOTE#<id>#TASKS`); those keys never collide with `TAG#…` partitions.
 
 Pattern used here:
@@ -112,12 +116,13 @@ Pattern used here:
 | `sk`             | `TS#<publishedAt>#POST#<postId>` |
 | `gsi2pk`         | same as `pk`                     |
 | `gsi2sk`         | same as `sk`                     |
+| `entityType`     | `tagIndex`                       |
 | `postId`, `slug` | denormalized for list cards      |
 
-On publish/unpublish, rewrite these sparse items from the **PUBLISHED**
-snapshot (draft tag edits do not change the public tag index until publish).
-
-List by tag: `Query` `pk = TAG#x` (or GSI2), newest first.
+Publish, unpublish and soft delete rewrite these sparse items from the
+**PUBLISHED** snapshot in the same transaction (draft tag edits do not change
+the tag index until publish). Nothing queries them: there is no list-by-tag
+route or page.
 
 ## Projects
 
@@ -153,7 +158,7 @@ soft delete. A draft may have a `demo` with no `previewImage`, but publishing
 it is a 400 with `fields.previewImage = 'required_with_demo'`
 (`projectPublishFieldErrors` in `packages/shared/src/projects.ts`, which the
 admin editor uses to block Publish too). The publisher reads only these rows (`ConsistentRead`), after
-listing ids from GSI1 `PROJECT_STATUS#published`.
+listing ids from GSI1 `PROJECT_STATUS#published` and the `SITE#publish` `projectIds`.
 
 #### `PROJECT_SLUG#<slug>` / `PROJECT` and `PROJECT_SLUG#<oldSlug>` / `REDIRECT`
 
@@ -184,28 +189,30 @@ Editable draft plus an optional live snapshot.
 
 #### `RESUME#current` / `META` — editable draft
 
-| Attr         | Notes                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `entityType` | `resume`                                                                                   |
-| `resumeId`   | `current`                                                                                  |
-| `name`       | Display name in the page header                                                            |
-| `pdfPath`    | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
-| `content`    | `ResumeContentSchema` (below)                                                              |
+| Attr                                            | Notes                                                                                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `entityType`                                    | `resume`                                                                                   |
+| `resumeId`                                      | `current`                                                                                  |
+| `name`                                          | Display name in the page header                                                            |
+| `pdfPath`                                       | Always `/resume.pdf` in practice; publisher regenerates that object via pdf-lib on publish |
+| `content`                                       | `ResumeContentSchema` (below)                                                              |
+| `seo`                                           | Optional overrides map, or `null`                                                          |
+| `status`, `publishedAt`, `updatedAt`, `version` | As for posts (no `hasUnpublishedChanges` attribute)                                        |
 
 `content` holds `summary`, `competencies`, `experience`, `skills`,
 `education`, plus optional `headline` (current role) and
 `earlierRolesThrough` (cut-off year: roles that ended in or before it are "earlier
 roles"). Each `experience` entry is `title`, `company` (bare name), `start`
 and `end` (`YYYY-MM`; `end: null` is present), optional `note` (for example
-"contract, concurrent") and `bullets`. An entry without `start` is the old
-shape, with its dates inside `company` (`Ro | July 2019 - Present`); it still
-parses, and `scripts/migrate-resume-dates.ts` moves the dates into
-`start`/`end`. The PDF renders entries as `Company | Month YYYY - Month YYYY`;
+"contract, concurrent") and `bullets`. An entry without `start` keeps its
+dates inside `company` (`Ro | July 2019 - Present`); it parses, and
+`scripts/migrate-resume-dates.ts` moves the dates into `start`/`end`. The PDF renders entries as `Company | Month YYYY - Month YYYY`;
 the page puts `Mon YYYY – Mon YYYY` in a date column and reads old-shape rows
 through the same parser. With `earlierRolesThrough` set, roles whose `end` year
 is on or before it collapse under "Earlier roles, <first start year>–<cut-off>";
-unset, every role is expanded. Education keeps a free-text `year` (a single
-completion date, no range), shown in the date column as stored.
+unset, every role is expanded. Each `education` entry is `title`,
+`institution`, `location`, optional `degreeDetail`, and a free-text `year` (a
+single completion date, no range), shown in the date column as stored.
 
 No GSI keys. `GET /api/admin/resume` seeds META as a **draft** from
 `DEFAULT_RESUME` on first read. Publish copies META → `PUBLISHED` (and
@@ -223,13 +230,15 @@ Same draft / published split as the resume.
 
 #### `HOME#current` / `META` — editable draft
 
-| Attr         | Notes                                               |
-| ------------ | --------------------------------------------------- |
-| `entityType` | `home`                                              |
-| `homeId`     | `current`                                           |
-| `name`       | Header name (`<h1>`)                                |
-| `title`      | Header subtitle, e.g. `Engineering Leader`          |
-| `about`      | About Me body text; blank lines separate paragraphs |
+| Attr                                            | Notes                                               |
+| ----------------------------------------------- | --------------------------------------------------- |
+| `entityType`                                    | `home`                                              |
+| `homeId`                                        | `current`                                           |
+| `name`                                          | Header name (`<h1>`)                                |
+| `title`                                         | Header subtitle, e.g. `Engineering Leader`          |
+| `about`                                         | About Me body text; blank lines separate paragraphs |
+| `seo`                                           | Optional overrides map, or `null`                   |
+| `status`, `publishedAt`, `updatedAt`, `version` | As for posts                                        |
 
 `GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
 writes `HOME#current` / `PUBLISHED`; unpublish deletes it. On publish the
@@ -238,12 +247,13 @@ or corrupt it re-renders `index.html` from that snapshot. With no snapshot, a
 missing Home renders `DEFAULT_HOME` (what the SPA falls back to) and a corrupt
 one leaves `index.html` alone.
 
-`index.html` also lists the three newest published posts (Recent posts), so
-the home target runs on every post publish, unpublish and delete as well as on
-Home changes. It reads the same catalog as `posts.json`. When the rendered
-bytes are unchanged (a body edit, or an edit to a post outside the top three)
-nothing is written and `/` is not invalidated. With no posts the section is
-left out.
+`index.html` also lists the three newest published posts (Recent posts) and
+the first two published projects by `order` that are not ideas, so the home
+target runs on every post and project publish, unpublish and delete as well as
+on Home changes. It reads the same catalogs as `posts.json` and `/projects`.
+When the rendered bytes are unchanged (a body edit, or an edit to a post
+outside the top three) nothing is written and `/` is not invalidated. With no
+posts the section is left out.
 
 #### `HOME#current` / `PUBLISHED` — live snapshot
 
@@ -253,11 +263,12 @@ Web deploy uploads a pristine `_shell.html` (raw Vite shell) plus `index.html`
 (home meta shell), then invokes `republishAll`, which reads `_shell.html` and
 writes the home prerender into `index.html`. Home-only head tags therefore
 cannot leak into `/posts` or `/resume`. The hero's links sentence is defined
-once in `@gagnechris/shared/render` (`HOME_LINKS_SENTENCE`); the publisher
-prerenders HTML from that list and React renders the same list as JSX
-(`<Link>` / tracked `<a>`) so SPA navigation and GA4 click events stay intact.
-The site header and footer around every page come from
-`@gagnechris/public-ui` (see [architecture.md](./architecture.md#public-pages)).
+once in `@gagnechris/shared` (`HOME_LINKS_SENTENCE`, also exported from
+`@gagnechris/shared/render`); the `@gagnechris/public-ui` home body renders it
+with `PublicLink` (tracked links), and the publisher renders that same
+component server-side while the public app hydrates it, so SPA navigation and
+GA4 click events stay intact. The site header and footer around every page
+come from `@gagnechris/public-ui` (see [architecture.md](./architecture.md#public-pages)).
 The prerender footer year is fixed at publish time; the SPA uses the live year.
 
 ## Site publish row
@@ -265,8 +276,9 @@ The prerender footer year is fixed at publish time; the SPA uses the live year.
 #### `SITE#publish` / `META`
 
 One row, updated in the same transaction as every write or delete of a post,
-project, home or resume `PUBLISHED` row (`buildSitePublishUpdate` in
-`@gagnechris/data`). Its sort key is not `PUBLISHED`, so the publisher stream
+project, home or resume `PUBLISHED` row (`sitePublishUpdate` in
+`services/api/internal/store/publishable.go`; the publisher reads it with
+`parseSitePublishItem` from `@gagnechris/data`). Its sort key is not `PUBLISHED`, so the publisher stream
 filter ignores it.
 
 | Attribute    | Type          | Notes                                                              |
@@ -299,7 +311,7 @@ the per-IP contact rate limit and the global SES daily cap.
 | `entityType`               | `contact`                                   |
 | `contactId`                | Same ULID as in `pk`                        |
 | `name`, `email`, `message` | Visitor-submitted fields                    |
-| `sourceIp`                 | `requestContext.http.sourceIp` when present |
+| `sourceIp`                 | Caller IP, or `unknown` when absent         |
 | `createdAt`                | ISO-8601                                    |
 | `emailStatus`              | `pending` \| `sent` \| `failed`             |
 | `emailError`               | Optional short error string when send fails |
@@ -307,7 +319,8 @@ the per-IP contact rate limit and the global SES daily cap.
 ### Rate-limit counters (TTL)
 
 Attribute `ttl` (epoch seconds) is enabled on the table for auto-expiry.
-Counters use non-`PUBLISHED` sort keys, so the publisher stream filter ignores
+Counter rows (`entityType` `rateLimit`) hold a `count` and expire an hour after
+their window ends (a day for `DAY#` rows). They use non-`PUBLISHED` sort keys, so the publisher stream filter ignores
 them (same as draft `META` rows).
 
 | Purpose               | `pk`                   | `sk`                   | Limit      |
@@ -347,18 +360,19 @@ Synced entities stamp sparse GSI3 keys on their **META** item (no append-only le
 
 Create also writes a durable claim row (not on GSI3):
 
-| Attr        | Notes                                                         |
-| ----------- | ------------------------------------------------------------- |
-| `pk` / `sk` | `CREATED#<TYPE>#<id>` / `META`                                |
-| `ttl`       | `SYNC_CREATE_CLAIM_TTL_DAYS` (365) — outlives tombstone purge |
+| Attr         | Notes                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| `pk` / `sk`  | `CREATED#<TYPE>#USER#<sub>#<id>` / `META`                                                        |
+| `entityType` | `syncCreateClaim`                                                                                |
+| `ttl`        | `SYNC_CREATE_CLAIM_TTL_DAYS` (365), restarted on soft delete, so it outlives the tombstone purge |
 
 `GET /api/notebook/sync/changes`:
 
-- Normalizes `since` with `Date.parse` → `toISOString()` so missing milliseconds or offsets match UTC-ms keys.
+- Parses `since` as an ISO-8601 datetime and normalizes it to UTC milliseconds, so missing milliseconds or offsets match UTC-ms keys. An unparseable `since` is **400**; one older than the tombstone horizon (30-day TTL less a 1-day margin and the overlap) is **410** `resync_required`, and the client does a full resync.
 - Re-queries an overlap window (`SYNC_OVERLAP_MS`, 15s ≥ `API_LAMBDA_TIMEOUT_MS`) below `since` so late-committed writes are not skipped; clients dedupe by `(id, version)`.
 - Returns opaque `nextSince` (server watermark at query start) for the next poll.
-- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values; GSI cursors must match the status partition). `limit` counts returned changes, not skipped corrupt rows, and is a maximum: a page also stops at about 1 MB of JSON and returns `nextCursor`.
-- Cursors are bound to the queried partition and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400**. `ValidationException` on ExclusiveStartKey is also mapped to 400.
+- Pages with real DynamoDB `ExclusiveStartKey` (opaque `cursor`; exact key set, string values). `limit` counts returned changes, not skipped corrupt rows, and is a maximum: a page also stops at about 1 MB of JSON, or after 5 queries, and returns `nextCursor`.
+- Cursors are bound to the caller's `syncPk` and the sync `since` lower bound (stored in the cursor as `boundSince`, empty without `since`); foreign / wrong-`since` cursors, including a no-`since` cursor reused with `since`, → **400**. `ValidationException` on ExclusiveStartKey is also mapped to 400.
 - Projection ALL on GSI3 → latest entity state per row (tombstones omit `entity`).
 
 Adding a synced entity: a Go repository on the generic `versioned` store (`services/api/internal/notebook/versioned.go`; its `changeType` makes it stamp `entityType` / `syncPk` / `syncSk`, and `createHash` fingerprints creates; see [adding-an-entity.md](./adding-an-entity.md)), one entry in `syncAdapters` (`services/api/internal/notebook/sync.go`, the feed adapter; the store does not register it), and its variant in `SyncChangeSchema` — no edits to the feed query. `TestSyncAdaptersCoverEveryChangeType` fails until the adapters and the contract's `sync.changeTypes` (from `SYNC_CHANGE_TYPES`) agree; a row with no adapter returns 500.
@@ -413,7 +427,7 @@ Context written under the task.
 - The note stores the reference only. Title, checked state, show-on date and priority always come from the task record, so completing or renaming a task changes every note that embeds it.
 - Only whole lines are embeds. A token inside other text, after a list marker, or inside a fenced code block is plain text.
 - The same task can be embedded in many notes. The task's `noteId` stays its home note (where it was created).
-- `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. Rows written before embeds have no `taskIds` attribute and derive it on read.
+- `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. A row with no `taskIds` attribute derives it on read.
 - Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
 - A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, `- [ ] ~~Title~~ (dropped)` when dropped, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
 - On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. Each `[ ]` line makes its own task, so the same text twice gives two tasks, and pasting several `[ ]` lines converts each one. Undoing a conversion brings the line back; leaving it again embeds the same task (its token is no longer in the note), and if the line was edited first the task is updated to the new text, so undo never leaves an orphan. A deleted task renders as a muted "Deleted task" row.
@@ -449,7 +463,7 @@ Context written under the task.
 
 **Show-on date and someday.** `someday` is a separate boolean, not a sentinel `startDate`, so `startDate` is always a real calendar date or `null`, Upcoming can order by it without excluding a magic value, and a later deadline field can sit beside it. The API keeps the two exclusive: a body with `someday: true` and a non-null `startDate` is **400**; `PUT` with `someday: true` clears `startDate`, and `PUT` with a non-null `startDate` clears `someday`.
 
-**Rows without `startDate`.** Task META rows written before `startDate` existed have no `startDate` or `someday` attribute and a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), but its start-date queries read only `START#`, `UPDATED#` and `SOMEDAY#`, so a dated row still keyed `DUE#` shows in no Today or Upcoming list until `scripts/migrate-task-start-dates.ts` rekeys it (see `infra/RUNBOOK.md`). Any API write to such a row also stores `startDate` and rekeys it to `START#`.
+**Rows without `startDate`.** Task META rows stored with no `startDate` or `someday` attribute have a GSI1 sort key of `DUE#<dueDate>#TASK#<id>`. The API reads them as `startDate = dueDate`, `someday = false` (an explicit `null` stays `null`), but its start-date queries read only `START#`, `UPDATED#` and `SOMEDAY#`, so a dated row still keyed `DUE#` shows in no Today or Upcoming list until `scripts/migrate-task-start-dates.ts` rekeys it (see `infra/RUNBOOK.md`). Any API write to such a row also stores `startDate` and rekeys it to `START#`.
 
 Synced Notebook entities also set `syncPk` / `syncSk` / `entityType` / `createHash` (GSI3) on META — see above. Create claims are owner-scoped: `CREATED#<TYPE>#USER#<sub>#<id>`. Soft-delete **omits** `gsi1*` / `gsi2*` so list indexes never return tombstones for 30 days.
 

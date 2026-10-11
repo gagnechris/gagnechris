@@ -1,8 +1,11 @@
 # Mobile (Expo)
 
-Expo app (expo-router, dev client) for Notebook on iPhone: tabs for Today,
-Upcoming, Notes, Tasks and More, the Work / Personal / All area switch, and the
-No access screen. It runs the monorepo client packages under Metro. The Notebook query
+Expo app (expo-router, dev client) for iPhone with two spaces, opened by the
+user's groups: Notebook (`notebook` group: tabs for Today, Upcoming, Notes,
+Tasks and More, with the Work / Personal / All area switch) and Admin
+(`site-admin` group: Posts, Pages, Projects, Users for `user-admin`, and More).
+A user with neither sees the No access screen. Both More tabs have Add a
+passkey under Cognito sign-in. It runs the monorepo client packages under Metro. The Notebook query
 cache is persisted for offline reads (`src/cache/`), with an offline banner and
 autosave retry on reconnect (`src/net/`); see
 `docs/mobile.md#cached-reads-and-offline`.
@@ -25,7 +28,7 @@ npm run ios --prefix apps/mobile   # expo run:ios
 
 With the dev client already installed, `npm start --prefix apps/mobile` and
 press `i`. With Xcode 27, `expo run:ios` mistakes booted simulators for phones;
-use `npm run ios:sim` with Metro running (see `docs/mobile.md`). An EAS simulator build (`npx eas-cli build --profile development
+use `npm run ios:sim --prefix apps/mobile` with Metro running (see `docs/mobile.md`). An EAS simulator build (`npx eas-cli build --profile development
 --platform ios`) is the alternative; see `docs/mobile.md#run-in-the-simulator`.
 
 Override API target:
@@ -34,10 +37,13 @@ Override API target:
 EXPO_PUBLIC_API_BASE_URL=https://gagnechris.com npm start --prefix apps/mobile
 ```
 
-Against the local API, sign-in is the local fake auth
-(`EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` signs in without Notebook to show No
-access). Anything else uses Cognito managed login with the prod `ios` client
-(`EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID` overrides it); see `docs/mobile.md#sign-in`.
+Against the local API, dev builds use the local fake auth with all groups
+(`EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` opens only Admin; an empty value
+shows No access). Anything else uses Cognito managed login with the prod `ios`
+client (`EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID` overrides it). That client accepts
+only the https callback, which the `preview` and `production` EAS profiles
+select (`EXPO_PUBLIC_AUTH_REDIRECT=universalLink`), so dev and simulator builds
+sign in with local auth only; see `docs/mobile.md#sign-in`.
 
 ## Packages exercised
 

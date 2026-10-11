@@ -1,6 +1,6 @@
 import { useState } from 'react';
+import { isPlaceholderSlug } from '@gagnechris/app-core';
 import { EMPTY_SLUG_FALLBACK, slugify } from '@gagnechris/shared';
-import { isPlaceholderSlug } from '../placeholderSlug';
 
 type FieldValue<T> = T | ((prev: T) => T);
 

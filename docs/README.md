@@ -50,11 +50,17 @@ npm run e2e:browser
 ## Repo layout
 
 ```
-apps/web/              React/Vite site + admin
+apps/web/              React/Vite public site, admin and Notebook apps
+apps/mobile/           Expo iOS app (Notebook and Admin); own lockfile, not a root workspace
 services/api/          Go API (cmd/api, internal/), the restore-test validator, the black-box HTTP suite (test/)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
-packages/shared/       Domain schemas/types; `/render`, `/openapi` subpaths
+packages/shared/       Domain schemas/types; `/render`, `/openapi` and other subpaths
+packages/data/         DynamoDB keys, item schemas and builders, write helpers
+packages/api-client/   OpenAPI types and `createApiClient`
+packages/app-core/     UI-free hooks shared by the web apps and the iOS app
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site
+packages/tokens/       Design tokens (TS → CSS variables)
+packages/ops/          Restore copy-back and row migrations
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
 scripts/               Local stack, deploy-web, branch protection
 docs/                  Architecture, development, data model, E2E
@@ -64,7 +70,7 @@ e2e/                   Playwright browser tests
 ## Workflow
 
 - One Linear ticket → one branch → one PR into `main` (prefer the issue `gitBranchName`)
-- CI on PRs: lint, typecheck (all workspaces), tests, build, CDK diff; Local E2E required
+- CI on PRs: lint, typecheck (all workspaces), tests, build, Go lint and test, CDK diff; required checks are **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**
 - Merge to `main` deploys via OIDC only after CI succeeds (CDK + web sync + CloudFront invalidation; path-filtered against last deployed SHA in SSM; the deploy job refuses rollbacks, SSM read errors and multi-GSI changes — see `infra/RUNBOOK.md`)
 - Infrastructure only through CDK — no console edits to production
 
@@ -83,6 +89,7 @@ e2e/                   Playwright browser tests
 | [adr/0003-one-renderer-for-public-pages.md](./adr/0003-one-renderer-for-public-pages.md) | Public pages: one React renderer, SSR in the publisher, hydrated         |
 | [adr/0004-ios-app.md](./adr/0004-ios-app.md)                                             | iOS stack, v1 offline policy, cache, tokens, auth callback, outbox rules |
 | [design/bears-2.0/](./design/bears-2.0/README.md)                                        | Don't Feed the Bears 2.0 artboards, tuning, prototype code               |
+| [design/public-redesign/](./design/public-redesign/README.md)                            | Public site redesign artboards (Editorial)                               |
 | [../infra/RUNBOOK.md](../infra/RUNBOOK.md)                                               | Production AWS operations                                                |
 
 ## Contributions

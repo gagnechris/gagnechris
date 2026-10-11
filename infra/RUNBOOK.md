@@ -29,7 +29,7 @@ Concrete IDs and values: private note. Commands:
    `npx aws-cdk bootstrap aws://ACCOUNT/us-east-1 --profile gagnechris-admin`  
    (us-east-1 required for CloudFront certificates.)
 
-   `CiDeployRole-prod` attaches `DenyPrivateDataReads` to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. The deny covers DynamoDB data reads (including `dynamodb:PartiQLSelect`), CloudWatch Logs reads (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`) and X-Ray traces (`BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Deploying `CiDeployRole-prod` applies it; no re-bootstrap is needed. Use the SSO `ReadOnly` / `Admin` profiles, not CI roles, to read logs. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
+   `CiDeployRole-prod` attaches `DenyPrivateDataReads` to the default-qualifier bootstrap lookup role (`cdk-hnb659fds-lookup-role-…`) so PR diff/drift cannot bypass the deny by assuming that role. The deny covers DynamoDB data reads (including `dynamodb:PartiQLSelect`), S3 object reads (`s3:GetObject*`), CloudWatch Logs reads (`GetLogEvents`, `FilterLogEvents`, `StartQuery`, `GetQueryResults`, `StartLiveTail`, `GetLogRecord`, `Unmask`) and X-Ray traces (`BatchGetTraces`, `GetTraceSummaries`, `GetTraceGraph`). Deploying `CiDeployRole-prod` applies it; no re-bootstrap is needed. Use the SSO `ReadOnly` / `Admin` profiles, not CI roles, to read logs. If you ever bootstrap with a custom `--qualifier`, update `CDK_DEFAULT_BOOTSTRAP_QUALIFIER` in `ci-deploy-role-stack.ts` to match.
 
 ## CDK app (`infra/`)
 
@@ -60,8 +60,8 @@ Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
 Deploy order (CDK `addDependency` + props):
 
-1. Certificate, Guardrails, Data, Email, Auth (writes `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`)
-2. **Api** (depends on Auth; reads SSM `site-bucket-name` and both app client IDs; writes `http-api-id`)
+1. Certificate, Guardrails, Data, Email, Auth (writes `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`)
+2. **Api** (depends on Auth; reads SSM `site-bucket-name` and the admin-web, notebook-web and ios client IDs; writes `http-api-id`)
 3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, and the bucket and distribution IDs for the admin and notebook hosts)
 4. Dns (needs Site's three distributions for Route 53 aliases)
 5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
@@ -81,7 +81,7 @@ Site and Api each read an SSM parameter the other writes:
 | Stack     | Needs SSM (must exist at deploy)    | Writes SSM                                                                |
 | --------- | ----------------------------------- | ------------------------------------------------------------------------- |
 | Api       | `/gagnechris/prod/site-bucket-name` | `http-api-id`, `http-api-url`                                             |
-| Api       | Auth's two app client ID params     | (Auth writes them in step 1, so no placeholder is needed)                 |
+| Api       | Auth's three app client ID params   | (Auth writes them in step 1, so no placeholder is needed)                 |
 | Site      | `/gagnechris/prod/http-api-id`      | `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, … |
 | Publisher | Site's three params above           | `publisher-function-name`, `publisher-function-arn`                       |
 
@@ -146,14 +146,14 @@ gh variable set ALERTS_EMAIL --body "$ALERTS_EMAIL"
 bash scripts/apply-github-environments.sh
 ```
 
-3. Require CI checks on `main` (includes Local E2E). PRs don't have to be up to date with `main` (`strict_required_status_checks_policy: false`), so two PRs that are green alone can break `main` together. That can't reach prod (deploy waits for CI on `main`), and **Main CI alert** (`.github/workflows/main-ci-alert.yml`) emails the alerts topic through the drift role when CI or Mobile fails on a push to `main`, or when the CI-triggered CDK run (`Plan deploy (main)` or `CDK + web deploy (main)`) fails. See [Deploy alerts](#deploy-alerts). Fix forward with a PR:
+3. Require CI checks on `main` (**Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)**, **Mobile typecheck, lint, test, bundle**). PRs don't have to be up to date with `main` (`strict_required_status_checks_policy: false`), so two PRs that are green alone can break `main` together. That can't reach prod (deploy waits for CI on `main`), and **Main CI alert** (`.github/workflows/main-ci-alert.yml`) emails the alerts topic through the drift role when CI or Mobile fails on a push to `main`, or when the CI-triggered CDK run (`Plan deploy (main)` or `CDK + web deploy (main)`) fails. See [Deploy alerts](#deploy-alerts). Fix forward with a PR:
 
 ```bash
 bash scripts/apply-branch-protection.sh
 ```
 
 4. Workflows:
-   - **CI** (`.github/workflows/ci.yml`): lint/test/build + Local E2E (path-filtered on PRs; includes `apps/web/**` and `packages/**`). Shared setup via `.github/actions/setup` (Node from `.nvmrc`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit.
+   - **CI** (`.github/workflows/ci.yml`): **Lint, test, and build** (including Go lint/test and CDK synth), **API integration (DynamoDB Local)** and **Local E2E smoke**. The last two path-filter inside the job on PRs (so the required check always reports) and always run on `main`. Shared setup via `.github/actions/setup` (Node from `.nvmrc`, Go from `services/api/go.mod`). Concurrency cancels in-progress runs on PRs only — **main never cancels** so a cancelled CI cannot strand an undeployed infra commit.
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR (`CDK diff (PR)`):** `cdk synth` + `check:deployed-gsi` (early warning) + `cdk diff` (diff role); sticky PR comment.
      - **main deploy:** runs only after CI succeeds (`workflow_run`), as two jobs that share concurrency group `cdk-prod` (never cancels in flight):
@@ -177,7 +177,7 @@ Both workflows publish to the Guardrails alerts topic (SSM `alerts-topic-arn`) w
   - `deployed-sha` equals `main`, or is ahead of the checked-out `main` (a deploy finished mid-check): no alert.
   - Every undeployed change is docs-only per `scripts/ci/deploy-paths.sh`: no alert, however old. Docs-only merges never write `deployed-sha`.
   - Otherwise the age is the committer (merge) time of the oldest undeployed first-parent commit that `deploy-paths.sh` would deploy. It alerts (`gagnechris prod is behind main`) once that is over 2 hours. Late CI delivery and a normal deploy fit well inside that.
-  - `deployed-sha` missing, unknown to the repository, or not an ancestor of `main`: alerts immediately. The plan job's rollback check refuses every deploy in that state, so prod cannot catch up by itself.
+  - `deployed-sha` missing, unknown to the repository, or not an ancestor of `main`: alerts immediately. When it is unknown or not an ancestor, the plan job's rollback check refuses every deploy, so prod cannot catch up by itself; when it is missing, the next deploy deploys everything.
   - If the check itself fails (for example an SSM error), it publishes `gagnechris deploy lag check failed`.
   - It re-alerts every hour until prod catches up. To fix: open the CDK runs on `main` (`gh run list --workflow cdk.yml --branch main --limit 10`), re-run the failed one, or `gh workflow run cdk.yml -f mode=deploy`.
   - Check it live: `gh workflow run deploy-lag-alert.yml` (expect a green run, `alert=false` in the log while prod is current), or `gh workflow run deploy-lag-alert.yml -f test_alert=true` to also email a `[test]` copy of the current result.
@@ -198,7 +198,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Dns-prod Certificate-prod --r
 ## Static site
 
 - Private S3 + CloudFront (OAC) in `Site-prod`.
-- Security headers (HSTS, CSP for GA4 only), viewer-request function (www→apex with query string; old app URLs → 301 with `Cache-Control: max-age=86400`, matched case-insensitively and percent-decoded: `/admin/notebook*` → `https://notebook.gagnechris.com/*` and other `/admin*` → `https://admin.gagnechris.com/*`, both keeping the query, `/auth*` → `https://notebook.gagnechris.com/` with the query dropped; `/.well-known/*` is never redirected; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; the exact pages `/blog`, `/projects`, `/resume`, `/contact`, `/dont-feed-the-bears`, `/dont-feed-the-bears/camp`, `/dont-feed-the-bears/wild` → `{path}/index.html`; `/blog/<slug>` and `/projects/<slug>` → `{path}/index.html` when the KVS lists them; every other extensionless or `.html` URL → `/404.html` with the request's validators dropped. CloudFront never runs viewer-response on an origin 4xx, so a page URL that reached S3 without an object would be raw XML), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`), `/assets/*` and `/fonts/*` on `AssetsCachePolicy` (one-year edge TTL, no viewer functions, so a missing file is S3's 404), `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
+- Security headers (HSTS, CSP for GA4 only), viewer-request function (www→apex with query string; old app URLs → 301 with `Cache-Control: max-age=86400`, matched case-insensitively and percent-decoded: `/admin/notebook*` → `https://notebook.gagnechris.com/*` and other `/admin*` → `https://admin.gagnechris.com/*`, both keeping the query, `/auth*` → `https://notebook.gagnechris.com/` with the query dropped; `/.well-known/*` is never redirected; the old resume PDF URL → 301 `/resume.pdf`; `/_shell.html` (the publisher's template) → 404; `/blog*` → 301 `/posts*`; `/posts*` → `/blog` S3 prefix; the exact pages `/blog`, `/projects`, `/resume`, `/contact`, `/dont-feed-the-bears`, `/dont-feed-the-bears/camp`, `/dont-feed-the-bears/wild` → `{path}/index.html`; `/blog/<slug>` and `/projects/<slug>` → `{path}/index.html` when the KVS lists them; every other extensionless or `.html` URL → `/404.html` with the request's validators dropped. CloudFront never runs viewer-response on an origin 4xx, so a page URL that reached S3 without an object would be raw XML), viewer-response on the S3 default behavior only (force HTTP 404 when serving `/404.html`), `/assets/*` and `/fonts/*` on `AssetsCachePolicy` (one-year edge TTL, no viewer functions, so a missing file is S3's 404), `/api/*` (HTTP API origin from SSM `http-api-id`), `/media/*`.
 - Custom domains: apex and www only (no staging alias).
 - No distribution-wide custom error pages (so `/api` and `/assets` keep real 403/404). Bucket policy grants CloudFront `s3:ListBucket` for proper 404s. Publisher writes `blog/slugs.json` and syncs published post slugs (bare keys plus `__synced__`) and projects with a page (`projects/<slug>` plus `projects/__synced__`) into the one CloudFront KeyValueStore after each rebuild (function code stays CDK-managed). Until a namespace's sentinel exists its slugs fail open; `republishAll` writes both. To check: `aws cloudfront-keyvaluestore list-keys --kvs-arn <blog-slugs-kvs-arn>`.
 - 5xx alarm publishes to the Guardrails alerts topic.
@@ -226,7 +226,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 - Behaviours: default (`HtmlCachePolicy`) and `/assets/*` (`AssetsCachePolicy`) from the host's bucket, `/api/*` to the HTTP API (same as the apex, `api-security-headers`). Admin also serves `/media/*` from the **site** bucket, so the site bucket policy grants the admin distribution `GetObject` and `ListBucket`.
 - Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:` (+ `https://gagnechris.com` on admin, for the Home and Resume preview images), `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows only `https://admin.gagnechris.com`, for those PUTs.
 - Viewer-request `gagnechris-prod-app-viewer-request` (`infra/lib/cloudfront/app-viewer-request.js`, no KVS): `/api`, `/assets`, `/media`, `/.well-known` and any path whose last segment has a dot pass through; everything else → `/index.html`. No distribution-wide error pages.
-- Content is the admin and Notebook builds (`apps/web/dist-admin/`, `dist-notebook/`), shipped by `scripts/deploy-web.sh` (see Web deploy pipeline). On first create, CDK wrote a placeholder `index.html` (no script) to each bucket so the host answered 200 before the first app deploy. It never runs again, so web deploys are not overwritten.
+- Content is the admin and Notebook builds (`apps/web/dist-admin/`, `dist-notebook/`), shipped by `scripts/deploy-web.sh` (see Web deploy pipeline). When a host is created, CDK writes a placeholder `index.html` (no script) to its bucket so the host answers 200 before the first app deploy. It runs on create only, so web deploys are not overwritten.
 - 5xx alarms `gagnechris-prod-admin-cloudfront-5xx`, `gagnechris-prod-notebook-cloudfront-5xx`.
 - SSM: `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`.
 
@@ -240,7 +240,7 @@ done
 # Expect: 200, CSP with script-src 'self' and no google hosts, {"status":"ok",...}
 ```
 
-AASA: each host serves its own `/.well-known/apple-app-site-association` (app ID `FF9YB7FZ7A.com.gagnechris.mobile`). Devices read it from Apple's CDN, which caches it for hours, so an AASA change reaches iPhones only after the CDN refetches; reinstalling the app doesn't help before then. Compare what the host and Apple serve:
+AASA (app ID `FF9YB7FZ7A.com.gagnechris.mobile`): the notebook host serves `/.well-known/apple-app-site-association` with `applinks` and `webcredentials`, the apex serves one with `webcredentials` only, and the admin host serves none. Devices read it from Apple's CDN, which caches it for hours, so an AASA change reaches iPhones only after the CDN refetches; reinstalling the app doesn't help before then. Compare what the host and Apple serve:
 
 ```bash
 curl -sS https://notebook.gagnechris.com/.well-known/apple-app-site-association
@@ -276,7 +276,7 @@ SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 Privacy (details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply).
 
-Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`, `PROJECT#*`; `Query` on `gsi1` for `STATUS#published` and `PROJECT_STATUS#published`). `infra/test/publisher-iam.test.ts` evaluates the synthesized policy: project rows and the two published partitions are readable, `USER#…`, `CONTACT#…`, slug claims and draft partitions are not. A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
+Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`, `PROJECT#*`, `SITE#publish`; `Query` on `gsi1` for `STATUS#published` and `PROJECT_STATUS#published`). `infra/test/publisher-iam.test.ts` evaluates the synthesized policy: project rows and the two published partitions are readable, `USER#…`, `CONTACT#…`, slug claims and draft partitions are not. A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened.
 
 ## DynamoDB data plane
 
@@ -286,7 +286,7 @@ Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb
 
 CI enforces this two ways:
 
-1. **Offline:** `assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)` runs in DataStack synth and in `@gagnechris/data` unit tests. `LAST_DEPLOYED_GSIS` is **independent** of `APP_TABLE` — a PR may add one GSI to `APP_TABLE` without bumping the baseline.
+1. **Offline:** DataStack synth runs `assertSafeGsiUpdate(LAST_DEPLOYED_GSIS, …)` against the table definition, and `@gagnechris/data` unit tests run `assertAppTableGsiUpdateSafe(LAST_DEPLOYED_GSIS)`. `LAST_DEPLOYED_GSIS` is **independent** of `APP_TABLE` — a PR may add one GSI to `APP_TABLE` without bumping the baseline.
 2. **Live (deploy job; also PR CDK diff as an early warning):** `npm run check:deployed-gsi` `DescribeTable`s `gagnechris-prod` and compares to `APP_TABLE`, so bumping `LAST_DEPLOYED_GSIS` in the same PR cannot hide a multi-GSI change. The deploy job runs it right before `cdk deploy` and stops on failure, so the guard holds even though `CDK diff (PR)` is not a required check.
 
 **Projection:** `projectionType` (and, for `INCLUDE`, `nonKeyAttributes`) in `APP_TABLE` reach both `DataStack` and the local bootstrap through `gsiProjection()`. Every deployed index is `ALL`. `INCLUDE` without attributes, or attributes on `ALL` / `KEYS_ONLY`, fails synth. Changing `nonKeyAttributes` on an existing index counts as delete + create.
@@ -301,7 +301,7 @@ When Notebook (or any feature) needs several new indexes:
 4. Bump `LAST_DEPLOYED_GSIS` in `@gagnechris/data` to match `APP_TABLE` (names, key attributes, **and** projection) in a follow-up commit/PR (or the next index PR).
 5. Repeat for each additional index. Never add two GSIs (or delete one and create another) in the same deploy.
 
-Sparse **gsi3** (`syncPk` / `syncSk`, projection ALL) is deployed. `LAST_DEPLOYED_GSIS` lags `APP_TABLE` by at most one intentional create.
+Deployed: `gsi1`, `gsi2` and the sparse `gsi3` (`syncPk` / `syncSk`), all projection ALL. `LAST_DEPLOYED_GSIS` matches `APP_TABLE` except while one intentional create is waiting for its baseline bump.
 
 ### Backups beyond PITR
 
@@ -338,7 +338,7 @@ AWS Backup restore testing proves the vault restores, with content checks, and c
 - **Selection** `app_table`: only `gagnechris-prod`, restored with role `gagnechris-prod-restore-testing` (AWS-managed `AWSBackupServiceRolePolicyForRestores`, which restore testing requires). Its trust allows `backup.amazonaws.com` with `StringEqualsIfExists` on `aws:SourceAccount`: AWS Backup does not document sending that key when it assumes a restore role, and a strict `StringEquals` would fail every restore test if it does not. AWS Backup names the table `awsbackup-restore-test-<random>`, with deletion protection off and the default (AWS-owned) encryption key. That is restore testing's inferred metadata for DynamoDB. It is a scratch copy that lives for a few hours, so it is not overridden.
 - **Validation window: 4 h.** AWS Backup deletes the restored table once a validation result is reported or the window closes, whatever the result. DynamoDB has no tag-on-restore, so AWS deletes it by its `awsbackup-restore-test-` name. Never rename it.
 - **Validator** Lambda `gagnechris-prod-restore-test` (Go: `services/api/cmd/restore-test`, `services/api/internal/restoretest`), triggered by rule `gagnechris-prod-restore-test-validate` (`Restore Job State Change`, `status` `COMPLETED`, `resourceType` `DynamoDB` or `DynamoDB.FullyManaged`; a table on advanced DynamoDB backup, as `gagnechris-prod` is, reports `DynamoDB.FullyManaged`). The rule has no plan filter because AWS does not document where the event carries the plan ARN. The validator calls `DescribeRestoreJob` first and ignores any job whose `CreatedBy.RestoreTestingPlanArn` is not this plan (for example a manual vault restore from [Restore my notes](#restore-my-notes-item-level-copy-back)): it logs the job id and never reports a validation result for it. It scans the restored table and checks that the table is not empty, every item has string `pk`/`sk`, every item with a schema-checked `entityType` (`RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES`) matches the JSON Schema generated from its `@gagnechris/data` zod schema (`services/api/internal/contract/contract.json`; zod refinements such as real calendar dates and link schemes have no JSON Schema form and are not checked) and sits under the key the key builders produce, and `HOME#current`/`RESUME#current` META exist. It then applies the **count floor**, and calls `PutRestoreValidationResult` with `SUCCESSFUL` or `FAILED`. Messages and logs carry keys, schema paths and counts only, never content. A scan error is reported as `FAILED` rather than retried.
-- **Count floor:** for each type with a timestamp (post, home, resume, contact, note, task), the restore must hold at least `ceil(0.9 × N)` rows, where N is the number of `gagnechris-prod` rows of that type whose `createdAt` or `updatedAt` is at least 5 minutes before the recovery point's creation date (`DescribeRestoreJob` → `RecoveryPointCreationDate`). Those rows provably existed when the backup was taken, so rows created or edited since, and tombstones purged since, never count against the restore, and a near-empty table cannot fail it (N = 0 needs 0). At small counts the floor is exact (1 → 1, 3 → 3; 10 → 9). It can only false-fail if rows with old timestamps were written after the backup (a copy-back `create` keeps the source `createdAt`, or a bulk import); re-run after the next backup. N comes from `Scan` with `Select: COUNT`, one per type: no item is returned. A restore job without a recovery point date fails the test. Daily claims have no timestamps and are not floored.
+- **Count floor:** for each type with a timestamp (`RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES`: post, project, home, resume, contact, removedUser, note, task, dailyTemplate), the restore must hold at least `ceil(0.9 × N)` rows, where N is the number of `gagnechris-prod` rows of that type whose `createdAt` or `updatedAt` is at least 5 minutes before the recovery point's creation date (`DescribeRestoreJob` → `RecoveryPointCreationDate`). Those rows provably existed when the backup was taken, so rows created or edited since, and tombstones purged since, never count against the restore, and a near-empty table cannot fail it (N = 0 needs 0). At small counts the floor is exact (1 → 1, 3 → 3; 10 → 9). It can only false-fail if rows with old timestamps were written after the backup (a copy-back `create` keeps the source `createdAt`, or a bulk import); re-run after the next backup. N comes from `Scan` with `Select: COUNT`, one per type: no item is returned. A restore job without a recovery point date fails the test. Daily claims have no timestamps and are not floored.
 - **Validator IAM:** `dynamodb:Scan`/`DescribeTable` on `table/awsbackup-restore-test-*`, `DescribeTable` on `table/gagnechris-*-restore-*`, `ListTables`; on `gagnechris-prod` only `dynamodb:Scan` with `dynamodb:Select = COUNT` and `dynamodb:Attributes` limited to `pk`, `sk`, `entityType`, `createdAt`, `updatedAt` (so even a filter cannot touch note text); `backup:PutRestoreValidationResult`, `DescribeRestoreJob`, `ListRestoreJobs`, `DescribeRegionSettings`, `ListRecoveryPointsByBackupVault` (this vault) and `GetRestoreTestingPlan` (this plan).
 - **Event log:** rule `gagnechris-prod-restore-job-event-log` sends every `aws.backup` `Restore Job State Change` event to log group `/aws/events/gagnechris-prod-restore-job-events` (7-day retention). Events hold job ids, ARNs and statuses, no table content. The rule patterns are tested against `infra/test/fixtures/backup-events` (`infra/test/backup-event-patterns.test.ts`). To add a fixture from a real event, read it read-only, replace the account id with `111111111111` and job, recovery point and table ids with zero UUIDs, and save it there:
 
@@ -356,7 +356,7 @@ AWS Backup restore testing proves the vault restores, with content checks, and c
   - `RestoreValidationMissing` (0/1): no restore job of the plan has `ValidationStatus` `SUCCESSFUL` in the last 7 days and 1 hour, so a missed Sunday run is flagged at that day's check. A plan less than 7 days and 1 hour old is exempt until its first run; a deleted plan counts as missing.
   - `AdvancedDynamoDbBackupDisabled` (0/1): the Region setting above is off.
   - `BackupCheckCompleted` (1), last, so a check that throws part-way emits no heartbeat.
-- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check or count floor failed), `gagnechris-prod-restore-validation-missing`, `gagnechris-prod-backup-recovery-point-stale`, `gagnechris-prod-backup-advanced-dynamodb-off`, `gagnechris-prod-restore-leftover-tables` (these four re-alert daily until fixed), `gagnechris-prod-backup-check-not-running` (no `BackupCheckCompleted` for two 1-day periods; missing data breaches, with a 2-day warm-up after it is created), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`, and `gagnechris-prod-backup-job-failures`, which also matches every AWS Backup restore job that ends `FAILED` or `ABORTED` (the restore job end states besides `COMPLETED`). The missing-success alarm is computed by the Lambda rather than as a missing-`RestoreValidationSucceeded` CloudWatch alarm because CloudWatch alarms cannot look back more than 7 days.
+- **Alarms → Guardrails topic:** `gagnechris-prod-restore-validation-failed` (content check or count floor failed), `gagnechris-prod-restore-validation-missing`, `gagnechris-prod-backup-recovery-point-stale`, `gagnechris-prod-backup-advanced-dynamodb-off`, `gagnechris-prod-restore-leftover-tables` (these four re-alert daily until fixed), `gagnechris-prod-backup-check-not-running` (no `BackupCheckCompleted` for two 1-day periods; missing data breaches, with a 2-day warm-up after it is created), `gagnechris-prod-restore-test-lambda-errors` / `-throttles`. The EventBridge rule `gagnechris-prod-backup-job-failures` (not an alarm) also sends every AWS Backup restore job that ends `FAILED` or `ABORTED` (the restore job end states besides `COMPLETED`) to the topic. The missing-success alarm is computed by the Lambda rather than as a missing-`RestoreValidationSucceeded` CloudWatch alarm because CloudWatch alarms cannot look back more than 7 days.
 
 Verify (read-only):
 
@@ -418,6 +418,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
    POOL=$(aws ssm get-parameter --name /gagnechris/prod/cognito-user-pool-id --query Parameter.Value --output text)
    aws cognito-idp list-users --user-pool-id "$POOL" \
      --query "Users[].[Username,Attributes[?Name=='sub']|[0].Value]"
+   SUB=<sub of the note owner>
    ```
 
 2. **Scratch restore** from before the damage (admin profile). Use PITR, which goes back 35 days to the second:
@@ -461,6 +462,9 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
    | `skip-identical`      | Nothing to do                                                                                                          |
    | `skip-daily-taken`    | Another live daily note now holds that day; merge by hand                                                              |
    | `skip-source-deleted` | Already deleted at the restore point; pick an earlier `AT`                                                             |
+   | `skip-daily-moved`    | The live daily note now has a different area or date; fix by hand                                                      |
+   | `skip-invalid`        | The source row does not parse or belongs to another owner; not copied                                                  |
+   | `skip-not-in-source`  | An `--ids` id has no row for this owner in the source                                                                  |
    | warning on a task     | Its linked note will not be live; restore the note too (`--ids`)                                                       |
 
    A `create` cannot know the purged tombstone's version, so `source.version + 1` can be lower than a tombstone a client still caches, and that client keeps the row deleted (`packages/app-core` keeps the higher version). Tombstones are purged 30 days after delete and client caches are in memory only, so this only affects an app session that has been open since before the purge. Reloading the web app or restarting the iOS app clears it.
@@ -475,7 +479,7 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
      --query "TableNames[?starts_with(@, 'awsbackup-restore-test-') || contains(@, '-restore-')]"   # []
    ```
 
-Rehearsed against DynamoDB Local (`services/api/test/http/ops-copy-back.test.ts`, which covers delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict) and with the CLI on `gagnechris-local`. Record each prod run in the Linear ticket.
+`services/api/test/http/ops-copy-back.test.ts` covers it against DynamoDB Local: delete, overwrite, a purged row, a re-taken day, a task without its note, and a conflict. Record each prod run in the Linear ticket.
 
 ### Full-table disaster recovery (stop and ask Chris first)
 
@@ -486,11 +490,11 @@ Rehearsed against DynamoDB Local (`services/api/test/http/ops-copy-back.test.ts`
 1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it in the Linear ticket.
 2. Restore a scratch copy from before the damage (step 2 above).
 3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
-4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`) have no versioned clients, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
+4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`, `SITE#publish`, `REMOVED_USERS`) and daily templates (`USER#<sub>#DAILY_TEMPLATE#<area>`) are not covered by copy-back, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
 
    ```bash
    aws dynamodb scan --table-name "$SCRATCH" --output json \
-     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT)#"))]
+     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT|SITE)#|^REMOVED_USERS$|^USER#[^#]+#DAILY_TEMPLATE#"))]
               | . as $all | range(0; length; 25) | $all[.:(. + 25)]
               | {"gagnechris-prod": [ .[] | {PutRequest: {Item: .}} ]}' > /tmp/cms-batches.jsonl
    wc -l /tmp/cms-batches.jsonl     # batches of 25
@@ -506,12 +510,13 @@ If the table itself is gone (only possible after someone removed deletion protec
 
 ### Notebook human export
 
-Distinct from PITR / AWS Backup: the **Export** button on the Notebook's Notes page downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` while signed in.
+Distinct from PITR / AWS Backup: the **Export** button on the Notebook's Notes page downloads a client-built ZIP (`notebook-export-YYYY-MM-DD.zip`) by paging `GET /api/notebook/notes` and `GET /api/notebook/tasks` and reading `GET /api/notebook/templates/daily/{area}` while signed in.
 
 Archive layout:
 
 - `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`; every string is double-quoted, so any YAML parser reads it back unchanged); task embeds are written as described in `docs/data-model.md` (Task embeds)
 - `tasks.json` — all non-deleted tasks
+- `templates/work.md` and `templates/personal.md` — the daily note templates, placeholders unfilled
 - `README.md` — short description of the archive
 
 **Use this for:** personal backup, migration into another markdown editor, offline reading.
@@ -577,8 +582,8 @@ with a long cache. Paste/drop images in the post editor inserts
 
 `Email-prod`: SES domain identity for `gagnechris.com` (DKIM + MAIL FROM
 `bounce.gagnechris.com`), plus an email identity for `ALERTS_EMAIL` so sandbox
-can deliver to that inbox. SPF on the apex includes `amazonses.com`. Soft DMARC
-(`p=none`) is published; there is no receiving MX.
+can deliver to that inbox. `Dns-prod` publishes the apex SPF (includes
+`amazonses.com`) and a soft DMARC (`p=none`); there is no receiving MX.
 
 `Api-prod` public routes:
 
@@ -619,12 +624,12 @@ curl -sS -X POST https://gagnechris.com/api/contact \
 
 ```bash
 export ALERTS_EMAIL='you@example.com'
-AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Data-prod --require-approval never
+AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Email-prod Api-prod --require-approval never
 ```
 
 ## Publisher
 
-`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention and Powertools env; errors/throttles alarms come from `lambda-guardrails.ts`, which `GoLambda` uses too.
+`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `index.html` (Home), `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `blog/slugs.json`, `projects/index.html`, `projects/<slug>/index.html`, `resume/index.html`, `resume.pdf`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. `scripts/publisher-owned-paths.generated.txt` lists the keys it owns. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention and Powertools env; errors/throttles alarms come from `lambda-guardrails.ts`, which `GoLambda` uses too.
 
 **Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `syncAdapters` in `services/api/internal/notebook/sync.go` lists it), `SyncCorruptRow` (the sync feed skipped a row that failed to parse; the warning log `Skipping corrupt stored item` names its `pk`/`sk`; fix the row through the API or a script that writes a newer `updatedAt` and `syncSk` so clients pick it up), publisher `DataIntegrityError`, resume-pdf, kvs-sync and `RebuildUnsettled` (a rebuild gave up after 4 passes while publishes kept landing; invoke `{"action":"republishAll"}` if the site looks stale), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 
@@ -691,7 +696,7 @@ SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-admin-web-client-id`, `co
 - Groups: `site-admin` (CMS, `/api/admin/*`), `notebook` (`/api/notebook/*`) and `user-admin` (managing users, `/api/admin/users*`). CDK creates all three and adds `ADMIN_USERNAME` (GitHub repo variable; defaults to `ALERTS_EMAIL`) to each, making that user a Full Admin. If that user doesn't exist, the Auth stack update fails and rolls back, and nothing is enforced. The Lambda checks the token's client and `cognito:groups` per prefix (`docs/architecture.md`, Auth); any other pool user gets 403.
 - Users are managed in Admin under **Settings › Users & access** (`/settings/users`), which calls `/api/admin/users*` (`docs/architecture.md`, Users and access). Removing someone never deletes their Cognito user or Notebook; don't delete pool users by hand either, since a deleted user's Notebook data is orphaned under a `sub` nobody can sign in as. Invite emails come from the Cognito default sender, which has a low daily limit.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
-- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audiences `admin-web` and `ios`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
+- API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audiences `admin-web` and `ios`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The iOS app has Notebook and Admin spaces, so its client is in both audiences; the Lambda's group checks still gate every route. The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
 - The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
@@ -727,7 +732,8 @@ aws cognito-idp admin-create-user \
   --message-action SUPPRESS \
   --profile gagnechris-admin
 
-# Set a temporary password, then sign in at ManagedLoginUrl (stack output) and enroll a passkey.
+# Set a temporary password, then sign in at ManagedLoginUrl (stack output) and enroll a passkey
+# (or later: "Add a passkey" in the web account menu or iOS More).
 aws cognito-idp admin-set-user-password \
   --user-pool-id "$POOL_ID" \
   --username "$ADMIN_EMAIL" \
@@ -740,7 +746,8 @@ Sign-in URL is the `ManagedLoginUrl` output on `Auth-prod` (the `admin-web` clie
 
 ## Admin and Notebook apps
 
-- CMS: `https://admin.gagnechris.com` (Posts at `/`, `/home`, `/resume`). Notebook: `https://notebook.gagnechris.com` (`/` opens Today; `/notes`, `/tasks`). There is no public login link.
+- CMS: `https://admin.gagnechris.com` (Posts at `/`, `/projects`, `/home`, `/resume`, `/settings/users`). Notebook: `https://notebook.gagnechris.com` (`/` opens Today; `/upcoming`, `/notes`, `/tasks`, `/settings/templates`). There is no public login link.
+- **Add a passkey** in either app's account menu (iOS: More) opens managed login's add-passkey page for that app's client.
 - Each app signs in with its own Cognito client through managed login (`signInWithRedirect`, auth code + PKCE) and returns to the page that started sign-in. Opening the second app within an hour of signing in to the first is silent; after that it asks once, then stays signed in for 30 days.
 - Tokens are in that origin's `localStorage` (`CognitoIdentityServiceProvider.<clientId>.*`). API calls send the **ID token** (`aud` = that app's client).
 - **Sign out** on one app revokes that app's refresh token and ends the managed-login session; the other app stays signed in.
@@ -818,7 +825,7 @@ The iOS app ships only through TestFlight; there is no public App Store listing.
 
 **One-time setup**
 
-1. App Store Connect: an app record for bundle ID `com.gagnechris.mobile` (needed for TestFlight even without a listing). Fill in only what TestFlight asks for: name, beta description, a privacy policy URL (external testing requires one; the site has no privacy page yet), and export compliance (standard HTTPS only; `app.json` sets `ITSAppUsesNonExemptEncryption` to false, so builds skip the question).
+1. App Store Connect: an app record for bundle ID `com.gagnechris.mobile` (needed for TestFlight even without a listing). Fill in only what TestFlight asks for: name, beta description, a privacy policy URL (external testing requires one; the site has no privacy page), and export compliance (standard HTTPS only; `app.json` sets `ios.config.usesNonExemptEncryption` to false, which writes `ITSAppUsesNonExemptEncryption`, so builds skip the question).
 2. Put the record's Apple ID (the number under App Information) in `apps/mobile/eas.json` as `submit.production.ios.ascAppId`. It is not secret. The workflow stops with a message until it is set.
 3. App Store Connect API key (Users and Access → Integrations, App Manager role): upload it to EAS with `npx eas-cli credentials --platform ios` (App Store Connect API Key → add), so it never leaves EAS. Never put the `.p8` in the repo, Linear or a GitHub secret.
 4. Expo access token (expo.dev → Account settings → Access tokens, a robot user if you prefer): add it as `EXPO_TOKEN` in a GitHub environment named `testflight` (Settings → Environments), which the release job uses. Restrict the environment to tags `ios-v*` if you like.

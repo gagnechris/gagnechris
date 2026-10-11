@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   errorMessage,
+  newPlaceholderSlug,
   useCreatePostMutation,
   usePostsQuery,
 } from '@gagnechris/app-core';
-import { newPlaceholderSlug } from './placeholderSlug';
 import { Button } from '../kit/Button';
 import { TextInput } from '../kit/Field';
 import { StatusBadge } from '../kit/StatusBadge';
