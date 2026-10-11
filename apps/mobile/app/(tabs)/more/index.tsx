@@ -43,6 +43,7 @@ const MoreScreen = () => {
         />
         <Row
           title="Daily templates"
+          divider
           accessibilityHint="Edits what new Work and Personal daily notes start with"
           onPress={() => router.push('/more/templates')}
           trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
@@ -63,6 +64,7 @@ const MoreScreen = () => {
         <Row
           title="Sign out of Notebook"
           destructive
+          divider={canAddPasskey}
           onPress={confirmSignOut}
         />
       </Section>

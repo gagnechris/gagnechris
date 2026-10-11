@@ -441,17 +441,48 @@
 }
 
 @media (pointer: coarse) and (orientation: portrait) {
+  .wild--touch .wild-stage,
+  .wild--touch .wild-note,
+  .bears-game-page:has(.wild-rotate) .bears-game-page__actions {
+    display: none;
+  }
+
   .wild--touch .wild-rotate {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--space-6);
-    background: var(--bears-ink);
-    color: white;
-    font-weight: 600;
+    gap: var(--space-3);
+    min-height: 60dvh;
+    padding: var(--space-8) var(--space-6);
+    border-radius: var(--radius-lg);
+    background: var(--bears-sky-autumn);
+    color: var(--bears-ink);
     text-align: center;
+  }
+
+  .wild-rotate__icon {
+    margin-bottom: var(--space-2);
+  }
+
+  .wild-rotate h2 {
+    margin: 0;
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+  }
+
+  .wild-rotate p {
+    max-width: 28ch;
+    margin: 0;
+    color: var(--neutral-700);
+  }
+
+  .wild-rotate__camp {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: var(--space-2);
+    font-weight: 600;
+    color: var(--color-link);
   }
 }

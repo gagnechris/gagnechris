@@ -9,7 +9,11 @@ import {
 import { Link } from 'react-router-dom';
 import { BEAR_FACTS } from '../facts';
 import EndCard from '../shared/EndCard';
-import { BEARS_LANDING_PATH, withFrom } from '../shared/routes';
+import {
+  BEARS_GAME_PATHS,
+  BEARS_LANDING_PATH,
+  withFrom,
+} from '../shared/routes';
 import { useBearsSession } from '../shared/useBearsSession';
 import { useFixedStepLoop } from '../shared/useFixedStepLoop';
 import {
@@ -175,6 +179,26 @@ const TouchButton = ({
     </button>
   );
 };
+
+const RotateIcon = () => (
+  <svg
+    className="wild-rotate__icon"
+    width="72"
+    height="72"
+    viewBox="0 0 72 72"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="22" y="10" width="28" height="48" rx="5" />
+    <path d="M32 51h8" />
+    <path d="M58 30a22 22 0 0 0-8-14" />
+    <path d="M58 22v8h-8" />
+  </svg>
+);
 
 const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
   const reducedMotion = usePrefersReducedMotion();
@@ -628,11 +652,21 @@ const StayWildGame = ({ from, soundOn }: StayWildGameProps) => {
             </section>
           </div>
         ) : null}
-
-        <div className="wild-rotate" aria-hidden={!touch}>
-          <p>Turn your phone sideways to play Stay Wild.</p>
-        </div>
       </div>
+
+      {touch && screen !== 'over' ? (
+        <section className="wild-rotate" aria-labelledby="wild-rotate-title">
+          <RotateIcon />
+          <h2 id="wild-rotate-title">Turn your phone sideways</h2>
+          <p>Maple needs the whole width of the screen to run.</p>
+          <Link
+            to={withFrom(BEARS_GAME_PATHS.camp, from)}
+            className="wild-rotate__camp"
+          >
+            Or play Camp Rules in portrait
+          </Link>
+        </section>
+      ) : null}
 
       {screen === 'over' ? (
         <div className="wild-end">

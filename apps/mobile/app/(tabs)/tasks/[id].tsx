@@ -29,7 +29,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MarkdownView } from '../../../src/markdown/MarkdownView';
 import {
   EditorOfflineNotice,
@@ -83,7 +82,6 @@ const TaskScreen = ({ onReload }: { onReload: () => void }) => {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const routes = useDetailRoutes();
-  const insets = useSafeAreaInsets();
   const online = useIsOnline();
   const today = useLocalToday();
   const [preview, setPreview] = useState(false);
@@ -387,12 +385,7 @@ const TaskScreen = ({ onReload }: { onReload: () => void }) => {
         )}
       </ScrollView>
       {ready ? (
-        <View
-          style={[
-            styles.bottomBar,
-            { paddingBottom: insets.bottom + tokens.space[2] },
-          ]}
-        >
+        <View style={styles.bottomBar}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={done ? 'Reopen task' : 'Complete task'}
@@ -517,6 +510,7 @@ const styles = StyleSheet.create({
     gap: tokens.space[3],
     paddingHorizontal: tokens.space[4],
     paddingTop: tokens.space[2],
+    paddingBottom: tokens.space[2],
     backgroundColor: color.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,

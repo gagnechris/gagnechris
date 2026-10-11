@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import {
-  ContactRequestSchema,
-  contactFieldMessage,
-  pageTitle,
-  siteUrl,
-} from '@gagnechris/shared';
+import { pageTitle, siteUrl } from '@gagnechris/shared';
 import { ContactPageBody } from '@gagnechris/public-ui';
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
@@ -14,6 +9,10 @@ import SiteLink from '../components/SiteLink';
 import { useHydrated } from '../prerender/useHydrated';
 
 type FieldName = 'name' | 'email' | 'message';
+
+type ContactSchema = typeof import('./contactSchema');
+
+const loadSchema = () => import('./contactSchema');
 
 const FIELDS: readonly {
   name: FieldName;
@@ -71,6 +70,12 @@ function Contact() {
   const [hpField, setHpField] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const loadingSchema = useRef(false);
+
+  useEffect(() => {
+    // Ready before the first submit; a failure shows when Send retries it.
+    loadSchema().catch(() => undefined);
+  }, []);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState('');
   const fieldRefs = useRef<
@@ -98,7 +103,10 @@ function Contact() {
     pendingFocus.current = invalid[0]?.name ?? null;
   };
 
-  const validate = () => {
+  const validate = ({
+    ContactRequestSchema,
+    contactFieldMessage,
+  }: ContactSchema) => {
     const elapsedMs = Math.max(0, Math.round(performance.now() - formOpenedAt));
     const parsed = ContactRequestSchema.safeParse({
       ...values,
@@ -124,9 +132,19 @@ function Contact() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || loadingSchema.current) return;
 
-    const body = validate();
+    let schema: ContactSchema;
+    loadingSchema.current = true;
+    try {
+      schema = await loadSchema();
+    } catch {
+      setStatus(SEND_FAILED);
+      return;
+    } finally {
+      loadingSchema.current = false;
+    }
+    const body = validate(schema);
     if (!body) return;
 
     setFieldErrors({});
@@ -145,7 +163,7 @@ function Contact() {
       const errors: FieldErrors = {};
       for (const [key, code] of Object.entries(error.fields ?? {})) {
         if (isField(key)) {
-          errors[key] = contactFieldMessage(
+          errors[key] = schema.contactFieldMessage(
             key,
             typeof code === 'string' ? code : 'invalid',
           );
