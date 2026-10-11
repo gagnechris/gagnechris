@@ -25,10 +25,10 @@ This repo is the source for [gagnechris.com](https://gagnechris.com).
 The HTTP API behind the admin, the Notebook web app and the iOS app is Go, running as one AWS Lambda behind API Gateway ([`services/api/`](https://github.com/gagnechris/gagnechris/tree/main/services/api)):
 
 - `services/api/cmd/api` is the entry point; it serves Lambda events in prod and plain HTTP locally.
-- `services/api/internal/api` is a small router with auth, error bodies, gzip, request logs and metrics. Each route group (posts, projects, home, resume, search, Notebook, users, media, contact) is its own package.
+- `services/api/internal/api` is a small router with auth, error bodies and gzip; `internal/observability` adds request logs and metrics. Each route group (posts, projects, home, resume, search, Notebook, users, media, contact) is its own package.
 - `services/api/internal/store` holds the DynamoDB patterns: optimistic versioning, transactions and cursor paging.
 - The request and response types are generated from the OpenAPI spec (oapi-codegen), and the item schemas, key formats and limits from the TypeScript packages, so the Go code and the web and iOS clients share one contract. CI fails when they drift.
-- A black-box HTTP suite (`services/api/test/http`) runs the API against DynamoDB Local on every PR.
+- A black-box HTTP suite (`services/api/test/http`) runs the API against DynamoDB Local on every PR that touches the API or the packages it shares.
 
 The web apps, the iOS app and the publisher (which prerenders the public site with React) are TypeScript.
 
