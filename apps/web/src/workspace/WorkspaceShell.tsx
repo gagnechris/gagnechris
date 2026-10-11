@@ -222,6 +222,7 @@ export function WorkspaceFrame({
           onClick={openAddPasskey}
         >
           <ShellIcon name="passkey" />
+          <span className="workspace-icon-button__label">Add a passkey</span>
         </button>
       ) : null}
       <button
@@ -235,6 +236,7 @@ export function WorkspaceFrame({
         }}
       >
         <ShellIcon name="signOut" />
+        <span className="workspace-icon-button__label">Sign out</span>
       </button>
     </div>
   );

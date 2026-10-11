@@ -62,4 +62,45 @@ describe('EditorActionBar', () => {
       screen.getByRole('button', { name: 'Unpublish' }),
     ).toBeInTheDocument();
   });
+
+  test('the More actions toggle opens and closes the secondary actions', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(
+      <EditorActionBar
+        status="published"
+        hasUnpublishedChanges
+        saveState="idle"
+        dirty
+        busy={false}
+        onPublish={() => {}}
+        onUnpublish={() => {}}
+        onDiscard={() => {}}
+        onSave={onSave}
+      />,
+    );
+    const toggle = screen.getByRole('button', { name: 'More actions' });
+    const menu = document.getElementById(
+      toggle.getAttribute('aria-controls') ?? '',
+    );
+    expect(menu).toContainElement(screen.getByRole('button', { name: 'Save' }));
+    expect(menu).not.toContainElement(
+      screen.getByRole('button', { name: 'Publish changes' }),
+    );
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(menu).toHaveAttribute('data-open');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(toggle);
+    await user.keyboard('{Escape}');
+    expect(menu).not.toHaveAttribute('data-open');
+
+    await user.click(toggle);
+    await user.click(document.body);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
 });
