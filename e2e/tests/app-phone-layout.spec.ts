@@ -115,7 +115,8 @@ const expectPhoneReady = async (page: Page, url: string) => {
 };
 
 test.describe('signed-in apps on a phone', () => {
-  test.beforeEach(async ({ signIn }) => {
+  test.beforeEach(async ({ signIn, page }) => {
+    await page.route(/\.(woff2?|ttf)(\?.*)?$/, (r) => r.abort());
     await signIn();
   });
 

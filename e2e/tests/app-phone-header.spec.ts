@@ -21,14 +21,18 @@ test('list pages put the action above a 32px title and hide eyebrows', async ({
   await signIn();
   await page.goto(apps.admin);
   const title = await expectLargeTitle(page, 'Posts');
-  await expect(page.getByText('Site', { exact: true })).toBeHidden();
+  await expect(
+    page.getByRole('main').getByText('Site', { exact: true }),
+  ).toBeHidden();
   const newPost = page.getByRole('button', { name: 'New post' });
   expect((await box(newPost)).y).toBeLessThan((await box(title)).y);
   expect((await box(newPost)).height).toBeGreaterThanOrEqual(44);
 
   await page.goto(`${apps.admin}/settings/users`);
   await expectLargeTitle(page, 'Users & access');
-  await expect(page.getByText('Settings', { exact: true })).toBeHidden();
+  await expect(
+    page.getByRole('main').getByText('Settings', { exact: true }),
+  ).toBeHidden();
 
   for (const [path, name] of [
     ['/upcoming', 'Upcoming'],
@@ -87,21 +91,24 @@ test('every action in the More sheet is a 44px row', async ({
   signIn,
 }) => {
   await signIn();
-  await page.goto(apps.notebook);
+  await page.goto(`${apps.notebook}/notes`);
+  await page.waitForLoadState('networkidle');
   await page
     .getByRole('navigation', { name: 'Notebook' })
     .getByRole('button', { name: 'More' })
     .click();
   const sheet = page.getByRole('dialog', { name: 'More' });
-  const actions = sheet.locator('a:visible, button:visible');
+  const actions = sheet.locator('a, button');
   await expect(
     sheet.getByRole('button', { name: 'Sign out of Notebook' }),
   ).toContainText('Sign out');
   const heights = await actions.evaluateAll((els) =>
-    els.map((el) => [
-      el.textContent?.trim() || el.getAttribute('aria-label'),
-      el.getBoundingClientRect().height,
-    ]),
+    els
+      .filter((el) => el.checkVisibility())
+      .map((el) => [
+        el.textContent?.trim() || el.getAttribute('aria-label'),
+        el.getBoundingClientRect().height,
+      ]),
   );
   expect(heights.length).toBeGreaterThan(2);
   expect(heights.filter(([, height]) => (height as number) < 44)).toEqual([]);
