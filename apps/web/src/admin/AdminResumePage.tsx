@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { renderResumePrerenderHtml } from '@gagnechris/public-ui/server';
 import { resumeResource, type Resume } from '@gagnechris/app-core';
+import { Link } from 'react-router-dom';
 import { ResumeEditorForm } from './ResumeEditorForm';
 import { publicUrl, withPublicUrls } from './publicUrl';
 import {
@@ -101,7 +102,14 @@ const AdminResumePage = () => {
     <EditorFrame
       editor={editor}
       loadingLabel="Loading resume…"
-      leading={<h1>Resume</h1>}
+      leading={
+        <>
+          <Link to="/pages" className="admin-back">
+            ← Pages
+          </Link>
+          <h1>Resume</h1>
+        </>
+      }
       viewLiveHref={() => publicUrl('/resume')}
       actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={

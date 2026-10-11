@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, type FormEvent } from 'react';
 import { renderHomePrerenderHtml } from '@gagnechris/public-ui/server';
+import { Link } from 'react-router-dom';
 import {
   emptyHomeDraft,
   homeDraftFromHome,
@@ -56,7 +57,14 @@ const AdminHomePage = () => {
     <EditorFrame
       editor={editor}
       loadingLabel="Loading home content…"
-      leading={<h1>Home</h1>}
+      leading={
+        <>
+          <Link to="/pages" className="admin-back">
+            ← Pages
+          </Link>
+          <h1>Home</h1>
+        </>
+      }
       viewLiveHref={() => publicUrl('/')}
     >
       {(home) => (
