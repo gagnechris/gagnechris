@@ -165,8 +165,8 @@ Run `npm run build` first for full SPA assets in the publisher shell: `local:dev
 the draft to the `PUBLISHED` snapshot and rebuilds
 `.local-site/resume/index.html` + `.local-site/resume.pdf`. Autosave updates the
 draft only. The public page at `http://localhost:5173/resume` fetches
-`/__site/resume/` and falls back to `DEFAULT_RESUME` when no published HTML
-exists. Download uses `/resume.pdf` (Vite proxies that path to the local site
+`/__site/resume/` and says "Resume available on request." when no published
+HTML exists. Download uses `/resume.pdf` (Vite proxies that path to the local site
 origin).
 
 ### Home CMS

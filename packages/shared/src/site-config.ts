@@ -11,6 +11,8 @@ export const siteUrl = (path: string, apex: string = APEX_DOMAIN): string =>
 
 export const SITE_PROFILE_IMAGE_SRC = '/profile.jpg' as const;
 
+export const RESUME_PDF_PATH = '/resume.pdf';
+
 export const SITE_LINKEDIN_URL =
   'https://www.linkedin.com/in/christophergagne/' as const;
 
