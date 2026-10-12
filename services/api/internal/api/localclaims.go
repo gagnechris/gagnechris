@@ -1,27 +1,23 @@
 package api
 
 import (
-	"os"
 	"regexp"
 	"strconv"
 	"time"
 )
 
-// The aud local claims carry; ApplyLocalAuthEnv makes the router accept them.
-var localClientIDs = map[string]string{
-	"ADMIN_WEB_CLIENT_ID":    "local-admin-web",
-	"NOTEBOOK_WEB_CLIENT_ID": "local-notebook-web",
-	iosClientIDEnv:           "local-ios",
-}
-
-// ApplyLocalAuthEnv sets the client id variables authorize compares with,
-// where they are unset.
-func ApplyLocalAuthEnv() {
-	for name, id := range localClientIDs {
-		if envClientID(name) == "" {
-			_ = os.Setenv(name, id)
-		}
+// WithLocalDefaults fills unset ids with the aud local claims carry.
+func (c ClientIDs) WithLocalDefaults() ClientIDs {
+	if c.AdminWeb == "" {
+		c.AdminWeb = "local-admin-web"
 	}
+	if c.NotebookWeb == "" {
+		c.NotebookWeb = "local-notebook-web"
+	}
+	if c.IOS == "" {
+		c.IOS = "local-ios"
+	}
+	return c
 }
 
 var localToken = regexp.MustCompile(`^Bearer local(-ios)?:([A-Za-z0-9_-]{1,64})$`)
@@ -32,17 +28,13 @@ const localDefaultSub = "local-dev-user"
 // app's group. `Bearer local:<sub>` signs in as another user and
 // `Bearer local-ios:<sub>` does the same on the iOS client; anything else is
 // the default local user on the route's web client.
-func LocalClaims(authorization string, auth Auth, now time.Time) map[string]string {
+func LocalClaims(authorization string, auth Auth, clients ClientIDs, now time.Time) map[string]string {
 	policy := authPolicies[auth]
 	m := localToken.FindStringSubmatch(authorization)
-	aud := envClientID(policy.clientIDEnv)
-	if aud == "" {
-		aud = localClientIDs[policy.clientIDEnv]
-	}
+	clients = clients.WithLocalDefaults()
+	aud := policy.clientID(clients)
 	if m != nil && m[1] != "" {
-		if aud = envClientID(iosClientIDEnv); aud == "" {
-			aud = localClientIDs[iosClientIDEnv]
-		}
+		aud = clients.IOS
 	}
 	claims := map[string]string{
 		"sub":              localDefaultSub,

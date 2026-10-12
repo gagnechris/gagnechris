@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { MEDIA_FILENAME_MAX_LENGTH, MEDIA_MAX_BYTES } from '@gagnechris/shared';
 import { siteAdmin } from './support/claims.js';
 import { useApi, type Harness } from './support/harness.js';
 
@@ -75,8 +76,8 @@ describe('POST /api/admin/media/upload-url', () => {
     [
       {
         contentType: 'image/png',
-        contentLength: 10 * 1024 * 1024 + 1,
-        filename: 'x'.repeat(201),
+        contentLength: MEDIA_MAX_BYTES + 1,
+        filename: 'x'.repeat(MEDIA_FILENAME_MAX_LENGTH + 1),
       },
       { contentLength: 'too_big', filename: 'too_big' },
     ],

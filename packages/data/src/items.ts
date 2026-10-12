@@ -9,7 +9,6 @@ import {
   ProjectDemoSchema,
   ProjectLinkSchema,
   ProjectStageSchema,
-  RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES,
   ResumeContentSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
@@ -17,23 +16,16 @@ import {
   type Home,
   type Note,
   type Post,
-  type PostSummary,
   type Project,
   type Resume,
   type Task,
 } from '@gagnechris/shared';
-import {
-  deepEqual,
-  DEFAULT_DAILY_TEMPLATES,
-  EMPTY_SLUG_FALLBACK,
-  slugify as sharedSlugify,
-  taskEmbedIds,
-} from '@gagnechris/shared';
+import { RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES } from '@gagnechris/shared/server';
+import { deepEqual, taskEmbedIds } from '@gagnechris/shared';
 import {
   HOME_ID,
   homeMetaSk,
   homePk,
-  homePublishedSk,
   dailyNoteClaimPk,
   dailyNoteClaimSk,
   dailyTemplatePk,
@@ -67,15 +59,7 @@ import {
   taskUpdatedGsi1Sk,
 } from './keys.js';
 
-export function nowIso(): string {
-  return new Date().toISOString();
-}
-
-export function slugify(input: string): string {
-  return sharedSlugify(input) || EMPTY_SLUG_FALLBACK;
-}
-
-export const PublishableMetaFieldsSchema = z.object({
+const PublishableMetaFieldsSchema = z.object({
   status: PostStatusSchema,
   publishedAt: z.string().nullable().optional(),
   updatedAt: z.string().min(1),
@@ -103,29 +87,6 @@ export const PostMetaItemSchema = PublishableMetaFieldsSchema.extend({
 });
 
 export type PostMetaItem = z.infer<typeof PostMetaItemSchema>;
-
-export const PostSummaryItemSchema = PostMetaItemSchema.pick({
-  pk: true,
-  sk: true,
-  entityType: true,
-  postId: true,
-  slug: true,
-  title: true,
-  tags: true,
-  projectIds: true,
-  status: true,
-  publishedAt: true,
-  updatedAt: true,
-  version: true,
-  hasUnpublishedChanges: true,
-  gsi1pk: true,
-  gsi1sk: true,
-});
-
-export type PostSummaryItem = z.infer<typeof PostSummaryItemSchema>;
-
-export const POST_SUMMARY_ATTRIBUTES: readonly (keyof PostSummaryItem)[] =
-  Object.keys(PostSummaryItemSchema.shape) as (keyof PostSummaryItem)[];
 
 export const ProjectMetaItemSchema = PublishableMetaFieldsSchema.extend({
   pk: z.string().min(1),
@@ -176,8 +137,7 @@ export const ResumeMetaItemSchema = PublishableMetaFieldsSchema.extend({
 
 export type ResumeMetaItem = z.infer<typeof ResumeMetaItemSchema>;
 
-export const ContactEmailStatusSchema = z.enum(['pending', 'sent', 'failed']);
-export type ContactEmailStatus = z.infer<typeof ContactEmailStatusSchema>;
+const ContactEmailStatusSchema = z.enum(['pending', 'sent', 'failed']);
 
 export const ContactMsgItemSchema = z.object({
   pk: z.string().min(1),
@@ -220,46 +180,6 @@ export function parseResumeMetaItem(raw: unknown): ResumeMetaItem {
   return ResumeMetaItemSchema.parse(raw);
 }
 
-export function parseContactMsgItem(raw: unknown): ContactMsgItem {
-  return ContactMsgItemSchema.parse(raw);
-}
-
-export function postContentEqual(
-  a: Pick<
-    Post,
-    | 'slug'
-    | 'title'
-    | 'excerpt'
-    | 'bodyMarkdown'
-    | 'tags'
-    | 'projectIds'
-    | 'coverImage'
-    | 'seo'
-  >,
-  b: Pick<
-    Post,
-    | 'slug'
-    | 'title'
-    | 'excerpt'
-    | 'bodyMarkdown'
-    | 'tags'
-    | 'projectIds'
-    | 'coverImage'
-    | 'seo'
-  >,
-): boolean {
-  return (
-    a.slug === b.slug &&
-    a.title === b.title &&
-    a.excerpt === b.excerpt &&
-    a.bodyMarkdown === b.bodyMarkdown &&
-    deepEqual(a.tags, b.tags) &&
-    deepEqual(a.projectIds, b.projectIds) &&
-    a.coverImage === b.coverImage &&
-    deepEqual(a.seo ?? null, b.seo ?? null)
-  );
-}
-
 export function metaToPost(
   item: PostMetaItem,
   hasUnpublishedChanges = false,
@@ -279,26 +199,6 @@ export function metaToPost(
     seo: item.seo ?? null,
     version: item.version,
     hasUnpublishedChanges,
-  };
-}
-
-export type PostListRow = Omit<PostSummary, 'hasUnpublishedChanges'> & {
-  hasUnpublishedChanges?: boolean;
-};
-
-export function parsePostSummaryItem(raw: unknown): PostListRow {
-  const item = PostSummaryItemSchema.parse(raw);
-  return {
-    id: item.postId,
-    slug: item.slug,
-    title: item.title,
-    tags: item.tags,
-    projectIds: item.projectIds ?? [],
-    status: item.status,
-    publishedAt: item.publishedAt ?? null,
-    updatedAt: item.updatedAt,
-    version: item.version,
-    hasUnpublishedChanges: item.hasUnpublishedChanges,
   };
 }
 
@@ -352,35 +252,6 @@ export function buildPublishedItem(
 
 export function parseProjectMetaItem(raw: unknown): ProjectMetaItem {
   return ProjectMetaItemSchema.parse(raw);
-}
-
-export function projectContentEqual(a: Project, b: Project): boolean {
-  return (
-    a.slug === b.slug &&
-    a.name === b.name &&
-    a.pitch === b.pitch &&
-    a.stage === b.stage &&
-    a.stageNote === b.stageNote &&
-    a.previewImage === b.previewImage &&
-    a.bodyMarkdown === b.bodyMarkdown &&
-    deepEqual(a.stack, b.stack) &&
-    deepEqual(a.links, b.links) &&
-    a.demo === b.demo &&
-    a.order === b.order &&
-    a.href === b.href
-  );
-}
-
-export type ProjectListRow = Omit<Project, 'hasUnpublishedChanges'> & {
-  hasUnpublishedChanges?: boolean;
-};
-
-export function parseProjectListRow(raw: unknown): ProjectListRow {
-  const item = parseProjectMetaItem(raw);
-  return {
-    ...metaToProject(item),
-    hasUnpublishedChanges: item.hasUnpublishedChanges,
-  };
 }
 
 export function metaToProject(
@@ -451,18 +322,6 @@ export function buildProjectPublishedItem(
   return { ...rest, sk: SK_PUBLISHED, status: 'published', publishedAt };
 }
 
-export function homeContentEqual(
-  a: Pick<Home, 'name' | 'title' | 'about' | 'seo'>,
-  b: Pick<Home, 'name' | 'title' | 'about' | 'seo'>,
-): boolean {
-  return (
-    a.name === b.name &&
-    a.title === b.title &&
-    a.about === b.about &&
-    deepEqual(a.seo ?? null, b.seo ?? null)
-  );
-}
-
 export function metaToHome(
   item: HomeMetaItem,
   hasUnpublishedChanges = false,
@@ -495,26 +354,6 @@ export function buildHomeMetaItem(home: Home): HomeMetaItem {
     seo: home.seo,
     version: home.version,
   };
-}
-
-export function buildHomePublishedItem(home: Home): HomeMetaItem {
-  return {
-    ...buildHomeMetaItem(home),
-    sk: homePublishedSk(),
-    status: 'published',
-  };
-}
-
-export function resumeContentEqual(
-  a: Pick<Resume, 'name' | 'pdfPath' | 'content' | 'seo'>,
-  b: Pick<Resume, 'name' | 'pdfPath' | 'content' | 'seo'>,
-): boolean {
-  return (
-    a.name === b.name &&
-    a.pdfPath === b.pdfPath &&
-    deepEqual(a.content, b.content) &&
-    deepEqual(a.seo ?? null, b.seo ?? null)
-  );
 }
 
 export function metaToResume(
@@ -559,7 +398,7 @@ export function buildResumePublishedItem(resume: Resume): ResumeMetaItem {
   };
 }
 
-export const VersionedMetaFieldsSchema = z.object({
+const VersionedMetaFieldsSchema = z.object({
   version: z.number().int().nonnegative(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
@@ -629,10 +468,6 @@ export type TaskMetaItem = z.infer<typeof TaskMetaItemSchema>;
 
 export function parseNoteMetaItem(raw: unknown): NoteMetaItem {
   return NoteMetaItemSchema.parse(raw);
-}
-
-export function parseDailyNoteClaimItem(raw: unknown): DailyNoteClaimItem {
-  return DailyNoteClaimItemSchema.parse(raw);
 }
 
 export function parseTaskMetaItem(raw: unknown): TaskMetaItem {
@@ -729,7 +564,7 @@ export function metaToNote(item: NoteMetaItem): Note {
  * their day whether or not the start-date migration has run. An explicit
  * `null` means now.
  */
-export function taskStartDateOf(
+function taskStartDateOf(
   item: Pick<TaskMetaItem, 'startDate' | 'dueDate'>,
 ): string | null {
   return item.startDate !== undefined ? item.startDate : item.dueDate;
@@ -823,10 +658,6 @@ export const DailyTemplateItemSchema = z.object({
 
 export type DailyTemplateItem = z.infer<typeof DailyTemplateItemSchema>;
 
-export function parseDailyTemplateItem(raw: unknown): DailyTemplateItem {
-  return DailyTemplateItemSchema.parse(raw);
-}
-
 export function buildDailyTemplateItem(
   userId: string,
   template: Pick<
@@ -851,19 +682,7 @@ export function buildDailyTemplateItem(
   };
 }
 
-export function dailyTemplateFromItem(item: DailyTemplateItem): DailyTemplate {
-  return {
-    area: item.area,
-    bodyMarkdown: item.isDefault
-      ? DEFAULT_DAILY_TEMPLATES[item.area]
-      : item.bodyMarkdown,
-    isDefault: item.isDefault,
-    version: item.version,
-    updatedAt: item.updatedAt,
-  };
-}
-
-export function taskGsi1Sk(
+function taskGsi1Sk(
   task: Pick<Task, 'id' | 'startDate' | 'someday' | 'updatedAt'>,
 ): string {
   if (task.someday) return taskSomedayGsi1Sk(task.updatedAt, task.id);

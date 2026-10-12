@@ -139,11 +139,11 @@ export default function NotebookTasksPage() {
   };
 
   return (
-    <section className="admin-panel">
-      <div className="admin-panel__header">
+    <section className="workspace-panel">
+      <div className="workspace-panel__header">
         <div>
           <h1>Tasks</h1>
-          <p className="admin-panel__lede">
+          <p className="workspace-panel__lede">
             {NOTEBOOK_AREA_HEADINGS[areaFilter]}
             {' · '}
             quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
@@ -154,7 +154,7 @@ export default function NotebookTasksPage() {
       </div>
 
       <form
-        className="admin-toolbar"
+        className="workspace-toolbar"
         onSubmit={(e) => {
           e.preventDefault();
           void submitQuickAdd();
@@ -173,17 +173,17 @@ export default function NotebookTasksPage() {
         />
         <button
           type="submit"
-          className="admin-btn admin-btn--primary"
+          className="kit-btn kit-btn--primary"
           disabled={quickAddTask.pending || !quickAdd.trim()}
         >
           Add
         </button>
       </form>
       {quickAddTask.hint ? (
-        <p className="admin-hint">{quickAddTask.hint}</p>
+        <p className="kit-hint">{quickAddTask.hint}</p>
       ) : null}
       {actionError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {actionError}
         </p>
       ) : null}
@@ -197,11 +197,11 @@ export default function NotebookTasksPage() {
           if (next) pickChip(next);
         }}
       />
-      <div className="admin-toolbar notebook-tasks__filters">
-        <label className="admin-field">
-          <span className="admin-field__label">Status</span>
+      <div className="workspace-toolbar notebook-tasks__filters">
+        <label className="kit-field">
+          <span className="kit-field__label">Status</span>
           <select
-            className="admin-input"
+            className="kit-input"
             value={status}
             onChange={(e) => setStatus(e.target.value as TaskStatus | '')}
             aria-label="Filter by status"
@@ -214,10 +214,10 @@ export default function NotebookTasksPage() {
             ))}
           </select>
         </label>
-        <label className="admin-field">
-          <span className="admin-field__label">Priority</span>
+        <label className="kit-field">
+          <span className="kit-field__label">Priority</span>
           <select
-            className="admin-input"
+            className="kit-input"
             value={priority}
             onChange={(e) => setPriority(e.target.value as TaskPriority | '')}
             aria-label="Filter by priority"
@@ -230,10 +230,10 @@ export default function NotebookTasksPage() {
             ))}
           </select>
         </label>
-        <label className="admin-field">
-          <span className="admin-field__label">Show on</span>
+        <label className="kit-field">
+          <span className="kit-field__label">Show on</span>
           <select
-            className="admin-input"
+            className="kit-input"
             value={showOn}
             onChange={(e) => setShowOn(e.target.value as TaskShowOnFilter)}
             aria-label="Filter by show-on date"
@@ -250,7 +250,7 @@ export default function NotebookTasksPage() {
       </div>
 
       {tasksQuery.isError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Could not load tasks.
         </p>
       ) : null}
@@ -261,12 +261,12 @@ export default function NotebookTasksPage() {
       openItems.length === 0 &&
       doneItems.length === 0 &&
       (status || priority || showOn || showCompleted) ? (
-        <p className="admin-hint">No tasks match.</p>
+        <p className="kit-hint">No tasks match.</p>
       ) : null}
 
       {openItems.length > 0 ? (
         <ul
-          className="admin-post-list"
+          className="kit-list"
           aria-label={status === 'dropped' ? 'Dropped tasks' : 'Open tasks'}
         >
           {openItems.map((task) => (
@@ -292,7 +292,7 @@ export default function NotebookTasksPage() {
 
       {showCompletedSection ? (
         <details
-          className="admin-notebook-completed"
+          className="notebook-completed"
           open={showCompleted || status === 'done'}
           onToggle={(e) =>
             setShowCompleted((e.target as HTMLDetailsElement).open)
@@ -304,7 +304,7 @@ export default function NotebookTasksPage() {
               ? ` (${doneItems.length}${completedSource.hasNextPage ? '+' : ''})`
               : ''}
           </summary>
-          <ul className="admin-post-list" aria-label="Completed tasks">
+          <ul className="kit-list" aria-label="Completed tasks">
             {doneItems.map((task) => (
               <TaskListRow
                 key={task.id}
@@ -317,7 +317,7 @@ export default function NotebookTasksPage() {
           {!status && completedQuery.hasNextPage ? (
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               disabled={completedQuery.isFetchingNextPage}
               onClick={() => void completedQuery.fetchNextPage()}
             >
@@ -330,7 +330,7 @@ export default function NotebookTasksPage() {
       {tasksQuery.hasNextPage ? (
         <button
           type="button"
-          className="admin-btn"
+          className="kit-btn"
           disabled={tasksQuery.isFetchingNextPage}
           onClick={() => void tasksQuery.fetchNextPage()}
         >

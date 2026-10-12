@@ -261,7 +261,10 @@ describe('Notebook screens with data', () => {
       </Providers>,
     );
     await settle(15);
-    expect(allText(renderer)).toContain(shown);
+    const fields = renderer.root
+      .findAll((node) => (node.type as string) === 'TextInput')
+      .map((node) => String(node.props.value ?? ''));
+    expect([allText(renderer), ...fields].join('\n')).toContain(shown);
     expectAccessible(renderer);
     act(() => renderer.unmount());
   });

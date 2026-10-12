@@ -54,7 +54,7 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
   const title = (text: string, hitArea: string) => (
     <>
       <span>{highlight(text, wordMatches(text, query))}</span>
-      {showArea ? <span className="admin-badge">{hitArea}</span> : null}
+      {showArea ? <span className="kit-badge">{hitArea}</span> : null}
     </>
   );
   for (const h of search.notes) {
@@ -112,14 +112,14 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
       status={
         <>
           {!q.trim() ? (
-            <p className="admin-hint">Type to search. Esc to close.</p>
+            <p className="kit-hint">Type to search. Esc to close.</p>
           ) : null}
-          {search.pending ? <p className="admin-hint">Searching…</p> : null}
+          {search.pending ? <p className="kit-hint">Searching…</p> : null}
           {q.trim() && !search.pending && hits.length === 0 ? (
-            <p className="admin-hint">No matches.</p>
+            <p className="kit-hint">No matches.</p>
           ) : null}
           {search.tasks.length > 0 ? (
-            <p className="admin-hint">
+            <p className="kit-hint">
               ⌘⏎ / Ctrl+Enter checks off the selected task.
             </p>
           ) : null}

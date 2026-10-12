@@ -2,18 +2,15 @@ package notebook
 
 import (
 	"errors"
-	"regexp"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 )
-
-var ulid = regexp.MustCompile(`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 
 // checkNote holds a stored note to NoteSchema beyond what its row schema
 // checks, as the API's responses and sync changes are.
 func checkNote(n Note) error {
 	for _, id := range n.TaskIDs {
-		if !ulid.MatchString(id) {
+		if !api.ULIDPattern.MatchString(id) {
 			return errors.New("taskIds: Must be a ULID")
 		}
 	}
@@ -31,7 +28,7 @@ func checkNote(n Note) error {
 // checkTask holds a stored task to TaskSchema.
 func checkTask(t Task) error {
 	switch {
-	case !ulid.MatchString(t.ID):
+	case !api.ULIDPattern.MatchString(t.ID):
 		return errors.New("id: Must be a ULID")
 	case !api.IsDatetime(t.CreatedAt), !api.IsDatetime(t.UpdatedAt),
 		t.CompletedAt != nil && !api.IsDatetime(*t.CompletedAt):

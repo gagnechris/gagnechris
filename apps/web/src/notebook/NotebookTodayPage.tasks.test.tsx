@@ -2,12 +2,8 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import {
-  isOpenTaskStatus,
-  taskMatchesSchedule,
-  type Note,
-  type Task,
-} from '@gagnechris/shared';
+import { isOpenTaskStatus, taskMatchesSchedule } from '@gagnechris/shared';
+import type { Note, Task } from '@gagnechris/app-core';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';

@@ -41,16 +41,16 @@ export function ChipsInput({
   };
 
   return (
-    <div className="admin-field">
+    <div className="kit-field">
       <label htmlFor={inputId}>{label}</label>
-      <div className="admin-chips">
-        <ul className="admin-chips__list" aria-label={listLabel}>
+      <div className="kit-chips">
+        <ul className="kit-chips__list" aria-label={listLabel}>
           {value.map((item) => (
-            <li key={item} className="admin-chip">
+            <li key={item} className="kit-chip">
               {item}
               <button
                 type="button"
-                className="admin-chip__remove"
+                className="kit-chip__remove"
                 aria-label={removeLabel(item)}
                 onClick={() => onChange(value.filter((s) => s !== item))}
               >
@@ -61,7 +61,7 @@ export function ChipsInput({
         </ul>
         <input
           id={inputId}
-          className="admin-chips__input"
+          className="kit-chips__input"
           value={text}
           maxLength={inputMaxLength}
           disabled={full}

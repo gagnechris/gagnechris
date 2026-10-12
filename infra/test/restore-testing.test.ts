@@ -6,7 +6,7 @@ import { Topic } from 'aws-cdk-lib/aws-sns';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { RESTORE_TEST_METRICS } from '../lib/config/constants.js';
 import { getEnvironment } from '../lib/config/environments.js';
-import { REPO_ROOT } from '../lib/constructs/node-lambda.js';
+import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 

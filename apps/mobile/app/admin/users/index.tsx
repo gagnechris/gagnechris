@@ -1,5 +1,4 @@
 import {
-  displayName,
   formatAdded,
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
@@ -8,7 +7,11 @@ import {
   userErrorMessage,
   useUsersQuery,
 } from '@gagnechris/app-core';
-import { ACCESS_LEVEL_LABELS, type ManagedUser } from '@gagnechris/shared';
+import {
+  ACCESS_LEVEL_LABELS,
+  displayName,
+  type ManagedUser,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack } from 'expo-router';
 import { useState } from 'react';

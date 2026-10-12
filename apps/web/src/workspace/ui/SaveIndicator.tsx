@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { SaveState } from '@gagnechris/app-core';
-import { saveLabel } from './saveLabel';
+import { saveLabel, type SaveState } from '@gagnechris/shared';
 
 type Props = {
   saveState: SaveState;
@@ -25,7 +24,7 @@ export function SaveIndicator({ saveState, dirty, isNew }: Props) {
   );
   return (
     <span
-      className="admin-save-indicator"
+      className="workspace-save-indicator"
       data-state={saveState}
       role="status"
       aria-live="polite"

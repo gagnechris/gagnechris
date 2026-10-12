@@ -75,13 +75,13 @@ Prefer `local:dev` unless you intentionally need the production API.
 ## Quality gates
 
 ```bash
-npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra); mobile: npm test --prefix apps/mobile
+npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile
 npm run test:integration -w @gagnechris/api-tests   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
 npm run go:lint       # golangci-lint on services/api/ (gofmt, goimports, vet, staticcheck, revive...; config in services/api/.golangci.yml) (CI)
-npm run go:test       # go test ./... in services/api/ (CI)
+npm run go:test       # go test ./... in services/api/; failures DynamoDB Local never produces (cancellation reasons, throttles, UnprocessedKeys) are faked through data.Client with internal/data/datatest (CI)
 npm run go:generate:check # services/api/internal/contract/contract.json and services/api/internal/apitypes drift from packages/shared, packages/data and the OpenAPI file (CI)
 npm run go:fmt        # gofmt + goimports on services/api/
 npm run openapi:check # OpenAPI + generated client drift; npm run openapi also regenerates the Go types (CI)
@@ -90,7 +90,7 @@ npm run publish-surface:check # Option B pages, KVS keys, publish routes and pub
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
 npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, entry JS within budget and without zod, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
-npm run check:rn-bundles            # packages mobile imports bundle without Node-only or banned imports (CI)
+npm run check:rn-bundles            # every package and subpath mobile imports bundles without Node-only or banned imports, and both lockfiles agree on their runtime deps (CI)
 npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)
 npm run check:tsconfig-coverage     # each workspace's typecheck covers every .ts file in it (CI)
 npm run check:case-collisions       # no tracked paths or module stems that differ only by case (CI)
@@ -137,7 +137,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: outside Lambda the Go API logs the mail it sends (contact form, resume download) and appends it as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`contact.Outbox` in `services/api/internal/contact`).
 
-`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
+`scripts/local/bootstrap-table.ts` and the HTTP suite's ephemeral tables both create the table from `appTableCreateInput` in `@gagnechris/data` (the `APP_TABLE` keys, GSIs with the same projections CDK deploys, and the stream); `http/table-schema.test.ts` checks both against `APP_TABLE` in DynamoDB Local. `scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
 
 ### Integration tests
 
@@ -145,7 +145,7 @@ Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accident
 
 The `@gagnechris/api-tests` workspace (`services/api/test`) has two Vitest projects:
 
-- `http` (`services/api/test/http`): black-box tests of the Go API. The global setup (`support/global-setup.ts`) builds `services/api/cmd/api` once, unless `GO_API_BIN` already names a binary. Each file creates its table, starts the binary on a free port with `API_CLAIMS_MODE=test` (`startApi` in `http/support/api.ts`, usually through `useApi` in `harness.ts`) and sends plain HTTP requests; it may seed and read rows in the table. The tests send the authorizer's claims as JSON in `X-Test-Claims` (`http/support/claims.ts` builds them), and the server passes them to the handler only on protected routes, as API Gateway's JWT authorizer does. `request` parses every 2xx body with the response schema `packages/shared/src/openapi.ts` registers for that route and status (`http/support/response-schemas.ts`) and throws on a mismatch or an undocumented route. After each test, `useApi` scans the table and parses every row with its entity type's schema in `ITEM_SCHEMAS` from `@gagnechris/data` (`http/support/row-schemas.ts`, which also lists the entity types that have no item schema); a test that stores a corrupt row on purpose exempts it with `h.corruptRow(key)`. The `ops-*.test.ts` files run the `@gagnechris/ops` copy-back and row migrations against a file's table, with the API serving it.
+- `http` (`services/api/test/http`): black-box tests of the Go API. The global setup (`support/global-setup.ts`) builds `services/api/cmd/api` once, unless `GO_API_BIN` already names a binary. Each file creates its table, starts the binary on a free port with `API_CLAIMS_MODE=test` (`startApi` in `http/support/api.ts`, usually through `useApi` in `harness.ts`) and sends plain HTTP requests, through `apiCalls` in `http/support/call.ts`, which sets the claims, `If-Match`, a path prefix and the default user per file; it may seed and read rows in the table. The tests send the authorizer's claims as JSON in `X-Test-Claims` (`http/support/claims.ts` builds them), and the server passes them to the handler only on protected routes, as API Gateway's JWT authorizer does. `request` parses every 2xx body with the response schema `packages/shared/src/openapi.ts` registers for that route and status (`http/support/response-schemas.ts`) and throws on a mismatch or an undocumented route. After each test, `useApi` scans the table and parses every row with its entity type's schema in `ITEM_SCHEMAS` from `@gagnechris/data` (`http/support/row-schemas.ts`, which also lists the entity types that have no item schema); a test that stores a corrupt row on purpose exempts it with `h.corruptRow(key)`. The `ops-*.test.ts` files run the `@gagnechris/ops` copy-back and row migrations against a file's table, with the API serving it.
 - `unit` (in `npm test`): the test table guard and the DynamoDB Local lifecycle helpers.
 
 Integration tests always talk to `http://127.0.0.1:8001` (override with `INTEGRATION_DYNAMODB_ENDPOINT`) and ignore an inherited `AWS_ENDPOINT_URL_DYNAMODB`, so they never reuse the local-dev DynamoDB on 8000. Compose always uses project `gagnechris-ci` (`-p gagnechris-ci`), never `env.sh`'s `gagnechris`, and teardown runs only when this process started the container. A stale started-flag under `os.tmpdir()` cannot stop `gagnechris-dynamodb-1`.

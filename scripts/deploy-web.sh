@@ -8,28 +8,14 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WEB="${ROOT}/apps/web"
 DIST="${WEB}/dist"
-SSM_JSON="${ROOT}/infra/lib/config/ssm-params.json"
-
-# One node call resolves every SSM parameter name (ssm_name_<key>=<name>).
-eval "$(node -e '
-const j = require(process.argv[1]);
-const prefix = j.prefixTemplate.replaceAll("${ENV_NAME}", process.argv[2]);
-for (const [key, leaf] of Object.entries(j.keys)) {
-  console.log(`ssm_name_${key}=${JSON.stringify(`${prefix}/${leaf}`)}`);
-}' "${SSM_JSON}" "${ENV_NAME}")"
-
-ssm_name() {
-  local var="ssm_name_$1"
-  if [[ -z "${!var:-}" ]]; then
-    echo "unknown SSM key: $1" >&2
-    return 1
-  fi
-  echo "${!var}"
-}
+# shellcheck source=scripts/ssm-param-name.sh
+source "${ROOT}/scripts/ssm-param-name.sh"
 
 ssm_value() {
+  local name
+  name="$(ssm_param_name "${ENV_NAME}" "$1")" || return
   aws ssm get-parameter \
-    --name "$(ssm_name "$1")" \
+    --name "${name}" \
     --region "${AWS_REGION}" \
     --query 'Parameter.Value' --output text
 }

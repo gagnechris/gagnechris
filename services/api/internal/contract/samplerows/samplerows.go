@@ -40,6 +40,11 @@ var Skipped = map[string]string{
 	"removedUser":    "written inline by removedRepo.put",
 }
 
+// Item is a contract sample as a DynamoDB row.
+func Item(name string) data.Item {
+	return data.FromJSON(contract.Sample(name)).(*types.AttributeValueMemberM).Value
+}
+
 // RoundTrip parses each sample built by pkg, rebuilds it with rebuild and
 // requires the original row back.
 func RoundTrip(t *testing.T, pkg string, rebuild func(data.Item) (data.Item, error)) {
@@ -57,7 +62,7 @@ func RoundTrip(t *testing.T, pkg string, rebuild func(data.Item) (data.Item, err
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			want := contract.Sample(name)
-			item := data.FromJSON(contract.Sample(name)).(*types.AttributeValueMemberM).Value
+			item := Item(name)
 			built, err := rebuild(item)
 			if err != nil {
 				t.Fatalf("parse: %v", err)

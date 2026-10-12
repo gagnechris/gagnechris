@@ -28,6 +28,6 @@ describe('Field', () => {
     );
     const area = screen.getByDisplayValue('Hello');
     expect(area.tagName).toBe('TEXTAREA');
-    expect(area).toHaveClass('admin-input', 'admin-textarea');
+    expect(area).toHaveClass('kit-input', 'kit-textarea');
   });
 });

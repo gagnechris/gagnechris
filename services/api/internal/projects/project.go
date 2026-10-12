@@ -197,7 +197,6 @@ func normalizeStack(stack []string) []string {
 var (
 	// JavaScript's \s, unlike RE2's, is Unicode whitespace.
 	previewImagePattern = regexp.MustCompile(`^/media/[^\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}?#\\]+$`)
-	ulidPattern         = regexp.MustCompile(`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 )
 
 func previewImageRules() []api.StringRule {

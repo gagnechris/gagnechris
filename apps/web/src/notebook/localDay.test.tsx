@@ -1,7 +1,8 @@
 import { act, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Outlet, createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { bucketTodayTasks, type Task } from '@gagnechris/shared';
+import { bucketTodayTasks } from '@gagnechris/shared';
+import type { Task } from '@gagnechris/app-core';
 import { QueryClientTestProvider } from '../test-utils';
 import { NotebookCalendar } from './NotebookCalendar';
 import NotebookTasksPage from './NotebookTasksPage';

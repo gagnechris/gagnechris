@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { AppApiProvider, AUTOSAVE_DEBOUNCE_MS } from '@gagnechris/app-core';
 import { PublicLinkContext } from '@gagnechris/public-ui';
+import { NOTEBOOK_GROUP, SITE_ADMIN_GROUP } from '@gagnechris/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
@@ -15,7 +16,7 @@ export const PAST_AUTOSAVE_MS = AUTOSAVE_DEBOUNCE_MS + 50;
 export const testAuthUser: AuthUser = {
   label: 'chris@example.com',
   userId: 'u1',
-  groups: ['site-admin', 'notebook'],
+  groups: [SITE_ADMIN_GROUP, NOTEBOOK_GROUP],
 };
 
 export const createTestQueryClient = () =>

@@ -7,9 +7,10 @@ Attribute names are lowercase. Keys use string partition/sort values with `#`
 separators so entity types never collide.
 
 **Key builders, item zod schemas, and mappers** live in `@gagnechris/data`
-(`packages/data`). The publisher, ops tools and tests import those helpers; the
-Go API builds keys with `services/api/internal/keys`, which `keys_test.go`
-holds to the builders through the generated contract. Do not hard-code
+(`packages/data`). The publisher, ops tools, infra, the Go contract generator
+and tests import those helpers; the Go API builds keys with
+`services/api/internal/keys`, which `keys_test.go` holds to the builders
+through the generated contract. Do not hard-code
 `POST#…`, `PROJECT#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current`
 in application code.
 
@@ -20,7 +21,7 @@ in application code.
 | `pk`                | Partition key                                                                                            |
 | `sk`                | Sort key                                                                                                 |
 | `gsi1pk` / `gsi1sk` | GSI1 — list by status (posts by date, projects by order)                                                 |
-| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`); posts' tag rows also mirror pk/sk         |
+| `gsi2pk` / `gsi2sk` | GSI2 — Notebook tasks-for-note (`USER#<sub>#NOTE#<id>#TASKS`)                                            |
 | `syncPk` / `syncSk` | GSI3 — sparse per-user sync feed (one META row per synced entity)                                        |
 | `entityType`        | Discriminator (`post`, `slug`, `project`, `resume`, `home`, `contact`, `removedUser`, `note`, `task`, …) |
 
@@ -97,32 +98,15 @@ reserved: another post can claim it, and its `REDIRECT` row stays.
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
 | List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED` and its tag rows, drop slug claim                                                                                                                                    |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
 | Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
-### Tag index items
+### Tags
 
-For each tag on a **published** post, maintain:
-
-`TAG#<tag>` / `TS#<publishedAt>#POST#<postId>` with `gsi2pk`/`gsi2sk` mirroring
-pk/sk. Notebook tasks linked to a note also use GSI2 with owner-scoped partitions
-(`USER#<sub>#NOTE#<id>#TASKS`); those keys never collide with `TAG#…` partitions.
-
-Pattern used here:
-
-| Keys             |                                  |
-| ---------------- | -------------------------------- |
-| `pk`             | `TAG#<normalizedTag>`            |
-| `sk`             | `TS#<publishedAt>#POST#<postId>` |
-| `gsi2pk`         | same as `pk`                     |
-| `gsi2sk`         | same as `sk`                     |
-| `entityType`     | `tagIndex`                       |
-| `postId`, `slug` | denormalized for list cards      |
-
-Publish, unpublish and soft delete rewrite these sparse items from the
-**PUBLISHED** snapshot in the same transaction (draft tag edits do not change
-the tag index until publish). Nothing queries them: there is no list-by-tag
-route or page.
+A post's `tags` live only on its META and `PUBLISHED` rows; there is no
+per-tag index. A table may still hold `TAG#<tag>` /
+`TS#<publishedAt>#POST#<postId>` rows (`entityType` `tagIndex`), which nothing
+reads; `scripts/migrate-tag-rows.ts` deletes them (see `infra/RUNBOOK.md`).
 
 ## Projects
 
@@ -533,7 +517,7 @@ No dedicated export API. The **Export** button on the Notebook's Notes page page
 
 - Timestamps: UTC ISO-8601 with millisecond precision.
 - Tag normalization: trim, lowercase, collapse internal whitespace to `-`.
-- Transactions: slug claim + `META` (+ tag rows) in one `TransactWriteItems`
+- Transactions: slug claim + `META` in one `TransactWriteItems`
   where uniqueness matters.
 - Streams: publisher consumes `sk=PUBLISHED` modifications only. Draft
   META autosaves never rebuild the live site.

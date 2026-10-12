@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
-import type { Post } from '@gagnechris/shared';
+import {
+  MAX_SLUG_LENGTH,
+  POST_PROJECT_IDS_MAX,
+  POST_SEARCH_MAX_LENGTH,
+  type Post,
+} from '@gagnechris/shared';
 import { useApi } from './support/harness.js';
 import { siteAdminClient } from './support/site-admin.js';
 
@@ -178,9 +183,11 @@ describe('POST /api/admin/posts', () => {
     [
       'bad elements and sizes',
       {
-        slug: 's'.repeat(121),
+        slug: 's'.repeat(MAX_SLUG_LENGTH + 1),
         tags: ['ok', 3],
-        projectIds: Array.from({ length: 21 }, (_, i) => (i ? `p${i}` : '')),
+        projectIds: Array.from({ length: POST_PROJECT_IDS_MAX + 1 }, (_, i) =>
+          i ? `p${i}` : '',
+        ),
         seo: 'x',
       },
       {
@@ -392,7 +399,7 @@ describe('PUT /api/admin/posts/:id', () => {
 });
 
 describe('publish, unpublish, discard and delete', () => {
-  it('publish writes PUBLISHED, the tag index and the site publish row', async () => {
+  it('publish writes PUBLISHED and the site publish row, and no tag rows', async () => {
     const post = await create({ tags: ['one', 'two'], seo: { title: 's' } });
     const published = await act(post, 'publish');
     expect(published).toEqual({
@@ -426,18 +433,7 @@ describe('publish, unpublish, discard and delete', () => {
       gsi1sk: `TS#${published.publishedAt}#POST#${post.id}`,
       hasUnpublishedChanges: false,
     });
-    const tagSk = `TS#${published.publishedAt}#POST#${post.id}`;
-    expect(await rows('TAG#')).toEqual(
-      ['one', 'two'].map((tag) => ({
-        pk: `TAG#${tag}`,
-        sk: tagSk,
-        gsi2pk: `TAG#${tag}`,
-        gsi2sk: tagSk,
-        entityType: 'tagIndex',
-        postId: post.id,
-        slug: post.slug,
-      })),
-    );
+    expect(await rows('TAG#')).toEqual([]);
     expect(await row(keys.sitePublish())).toEqual({
       ...keys.sitePublish(),
       entityType: 'sitePublish',
@@ -453,26 +449,19 @@ describe('publish, unpublish, discard and delete', () => {
     expect((await row(keys.sitePublish()))?.generation).toBe(1);
   });
 
-  it('republish keeps publishedAt and moves only changed tags', async () => {
+  it('republish keeps publishedAt', async () => {
     const published = await act(
       await create({ tags: ['keep', 'drop'] }),
       'publish',
     );
     const edited = await edit(published, { tags: ['keep', 'add'] });
     expect(edited.hasUnpublishedChanges).toBe(true);
-    expect((await rows('TAG#')).map((r) => r.pk)).toEqual([
-      'TAG#drop',
-      'TAG#keep',
-    ]);
     const republished = await act(edited, 'publish');
     expect(republished.publishedAt).toBe(published.publishedAt);
-    expect((await rows('TAG#')).map((r) => r.pk)).toEqual([
-      'TAG#add',
-      'TAG#keep',
-    ]);
+    expect(republished.tags).toEqual(['keep', 'add']);
   });
 
-  it('unpublish removes PUBLISHED and tags; republish keeps the first publishedAt', async () => {
+  it('unpublish removes PUBLISHED; republish keeps the first publishedAt', async () => {
     const published = await act(await create({ tags: ['t'] }), 'publish');
     const draft = await act(published, 'unpublish');
     expect(draft).toMatchObject({
@@ -481,7 +470,6 @@ describe('publish, unpublish, discard and delete', () => {
       version: 3,
     });
     expect(await row(keys.post.published(draft.id))).toBeUndefined();
-    expect(await rows('TAG#')).toEqual([]);
     expect(await row(keys.post.meta(draft.id))).toMatchObject({
       gsi1pk: 'STATUS#draft',
       gsi1sk: `TS#${draft.updatedAt}#POST#${draft.id}`,
@@ -537,7 +525,6 @@ describe('publish, unpublish, discard and delete', () => {
     });
     expect(await row(keys.post.published(published.id))).toBeUndefined();
     expect(await row(keys.post.slugClaim('gone'))).toBeUndefined();
-    expect(await rows('TAG#')).toEqual([]);
     expect((await row(keys.sitePublish()))?.postIds).toBeUndefined();
     expect((await create({ slug: 'gone' })).slug).toBe('gone');
   });
@@ -649,7 +636,12 @@ describe('GET /api/admin/posts', () => {
 
   it.each([
     [
-      { status: 'nope', q: 'q'.repeat(201), cursor: '', limit: '0' },
+      {
+        status: 'nope',
+        q: 'q'.repeat(POST_SEARCH_MAX_LENGTH + 1),
+        cursor: '',
+        limit: '0',
+      },
       {
         status: 'invalid_value',
         q: 'too_big',

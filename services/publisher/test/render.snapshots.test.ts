@@ -209,9 +209,7 @@ describe('render HTML snapshots', () => {
       },
     });
     const postsJson = feeds.artifacts?.find((a) => a.key === 'blog/posts.json');
-    const slugsJson = feeds.artifacts?.find((a) => a.key === 'blog/slugs.json');
     expect(postsJson?.body).toMatchSnapshot();
-    expect(slugsJson?.body).toMatchSnapshot();
 
     const home = await homeTarget.run({
       ...baseCtx,

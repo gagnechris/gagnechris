@@ -38,10 +38,10 @@ export function PostRowActions({ post, onError }: Props) {
   const canPublish = post.status === 'draft' || post.hasUnpublishedChanges;
 
   return (
-    <div className="admin-row-actions" ref={container}>
+    <div className="kit-row-actions" ref={container}>
       <button
         type="button"
-        className="admin-row-actions__toggle"
+        className="kit-row-actions__toggle"
         aria-label={`Actions for ${post.title}`}
         aria-expanded={open}
         aria-controls={menuId}
@@ -51,7 +51,7 @@ export function PostRowActions({ post, onError }: Props) {
         <span aria-hidden="true">…</span>
       </button>
       {open ? (
-        <div id={menuId} className="admin-row-actions__menu">
+        <div id={menuId} className="kit-row-actions__menu">
           {canPublish ? (
             <button
               type="button"

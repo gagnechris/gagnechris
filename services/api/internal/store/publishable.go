@@ -11,6 +11,7 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
@@ -42,9 +43,8 @@ type SlugClaims struct {
 }
 
 // PersistOptions say what a draft mutation does to the PUBLISHED row.
-type PersistOptions[T any] struct {
+type PersistOptions struct {
 	SyncPublished, DeletePublished bool
-	PreviousPublished              *T
 }
 
 type PublishableConfig[T any] struct {
@@ -64,8 +64,6 @@ type PublishableConfig[T any] struct {
 	PublishedIDSet string
 	// ValidatePublish refuses a publish with an error, or returns nil.
 	ValidatePublish func(T) error
-	// ExtraItems join every draft mutation's transaction.
-	ExtraItems func(before, after T, opts PersistOptions[T]) []types.TransactWriteItem
 }
 
 // Publishable is the draft + PUBLISHED pair store for site-admin entities.
@@ -79,10 +77,7 @@ func NewPublishableStore[T any](cfg PublishableConfig[T], table *data.Table, now
 	return &PublishableStore[T]{cfg: cfg, table: table, now: now}
 }
 
-// ISOTime is Date.toISOString.
-func ISOTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
-
-func (s *PublishableStore[T]) nowISO() string { return ISOTime(s.now()) }
+func (s *PublishableStore[T]) nowISO() string { return jstime.ISO(s.now()) }
 
 func (s *PublishableStore[T]) Table() *data.Table { return s.table }
 
@@ -190,33 +185,6 @@ func (s *PublishableStore[T]) GetOrThrow(ctx context.Context, id string) (T, err
 	return *e, nil
 }
 
-// ExistingIDs are the ids among ids that name a live draft.
-func (s *PublishableStore[T]) ExistingIDs(ctx context.Context, ids []string) (map[string]bool, error) {
-	seen := map[string]bool{}
-	var keys []data.Item
-	for _, id := range ids {
-		if !seen[id] {
-			seen[id] = true
-			keys = append(keys, s.metaKey(id))
-		}
-	}
-	items, err := s.table.BatchGet(ctx, keys, false)
-	if err != nil {
-		return nil, err
-	}
-	found := map[string]bool{}
-	for _, item := range items {
-		e, err := s.cfg.Parse(item)
-		if err != nil {
-			return nil, err
-		}
-		if !s.isDeleted(&e) {
-			found[s.cfg.ID(&e)] = true
-		}
-	}
-	return found, nil
-}
-
 func (s *PublishableStore[T]) put(item data.Item, condition string, values map[string]types.AttributeValue) *types.Put {
 	p := &types.Put{TableName: aws.String(s.table.Name), Item: item}
 	if condition != "" {
@@ -285,7 +253,7 @@ func (s *PublishableStore[T]) MutateLoaded(ctx context.Context, pair *Pair[T], e
 	st.UpdatedAt = s.nowISO()
 	st.Version = s.cfg.State(&existing).Version + 1
 	next = s.Flag(next, pair.Published)
-	return next, s.persist(ctx, existing, next, PersistOptions[T]{})
+	return next, s.persist(ctx, existing, next, PersistOptions{})
 }
 
 func (s *PublishableStore[T]) SoftDelete(ctx context.Context, id string, expected int) (T, error) {
@@ -304,9 +272,7 @@ func (s *PublishableStore[T]) SoftDelete(ctx context.Context, id string, expecte
 	st.UpdatedAt = s.nowISO()
 	st.Version++
 	st.HasUnpublishedChanges = false
-	return next, s.persist(ctx, existing, next, PersistOptions[T]{
-		DeletePublished: pair.Published != nil, PreviousPublished: pair.Published,
-	})
+	return next, s.persist(ctx, existing, next, PersistOptions{DeletePublished: pair.Published != nil})
 }
 
 func (s *PublishableStore[T]) Publish(ctx context.Context, id string, expected int) (T, error) {
@@ -347,7 +313,7 @@ func (s *PublishableStore[T]) PublishLoaded(ctx context.Context, pair *Pair[T], 
 	st.UpdatedAt = updatedAt
 	st.Version++
 	st.HasUnpublishedChanges = false
-	if err := s.persist(ctx, existing, next, PersistOptions[T]{SyncPublished: true, PreviousPublished: pair.Published}); err != nil {
+	if err := s.persist(ctx, existing, next, PersistOptions{SyncPublished: true}); err != nil {
 		return next, err
 	}
 	return s.Flag(next, &next), nil
@@ -376,7 +342,7 @@ func (s *PublishableStore[T]) UnpublishLoaded(ctx context.Context, pair *Pair[T]
 	st.UpdatedAt = s.nowISO()
 	st.Version++
 	st.HasUnpublishedChanges = false
-	return next, s.persist(ctx, existing, next, PersistOptions[T]{DeletePublished: true, PreviousPublished: pair.Published})
+	return next, s.persist(ctx, existing, next, PersistOptions{DeletePublished: true})
 }
 
 func (s *PublishableStore[T]) Discard(ctx context.Context, id string, expected int) (T, error) {
@@ -407,7 +373,7 @@ func (s *PublishableStore[T]) DiscardLoaded(ctx context.Context, pair *Pair[T], 
 	st.UpdatedAt = s.nowISO()
 	st.Version = cur.Version + 1
 	st.HasUnpublishedChanges = false
-	if err := s.persist(ctx, existing, next, PersistOptions[T]{}); err != nil {
+	if err := s.persist(ctx, existing, next, PersistOptions{}); err != nil {
 		return next, err
 	}
 	return s.Flag(next, pair.Published), nil
@@ -436,9 +402,8 @@ func (s *PublishableStore[T]) sitePublishUpdate(id string, published bool) types
 }
 
 // persist writes the versioned META Put as item 0, joined in one
-// transaction by slug rows, the PUBLISHED row and ExtraItems; alone it is a
-// plain Put.
-func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts PersistOptions[T]) error {
+// transaction by slug rows and the PUBLISHED row; alone it is a plain Put.
+func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts PersistOptions) error {
 	id := s.cfg.ID(&after)
 	beforeState := s.cfg.State(&before)
 	meta := s.put(s.cfg.MetaItem(after), VersionMatchCondition, VersionMatchValues(beforeState.Version))
@@ -477,9 +442,6 @@ func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts
 	}
 	if opts.SyncPublished || opts.DeletePublished {
 		items = append(items, s.sitePublishUpdate(id, opts.SyncPublished))
-	}
-	if s.cfg.ExtraItems != nil {
-		items = append(items, s.cfg.ExtraItems(before, after, opts)...)
 	}
 	if claims != nil && s.cfg.State(&after).Status == StatusDeleted && beforeState.Status != StatusDeleted {
 		items = append(items, types.TransactWriteItem{Delete: &types.Delete{

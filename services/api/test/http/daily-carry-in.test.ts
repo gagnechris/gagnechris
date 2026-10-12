@@ -5,7 +5,7 @@ import {
   fillDailyTemplate,
   taskEmbedIds,
 } from '@gagnechris/shared';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-carry-in';
@@ -16,29 +16,23 @@ const id = (n: number) =>
 
 describe('opening a daily note carries in open tasks', () => {
   const h = useApi('carry-in');
-
-  async function call(method: string, path: string, body?: unknown) {
-    const res = await h.api.request(method, path, {
-      body,
-      claims: notebookUser(USER),
-    });
-    return {
-      status: res.status,
-      body: (res.body ?? {}) as Record<string, unknown>,
-    };
-  }
+  const { call } = apiCalls(h, { user: USER });
 
   const task = (n: number, fields: Record<string, unknown> = {}) =>
     call('POST', '/api/notebook/tasks', {
-      id: id(n),
-      area: 'work',
-      title: `Task ${n}`,
-      ...fields,
+      body: {
+        id: id(n),
+        area: 'work',
+        title: `Task ${n}`,
+        ...fields,
+      },
     });
 
   const open = (date: string, noteId: string, area = 'work') =>
     call('POST', `/api/notebook/notes/daily/${area}/${date}/open`, {
-      id: noteId,
+      body: {
+        id: noteId,
+      },
     });
 
   async function dailyClaims(): Promise<number> {
@@ -59,7 +53,12 @@ describe('opening a daily note carries in open tasks', () => {
     const fridayNote = await call(
       'PUT',
       `/api/notebook/notes/daily/work/${FRI}`,
-      { id: id(80), bodyMarkdown: `{{task:${id(1)}}}\n{{task:${id(2)}}}` },
+      {
+        body: {
+          id: id(80),
+          bodyMarkdown: `{{task:${id(1)}}}\n{{task:${id(2)}}}`,
+        },
+      },
     );
     expect(fridayNote.status).toBe(200);
 
@@ -118,8 +117,10 @@ describe('opening a daily note carries in open tasks', () => {
     expect(await dailyClaims()).toBe(0);
 
     await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
-      id: id(82),
-      bodyMarkdown: 'Standup',
+      body: {
+        id: id(82),
+        bodyMarkdown: 'Standup',
+      },
     });
     await task(1);
     const existing = await open(MON, id(83));

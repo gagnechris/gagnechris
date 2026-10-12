@@ -9,6 +9,7 @@ import {
   DAILY_TEMPLATE_TASK_MESSAGE,
   dailyTemplateHasTasks,
   NOTEBOOK_AREA_LABELS,
+  saveLabel,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -20,7 +21,6 @@ import {
   NoteKeyboardToolbar,
   type ToolbarButton,
 } from '../../../src/notebook/NoteKeyboardToolbar';
-import { saveLabel } from '../../../src/notebook/saveLabel';
 import {
   applyToolbarAction,
   type Selection,
@@ -116,7 +116,7 @@ const TemplateEditor = ({ area }: { area: NotebookArea }) => {
         options={{
           headerRight: () => (
             <Text style={styles.saveState} accessibilityLiveRegion="polite">
-              {saveLabel(saveState, dirty, !online)}
+              {saveLabel(saveState, dirty, { offline: !online })}
             </Text>
           ),
         }}

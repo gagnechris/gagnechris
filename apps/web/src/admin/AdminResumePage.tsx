@@ -3,7 +3,7 @@ import { renderResumePrerenderHtml } from '@gagnechris/public-ui/server';
 import { resumeResource, type Resume } from '@gagnechris/app-core';
 import { Link } from 'react-router-dom';
 import { ResumeEditorForm } from './ResumeEditorForm';
-import { publicUrl, withPublicUrls } from './publicUrl';
+import { publicUrl } from './publicUrl';
 import {
   createResumeContentBuilder,
   emptyResumeDraft,
@@ -19,7 +19,11 @@ import {
 import { EditorFrame } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
-import '../pages/Resume.css';
+import { PublicPagePreview } from './preview/PublicPagePreview';
+import { publicPageStyles } from './preview/publicPageStyles';
+import resumeCss from '../pages/Resume.css?inline';
+
+const RESUME_STYLES = publicPageStyles(resumeCss);
 
 const ResumePreview = ({
   resume,
@@ -42,9 +46,10 @@ const ResumePreview = ({
     [resume, deferred, content],
   );
   return (
-    <div
-      className="resume-page admin-resume-preview"
-      dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
+    <PublicPagePreview
+      title="Resume preview"
+      styles={RESUME_STYLES}
+      html={html}
     />
   );
 };
@@ -104,7 +109,7 @@ const AdminResumePage = () => {
       loadingLabel="Loading resume…"
       leading={
         <>
-          <Link to="/pages" className="admin-back">
+          <Link to="/pages" className="workspace-back">
             ← Pages
           </Link>
           <h1>Resume</h1>
@@ -114,7 +119,7 @@ const AdminResumePage = () => {
       actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         blockedRole ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             Not published: {blockedRole.title.trim() || 'a new role'} has an End
             month before its Start month and no saved dates yet.{' '}
             <a
@@ -149,7 +154,7 @@ const AdminResumePage = () => {
               <ResumePreview resume={resume} draft={draft} content={content} />
             </div>
           </div>
-          <p className="admin-hint">
+          <p className="kit-hint">
             ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
           </p>
         </>

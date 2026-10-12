@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { NotebookSearchHitSchema, SYNC_CHANGE_TYPES } from '@gagnechris/shared';
 import {
-  NotebookSearchHitSchema,
   RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES,
   RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES,
-  SYNC_CHANGE_TYPES,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/server';
 import { COPY_BACK_TYPES } from '../src/copy-back.js';
 
 // A synced entity missing from any of these is silently skipped: not

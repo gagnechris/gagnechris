@@ -71,7 +71,7 @@ function FixtureBody({
   return (
     <>
       <form
-        className="admin-toolbar"
+        className="workspace-toolbar"
         onSubmit={(e) => {
           e.preventDefault();
           onAdd(input);
@@ -79,7 +79,7 @@ function FixtureBody({
         }}
       >
         <input
-          className="admin-input"
+          className="kit-input"
           aria-label={`Add a task to ${projectName}`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -88,7 +88,7 @@ function FixtureBody({
           Add
         </Button>
       </form>
-      <ul className="admin-post-list" aria-label="Demo tasks">
+      <ul className="kit-list" aria-label="Demo tasks">
         {tasks.map((task) => (
           <TaskRow
             key={task.id}

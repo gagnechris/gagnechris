@@ -60,11 +60,11 @@ export default function AdminProjectsPage() {
   const creating = createMutation.isPending;
 
   return (
-    <section className="admin-panel">
-      <div className="admin-panel__header">
+    <section className="workspace-panel">
+      <div className="workspace-panel__header">
         <div>
           <h1>Projects</h1>
-          <p className="admin-panel__lede">
+          <p className="workspace-panel__lede">
             What I’m building. Publishing updates /projects and the sitemap.
           </p>
         </div>
@@ -78,7 +78,7 @@ export default function AdminProjectsPage() {
       </div>
 
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
@@ -87,7 +87,7 @@ export default function AdminProjectsPage() {
       {projects && projects.length === 0 ? (
         <div className="admin-project-empty">
           <p>No projects yet.</p>
-          <p className="admin-hint">
+          <p className="kit-hint">
             Start from drafts for Posts, Notebook and Don’t Feed the Bears, or
             create one from scratch. Nothing is public until you publish it.
           </p>
@@ -103,16 +103,16 @@ export default function AdminProjectsPage() {
       ) : null}
 
       {projects && projects.length > 0 ? (
-        <ul className="admin-post-list admin-project-list">
+        <ul className="kit-list admin-project-list">
           {projects.map((project) => {
             const target = projectCardHref(project);
             return (
               <li key={project.id}>
                 <Link
                   to={`/projects/${project.id}`}
-                  className="admin-post-list__item admin-post-list__link"
+                  className="kit-list__item kit-list__link"
                 >
-                  <span className="admin-post-list__title">
+                  <span className="kit-list__title">
                     {project.name}
                     <span
                       className={`admin-stage admin-stage--${project.stage}`}
@@ -120,7 +120,7 @@ export default function AdminProjectsPage() {
                       {PROJECT_STAGE_LABELS[project.stage]}
                     </span>
                   </span>
-                  <span className="admin-post-list__meta">
+                  <span className="kit-list__meta">
                     <StatusBadge
                       status={project.status}
                       hasUnpublishedChanges={project.hasUnpublishedChanges}

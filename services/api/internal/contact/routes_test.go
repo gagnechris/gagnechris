@@ -98,7 +98,7 @@ func TestContactSendFailureLogsAndCounts(t *testing.T) {
 	if !strings.Contains(rec.logs.String(), "Contact email failed") || !strings.Contains(rec.logs.String(), "ses down") {
 		t.Errorf("no failure log: %s", rec.logs.String())
 	}
-	if !strings.Contains(emitted(t, r, &rec), `"ContactEmailFailed"`) {
+	if !strings.Contains(emitted(t, r, &rec), `"`+contract.Data.API.Metrics.ContactEmailFailed+`"`) {
 		t.Errorf("no ContactEmailFailed metric: %s", rec.emf.String())
 	}
 	if len(b.statuses) != 1 || b.statuses[0] != "failed" {
@@ -119,7 +119,7 @@ func TestContactAtTheDailyCapCounts(t *testing.T) {
 	if m.sent != 0 {
 		t.Errorf("sent %d mails over the cap", m.sent)
 	}
-	if !strings.Contains(emitted(t, r, &rec), `"SesCapReached"`) {
+	if !strings.Contains(emitted(t, r, &rec), `"`+contract.Data.API.Metrics.SESCapReached+`"`) {
 		t.Errorf("no SesCapReached metric: %s", rec.emf.String())
 	}
 	if !strings.Contains(rec.logs.String(), "Daily email cap reached") {

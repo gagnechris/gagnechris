@@ -6,9 +6,9 @@ type Props = {
 export function StatusBadge({ status, hasUnpublishedChanges }: Props) {
   return (
     <>
-      <span className={`admin-badge admin-badge--${status}`}>{status}</span>
+      <span className={`kit-badge kit-badge--${status}`}>{status}</span>
       {hasUnpublishedChanges ? (
-        <span className="admin-badge admin-badge--unpublished">
+        <span className="kit-badge kit-badge--unpublished">
           Unpublished changes
         </span>
       ) : null}

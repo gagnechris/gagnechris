@@ -110,7 +110,7 @@ export function ProjectEditorFields({
             onChange={(e) => setField('orderText', e.target.value)}
           />
           {orderError ? (
-            <span className="admin-field-error">{orderError}</span>
+            <span className="kit-field-error">{orderError}</span>
           ) : null}
         </Field>
       </div>
@@ -126,7 +126,7 @@ export function ProjectEditorFields({
           onChange={(e) => setField('href', e.target.value)}
         />
         {hrefError ? (
-          <span className="admin-field-error">{hrefError}</span>
+          <span className="kit-field-error">{hrefError}</span>
         ) : null}
       </Field>
     </>
@@ -153,7 +153,7 @@ export function ProjectEditorFields({
                 onChange={(e) => update({ label: e.target.value })}
               />
               {errors.label ? (
-                <span className="admin-field-error">{errors.label}</span>
+                <span className="kit-field-error">{errors.label}</span>
               ) : null}
             </Field>
             <Field label="URL">
@@ -165,7 +165,7 @@ export function ProjectEditorFields({
                 onChange={(e) => update({ url: e.target.value })}
               />
               {errors.url ? (
-                <span className="admin-field-error">{errors.url}</span>
+                <span className="kit-field-error">{errors.url}</span>
               ) : null}
             </Field>
           </div>
@@ -253,7 +253,7 @@ export function ProjectEditorFields({
           >
             Stack, demo, order and links
             {secondaryInvalid ? (
-              <span className="admin-field-error">Needs a fix</span>
+              <span className="kit-field-error">Needs a fix</span>
             ) : null}
           </button>
         ) : (

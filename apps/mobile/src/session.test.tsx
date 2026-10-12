@@ -2,7 +2,6 @@ import { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from '../test/render';
 import {
-  initials,
   rootGuards,
   SessionProvider,
   useSession,
@@ -47,15 +46,6 @@ describe('root gate', () => {
         false,
       ]);
     }
-  });
-
-  it('builds avatar initials from the name, else the email', () => {
-    const user = { sub: 's', email: 'chris.gagne@example.com', groups: [] };
-    expect(initials({ ...user, name: 'Chris Gagne' })).toBe('CG');
-    expect(initials({ ...user, name: null })).toBe('CG');
-    expect(initials({ ...user, email: 'alex@example.com', name: null })).toBe(
-      'A',
-    );
   });
 });
 

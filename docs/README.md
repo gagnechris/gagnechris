@@ -54,15 +54,15 @@ apps/web/              React/Vite public site, admin and Notebook apps
 apps/mobile/           Expo iOS app (Notebook and Admin); own lockfile, not a root workspace
 services/api/          Go API (cmd/api, internal/), the restore-test validator, the black-box HTTP suite (test/)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
-packages/shared/       Domain schemas/types; `/render`, `/openapi` and other subpaths
-packages/data/         DynamoDB keys, item schemas and builders, write helpers
+packages/shared/       Domain schemas/types; `/server`, `/render`, `/openapi` and other subpaths
+packages/data/         DynamoDB keys, item schemas and builders for the publisher, ops, infra and tests
 packages/api-client/   OpenAPI types and `createApiClient`
 packages/app-core/     UI-free hooks shared by the web apps and the iOS app
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site
 packages/tokens/       Design tokens (TS → CSS variables)
 packages/ops/          Restore copy-back and row migrations
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
-scripts/               Local stack, deploy-web, branch protection
+scripts/               Local stack, deploy-web, branch protection, CI guards, repo-wide tests (test/)
 docs/                  Architecture, development, data model, E2E
 e2e/                   Playwright browser tests
 ```
@@ -71,7 +71,7 @@ e2e/                   Playwright browser tests
 
 - One Linear ticket → one branch → one PR into `main` (prefer the issue `gitBranchName`)
 - CI on PRs: lint, typecheck (all workspaces), tests, build, Go lint and test, CDK diff; required checks are **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**
-- Merge to `main` deploys via OIDC only after CI succeeds (CDK + web sync + CloudFront invalidation; path-filtered against last deployed SHA in SSM; the deploy job refuses rollbacks, SSM read errors and multi-GSI changes — see `infra/RUNBOOK.md`)
+- Merge to `main` deploys via OIDC only after CI succeeds (CDK and/or web sync + CloudFront invalidation + republish; path-filtered by `scripts/ci/deploy-paths.sh` against last deployed SHA in SSM; the deploy job refuses rollbacks, SSM read errors and multi-GSI changes — see `infra/RUNBOOK.md`)
 - Infrastructure only through CDK — no console edits to production
 
 ## Docs index

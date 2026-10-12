@@ -3,13 +3,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { build, type Plugin, type PluginOption, type UserConfig } from 'vite';
-import type { RolldownOutput } from 'rolldown';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   analyticsPlugin,
   gaMeasurementId,
 } from '../../scripts/analyticsPlugin';
 import viteConfig from '../../vite.config';
+
+type RolldownOutput = Extract<
+  Awaited<ReturnType<typeof build>>,
+  { output: unknown }
+>;
 
 const webRoot = path.resolve(__dirname, '../..');
 const deployScript = fs.readFileSync(

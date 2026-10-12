@@ -3,37 +3,55 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 )
 
 // Auth is who may call a route. Protected routes live under the prefixes API
 // Gateway's JWT authorizer covers (infra/lib/stacks/api-stack.ts).
-type Auth string
+type Auth int
 
 const (
-	Public    Auth = "public"
-	SiteAdmin Auth = "site-admin"
-	UserAdmin Auth = "user-admin"
-	Notebook  Auth = "notebook"
+	Public Auth = iota
+	SiteAdmin
+	UserAdmin
+	Notebook
 )
 
-type authPolicy struct {
-	prefix      string
-	group       string
-	clientIDEnv string
+func (a Auth) String() string {
+	if policy, ok := authPolicies[a]; ok {
+		return policy.group
+	}
+	return "public"
 }
 
-// The iOS app has both spaces, so its client is trusted on every prefix; the
-// group still decides.
-const iosClientIDEnv = "IOS_CLIENT_ID"
+// ClientIDs are the Cognito app clients whose tokens the router trusts. The
+// iOS app has both spaces, so its client is trusted on every prefix; the group
+// still decides.
+type ClientIDs struct {
+	AdminWeb    string
+	NotebookWeb string
+	IOS         string
+}
+
+type authPolicy struct {
+	prefix   string
+	group    string
+	clientID func(ClientIDs) string
+}
+
+func adminWeb(c ClientIDs) string    { return c.AdminWeb }
+func notebookWeb(c ClientIDs) string { return c.NotebookWeb }
+
+var groups = contract.Data.Users.Groups
 
 var authPolicies = map[Auth]authPolicy{
-	SiteAdmin: {prefix: "/admin", group: "site-admin", clientIDEnv: "ADMIN_WEB_CLIENT_ID"},
-	UserAdmin: {prefix: "/admin", group: "user-admin", clientIDEnv: "ADMIN_WEB_CLIENT_ID"},
-	Notebook:  {prefix: "/notebook", group: "notebook", clientIDEnv: "NOTEBOOK_WEB_CLIENT_ID"},
+	SiteAdmin: {prefix: "/admin", group: groups.SiteAdmin, clientID: adminWeb},
+	UserAdmin: {prefix: "/admin", group: groups.UserAdmin, clientID: adminWeb},
+	Notebook:  {prefix: "/notebook", group: groups.Notebook, clientID: notebookWeb},
 }
 
 const userAdminPath = "/admin/users"
@@ -91,12 +109,8 @@ func TokenClientID(claims map[string]string) string {
 	return ""
 }
 
-func envClientID(name string) string {
-	return strings.TrimSpace(os.Getenv(name))
-}
-
 // authorize returns nil when claims may call a route with this auth.
-func authorize(auth Auth, claims map[string]string) *Response {
+func authorize(auth Auth, clients ClientIDs, claims map[string]string) *Response {
 	if claims["sub"] == "" {
 		return JSON(http.StatusUnauthorized, map[string]any{
 			"error": "unauthorized", "message": "Missing JWT claims",
@@ -104,7 +118,7 @@ func authorize(auth Auth, claims map[string]string) *Response {
 	}
 	policy := authPolicies[auth]
 	clientID := TokenClientID(claims)
-	trusted := []string{envClientID(policy.clientIDEnv), envClientID(iosClientIDEnv)}
+	trusted := []string{policy.clientID(clients), clients.IOS}
 	if clientID != "" && slices.Contains(trusted, clientID) {
 		if slices.Contains(ClaimGroups(claims["cognito:groups"]), policy.group) {
 			return nil

@@ -17,6 +17,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
@@ -270,10 +271,6 @@ func MinRestoredCount(existedAtRestorePoint int) int {
 	return int(math.Ceil(float64(existedAtRestorePoint) * CountFloorFraction))
 }
 
-func isoMillis(t time.Time) string {
-	return t.UTC().Format("2006-01-02T15:04:05.000Z")
-}
-
 func countSourceRowsExistingAt(ctx context.Context, count CountFunc, sourceTable, entityType, cutoff string) (int, error) {
 	total := 0
 	var start StartKey
@@ -298,7 +295,7 @@ func countSourceRowsExistingAt(ctx context.Context, count CountFunc, sourceTable
 }
 
 func countFloorProblems(ctx context.Context, floor *CountFloor, restoredByType map[string]int) ([]string, error) {
-	cutoff := isoMillis(floor.RestorePoint.Add(-CountFloorSettle))
+	cutoff := jstime.ISO(floor.RestorePoint.Add(-CountFloorSettle))
 	var problems []string
 	for _, entityType := range contract.Data.RestoreTest.CountFloorEntityTypes {
 		existed, err := countSourceRowsExistingAt(ctx, floor.Count, floor.SourceTable, entityType, cutoff)

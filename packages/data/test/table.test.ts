@@ -3,6 +3,7 @@ import {
   APP_TABLE,
   LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
+  appTableCreateInput,
   appTableName,
   assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
@@ -10,11 +11,7 @@ import {
   tableIndexesFromDescribeTable,
   type TableIndexDefinition,
 } from '../src/table.js';
-import {
-  isPublishRelevant,
-  isPublishRelevantAdminMutation,
-  PUBLISH_STREAM_SK,
-} from '../src/publish-relevance.js';
+import { isPublishRelevantAdminMutation } from '../src/publish-relevance.js';
 
 const gsi4: TableIndexDefinition = {
   indexName: 'gsi4',
@@ -161,6 +158,44 @@ describe('gsiProjection', () => {
   });
 });
 
+describe('appTableCreateInput', () => {
+  it('projects every GSI as CDK does', () => {
+    const def = {
+      ...APP_TABLE,
+      globalSecondaryIndexes: [
+        ...APP_TABLE.globalSecondaryIndexes,
+        { ...gsi4, projectionType: 'KEYS_ONLY' as const },
+        {
+          ...gsi5,
+          projectionType: 'INCLUDE' as const,
+          nonKeyAttributes: ['title', 'updatedAt'],
+        },
+      ],
+    };
+    const input = appTableCreateInput('gagnechris-it-x', def);
+    expect(input.TableName).toBe('gagnechris-it-x');
+    expect(
+      input.GlobalSecondaryIndexes.map((g) => [g.IndexName, g.Projection]),
+    ).toEqual(
+      def.globalSecondaryIndexes.map((g) => [g.indexName, gsiProjection(g)]),
+    );
+    expect(input.GlobalSecondaryIndexes.at(-1)!.Projection).toEqual({
+      ProjectionType: 'INCLUDE',
+      NonKeyAttributes: ['title', 'updatedAt'],
+    });
+  });
+
+  it('round-trips through tableIndexesFromDescribeTable', () => {
+    const input = appTableCreateInput('gagnechris-local');
+    expect(
+      tableIndexesFromDescribeTable({
+        GlobalSecondaryIndexes: input.GlobalSecondaryIndexes,
+        AttributeDefinitions: input.AttributeDefinitions,
+      }),
+    ).toEqual(APP_TABLE.globalSecondaryIndexes);
+  });
+});
+
 describe('INCLUDE nonKeyAttributes changes', () => {
   const included: TableIndexDefinition = {
     ...gsi4,
@@ -280,15 +315,6 @@ describe('tableIndexesFromDescribeTable', () => {
     expect(() => assertAppTableGsiUpdateSafe(deployed)).toThrow(
       /at most one GSI create or delete/,
     );
-  });
-});
-
-describe('isPublishRelevant', () => {
-  it('matches the publisher stream sk filter', () => {
-    expect(PUBLISH_STREAM_SK).toBe('PUBLISHED');
-    expect(isPublishRelevant({ sk: { S: 'PUBLISHED' } })).toBe(true);
-    expect(isPublishRelevant({ sk: { S: 'META' } })).toBe(false);
-    expect(isPublishRelevant(undefined)).toBe(false);
   });
 });
 

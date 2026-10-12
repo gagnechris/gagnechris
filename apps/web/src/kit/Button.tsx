@@ -21,9 +21,9 @@ type ButtonAsLink = AnchorHTMLAttributes<HTMLAnchorElement> & {
 type Props = ButtonAsButton | ButtonAsLink;
 
 const variantClass: Record<Variant, string> = {
-  default: 'admin-btn',
-  primary: 'admin-btn admin-btn--primary',
-  danger: 'admin-btn admin-btn--danger',
+  default: 'kit-btn',
+  primary: 'kit-btn kit-btn--primary',
+  danger: 'kit-btn kit-btn--danger',
 };
 
 export function Button({

@@ -14,6 +14,16 @@
   box-sizing: border-box;
 }
 
+.markdown-editor:focus-within {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 1px var(--primary-500);
+}
+
+/* The frame shows focus; CodeMirror's own dotted outline would sit inside it. */
+.markdown-editor .cm-editor.cm-focused {
+  outline: none;
+}
+
 .markdown-editor > div {
   flex: 1;
   min-height: 0;
@@ -157,7 +167,7 @@
   flex: none;
 }
 
-label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
+label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   outline: 2px solid var(--primary-500);
   outline-offset: 1px;
 }
@@ -203,6 +213,33 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 
 .task-embed--failed .task-embed__title {
   color: var(--color-error);
+}
+
+.task-embed__title-input {
+  flex: 1 1 auto;
+  width: 0;
+  height: auto;
+  margin: 0 -0.25rem;
+  padding: 0.0625rem 0.25rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  resize: none;
+}
+
+@media (hover: hover) {
+  .task-embed__title-input:hover {
+    background: var(--neutral-50);
+  }
+}
+
+.task-embed__title-input:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 0;
 }
 
 .task-embed__pill {
@@ -315,6 +352,10 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
   .task-embed__check:focus-visible {
     outline: 2px solid var(--primary-600);
     outline-offset: -9px;
+  }
+
+  .task-embed__title-input {
+    font-size: max(16px, 1em);
   }
 }
 
@@ -505,7 +546,7 @@ label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
 }
 
 .markdown-single--reading .cm-live .cm-content {
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-4) var(--space-6);
 }
 
 .markdown-single--reading

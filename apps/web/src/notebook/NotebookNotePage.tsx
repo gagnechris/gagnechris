@@ -8,7 +8,7 @@ import {
   emptyNoteDraft,
   noteDraftFromNote,
   notePayloadFromDraft,
-} from './noteDraft';
+} from '@gagnechris/shared';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 import { noteHref } from './noteHref';
 
@@ -56,11 +56,11 @@ export default function NotebookNotePage() {
 
   if (loadError) {
     return (
-      <section className="admin-panel">
-        <p className="admin-panel__error" role="alert">
+      <section className="workspace-panel">
+        <p className="workspace-panel__error" role="alert">
           {loadError}
         </p>
-        <Link to="/notes" className="admin-back">
+        <Link to="/notes" className="workspace-back">
           ← Notes
         </Link>
       </section>
@@ -69,7 +69,7 @@ export default function NotebookNotePage() {
 
   if (isLoading || !entity) {
     return (
-      <section className="admin-panel">
+      <section className="workspace-panel">
         <p>Loading note…</p>
       </section>
     );
@@ -81,18 +81,18 @@ export default function NotebookNotePage() {
   }
 
   return (
-    <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
-        <div className="admin-action-bar__status">
-          <Link to="/notes" className="admin-back">
+    <section className="workspace-panel workspace-panel--editor">
+      <div className="workspace-action-bar">
+        <div className="workspace-action-bar__status">
+          <Link to="/notes" className="workspace-back">
             ← Notes
           </Link>
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
-        <div className="admin-toolbar">
+        <div className="workspace-toolbar">
           <button
             type="button"
-            className="admin-btn"
+            className="kit-btn"
             disabled={busy}
             onClick={() => void runDelete()}
           >
@@ -102,7 +102,7 @@ export default function NotebookNotePage() {
       </div>
 
       {saveError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {saveError}
         </p>
       ) : null}
@@ -110,7 +110,7 @@ export default function NotebookNotePage() {
       <h1 className="workspace-visually-hidden">
         {entity.title || 'Untitled page'}
       </h1>
-      <p className="admin-panel__lede">
+      <p className="workspace-panel__lede">
         {NOTEBOOK_AREA_LABELS[entity.area]} page
       </p>
 
@@ -132,7 +132,7 @@ export default function NotebookNotePage() {
         />
       </Field>
 
-      <label className="admin-check">
+      <label className="kit-check">
         <input
           type="checkbox"
           checked={draft.pinned}

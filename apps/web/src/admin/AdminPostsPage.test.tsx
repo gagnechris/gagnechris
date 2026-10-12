@@ -245,7 +245,7 @@ describe('AdminPostsPage', () => {
     expect(await screen.findByText('Untitled')).toBeInTheDocument();
     const titles = screen
       .getAllByRole('link')
-      .map((a) => a.querySelector('.admin-table__title')?.textContent);
+      .map((a) => a.querySelector('.kit-table__title')?.textContent);
     expect(titles).toEqual(['Untitled', 'Hello']);
   });
 

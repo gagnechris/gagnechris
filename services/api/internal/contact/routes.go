@@ -6,27 +6,50 @@ package contact
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
+// Config is where mail goes and the domain its subjects name.
+type Config struct {
+	FromEmail  string
+	ToEmail    string
+	ApexDomain string
+}
+
+// WithDefaults fills an unset domain with the site's and, when local, unset
+// addresses with local ones.
+func (c Config) WithDefaults(local bool) Config {
+	if local && c.FromEmail == "" {
+		c.FromEmail = "local-from@gagnechris.com"
+	}
+	if local && c.ToEmail == "" {
+		c.ToEmail = "local-to@gagnechris.com"
+	}
+	if c.ApexDomain == "" {
+		c.ApexDomain = contract.Data.API.ApexDomain
+	}
+	return c
+}
+
 type Deps struct {
-	Table *data.Table
-	Mail  Mailer
-	Now   func() time.Time
+	Table  *data.Table
+	Mail   Mailer
+	Config Config
+	Now    func() time.Time
 }
 
 func Routes(d Deps) []api.Route {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
-	h := handlers{store: store{table: d.Table, now: d.Now}, mail: d.Mail, now: d.Now}
+	h := handlers{store: store{table: d.Table, now: d.Now}, mail: d.Mail, cfg: d.Config, now: d.Now}
 	return []api.Route{
 		{Method: http.MethodPost, Pattern: "/contact", Auth: api.Public, Metric: "ContactSubmit", Handler: h.contact},
 		{Method: http.MethodPost, Pattern: "/resume/download", Auth: api.Public, Metric: "ResumeDownloadNotify", Handler: h.resumeDownload},
@@ -46,23 +69,25 @@ type backend interface {
 type handlers struct {
 	store backend
 	mail  Mailer
+	cfg   Config
 	now   func() time.Time
 }
 
-var okBody = map[string]bool{"ok": true}
+func (h handlers) send(ctx context.Context, m Mail) error {
+	m.From, m.To = h.cfg.FromEmail, h.cfg.ToEmail
+	return h.mail.Send(ctx, m)
+}
+
+var (
+	okBody = map[string]bool{"ok": true}
+	limits = contract.Data.Limits
+)
 
 func sourceIP(r *api.Request) string {
 	if ip := api.TrimJS(r.SourceIP); ip != "" {
 		return ip
 	}
 	return "unknown"
-}
-
-func apexDomain() string {
-	if apex := strings.TrimSpace(os.Getenv("SITE_APEX_DOMAIN")); apex != "" {
-		return apex
-	}
-	return contract.Data.API.ApexDomain
 }
 
 type contactForm struct {
@@ -78,12 +103,12 @@ func parseContactForm(body []byte) (contactForm, error) {
 		return contactForm{}, err
 	}
 	var f contactForm
-	f.name, _ = v.String("name", true, true, api.MinLen(1), api.MaxLen(200))
-	f.email, _ = v.String("email", true, true, api.Email, api.MaxLen(320))
-	f.message, _ = v.String("message", true, true, api.MinLen(1), api.MaxLen(10_000))
+	f.name, _ = v.String("name", true, true, api.MinLen(1), api.MaxLen(limits.ContactNameMaxLength))
+	f.email, _ = v.String("email", true, true, api.Email, api.MaxLen(limits.ContactEmailMaxLength))
+	f.message, _ = v.String("message", true, true, api.MinLen(1), api.MaxLen(limits.ContactMessageMaxLength))
 	// Honeypots: `website` is still accepted so old bots keep tripping it.
-	hp, _ := v.String("hp_field", false, false, api.MaxLen(200))
-	website, _ := v.String("website", false, false, api.MaxLen(200))
+	hp, _ := v.String("hp_field", false, false, api.MaxLen(limits.ContactHoneypotMaxLength))
+	website, _ := v.String("website", false, false, api.MaxLen(limits.ContactHoneypotMaxLength))
 	f.honeypot = api.TrimJS(hp) != "" || api.TrimJS(website) != ""
 	if n, ok := v.Int("elapsedMs", false, api.NonNegative); ok {
 		f.elapsedMs = &n
@@ -135,13 +160,13 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 		return nil, err
 	} else if !ok {
 		r.Log.Warn("Daily email cap reached; contact message saved but not mailed", "contactId", contactID)
-		r.Metrics.Add("SesCapReached", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.SESCapReached, observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", errSESDailyLimit)
 		return nil, &api.RateLimitedError{Message: errSESDailyLimit}
 	}
 
-	err = h.mail.Send(ctx, Mail{
-		Subject: "[" + apexDomain() + "] Contact from " + form.name,
+	err = h.send(ctx, Mail{
+		Subject: "[" + h.cfg.ApexDomain + "] Contact from " + form.name,
 		ReplyTo: form.email,
 		Text: strings.Join([]string{
 			"Name: " + form.name,
@@ -153,7 +178,7 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 	})
 	if err != nil {
 		r.Log.Error("Contact email failed", "contactId", contactID, "errMessage", err.Error())
-		r.Metrics.Add("ContactEmailFailed", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.ContactEmailFailed, observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", err.Error())
 		return api.JSON(http.StatusBadGateway, map[string]string{
 			"error":   "email_failed",
@@ -170,7 +195,7 @@ func (h handlers) tryUpdateEmailStatus(ctx context.Context, r *api.Request, cont
 	if err := h.store.updateEmailStatus(ctx, contactID, status, emailError); err != nil {
 		r.Log.Warn("Contact emailStatus update failed",
 			"contactId", contactID, "status", status, "errMessage", err.Error())
-		r.Metrics.Add("ContactEmailStatusUpdateFailed", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.ContactEmailStatusUpdateFailed, observability.Count, 1)
 	}
 }
 
@@ -179,7 +204,7 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 	if err != nil {
 		return nil, err
 	}
-	referrer, _ := v.String("referrer", false, false, api.MaxLen(500))
+	referrer, _ := v.String("referrer", false, false, api.MaxLen(limits.ResumeReferrerMaxLength))
 	if err := v.Err(); err != nil {
 		return nil, err
 	}
@@ -207,11 +232,11 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 		ua = "(none)"
 	}
 	// Best effort: the download already happened in the browser.
-	err = h.mail.Send(ctx, Mail{
-		Subject: "[" + apexDomain() + "] Resume downloaded",
+	err = h.send(ctx, Mail{
+		Subject: "[" + h.cfg.ApexDomain + "] Resume downloaded",
 		Text: strings.Join([]string{
 			"A visitor downloaded the resume PDF.",
-			"Time: " + h.now().UTC().Format(isoMillis),
+			"Time: " + jstime.ISO(h.now()),
 			"Referrer: " + referrer,
 			"User-Agent: " + ua,
 		}, "\n"),

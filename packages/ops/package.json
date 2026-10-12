@@ -17,6 +17,10 @@
     "./task-start-date-migration": {
       "types": "./src/task-start-date-migration.ts",
       "import": "./src/task-start-date-migration.ts"
+    },
+    "./tag-row-cleanup": {
+      "types": "./src/tag-row-cleanup.ts",
+      "import": "./src/tag-row-cleanup.ts"
     }
   },
   "scripts": {

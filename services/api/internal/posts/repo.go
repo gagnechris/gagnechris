@@ -12,14 +12,16 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
+var pageSize = contract.Data.Limits.PostsPageSize
+
 const (
-	gsi1Name = "gsi1"
-	pageSize = 50
 	// A search keeps few rows per read, so it reads full pages instead of
 	// what is left of the page.
 	searchReadPage = 200
@@ -50,58 +52,8 @@ func newRepo(table *data.Table, now func() time.Time) *repo {
 		Slug:           func(p Post) string { return p.Slug },
 		SlugClaims:     slugClaims,
 		PublishedIDSet: "postIds",
-		ExtraItems: func(_, after Post, opts store.PersistOptions[Post]) []types.TransactWriteItem {
-			return tagSyncItems(table.Name, after, opts)
-		},
 	}, table, now)
 	return r
-}
-
-// tagSyncItems keep the tag index rows mirroring the PUBLISHED post, so
-// they change only when it is written or deleted, never on a draft edit.
-func tagSyncItems(tableName string, after Post, opts store.PersistOptions[Post]) []types.TransactWriteItem {
-	if !opts.SyncPublished && !opts.DeletePublished {
-		return nil
-	}
-	var beforeTags []string
-	var beforePublishedAt *string
-	if prev := opts.PreviousPublished; prev != nil {
-		beforeTags, beforePublishedAt = prev.Tags, prev.PublishedAt
-	}
-	var afterTags []string
-	var afterPublishedAt *string
-	if opts.SyncPublished && after.Status == store.StatusPublished {
-		afterTags, afterPublishedAt = after.Tags, after.PublishedAt
-	}
-	samePublishedAt := beforePublishedAt != nil && afterPublishedAt != nil && *beforePublishedAt == *afterPublishedAt
-
-	var items []types.TransactWriteItem
-	if beforePublishedAt != nil {
-		for _, tag := range beforeTags {
-			if opts.SyncPublished && slices.Contains(afterTags, tag) && samePublishedAt {
-				continue
-			}
-			items = append(items, types.TransactWriteItem{Delete: &types.Delete{
-				TableName: aws.String(tableName),
-				Key:       data.Key(keys.TagPk(tag), keys.TagSk(*beforePublishedAt, after.ID)),
-			}})
-		}
-	}
-	if afterPublishedAt != nil {
-		for _, tag := range afterTags {
-			if slices.Contains(beforeTags, tag) && samePublishedAt {
-				continue
-			}
-			item := data.Key(keys.TagPk(tag), keys.TagSk(*afterPublishedAt, after.ID))
-			item["gsi2pk"] = data.S(keys.TagPk(tag))
-			item["gsi2sk"] = data.S(keys.TagSk(*afterPublishedAt, after.ID))
-			item["entityType"] = data.S("tagIndex")
-			item["postId"] = data.S(after.ID)
-			item["slug"] = data.S(after.Slug)
-			items = append(items, types.TransactWriteItem{Put: &types.Put{TableName: aws.String(tableName), Item: item}})
-		}
-	}
-	return items
 }
 
 // list is grouped by status, newest first within each.
@@ -115,7 +67,7 @@ func (r *repo) list(ctx context.Context, status, cursor string, limit int, q str
 		pk := keys.StatusGSI1Pk(partition)
 		query := store.PageQuery{
 			Input: dynamodb.QueryInput{
-				IndexName:                 aws.String(gsi1Name),
+				IndexName:                 aws.String(keys.GSI1),
 				KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 				ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 				ScanIndexForward:          aws.Bool(false),
@@ -184,7 +136,7 @@ func (r *repo) counts(ctx context.Context) (counts, error) {
 func (r *repo) countStatus(ctx context.Context, status string) (int, error) {
 	pages := dynamodb.NewQueryPaginator(r.table.DB, &dynamodb.QueryInput{
 		TableName:                 aws.String(r.table.Name),
-		IndexName:                 aws.String(gsi1Name),
+		IndexName:                 aws.String(keys.GSI1),
 		KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(keys.StatusGSI1Pk(status))},
 		Select:                    types.SelectCount,
@@ -229,7 +181,7 @@ func (r *repo) create(ctx context.Context, in createInput) (Post, error) {
 		Seo:          in.seo,
 		Publishable: store.Publishable{
 			Status:    store.StatusDraft,
-			UpdatedAt: store.ISOTime(r.now()),
+			UpdatedAt: jstime.ISO(r.now()),
 			Version:   1,
 		},
 	})

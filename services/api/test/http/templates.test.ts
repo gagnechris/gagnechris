@@ -5,7 +5,7 @@ import {
   DAILY_TEMPLATE_MAX_BYTES,
   DEFAULT_DAILY_TEMPLATES,
 } from '@gagnechris/shared';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-templates-http';
@@ -15,23 +15,7 @@ const PERSONAL = '/api/notebook/templates/daily/personal';
 const ISO = expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
 
 const h = useApi('templates-http');
-
-async function call(
-  method: string,
-  path: string,
-  opts: { body?: unknown; ifMatch?: string; user?: string } = {},
-) {
-  const res = await h.api.request(method, path, {
-    body: opts.body,
-    headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
-    claims: notebookUser(opts.user ?? USER),
-  });
-  return {
-    status: res.status,
-    etag: res.headers.get('etag') ?? undefined,
-    body: res.body,
-  };
-}
+const { call } = apiCalls(h, { user: USER });
 
 describe('daily templates over HTTP (DynamoDB Local)', () => {
   it('serves the built-in template until one is saved, storing nothing', async () => {

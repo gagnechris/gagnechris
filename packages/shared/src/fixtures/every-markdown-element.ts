@@ -17,7 +17,7 @@ export const EVERY_MARKDOWN_ELEMENT = `A paragraph with **bold**, *italic*, ~~st
 ### A third-level heading
 
 \`\`\`ts
-export const readingMinutes = (markdown: string): number => Math.max(1, Math.round(countWords(markdown) / 230));
+export const averageOf = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0) / Math.max(1, values.length);
 \`\`\`
 
 ![A view of the site](https://gagnechris.com/og-image.jpg "A caption under the image")
@@ -257,7 +257,7 @@ export const EVERY_MARKDOWN_ELEMENT_TREE: MarkdownTreeNode[] = [
       lang: 'ts',
     },
     children: [
-      'export const readingMinutes = (markdown: string): number => Math.max(1, Math.round(countWords(markdown) / 230));',
+      'export const averageOf = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0) / Math.max(1, values.length);',
     ],
   },
   {

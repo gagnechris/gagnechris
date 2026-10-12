@@ -1,18 +1,20 @@
 import { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ACCESS_LEVEL_LABELS, type ManagedUser } from '@gagnechris/shared';
+import {
+  ACCESS_LEVEL_LABELS,
+  displayName,
+  type ManagedUser,
+} from '@gagnechris/shared';
 import { BottomSheet } from '../../kit/BottomSheet';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { UserAvatar } from './UserAvatar';
-import { useModal } from './useModal';
+import { UsersOverlay } from './UsersOverlay';
 import { useUserChange } from './useUserChange';
 import {
   accessChange,
   changeToast,
   type UserChange,
-  displayName,
   formatAdded,
   userErrorMessage,
 } from '@gagnechris/app-core';
@@ -32,9 +34,8 @@ export default function EditUserDrawer({
   onClose,
   onToast,
 }: Props) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const phone = useMediaQuery(PHONE_QUERY);
-  useModal(panelRef, onClose);
   const { perform, isPending: busy } = useUserChange();
   const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState(user.level);
@@ -171,7 +172,7 @@ export default function EditUserDrawer({
         </p>
       ) : null}
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
@@ -252,40 +253,29 @@ export default function EditUserDrawer({
     );
   }
 
-  return createPortal(
-    <div className="users-overlay users-overlay--drawer">
-      <button
-        type="button"
-        className="users-scrim"
-        aria-label="Close"
-        tabIndex={-1}
-        onClick={onClose}
-      />
-      <div
-        ref={panelRef}
-        className="users-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Edit access for ${name}`}
-      >
-        {content}
-        <div className="users-drawer__foot">
-          <button type="button" className="users-btn" onClick={onClose}>
-            Cancel
+  return (
+    <UsersOverlay
+      kind="drawer"
+      label={`Edit access for ${name}`}
+      onClose={onClose}
+      panelRef={panelRef}
+    >
+      {content}
+      <div className="users-drawer__foot">
+        <button type="button" className="users-btn" onClick={onClose}>
+          Cancel
+        </button>
+        {removed ? null : (
+          <button
+            type="button"
+            className="users-btn users-btn--primary"
+            disabled={!changed || busy || confirming}
+            onClick={() => void save()}
+          >
+            {busy ? 'Saving…' : 'Save access'}
           </button>
-          {removed ? null : (
-            <button
-              type="button"
-              className="users-btn users-btn--primary"
-              disabled={!changed || busy || confirming}
-              onClick={() => void save()}
-            >
-              {busy ? 'Saving…' : 'Save access'}
-            </button>
-          )}
-        </div>
+        )}
       </div>
-    </div>,
-    document.body,
+    </UsersOverlay>
   );
 }

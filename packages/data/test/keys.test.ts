@@ -3,24 +3,15 @@ import {
   API_LAMBDA_TIMEOUT_MS,
   keys,
   noteDateGsi1Sk,
-  noteGsi1SkRanges,
-  notePageGsi1Sk,
   noteTasksGsi2Pk,
   notebookAreaGsi1Pk,
   taskAreaStatusGsi1Pk,
   taskDueGsi1Sk,
-  taskSomedayGsi1Sk,
-  taskStartGsi1Sk,
   taskUpdatedGsi1Sk,
-  parsePostMetaItem,
   postPk,
   SK_META,
   SK_PUBLISHED,
-  slugify,
-  taskGsi1SkRanges,
-  type SortKeyRange,
   statusGsi1Pk,
-  syncCreateClaimPk,
   syncSk,
   SYNC_CREATE_CLAIM_TTL_DAYS,
   SYNC_OVERLAP_MS,
@@ -28,7 +19,8 @@ import {
   SYNC_TOMBSTONE_TTL_DAYS,
   syncResyncHorizonIso,
   ttlDaysFromNow,
-} from '../src/index.js';
+} from '../src/keys.js';
+import { parsePostMetaItem } from '../src/items.js';
 
 describe('@gagnechris/data keys', () => {
   it('builds typed post keys without callers hard-coding prefixes', () => {
@@ -48,17 +40,11 @@ describe('@gagnechris/data keys', () => {
     expect(statusGsi1Pk('published')).toBe('STATUS#published');
   });
 
-  it('slugify matches shared NFKD rules with untitled fallback', () => {
-    expect(slugify('Hello World!')).toBe('hello-world');
-    expect(slugify('  Café  ')).toBe('cafe');
-    expect(slugify('  ')).toBe('untitled');
-  });
-
   it('parsePostMetaItem rejects invalid items', () => {
     expect(() => parsePostMetaItem({ entityType: 'post' })).toThrow();
   });
 
-  it('builds sync GSI and create-claim keys', () => {
+  it('builds sync GSI keys from normalized timestamps', () => {
     expect(syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1')).toBe(
       '2026-09-28T12:00:00.000Z#NOTE#n1',
     );
@@ -68,13 +54,6 @@ describe('@gagnechris/data keys', () => {
     expect(syncSk('2026-09-28T17:00:00.000+05:00', 'note', 'n1')).toBe(
       syncSk('2026-09-28T12:00:00.000Z', 'note', 'n1'),
     );
-    expect(syncCreateClaimPk('fakeNote', '01ABC')).toBe(
-      'CREATED#FAKENOTE#01ABC',
-    );
-    expect(keys.sync.createClaim('fakeNote', '01ABC')).toEqual({
-      pk: 'CREATED#FAKENOTE#01ABC',
-      sk: SK_META,
-    });
   });
 
   it('builds owner-scoped Notebook keys', () => {
@@ -133,81 +112,6 @@ describe('@gagnechris/data keys', () => {
     expect(ttl).toBe(
       Math.floor(at.getTime() / 1000) + SYNC_TOMBSTONE_TTL_DAYS * 86_400,
     );
-  });
-});
-
-describe('task start-date GSI1 ranges', () => {
-  const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
-  const day = '2026-10-14';
-  const sks = {
-    startBefore: taskStartGsi1Sk('2026-10-13', id),
-    startOn: taskStartGsi1Sk(day, id),
-    startAfter: taskStartGsi1Sk('2026-10-15', id),
-    legacyBefore: taskDueGsi1Sk('2026-10-13', id),
-    legacyOn: taskDueGsi1Sk(day, id),
-    legacyAfter: taskDueGsi1Sk('2026-10-15', id),
-    now: taskUpdatedGsi1Sk('2026-10-20T00:00:00.000Z', id),
-    someday: taskSomedayGsi1Sk('2026-10-01T00:00:00.000Z', id),
-  };
-  const hits = (ranges: SortKeyRange[]) =>
-    Object.entries(sks)
-      .filter(([, sk]) => ranges.some((r) => sk >= r.from && sk <= r.to))
-      .map(([name]) => name)
-      .sort();
-
-  it('covers each view exactly and never reads rows keyed by dueDate', () => {
-    expect(hits(taskGsi1SkRanges.showsOn(day))).toEqual(
-      ['now', 'startBefore', 'startOn'].sort(),
-    );
-    expect(hits(taskGsi1SkRanges.startsBetween(day))).toEqual(['startAfter']);
-    expect(hits(taskGsi1SkRanges.startsBetween(undefined, day))).toEqual([
-      'startBefore',
-    ]);
-    expect(
-      hits(taskGsi1SkRanges.startsBetween('2026-10-12', '2026-10-15')),
-    ).toEqual(['startBefore', 'startOn']);
-    expect(hits(taskGsi1SkRanges.startOn(day))).toEqual(['startOn']);
-    expect(hits(taskGsi1SkRanges.someday())).toEqual(['someday']);
-  });
-});
-
-describe('note GSI1 ranges', () => {
-  const id = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
-  const sks = {
-    before: noteDateGsi1Sk('2026-10-13', id),
-    first: noteDateGsi1Sk('2026-10-14', id),
-    last: noteDateGsi1Sk('2026-10-16', id),
-    after: noteDateGsi1Sk('2026-10-17', id),
-    page: notePageGsi1Sk('2026-10-15T00:00:00.000Z', id),
-  };
-  const hits = ({ from, to }: SortKeyRange) =>
-    Object.entries(sks)
-      .filter(([, sk]) => sk >= from && sk <= to)
-      .map(([name]) => name);
-
-  it('date ranges are inclusive at both ends and never hold pages', () => {
-    expect(hits(noteGsi1SkRanges.dates('2026-10-14', '2026-10-16'))).toEqual([
-      'first',
-      'last',
-    ]);
-    expect(hits(noteGsi1SkRanges.dates(undefined, '2026-10-14'))).toEqual([
-      'before',
-      'first',
-    ]);
-    expect(hits(noteGsi1SkRanges.dates('2026-10-16'))).toEqual([
-      'last',
-      'after',
-    ]);
-  });
-
-  it('daily and page ranges split the partition', () => {
-    expect(hits(noteGsi1SkRanges.daily())).toEqual([
-      'before',
-      'first',
-      'last',
-      'after',
-    ]);
-    expect(hits(noteGsi1SkRanges.pages())).toEqual(['page']);
   });
 });
 

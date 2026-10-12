@@ -1,7 +1,7 @@
+import type { Note } from '@gagnechris/app-core';
 import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import type { Note } from '@gagnechris/shared';
 import { QueryClientTestProvider } from '../test-utils';
 import { TaskMentions } from './TaskMentions';
 

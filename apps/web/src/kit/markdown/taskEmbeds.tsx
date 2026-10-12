@@ -223,7 +223,8 @@ class TaskEmbedWidget extends WidgetType {
     this.host.detach(dom);
   }
 
-  // The row's checkbox and link handle their own clicks.
+  // The row's checkbox, title field and link handle their own events; keys,
+  // paste and selection in the field must not edit the note.
   ignoreEvent() {
     return true;
   }
@@ -327,6 +328,46 @@ export function taskEmbedEditor({
 }
 
 /**
+ * Moves the caret out of an embed row back into the note: onto the blank line
+ * below it (adding one unless the next line is already blank), or to the end
+ * of the embed's own line.
+ */
+export function leaveTaskEmbed(
+  view: EditorView,
+  widget: HTMLElement,
+  below: boolean,
+) {
+  const at = view.posAtDOM(widget);
+  // Focus first: on focus the editor reads the DOM selection, which is still
+  // wherever it was before the field took focus.
+  view.focus();
+  const { doc } = view.state;
+  const line = doc.lineAt(at);
+  if (!below) {
+    view.dispatch({ selection: { anchor: line.to } });
+  } else if (
+    line.number < doc.lines &&
+    !doc.line(line.number + 1).text.trim()
+  ) {
+    const next = doc.line(line.number + 1);
+    view.dispatch({ selection: { anchor: next.to }, scrollIntoView: true });
+  } else {
+    view.dispatch({
+      changes: { from: line.to, insert: '\n' },
+      selection: { anchor: line.to + 1 },
+      scrollIntoView: true,
+      userEvent: 'input',
+    });
+  }
+}
+
+const leaveFrom = (el: HTMLElement) => (below: boolean) => {
+  const editor = el.closest<HTMLElement>('.cm-editor');
+  const view = editor && EditorView.findFromDOM(editor);
+  if (view) leaveTaskEmbed(view, el, below);
+};
+
+/**
  * Embed rows render as React portals into CodeMirror widgets, so they share
  * the page's router and data context.
  */
@@ -336,7 +377,7 @@ export function useTaskEmbedEditor({
   newId,
 }: {
   onCreate: (create: TaskEmbedCreate) => void;
-  renderEmbed: (id: string) => ReactNode;
+  renderEmbed: (id: string, leave: (below: boolean) => void) => ReactNode;
   newId?: () => string;
 }) {
   // `seq` keys each mount, so a widget rebuilt for the same id remounts its row.
@@ -378,7 +419,9 @@ export function useTaskEmbedEditor({
   const portals = (
     <>
       {[...mounts.byEl].map(([el, { id, key }]) => (
-        <Fragment key={key}>{createPortal(renderEmbed(id), el)}</Fragment>
+        <Fragment key={key}>
+          {createPortal(renderEmbed(id, leaveFrom(el)), el)}
+        </Fragment>
       ))}
     </>
   );

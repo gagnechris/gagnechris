@@ -33,13 +33,13 @@ export function TaskMentions({ taskId, homeNoteId }: Props) {
     <section className="notebook-mentions" aria-labelledby="task-mentions">
       <h2 id="task-mentions">Mentioned in</h2>
       {notesQuery.isError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Could not load notes.
         </p>
       ) : loading ? (
-        <p className="admin-hint">Loading notes…</p>
+        <p className="kit-hint">Loading notes…</p>
       ) : mentions.length === 0 ? (
-        <p className="admin-hint">No note embeds this task yet.</p>
+        <p className="kit-hint">No note embeds this task yet.</p>
       ) : (
         <ul className="notebook-mentions__list">
           {mentions.map(({ note, context, home }) => (
@@ -47,7 +47,7 @@ export function TaskMentions({ taskId, homeNoteId }: Props) {
               <Link to={noteHref(note)} className="notebook-mentions__row">
                 <span className="notebook-mentions__title">
                   {noteTitle(note)}
-                  {home ? <span className="admin-badge">home</span> : null}
+                  {home ? <span className="kit-badge">home</span> : null}
                 </span>
                 {/* A daily note's title is already its date. */}
                 {note.type === 'page' ? (

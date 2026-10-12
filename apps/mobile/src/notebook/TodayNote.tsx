@@ -7,27 +7,28 @@ import {
   type NotebookArea,
 } from '@gagnechris/app-core';
 import {
+  emptyNoteDraft,
   NOTEBOOK_AREA_LABELS,
+  noteDraftFromNote,
+  notePayloadFromDraft,
   taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState, type RefObject } from 'react';
+import { useEffect, useMemo, type RefObject } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { EditorOfflineNotice, nativeRetrySignals, useIsOnline } from '../net';
+import { nativeRetrySignals } from '../net';
 import { color, font } from '../theme';
 import { Button } from '../ui/Button';
 import { nativeConfirm } from '../ui/confirm';
-import { ConflictPanel } from './ConflictPanel';
-import { NoteBodyEditor } from './NoteBodyEditor';
 import {
-  emptyNoteDraft,
-  noteDraftFromNote,
-  notePayloadFromDraft,
-} from './noteDraft';
-import { saveLabel } from './saveLabel';
-import { useSaveOnBackground } from './useSaveOnBackground';
+  EditorError,
+  EditorNotices,
+  RemountOnResolve,
+  useDetailEditor,
+} from './DetailEditorShell';
+import { NoteBodyEditor } from './NoteBodyEditor';
 
 const DAILY_TAKEN_MESSAGE =
   'Another device started this daily note first. What you typed is still here.';
@@ -50,17 +51,11 @@ type Props = {
 };
 
 /** A day's note in the note editor; written on first edit, as on web. */
-export const TodayNote = (props: Props) => {
-  // Remounted after a conflict is settled, so the editor takes the result.
-  const [epoch, setEpoch] = useState(0);
-  return (
-    <DailyNoteEditor
-      key={`${props.area}:${props.date}:${epoch}`}
-      {...props}
-      onReload={() => setEpoch((n) => n + 1)}
-    />
-  );
-};
+export const TodayNote = (props: Props) => (
+  <RemountOnResolve resetKey={`${props.area}:${props.date}`}>
+    {(onReload) => <DailyNoteEditor {...props} onReload={onReload} />}
+  </RemountOnResolve>
+);
 
 const DailyNoteEditor = ({
   area,
@@ -71,7 +66,6 @@ const DailyNoteEditor = ({
   onOpenTask,
   onReload,
 }: Props & { onReload: () => void }) => {
-  const online = useIsOnline();
   const router = useRouter();
   const editor = useVersionedDocEditor({
     resource: dailyNoteResource,
@@ -92,7 +86,11 @@ const DailyNoteEditor = ({
   });
   const { draft, updateDraft, entity, dirty, saveState, save, saveError } =
     editor;
-  useSaveOnBackground(dirty, save);
+  const { saveLabel, conflict } = useDetailEditor({
+    editor,
+    conflictId: entity?.id ?? '',
+    onReload,
+  });
 
   const ready = !editor.loadError && !editor.isLoading && Boolean(entity);
   const body = draft.bodyMarkdown;
@@ -123,13 +121,7 @@ const DailyNoteEditor = ({
     ensureNoteSaved: save,
   });
 
-  if (editor.loadError) {
-    return (
-      <Text style={styles.error} accessibilityRole="alert">
-        {editor.loadError}
-      </Text>
-    );
-  }
+  if (editor.loadError) return <EditorError message={editor.loadError} />;
   if (!ready) return <Text style={styles.status}>Loading daily note…</Text>;
 
   return (
@@ -137,19 +129,11 @@ const DailyNoteEditor = ({
       <Text
         style={styles.saveState}
         accessibilityLiveRegion="polite"
-        accessibilityLabel={`Daily note: ${saveLabel(saveState, dirty, !online)}`}
+        accessibilityLabel={`Daily note: ${saveLabel}`}
       >
-        {entity!.version === 0 && !dirty
-          ? 'New'
-          : saveLabel(saveState, dirty, !online)}
+        {entity!.version === 0 && !dirty ? 'New' : saveLabel}
       </Text>
-      <ConflictPanel entityId={entity!.id} onResolved={onReload} />
-      {saveError ? (
-        <Text style={styles.error} accessibilityRole="alert">
-          {saveError}
-        </Text>
-      ) : null}
-      <EditorOfflineNotice dirty={dirty} />
+      <EditorNotices conflict={conflict} saveError={saveError} dirty={dirty} />
       {isTemplateStartedDaily(entity!) && !dirty && saveState !== 'saving' ? (
         <View style={styles.template} accessibilityRole="summary">
           <Text style={styles.templateText}>
@@ -210,7 +194,6 @@ const styles = StyleSheet.create({
     color: color.accentInk,
   },
   templateActions: { flexDirection: 'row', gap: tokens.space[2] },
-  error: { ...font.medium, fontSize: tokens.text.base, color: color.alert },
   status: {
     ...font.regular,
     fontSize: tokens.text.base,

@@ -38,6 +38,8 @@ export function expectAccessible(renderer: ReactTestRenderer) {
   for (const pressable of hosts(renderer, 'Pressable')) {
     if (pressable.props.disabled && !pressable.props.accessibilityRole)
       continue;
+    // A touch area around a field VoiceOver reaches on its own.
+    if (pressable.props.accessible === false) continue;
     const name = String(pressable.props.accessibilityLabel);
     expect(pressable.props.accessibilityLabel, 'labelled control').toEqual(
       expect.any(String),

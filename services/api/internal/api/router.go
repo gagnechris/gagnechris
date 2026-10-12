@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
@@ -71,19 +72,20 @@ func (r Route) metricName() string {
 var nonAlphanumeric = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
 type Router struct {
-	routes []Route
+	routes  []Route
+	clients ClientIDs
 }
 
 // NewRouter panics on a route whose auth doesn't match the API Gateway
 // prefix it lives under: a public route under /admin would get no claims,
 // and a protected one elsewhere would trust whatever claims it is sent.
-func NewRouter(routes []Route) *Router {
+func NewRouter(routes []Route, clients ClientIDs) *Router {
 	for _, r := range routes {
 		if want := RequiredAuth(r.Pattern); r.Auth != want {
-			panic("api: " + r.Method + " " + r.Pattern + " must declare auth " + string(want))
+			panic("api: " + r.Method + " " + r.Pattern + " must declare auth " + want.String())
 		}
 	}
-	return &Router{routes: routes}
+	return &Router{routes: routes, clients: clients}
 }
 
 var errMalformedPath = BadRequest("Malformed path encoding", nil)
@@ -234,14 +236,14 @@ func (rt *Router) dispatchMatched(ctx context.Context, req *Request, rawPath str
 		return mapError(err, req.Log, req.Metrics), false, nil
 	}
 	if len(matches) == 0 {
-		req.Metrics.Add("NotFound", observability.Count, 1)
+		req.Metrics.Add(contract.Data.API.Metrics.NotFound, observability.Count, 1)
 		return errorJSON(http.StatusNotFound, "not_found",
 			"No route for "+req.Method+" "+normalizePath(rawPath)), false, nil
 	}
 
 	m, ok := rt.match(req.Method, req.Path)
 	if !ok {
-		req.Metrics.Add("MethodNotAllowed", observability.Count, 1)
+		req.Metrics.Add(contract.Data.API.Metrics.MethodNotAllowed, observability.Count, 1)
 		var allowed []string
 		for _, pm := range matches {
 			allowed = append(allowed, pm.route.Method)
@@ -258,7 +260,7 @@ func (rt *Router) dispatchMatched(ctx context.Context, req *Request, rawPath str
 	public = m.route.Auth == Public
 	req.Metrics.Add(m.route.metricName(), observability.Count, 1)
 	if m.route.Auth != Public {
-		if denied := authorize(m.route.Auth, req.Claims); denied != nil {
+		if denied := authorize(m.route.Auth, rt.clients, req.Claims); denied != nil {
 			return denied, false, nil
 		}
 	} else {

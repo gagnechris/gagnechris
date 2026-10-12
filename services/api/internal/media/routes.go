@@ -1,6 +1,6 @@
 // Package media serves admin image uploads: a presigned S3 PUT under
-// media/, or, with SITE_STORAGE=filesystem, a PUT to this API that writes
-// into the local site root.
+// media/, or, with filesystem storage, a PUT to this API that writes into
+// the local site root.
 package media
 
 import (
@@ -23,14 +23,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
-	"github.com/gagnechris/gagnechris/services/api/internal/store"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 )
 
-const (
-	uploadTTL = 15 * time.Minute
-	// maxBytes is enforced by the signed Content-Length.
-	maxBytes = 10 * 1024 * 1024
-)
+const uploadTTL = 15 * time.Minute
+
+var limits = contract.Data.Limits
 
 var extByType = map[string]string{
 	"image/jpeg": "jpg",
@@ -39,15 +38,19 @@ var extByType = map[string]string{
 	"image/gif":  "gif",
 }
 
-var contentTypes = []string{"image/jpeg", "image/png", "image/webp", "image/gif"}
+type Config struct {
+	// Bucket is the site bucket, or with Filesystem the local site root.
+	Bucket     string
+	Filesystem bool
+	// LocalOrigin is where, with Filesystem, the browser PUTs uploads.
+	LocalOrigin string
+}
 
-// Routes take a nil presigner outside Lambda, where only filesystem
-// storage is served.
-func Routes(presign *s3.PresignClient, now func() time.Time) []api.Route {
+func Routes(presign *s3.PresignClient, cfg Config, now func() time.Time) []api.Route {
 	if now == nil {
 		now = time.Now
 	}
-	h := handlers{presign: presign, now: now}
+	h := handlers{presign: presign, cfg: cfg, now: now}
 	return []api.Route{
 		{Method: http.MethodPost, Pattern: "/admin/media/upload-url", Auth: api.SiteAdmin, Metric: "MediaUploadUrl", Handler: h.uploadURL},
 		{Method: http.MethodPut, Pattern: "/admin/media/objects/:key+", Auth: api.SiteAdmin, Metric: "MediaPutObject", Handler: h.putObject},
@@ -56,17 +59,8 @@ func Routes(presign *s3.PresignClient, now func() time.Time) []api.Route {
 
 type handlers struct {
 	presign *s3.PresignClient
+	cfg     Config
 	now     func() time.Time
-}
-
-func filesystemStorage() bool { return os.Getenv("SITE_STORAGE") == "filesystem" }
-
-func siteBucketName() (string, error) {
-	name := strings.TrimSpace(os.Getenv("SITE_BUCKET_NAME"))
-	if name == "" {
-		return "", errors.New("SITE_BUCKET_NAME is not set")
-	}
-	return name, nil
 }
 
 var filenameExt = regexp.MustCompile(`\.([a-zA-Z0-9]{1,8})$`)
@@ -108,43 +102,31 @@ func (h handlers) uploadURL(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	contentType, _ := v.Enum("contentType", true, contentTypes...)
-	contentLength, _ := v.Int("contentLength", true, api.Positive, api.MaxInt(maxBytes))
+	contentType, _ := v.Enum("contentType", true, limits.MediaContentTypes...)
+	contentLength, _ := v.Int("contentLength", true, api.Positive, api.MaxInt(limits.MediaMaxBytes))
 	var filename *string
-	if s, ok := v.String("filename", false, false, api.MinLen(1), api.MaxLen(200)); ok {
+	if s, ok := v.String("filename", false, false, api.MinLen(1), api.MaxLen(limits.MediaFilenameMaxLength)); ok {
 		filename = &s
 	}
 	if err := v.Err(); err != nil {
 		return nil, err
 	}
-	bucket, err := siteBucketName()
-	if err != nil {
-		return nil, err
+	if h.cfg.Bucket == "" {
+		return nil, &api.ServiceUnavailableError{Message: "Media uploads are not configured"}
 	}
 	now := h.now()
 	key := objectKey(contentType, filename, now)
 	res := uploadURLResponse{
 		PublicPath: "/" + key,
 		Headers:    map[string]string{"Content-Type": contentType},
-		ExpiresAt:  store.ISOTime(now.Add(uploadTTL)),
+		ExpiresAt:  jstime.ISO(now.Add(uploadTTL)),
 	}
-	if filesystemStorage() {
-		origin := strings.TrimSpace(os.Getenv("VITE_LOCAL_API_ORIGIN"))
-		if origin == "" {
-			port := os.Getenv("LOCAL_API_PORT")
-			if port == "" {
-				port = "8787"
-			}
-			origin = "http://127.0.0.1:" + port
-		}
-		res.UploadURL = strings.TrimSuffix(origin, "/") + "/api/admin/media/objects/" + url.QueryEscape(key)
+	if h.cfg.Filesystem {
+		res.UploadURL = strings.TrimSuffix(h.cfg.LocalOrigin, "/") + "/api/admin/media/objects/" + url.QueryEscape(key)
 		return api.JSON(http.StatusOK, res), nil
 	}
-	if h.presign == nil {
-		return nil, errors.New("media uploads need S3 or SITE_STORAGE=filesystem")
-	}
 	signed, err := h.presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(bucket),
+		Bucket:        aws.String(h.cfg.Bucket),
 		Key:           aws.String(key),
 		ContentType:   aws.String(contentType),
 		ContentLength: aws.Int64(contentLength),
@@ -157,7 +139,7 @@ func (h handlers) uploadURL(ctx context.Context, r *api.Request) (*api.Response,
 }
 
 func (h handlers) putObject(_ context.Context, r *api.Request) (*api.Response, error) {
-	if !filesystemStorage() {
+	if !h.cfg.Filesystem {
 		return api.JSON(http.StatusNotFound, map[string]string{
 			"error":   "not_found",
 			"message": "Local media PUT is only available in filesystem mode",
@@ -177,11 +159,7 @@ func (h handlers) putObject(_ context.Context, r *api.Request) (*api.Response, e
 	if float64(len(r.Body)) != expected {
 		return nil, fmt.Errorf("Content-Length mismatch: expected %v, got %d", expected, len(r.Body))
 	}
-	root, err := siteBucketName()
-	if err != nil {
-		return nil, err
-	}
-	dest := filepath.Join(root, key)
+	dest := filepath.Join(h.cfg.Bucket, key)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return nil, err
 	}

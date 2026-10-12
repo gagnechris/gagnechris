@@ -9,12 +9,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
@@ -26,12 +28,9 @@ type testApp struct {
 
 func newTestApp(t *testing.T, routes ...Route) testApp {
 	t.Helper()
-	t.Setenv("ADMIN_WEB_CLIENT_ID", "admin-web")
-	t.Setenv("NOTEBOOK_WEB_CLIENT_ID", "notebook-web")
-	t.Setenv("IOS_CLIENT_ID", "ios")
 	var logs, emf bytes.Buffer
 	app := NewApp(
-		NewRouter(append(Routes(nil), routes...)),
+		NewRouter(append(Routes(nil), routes...), ClientIDs{AdminWeb: "admin-web", NotebookWeb: "notebook-web", IOS: "ios"}),
 		observability.NewLogger(&logs, "gagnechris-api"),
 		observability.NewMetrics(&emf, "gagnechris", "gagnechris-api"),
 		time.Now(),
@@ -161,7 +160,8 @@ func TestNotFoundAndMethodNotAllowed(t *testing.T) {
 		body["error"] != "method_not_allowed" || body["message"] != "Method POST not allowed; use DELETE, PUT" {
 		t.Errorf("405: %d %v %v", res.Status, body, res.Headers)
 	}
-	if got := metricNames(t, ta.emf); strings.Join(got, ",") != "NotFound,MethodNotAllowed" {
+	want := []string{contract.Data.API.Metrics.NotFound, contract.Data.API.Metrics.MethodNotAllowed}
+	if got := metricNames(t, ta.emf); !slices.Equal(got, want) {
 		t.Errorf("metrics %v", got)
 	}
 }
@@ -276,7 +276,7 @@ func TestNewRouterRejectsMisdeclaredAuth(t *testing.T) {
 			t.Error("public route under /admin accepted")
 		}
 	}()
-	NewRouter([]Route{{Method: "GET", Pattern: "/admin/posts", Auth: Public, Handler: ok(nil)}})
+	NewRouter([]Route{{Method: "GET", Pattern: "/admin/posts", Auth: Public, Handler: ok(nil)}}, ClientIDs{})
 }
 
 func TestHandlerErrors(t *testing.T) {
@@ -290,6 +290,12 @@ func TestHandlerErrors(t *testing.T) {
 		}},
 		Route{Method: "GET", Pattern: "/panic", Auth: Public, Handler: func(context.Context, *Request) (*Response, error) {
 			panic("nil map")
+		}},
+		Route{Method: "GET", Pattern: "/corrupt", Auth: Public, Handler: func(context.Context, *Request) (*Response, error) {
+			return nil, &DataIntegrityError{Message: "bad row"}
+		}},
+		Route{Method: "GET", Pattern: "/no-adapter", Auth: Public, Handler: func(context.Context, *Request) (*Response, error) {
+			return nil, &SyncAdapterMissingError{ChangeType: "page"}
 		}},
 		Route{Method: "POST", Pattern: "/echo", Auth: Public, Handler: func(_ context.Context, r *Request) (*Response, error) {
 			var v map[string]any
@@ -322,9 +328,23 @@ func TestHandlerErrors(t *testing.T) {
 		t.Errorf("bad JSON: %d %s", res.Status, res.Body)
 	}
 
-	got := strings.Join(metricNames(t, ta.emf), ",")
-	if !strings.Contains(got, "WriteConflict") || strings.Count(got, "HandlerError") != 2 {
-		t.Errorf("metrics %s", got)
+	for _, path := range []string{"/api/corrupt", "/api/no-adapter"} {
+		if res = ta.do("GET", path, nil, nil); res.Status != 500 {
+			t.Errorf("%s: %d %s", path, res.Status, res.Body)
+		}
+	}
+
+	metrics := contract.Data.API.Metrics
+	counts := map[string]int{}
+	for _, name := range metricNames(t, ta.emf) {
+		counts[name]++
+	}
+	for name, want := range map[string]int{
+		metrics.WriteConflict: 1, metrics.HandlerError: 2, metrics.DataIntegrityError: 1, metrics.SyncAdapterMissing: 1,
+	} {
+		if counts[name] != want {
+			t.Errorf("%s emitted %d times, want %d: %v", name, counts[name], want, counts)
+		}
 	}
 }
 
@@ -429,11 +449,9 @@ func TestHTTPHandlerClaims(t *testing.T) {
 }
 
 func TestLocalClaims(t *testing.T) {
-	t.Setenv("ADMIN_WEB_CLIENT_ID", "")
-	t.Setenv("IOS_CLIENT_ID", "")
 	now := time.Unix(1700000000, 0)
 
-	got := LocalClaims("local-dev-token", SiteAdmin, now)
+	got := LocalClaims("local-dev-token", SiteAdmin, ClientIDs{}, now)
 	want := map[string]string{
 		"sub": "local-dev-user", "email": "local@gagnechris.com", "cognito:username": "local-admin",
 		"token_use": "id", "aud": "local-admin-web", "cognito:groups": "[site-admin]", "auth_time": "1700000000",
@@ -443,7 +461,7 @@ func TestLocalClaims(t *testing.T) {
 			t.Errorf("%s = %q, want %q", k, got[k], v)
 		}
 	}
-	ios := LocalClaims("Bearer local-ios:sam", Notebook, now)
+	ios := LocalClaims("Bearer local-ios:sam", Notebook, ClientIDs{}, now)
 	if ios["aud"] != "local-ios" || ios["email"] != "sam@local.gagnechris.com" || ios["cognito:groups"] != "[notebook]" {
 		t.Errorf("ios claims %v", ios)
 	}

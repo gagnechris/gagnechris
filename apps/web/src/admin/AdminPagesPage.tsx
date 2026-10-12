@@ -19,9 +19,9 @@ const PageRow = ({
   page: PageState | undefined;
 }) => (
   <li>
-    <Link to={to} className="admin-post-list__item admin-post-list__link">
-      <span className="admin-post-list__title">{title}</span>
-      <span className="admin-post-list__meta">
+    <Link to={to} className="kit-list__item kit-list__link">
+      <span className="kit-list__title">{title}</span>
+      <span className="kit-list__meta">
         {page ? (
           <StatusBadge
             status={page.status}
@@ -40,21 +40,21 @@ export default function AdminPagesPage() {
   const failed = home.error ?? resume.error;
 
   return (
-    <section className="admin-panel">
-      <div className="admin-panel__header">
+    <section className="workspace-panel">
+      <div className="workspace-panel__header">
         <div>
           <h1>Pages</h1>
-          <p className="admin-panel__lede">
+          <p className="workspace-panel__lede">
             Everything on gagnechris.com besides posts and projects.
           </p>
         </div>
       </div>
       {failed ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Could not load page status.
         </p>
       ) : null}
-      <ul className="admin-post-list" aria-label="Site pages">
+      <ul className="kit-list" aria-label="Site pages">
         <PageRow to="/home" title="Home page" path="/" page={home.data} />
         <PageRow
           to="/resume"

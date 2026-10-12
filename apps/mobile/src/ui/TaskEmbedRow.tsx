@@ -1,8 +1,13 @@
-import type { TaskEmbedState } from '@gagnechris/app-core';
-import type { Task } from '@gagnechris/shared';
+import {
+  AUTOSAVE_DEBOUNCE_MS,
+  type Task,
+  type TaskEmbedState,
+} from '@gagnechris/app-core';
+import { NOTEBOOK_TITLE_MAX_LENGTH } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type RefObject } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from './Icon';
 
@@ -19,6 +24,10 @@ type Props = {
   onOpen?: () => void;
   /** Long press and the VoiceOver action; takes the line out of the note. */
   onRemove?: () => void;
+  /** The title is a text field when the task can be renamed. */
+  editable?: boolean;
+  /** Return in the title. */
+  onTitleSubmit?: () => void;
 };
 
 const Pill = ({ text, tone }: { text: string; tone?: 'alert' | 'accent' }) => (
@@ -33,13 +42,100 @@ const Pill = ({ text, tone }: { text: string; tone?: 'alert' | 'accent' }) => (
   </Text>
 );
 
-export const TaskEmbedRow = ({ state, onOpen, onRemove }: Props) => {
-  const removeActions = onRemove
+type TitleProps = {
+  title: string;
+  closed: boolean;
+  onRename: (title: string) => void;
+  onSubmit?: () => void;
+  inputRef: RefObject<TextInput | null>;
+  a11yActions: object;
+};
+
+type PendingTitle = {
+  timer: ReturnType<typeof setTimeout> | null;
+  text: string | null;
+  save: (title: string) => void;
+};
+
+const savePending = (pending: PendingTitle) => {
+  if (pending.timer) clearTimeout(pending.timer);
+  pending.timer = null;
+  const trimmed = pending.text?.trim();
+  pending.text = null;
+  if (trimmed) pending.save(trimmed);
+};
+
+/** Saves while typing and on blur; an emptied title goes back to the saved one. */
+const TitleField = ({
+  title,
+  closed,
+  onRename,
+  onSubmit,
+  inputRef,
+  a11yActions,
+}: TitleProps) => {
+  // Null while not editing, so a rename from elsewhere shows at once.
+  const [draft, setDraft] = useState<string | null>(null);
+  const pending = useRef<PendingTitle>({
+    timer: null,
+    text: null,
+    save: onRename,
+  });
+
+  useEffect(() => {
+    const current = pending.current;
+    return () => savePending(current);
+  }, []);
+
+  const onChangeText = (text: string) => {
+    setDraft(text);
+    const p = pending.current;
+    p.text = text;
+    p.save = onRename;
+    if (p.timer) clearTimeout(p.timer);
+    p.timer = setTimeout(() => savePending(p), AUTOSAVE_DEBOUNCE_MS);
+  };
+
+  return (
+    <TextInput
+      ref={inputRef}
+      style={[styles.title, styles.titleField, closed && styles.closed]}
+      accessibilityLabel="Task title"
+      value={draft ?? title}
+      onChangeText={onChangeText}
+      onFocus={() => setDraft(title)}
+      onBlur={() => {
+        savePending(pending.current);
+        setDraft(null);
+      }}
+      onSubmitEditing={onSubmit}
+      maxLength={NOTEBOOK_TITLE_MAX_LENGTH}
+      // Wraps like the read-only title; Return ends editing instead of
+      // adding a line break.
+      multiline
+      submitBehavior="blurAndSubmit"
+      scrollEnabled={false}
+      {...a11yActions}
+    />
+  );
+};
+
+export const TaskEmbedRow = ({
+  state,
+  onOpen,
+  onRemove,
+  editable,
+  onTitleSubmit,
+}: Props) => {
+  const titleInput = useRef<TextInput>(null);
+  const a11yActions = onRemove
     ? {
         accessibilityActions: [{ name: 'remove', label: 'Remove from note' }],
         onAccessibilityAction: () => onRemove(),
-        onLongPress: onRemove,
       }
+    : {};
+  const removeActions = onRemove
+    ? { ...a11yActions, onLongPress: onRemove }
     : {};
 
   if (state.kind !== 'task') {
@@ -89,26 +185,87 @@ export const TaskEmbedRow = ({ state, onOpen, onRemove }: Props) => {
     due?.text,
     priority ? `${priority} priority` : null,
   ].filter(Boolean);
+  const pillViews = (
+    <>
+      {dropped ? <Pill text="Dropped" /> : null}
+      {schedule ? <Pill text={schedule} tone="accent" /> : null}
+      {due ? (
+        <Pill text={due.text} tone={due.overdue ? 'alert' : undefined} />
+      ) : null}
+      {priority ? (
+        <Pill
+          text={priority}
+          tone={task.priority === 'high' ? 'alert' : undefined}
+        />
+      ) : null}
+    </>
+  );
+  const checkbox = (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: done, disabled: pending }}
+      accessibilityLabel={
+        done ? `Reopen ${task.title}` : `Complete ${task.title}`
+      }
+      disabled={pending}
+      onPress={toggle}
+      hitSlop={8}
+      style={styles.box}
+    >
+      <Icon
+        name={done ? 'checkmark.square.fill' : 'square'}
+        size={22}
+        color={done ? color.accent : color.inkSoft}
+      />
+    </Pressable>
+  );
+
+  if (editable && state.onRename) {
+    return (
+      <View style={styles.row}>
+        {checkbox}
+        <Pressable
+          style={styles.titleButton}
+          accessible={false}
+          onPress={() => titleInput.current?.focus()}
+          onLongPress={onRemove}
+        >
+          <TitleField
+            title={task.title}
+            closed={done || dropped}
+            onRename={state.onRename}
+            onSubmit={onTitleSubmit}
+            inputRef={titleInput}
+            a11yActions={a11yActions}
+          />
+          {pills.length ? (
+            <View
+              style={styles.pills}
+              accessible
+              accessibilityLabel={pills.join(', ')}
+            >
+              {pillViews}
+            </View>
+          ) : null}
+        </Pressable>
+        {onOpen ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open task ${task.title}`}
+            onPress={onOpen}
+            onLongPress={onRemove}
+            style={styles.open}
+          >
+            <Icon name="chevron.right" size={16} color={color.muted} />
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.row}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: done, disabled: pending }}
-        accessibilityLabel={
-          done ? `Reopen ${task.title}` : `Complete ${task.title}`
-        }
-        disabled={pending}
-        onPress={toggle}
-        hitSlop={8}
-        style={styles.box}
-      >
-        <Icon
-          name={done ? 'checkmark.square.fill' : 'square'}
-          size={22}
-          color={done ? color.accent : color.inkSoft}
-        />
-      </Pressable>
+      {checkbox}
       <Pressable
         style={styles.titleButton}
         accessibilityRole={onOpen ? 'button' : undefined}
@@ -121,19 +278,7 @@ export const TaskEmbedRow = ({ state, onOpen, onRemove }: Props) => {
         <Text style={[styles.title, (done || dropped) && styles.closed]}>
           {task.title}
         </Text>
-        <View style={styles.pills}>
-          {dropped ? <Pill text="Dropped" /> : null}
-          {schedule ? <Pill text={schedule} tone="accent" /> : null}
-          {due ? (
-            <Pill text={due.text} tone={due.overdue ? 'alert' : undefined} />
-          ) : null}
-          {priority ? (
-            <Pill
-              text={priority}
-              tone={task.priority === 'high' ? 'alert' : undefined}
-            />
-          ) : null}
-        </View>
+        <View style={styles.pills}>{pillViews}</View>
       </Pressable>
     </View>
   );
@@ -174,6 +319,8 @@ const styles = StyleSheet.create({
     color: color.ink,
     flexShrink: 1,
   },
+  // Drops the text view's own padding so the field sits where the title did.
+  titleField: { paddingTop: 0, paddingBottom: 0, minWidth: 0 },
   closed: { color: color.muted, textDecorationLine: 'line-through' },
   muted: { color: color.muted },
   pills: { flexDirection: 'row', gap: tokens.space[1] },
@@ -189,6 +336,13 @@ const styles = StyleSheet.create({
   },
   pillAccent: { color: color.accentInk, backgroundColor: color.accentSoft },
   pillAlert: { color: color.alert },
+  open: {
+    width: MIN_TARGET,
+    height: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -tokens.space[2],
+  },
   retry: { minHeight: MIN_TARGET, justifyContent: 'center' },
   retryText: {
     ...font.semibold,

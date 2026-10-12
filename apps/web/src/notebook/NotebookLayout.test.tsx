@@ -63,9 +63,9 @@ const NotebookOutletProbe = () => {
   const areaLabel = AREA_LABELS[areaFilter];
 
   return (
-    <section className="admin-panel">
+    <section className="workspace-panel">
       <h1>{section}</h1>
-      <p className="admin-panel__lede">
+      <p className="workspace-panel__lede">
         {id
           ? `${areaLabel} · note ${id} (editor arrives in a later ticket).`
           : `${areaLabel} · ${section.toLowerCase()} UI arrives in a later ticket.`}

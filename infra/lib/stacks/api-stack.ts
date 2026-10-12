@@ -28,6 +28,7 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
+  API_METRICS,
   API_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
@@ -315,14 +316,14 @@ export class ApiStack extends Stack {
       alarmDescription:
         'API handler returned a handled 500 (uncaught route/handler error)',
       serviceName: API_SERVICE_NAME,
-      metricName: 'HandlerError',
+      metricName: API_METRICS.handlerError,
       alertsTopic,
     });
     emfServiceAlarm(this, 'ApiDataIntegrityErrors', {
       alarmName: `gagnechris-${config.name}-api-data-integrity`,
       alarmDescription: 'API hit a corrupt DynamoDB row (data_integrity 500)',
       serviceName: API_SERVICE_NAME,
-      metricName: 'DataIntegrityError',
+      metricName: API_METRICS.dataIntegrityError,
       alertsTopic,
     });
     emfServiceAlarm(this, 'ApiSyncAdapterMissing', {
@@ -330,7 +331,7 @@ export class ApiStack extends Stack {
       alarmDescription:
         'Sync feed hit a change type with no registered adapter (500)',
       serviceName: API_SERVICE_NAME,
-      metricName: 'SyncAdapterMissing',
+      metricName: API_METRICS.syncAdapterMissing,
       alertsTopic,
     });
     emfServiceAlarm(this, 'ApiSyncCorruptRow', {
@@ -338,7 +339,7 @@ export class ApiStack extends Stack {
       alarmDescription:
         'Sync feed skipped a row that failed to parse; clients will not see it until it is repaired',
       serviceName: API_SERVICE_NAME,
-      metricName: 'SyncCorruptRow',
+      metricName: API_METRICS.syncCorruptRow,
       alertsTopic,
     });
     emfServiceAlarm(this, 'ApiContactEmailFailed', {
@@ -346,7 +347,7 @@ export class ApiStack extends Stack {
       alarmDescription:
         'A contact message was saved but SES failed to mail it (the visitor got a 502)',
       serviceName: API_SERVICE_NAME,
-      metricName: 'ContactEmailFailed',
+      metricName: API_METRICS.contactEmailFailed,
       alertsTopic,
     });
     emfServiceAlarm(this, 'ApiSesCapReached', {
@@ -354,7 +355,7 @@ export class ApiStack extends Stack {
       alarmDescription:
         'The daily email cap is used up: contact messages are saved but not mailed until the next UTC day',
       serviceName: API_SERVICE_NAME,
-      metricName: 'SesCapReached',
+      metricName: API_METRICS.sesCapReached,
       alertsTopic,
     });
     // Notebook ops: a burst of 409/412s means autosave or sync is fighting
@@ -364,7 +365,7 @@ export class ApiStack extends Stack {
       alarmDescription: 'API 409/412 write conflicts ≥ 20 in 15 minutes',
       metric: new Metric({
         namespace: POWERTOOLS_METRICS_NAMESPACE,
-        metricName: 'WriteConflict',
+        metricName: API_METRICS.writeConflict,
         dimensionsMap: { service: API_SERVICE_NAME },
         statistic: 'Sum',
         period: Duration.minutes(15),

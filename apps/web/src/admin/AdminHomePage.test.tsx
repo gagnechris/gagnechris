@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -29,6 +35,9 @@ const baseHome = {
   version: 1,
   hasUnpublishedChanges: false,
 };
+
+const previewFrame = () => screen.getByTitle<HTMLIFrameElement>('Home preview');
+const previewBody = () => within(previewFrame().contentDocument!.body);
 
 function renderHome() {
   const router = createMemoryRouter(
@@ -268,13 +277,33 @@ describe('AdminHomePage preview', () => {
         'text/html',
       )
       .querySelector('main.home-page')!.outerHTML;
-  const previewMain = (container: HTMLElement) =>
-    container.querySelector('.admin-home-preview main.home-page')?.outerHTML;
+  const previewMain = () =>
+    previewFrame().contentDocument!.querySelector('main.home-page')?.outerHTML;
+
+  test('renders in a frame with the public site and Home styles', async () => {
+    renderHome();
+    await screen.findByRole('link', { name: 'View live' });
+    const styles = previewFrame().getAttribute('srcdoc')!;
+    for (const rule of [
+      '.site-header__photo {',
+      '.site-nav__list {',
+      '.site-menu {',
+      '.site-footer__links {',
+      '.home-hero__name {',
+    ]) {
+      expect(styles).toContain(rule);
+    }
+    expect(styles).toContain('inter-latin.');
+    expect(styles).not.toContain("url('/fonts/");
+    expect(
+      previewFrame().contentDocument!.querySelector('header.site-header'),
+    ).not.toBeNull();
+  });
 
   test('matches the published Home and follows the draft', async () => {
-    const { container } = renderHome();
+    renderHome();
     await screen.findByRole('link', { name: 'View live' });
-    expect(previewMain(container)).toBe(publishedMain(baseHome));
+    expect(previewMain()).toBe(publishedMain(baseHome));
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Christopher Gagne' },
@@ -283,7 +312,7 @@ describe('AdminHomePage preview', () => {
       target: { value: 'First.\n\nSecond.' },
     });
     await waitFor(() =>
-      expect(previewMain(container)).toBe(
+      expect(previewMain()).toBe(
         publishedMain({
           ...baseHome,
           name: 'Christopher Gagne',
@@ -322,18 +351,18 @@ describe('AdminHomePage public links', () => {
     expect(
       await screen.findByRole('link', { name: 'View live' }),
     ).toHaveAttribute('href', 'https://gagnechris.com/');
-    const resume = screen.getByRole('link', { name: 'resume' });
+    const resume = previewBody().getByRole('link', { name: 'resume' });
     expect(resume).toHaveAttribute('href', 'https://gagnechris.com/resume');
     expect(resume).toHaveAttribute('target', '_blank');
   });
 
   test('preview images load from the public site', async () => {
     vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
-    const { container } = renderHome();
+    renderHome();
     await screen.findByRole('link', { name: 'View live' });
-    const sources = [...container.querySelectorAll('img')].map((img) =>
-      img.getAttribute('src'),
-    );
+    const sources = [
+      ...previewFrame().contentDocument!.querySelectorAll('img'),
+    ].map((img) => img.getAttribute('src'));
     expect(sources).toContain('https://gagnechris.com/profile.jpg');
     for (const src of sources) {
       expect(src).toMatch(/^https:\/\/gagnechris\.com\//);

@@ -23,7 +23,7 @@ export default function NoAccessScreen({
   const signOut = () => void signOutUser();
 
   return (
-    <div className="admin-shell no-access">
+    <div className="workspace-shell no-access">
       <title>{`No access - ${title}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       <main className="no-access__column">

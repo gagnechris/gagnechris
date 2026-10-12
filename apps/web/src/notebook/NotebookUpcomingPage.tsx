@@ -100,21 +100,21 @@ export default function NotebookUpcomingPage() {
   const error = toggleError ?? patchError ?? quickAddTask.error;
 
   return (
-    <section className="admin-panel notebook-upcoming">
-      <div className="admin-panel__header">
+    <section className="workspace-panel notebook-upcoming">
+      <div className="workspace-panel__header">
         <div>
           <p className="notebook-today__kicker">
             {NOTEBOOK_AREA_HEADINGS[areaFilter]}
           </p>
           <h1>Upcoming</h1>
-          <p className="admin-panel__lede">
+          <p className="workspace-panel__lede">
             Tasks hidden until their day. Each one shows on Today from that day.
           </p>
         </div>
       </div>
 
       <form
-        className="admin-toolbar notebook-upcoming__add"
+        className="workspace-toolbar notebook-upcoming__add"
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
@@ -133,31 +133,31 @@ export default function NotebookUpcomingPage() {
         />
         <button
           type="submit"
-          className="admin-btn admin-btn--primary"
+          className="kit-btn kit-btn--primary"
           disabled={quickAddTask.pending || !quickAdd.trim()}
         >
           Add
         </button>
       </form>
       {quickAddTask.hint ? (
-        <p className="admin-hint" role="status">
+        <p className="kit-hint" role="status">
           {quickAddTask.hint}
         </p>
       ) : null}
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
 
       {scheduled.isError || parked.isError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Could not load tasks.
         </p>
       ) : loading ? (
-        <p className="admin-hint">Loading tasks…</p>
+        <p className="kit-hint">Loading tasks…</p>
       ) : groups.length === 0 ? (
-        <p className="admin-hint">
+        <p className="kit-hint">
           Nothing scheduled. Add <code>@mon</code>, <code>@oct 12</code> or{' '}
           <code>@someday</code> to a task to see it here.
         </p>
@@ -211,7 +211,7 @@ export default function NotebookUpcomingPage() {
                     </span>
                     <button
                       type="button"
-                      className="admin-btn notebook-upcoming__today"
+                      className="kit-btn notebook-upcoming__today"
                       aria-label={`Do “${task.title}” today`}
                       onClick={() => doToday(task)}
                     >

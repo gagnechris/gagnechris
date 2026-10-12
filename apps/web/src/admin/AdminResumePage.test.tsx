@@ -53,6 +53,10 @@ const openRole = async (title: string) => {
 const backToRoles = () =>
   fireEvent.click(screen.getByRole('button', { name: '← All roles' }));
 
+const previewFrame = () =>
+  screen.getByTitle<HTMLIFrameElement>('Resume preview');
+const previewBody = () => within(previewFrame().contentDocument!.body);
+
 function renderResume() {
   const router = createMemoryRouter(
     [
@@ -619,6 +623,25 @@ describe('AdminResumePage public links', () => {
     vi.unstubAllEnvs();
   });
 
+  test('preview renders in a frame with the public site and Resume styles', async () => {
+    renderResume();
+    await screen.findByRole('link', { name: 'View live' });
+    const styles = previewFrame().getAttribute('srcdoc')!;
+    for (const rule of [
+      '.site-header__photo {',
+      '.site-nav__list {',
+      '.site-menu {',
+      '.site-footer__links {',
+      '.resume-intro__title {',
+    ]) {
+      expect(styles).toContain(rule);
+    }
+    expect(styles).not.toContain("url('/fonts/");
+    expect(
+      previewBody().getByRole('heading', { level: 1, name: 'Resume' }),
+    ).toBeInTheDocument();
+  });
+
   test('View live opens the public dev origin in a new tab', async () => {
     renderResume();
     const link = await screen.findByRole('link', { name: 'View live' });
@@ -633,19 +656,18 @@ describe('AdminResumePage public links', () => {
     expect(
       await screen.findByRole('link', { name: 'View live' }),
     ).toHaveAttribute('href', 'https://gagnechris.com/resume');
-    expect(screen.getByRole('link', { name: 'Get in touch' })).toHaveAttribute(
-      'href',
-      'https://gagnechris.com/contact',
-    );
+    expect(
+      previewBody().getByRole('link', { name: 'Get in touch' }),
+    ).toHaveAttribute('href', 'https://gagnechris.com/contact');
   });
 
   test('preview images load from the public site', async () => {
     vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
-    const { container } = renderResume();
+    renderResume();
     await screen.findByRole('link', { name: 'View live' });
-    const sources = [...container.querySelectorAll('img')].map((img) =>
-      img.getAttribute('src'),
-    );
+    const sources = [
+      ...previewFrame().contentDocument!.querySelectorAll('img'),
+    ].map((img) => img.getAttribute('src'));
     expect(sources).toContain('https://gagnechris.com/profile.jpg');
     for (const src of sources) {
       expect(src).toMatch(/^https:\/\/gagnechris\.com\//);

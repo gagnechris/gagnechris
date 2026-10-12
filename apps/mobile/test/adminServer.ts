@@ -1,5 +1,6 @@
 import type { Home, Post, Project, Resume } from '@gagnechris/app-core';
 import { DEFAULT_HOME, DEFAULT_RESUME } from '@gagnechris/shared';
+import { json, versionConflict } from './apiErrors';
 
 export const makePost = (id: string, fields: Partial<Post> = {}): Post => ({
   id,
@@ -43,12 +44,6 @@ export const makeProject = (
   hasUnpublishedChanges: false,
   ...fields,
 });
-
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
 
 const summary = ({
   excerpt: _excerpt,
@@ -169,11 +164,7 @@ export function adminServer(
         version: number;
       };
       if (body.version !== current.version) {
-        return json(412, {
-          error: 'version_conflict',
-          current,
-          currentVersion: current.version,
-        });
+        return versionConflict(body.version, current);
       }
       const { version: _version, ...fields } = body;
       const next = transition(current, page[2], fields);
@@ -194,11 +185,7 @@ export function adminServer(
       version: number;
     };
     if (body.version !== current.version) {
-      return json(412, {
-        error: 'version_conflict',
-        current,
-        currentVersion: current.version,
-      });
+      return versionConflict(body.version, current);
     }
     const { version: _version, ...fields } = body;
     const next =

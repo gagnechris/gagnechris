@@ -16,6 +16,11 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./server": {
+      "types": "./src/server.ts",
+      "import": "./src/server.ts",
+      "default": "./src/server.ts"
+    },
     "./markdown-ast": {
       "types": "./src/markdown-ast.ts",
       "react-native": "./src/markdown-ast.ts",
@@ -39,6 +44,7 @@
     },
     "./fixtures/every-markdown-element": {
       "types": "./src/fixtures/every-markdown-element.ts",
+      "react-native": "./src/fixtures/every-markdown-element.ts",
       "import": "./src/fixtures/every-markdown-element.ts",
       "default": "./src/fixtures/every-markdown-element.ts"
     },
@@ -79,12 +85,11 @@
     "openapi": "tsx src/generate-openapi.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.browser.json && tsc --noEmit -p tsconfig.scripts.json && tsc --noEmit -p tsconfig.test.json",
     "lint": "eslint .",
-    "test": "vitest run",
-    "check:domain-bundle": "tsx ../../scripts/check-rn-bundles.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "dompurify": "^3.4.16",
-    "marked": "^18.0.14",
+    "marked": "18.1.0",
     "sanitize-html": "^2.18.0",
     "zod": "^4.6.5"
   },
@@ -92,7 +97,6 @@
     "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@types/node": "^22.20.5",
     "@types/sanitize-html": "^2.16.2",
-    "esbuild": "^0.28.2",
     "jsdom": "^30.1.2",
     "tsx": "^4.20.0",
     "typescript": "~6.0.3",

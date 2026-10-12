@@ -6,10 +6,9 @@ import {
   addDays,
   isOpenTaskStatus,
   localDateString,
-  type Note,
-  type Task,
   taskMatchesSchedule,
 } from '@gagnechris/shared';
+import type { Note, Task } from '@gagnechris/app-core';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';

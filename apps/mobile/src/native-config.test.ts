@@ -4,7 +4,6 @@ import appJson from '../app.json';
 import eas from '../eas.json';
 import lock from '../package-lock.json';
 import pkg from '../package.json';
-import { resolveAuthRedirect } from './config';
 
 const app = appJson.expo;
 
@@ -37,15 +36,11 @@ describe('native build config', () => {
     }
   });
 
-  it('signs device builds in through the https callback, dev builds through the scheme', () => {
-    for (const profile of [eas.build.preview, eas.build.production]) {
-      expect(resolveAuthRedirect(profile.env.EXPO_PUBLIC_AUTH_REDIRECT)).toBe(
-        'universalLink',
-      );
-    }
+  it('sets no auth redirect env in any build profile', () => {
     expect(eas.build.development).not.toHaveProperty('env');
-    expect(resolveAuthRedirect(undefined)).toBe('scheme');
-    expect(resolveAuthRedirect('universal-link')).toBe('scheme');
+    for (const profile of [eas.build.preview, eas.build.production]) {
+      expect(Object.keys(profile.env)).toEqual(['EXPO_PUBLIC_API_BASE_URL']);
+    }
   });
 
   it('builds for TestFlight without the export-compliance question', () => {

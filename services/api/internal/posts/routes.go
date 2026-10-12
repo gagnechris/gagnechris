@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
-const (
-	maxProjectIDs = 20
-	maxSearch     = 200
-)
+var limits = contract.Data.Limits
 
 // Routes are the admin posts routes.
 func Routes(table *data.Table, now func() time.Time) []api.Route {
@@ -47,14 +45,14 @@ type listResponse struct {
 func (h handlers) list(ctx context.Context, r *api.Request) (*api.Response, error) {
 	v := api.NewQueryValidator(r.Query)
 	status, _ := v.Enum("status", false, statuses...)
-	q, _ := v.String("q", false, true, api.MaxLen(maxSearch))
+	q, _ := v.String("q", false, true, api.MaxLen(limits.PostSearchMaxLength))
 	cursor, _ := v.String("cursor", false, false, api.MinLen(1))
-	limit, ok := v.CoercedInt("limit", api.Positive, api.MaxInt(100))
+	limit, ok := v.CoercedInt("limit", api.Positive, api.MaxInt(limits.PageLimitMax))
 	if err := v.ErrWith("Invalid query parameters"); err != nil {
 		return nil, err
 	}
 	if !ok {
-		limit = pageSize
+		limit = int64(pageSize)
 	}
 	page, err := h.repo.list(ctx, status, cursor, int(limit), q, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
@@ -91,7 +89,7 @@ func (h handlers) create(ctx context.Context, r *api.Request) (*api.Response, er
 	if tags, ok := v.StringArray("tags", false, false, -1); ok {
 		in.tags = tags
 	}
-	if ids, ok := v.StringArray("projectIds", false, false, maxProjectIDs, api.MinLen(1)); ok {
+	if ids, ok := v.StringArray("projectIds", false, false, limits.PostProjectIDsMax, api.MinLen(1)); ok {
 		in.projectIDs = ids
 	}
 	in.coverImage, _ = v.NullableString("coverImage")
@@ -138,7 +136,7 @@ func (h handlers) update(ctx context.Context, r *api.Request) (*api.Response, er
 		bodyMarkdown: strPtr(v, "bodyMarkdown"),
 	}
 	in.tags, _ = v.StringArray("tags", false, false, -1)
-	in.projectIDs, _ = v.StringArray("projectIds", false, false, maxProjectIDs, api.MinLen(1))
+	in.projectIDs, _ = v.StringArray("projectIds", false, false, limits.PostProjectIDsMax, api.MinLen(1))
 	in.coverImage, in.setCover = v.NullableString("coverImage")
 	in.seo, in.setSeo = store.ReadSeoInput(v)
 	if err := v.Err(); err != nil {

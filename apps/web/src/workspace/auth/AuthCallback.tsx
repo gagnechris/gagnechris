@@ -85,7 +85,7 @@ export default function AuthCallback() {
   }, [navigate, passkey]);
 
   return (
-    <div className="admin-shell admin-shell--centered">
+    <div className="workspace-shell workspace-shell--centered">
       <title>{`Signing in - ${SITE_AUTHOR_NAME}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       {error ? (

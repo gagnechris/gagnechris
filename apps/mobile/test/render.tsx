@@ -172,10 +172,11 @@ export async function settle(times = 5) {
 /** Renders and lets the providers' async restores settle. */
 export async function render(
   element: ReactElement,
+  options?: Parameters<typeof create>[1],
 ): Promise<ReactTestRenderer> {
   let renderer!: ReactTestRenderer;
   await act(async () => {
-    renderer = create(element);
+    renderer = create(element, options);
   });
   return renderer;
 }

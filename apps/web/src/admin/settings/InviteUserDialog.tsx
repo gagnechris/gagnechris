@@ -1,13 +1,11 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
-import { createPortal } from 'react-dom';
-import type { AccessLevel } from '@gagnechris/shared';
-import { useInviteUserMutation } from '@gagnechris/app-core';
+import { useId, useState, type FormEvent } from 'react';
+import { displayName, type AccessLevel } from '@gagnechris/shared';
+import { useInviteUserMutation, userErrorMessage } from '@gagnechris/app-core';
 import { BottomSheet } from '../../kit/BottomSheet';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
-import { useModal } from './useModal';
-import { displayName, userErrorMessage } from '@gagnechris/app-core';
+import { UsersOverlay } from './UsersOverlay';
 
 type Props = {
   onClose: () => void;
@@ -16,9 +14,7 @@ type Props = {
 
 export default function InviteUserDialog({ onClose, onToast }: Props) {
   const id = useId();
-  const formRef = useRef<HTMLFormElement>(null);
   const phone = useMediaQuery(PHONE_QUERY);
-  useModal(formRef, onClose);
   const invite = useInviteUserMutation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -84,7 +80,7 @@ export default function InviteUserDialog({ onClose, onToast }: Props) {
         their old notes.
       </p>
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
@@ -118,49 +114,37 @@ export default function InviteUserDialog({ onClose, onToast }: Props) {
     );
   }
 
-  return createPortal(
-    <div className="users-overlay users-overlay--dialog">
-      <button
-        type="button"
-        className="users-scrim"
-        aria-label="Close"
-        tabIndex={-1}
-        onClick={onClose}
-      />
-      <form
-        ref={formRef}
-        className="users-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={`${id}-title`}
-        onSubmit={(e) => void submit(e)}
-      >
-        <div className="users-dialog__head">
-          <h2 id={`${id}-title`}>Invite user</h2>
-          <button
-            type="button"
-            className="users-icon-btn"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <ShellIcon name="close" />
-          </button>
-        </div>
-        {fields}
-        <div className="users-dialog__foot">
-          <button type="button" className="users-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="users-btn users-btn--primary"
-            disabled={invite.isPending}
-          >
-            {invite.isPending ? 'Sending…' : 'Send invite'}
-          </button>
-        </div>
-      </form>
-    </div>,
-    document.body,
+  return (
+    <UsersOverlay
+      kind="dialog"
+      label="Invite user"
+      onClose={onClose}
+      onSubmit={(e) => void submit(e)}
+    >
+      <div className="users-dialog__head">
+        <h2>Invite user</h2>
+        <button
+          type="button"
+          className="users-icon-btn"
+          aria-label="Close"
+          onClick={onClose}
+        >
+          <ShellIcon name="close" />
+        </button>
+      </div>
+      {fields}
+      <div className="users-dialog__foot">
+        <button type="button" className="users-btn" onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="users-btn users-btn--primary"
+          disabled={invite.isPending}
+        >
+          {invite.isPending ? 'Sending…' : 'Send invite'}
+        </button>
+      </div>
+    </UsersOverlay>
   );
 }

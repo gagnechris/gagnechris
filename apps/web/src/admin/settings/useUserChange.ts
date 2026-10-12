@@ -17,48 +17,40 @@ export type ChangeOutcome = 'done' | 'confirming';
  * the page applies it when they come back.
  */
 export function useUserChange() {
-  const setAccess = useSetUserAccessMutation();
-  const action = useUserActionMutation();
+  const { mutateAsync: setAccess, isPending: settingAccess } =
+    useSetUserAccessMutation();
+  const { mutateAsync: runAction, isPending: runningAction } =
+    useUserActionMutation();
 
-  const confirm = async (change: UserChange): Promise<ChangeOutcome> => {
-    savePendingChange(change);
-    await redirectToSignIn({ prompt: 'LOGIN' });
-    return 'confirming';
-  };
-
-  const apply = useCallback(
-    async (change: UserChange) => {
-      if (change.kind === 'access') {
-        await setAccess.mutateAsync({ id: change.id, level: change.level });
-      } else {
-        await action.mutateAsync({
-          id: change.id,
-          action: change.kind,
-          level: change.level,
-        });
+  const perform = useCallback(
+    async (
+      change: UserChange,
+      { confirmed = false } = {},
+    ): Promise<ChangeOutcome> => {
+      const confirm = async () => {
+        savePendingChange(change);
+        await redirectToSignIn({ prompt: 'LOGIN' });
+        return 'confirming' as const;
+      };
+      if (!confirmed && !isRecentSignIn(await getAuthTime())) return confirm();
+      try {
+        if (change.kind === 'access') {
+          await setAccess({ id: change.id, level: change.level });
+        } else {
+          await runAction({
+            id: change.id,
+            action: change.kind,
+            level: change.level,
+          });
+        }
+        return 'done';
+      } catch (error) {
+        if (isReauthRequired(error) && !confirmed) return confirm();
+        throw error;
       }
     },
-    [setAccess, action],
+    [setAccess, runAction],
   );
 
-  const perform = async (
-    change: UserChange,
-    { confirmed = false } = {},
-  ): Promise<ChangeOutcome> => {
-    if (!confirmed && !isRecentSignIn(await getAuthTime())) {
-      return confirm(change);
-    }
-    try {
-      await apply(change);
-      return 'done';
-    } catch (error) {
-      if (isReauthRequired(error) && !confirmed) return confirm(change);
-      throw error;
-    }
-  };
-
-  return {
-    perform,
-    isPending: setAccess.isPending || action.isPending,
-  };
+  return { perform, isPending: settingAccess || runningAction };
 }

@@ -60,7 +60,13 @@ export type PreconditionFailedErrorResponse = z.infer<
 
 export const VersionSchema = z.number().int().nonnegative();
 
-export const PageLimitSchema = z.coerce.number().int().positive().max(100);
+export const PAGE_LIMIT_MAX = 100;
+
+export const PageLimitSchema = z.coerce
+  .number()
+  .int()
+  .positive()
+  .max(PAGE_LIMIT_MAX);
 
 export const ExpectedVersionRequestSchema = z.object({
   version: VersionSchema,
@@ -213,11 +219,12 @@ export type MediaContentType = z.infer<typeof MediaContentTypeSchema>;
 
 /** Enforced via the signed Content-Length. */
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
+export const MEDIA_FILENAME_MAX_LENGTH = 200;
 
 export const MediaUploadUrlRequestSchema = z.object({
   contentType: MediaContentTypeSchema,
   contentLength: z.number().int().positive().max(MEDIA_MAX_BYTES),
-  filename: z.string().min(1).max(200).optional(),
+  filename: z.string().min(1).max(MEDIA_FILENAME_MAX_LENGTH).optional(),
 });
 
 export type MediaUploadUrlRequest = z.infer<typeof MediaUploadUrlRequestSchema>;
@@ -256,28 +263,33 @@ export const contactFieldMessage = (
     ? CONTACT_FIELD_MESSAGES[field].tooLong
     : CONTACT_FIELD_MESSAGES[field].missing;
 
+export const CONTACT_NAME_MAX_LENGTH = 200;
+export const CONTACT_EMAIL_MAX_LENGTH = 320;
+export const CONTACT_MESSAGE_MAX_LENGTH = 10_000;
+export const CONTACT_HONEYPOT_MAX_LENGTH = 200;
+
 export const ContactRequestSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, CONTACT_FIELD_MESSAGES.name.missing)
-    .max(200, CONTACT_FIELD_MESSAGES.name.tooLong),
+    .max(CONTACT_NAME_MAX_LENGTH, CONTACT_FIELD_MESSAGES.name.tooLong),
   email: z
     .string()
     .trim()
     .email(CONTACT_FIELD_MESSAGES.email.missing)
-    .max(320, CONTACT_FIELD_MESSAGES.email.tooLong),
+    .max(CONTACT_EMAIL_MAX_LENGTH, CONTACT_FIELD_MESSAGES.email.tooLong),
   message: z
     .string()
     .trim()
     .min(1, CONTACT_FIELD_MESSAGES.message.missing)
-    .max(10_000, CONTACT_FIELD_MESSAGES.message.tooLong),
+    .max(CONTACT_MESSAGE_MAX_LENGTH, CONTACT_FIELD_MESSAGES.message.tooLong),
   /**
    * Honeypot: must be empty. Non-semantic name resists autofill; `website` is
    * still accepted so old bots keep triggering the trap.
    */
-  hp_field: z.string().max(200).optional().default(''),
-  website: z.string().max(200).optional().default(''),
+  hp_field: z.string().max(CONTACT_HONEYPOT_MAX_LENGTH).optional().default(''),
+  website: z.string().max(CONTACT_HONEYPOT_MAX_LENGTH).optional().default(''),
   /** Preferred over formStartedAt: a client-side delta avoids clock skew. */
   elapsedMs: z.number().int().nonnegative().optional(),
   /** @deprecated Prefer elapsedMs. */
@@ -358,13 +370,16 @@ export const ResumeEducationSchema = z.object({
 
 export type ResumeEducation = z.infer<typeof ResumeEducationSchema>;
 
+export const RESUME_YEAR_MIN = 1900;
+export const RESUME_YEAR_MAX = 2100;
+
 export const ResumeContentSchema = z.object({
   headline: z.string().optional().describe('Current role'),
   earlierRolesThrough: z
     .number()
     .int()
-    .min(1900)
-    .max(2100)
+    .min(RESUME_YEAR_MIN)
+    .max(RESUME_YEAR_MAX)
     .optional()
     .describe('Roles that ended in or before this year are "earlier roles"'),
   summary: z.string(),
@@ -395,8 +410,10 @@ export const UpdateResumeRequestSchema = updateRequestSchema(
 
 export type UpdateResumeRequest = z.infer<typeof UpdateResumeRequestSchema>;
 
+export const RESUME_REFERRER_MAX_LENGTH = 500;
+
 export const ResumeDownloadNotifyRequestSchema = z.object({
-  referrer: z.string().max(500).optional(),
+  referrer: z.string().max(RESUME_REFERRER_MAX_LENGTH).optional(),
 });
 
 export type ResumeDownloadNotifyRequest = z.infer<
@@ -981,11 +998,14 @@ export const ListTasksQuerySchema = z
 
 export type ListTasksQuery = z.infer<typeof ListTasksQuerySchema>;
 
+export const NOTEBOOK_SEARCH_MAX_LENGTH = 200;
+export const NOTEBOOK_SEARCH_LIMIT_MAX = 50;
+
 /** A body, not a query string, so terms stay out of CDN and API access logs. */
 export const NotebookSearchRequestSchema = z.object({
-  q: z.string().trim().min(1).max(200),
+  q: z.string().trim().min(1).max(NOTEBOOK_SEARCH_MAX_LENGTH),
   area: NotebookAreaSchema.optional(),
-  limit: z.number().int().positive().max(50).optional(),
+  limit: z.number().int().positive().max(NOTEBOOK_SEARCH_LIMIT_MAX).optional(),
 });
 
 export type NotebookSearchRequest = z.infer<typeof NotebookSearchRequestSchema>;

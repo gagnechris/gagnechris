@@ -6,6 +6,15 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+)
+
+// Index names, as packages/data/src/keys.ts names them.
+var (
+	GSI1 = contract.Data.GSINames.GSI1
+	GSI2 = contract.Data.GSINames.GSI2
+	GSI3 = contract.Data.GSINames.GSI3
 )
 
 const (
@@ -26,10 +35,6 @@ func PostPk(postID string) string { return "POST#" + postID }
 func SlugPk(slug string) string { return "SLUG#" + slug }
 
 func SlugPostSk() string { return skPost }
-
-func TagPk(tag string) string { return "TAG#" + tag }
-
-func TagSk(publishedAt, postID string) string { return "TS#" + publishedAt + "#POST#" + postID }
 
 func StatusGSI1Pk(status string) string { return "STATUS#" + status }
 

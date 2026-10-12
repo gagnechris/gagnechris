@@ -1,6 +1,9 @@
 import { App, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   keys,
@@ -47,6 +50,8 @@ function publisherStatements(): Statement[] {
     (p) => (p.Properties?.PolicyDocument?.Statement ?? []) as Statement[],
   );
 }
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const glob = (pattern: string): RegExp =>
   new RegExp(
@@ -181,5 +186,137 @@ describe('publisher DynamoDB access', () => {
     expect(
       allows(statements, { action: 'dynamodb:Scan', leadingKeys: [] }),
     ).toBe(false);
+  });
+});
+
+/** What `npm run publish-surface:check` generates from the targets' `s3Outputs`. */
+const targetS3Outputs = readFileSync(
+  join(ROOT, 'scripts', 'publisher-owned-paths.generated.txt'),
+  'utf8',
+)
+  .split('\n')
+  .filter((line) => line && !line.startsWith('#'))
+  .sort();
+
+type Intrinsic = string | { Ref?: string; 'Fn::Join'?: [string, Intrinsic[]] };
+
+function render(value: Intrinsic): string {
+  if (typeof value === 'string') return value;
+  if (value.Ref) return value.Ref === 'AWS::Partition' ? 'aws' : '<bucket>';
+  const join = value['Fn::Join'];
+  if (join) return join[1].map(render).join(join[0]);
+  throw new Error(`Unexpected resource ${JSON.stringify(value)}`);
+}
+
+const BUCKET_ARN = 'arn:aws:s3:::<bucket>';
+
+/** Resources on the site bucket: `''` for the bucket, else the object key pattern. */
+function siteResources(statement: Statement): string[] {
+  const raw = Array.isArray(statement.Resource)
+    ? statement.Resource
+    : [statement.Resource];
+  return (raw as Intrinsic[])
+    .map(render)
+    .filter((arn) => arn === BUCKET_ARN || arn.startsWith(`${BUCKET_ARN}/`))
+    .map((arn) => arn.slice(BUCKET_ARN.length + 1));
+}
+
+function actionsOf(statement: Statement): string[] {
+  return Array.isArray(statement.Action)
+    ? statement.Action
+    : [statement.Action ?? ''];
+}
+
+function s3Allows(
+  statements: Statement[],
+  action: string,
+  key: string,
+): boolean {
+  return statements.some(
+    (s) =>
+      s.Effect === 'Allow' &&
+      actionsOf(s).some((a) => glob(a).test(action)) &&
+      siteResources(s).some((pattern) => glob(pattern).test(key)),
+  );
+}
+
+function objectPatternsFor(statements: Statement[], action: string): string[] {
+  return [
+    ...new Set(
+      statements
+        .filter(
+          (s) =>
+            s.Effect === 'Allow' &&
+            actionsOf(s).some((a) => glob(a).test(action)),
+        )
+        .flatMap(siteResources)
+        .filter(Boolean),
+    ),
+  ].sort();
+}
+
+const WRITE_ACTIONS = [
+  's3:PutObject',
+  's3:DeleteObject',
+  's3:DeleteObjectVersion',
+  's3:PutObjectAcl',
+];
+
+describe('publisher site bucket access', () => {
+  const statements = publisherStatements();
+
+  it('puts and deletes exactly the keys its targets declare', () => {
+    expect(targetS3Outputs).toEqual(
+      expect.arrayContaining(['blog/*', 'index.html', 'rss.xml']),
+    );
+    expect(objectPatternsFor(statements, 's3:PutObject')).toEqual(
+      targetS3Outputs,
+    );
+    expect(objectPatternsFor(statements, 's3:DeleteObject')).toEqual(
+      targetS3Outputs,
+    );
+  });
+
+  it('cannot write or delete media, assets, the shell or other site keys', () => {
+    for (const key of [
+      'media/cover.jpg',
+      'assets/index-abc123.js',
+      '_shell.html',
+      'fonts/inter-latin.woff2',
+      'notebook/index.html',
+      'contact/index.html',
+    ]) {
+      for (const action of WRITE_ACTIONS) {
+        expect(s3Allows(statements, action, key), `${action} ${key}`).toBe(
+          false,
+        );
+      }
+    }
+  });
+
+  it('never deletes object versions', () => {
+    expect(
+      s3Allows(statements, 's3:DeleteObjectVersion', 'blog/a/index.html'),
+    ).toBe(false);
+  });
+
+  it('can write pages and remove stale keys under its outputs', () => {
+    for (const key of [
+      'index.html',
+      'blog/hello/index.html',
+      'blog/slugs.json',
+      'projects/notebook/index.html',
+      'resume.pdf',
+      'sitemap.xml',
+    ]) {
+      expect(s3Allows(statements, 's3:PutObject', key), key).toBe(true);
+      expect(s3Allows(statements, 's3:DeleteObject', key), key).toBe(true);
+    }
+  });
+
+  it('reads the shell and lists the bucket', () => {
+    expect(s3Allows(statements, 's3:GetObject', '_shell.html')).toBe(true);
+    expect(s3Allows(statements, 's3:GetObject', 'blog/posts.json')).toBe(true);
+    expect(s3Allows(statements, 's3:ListBucket', '')).toBe(true);
   });
 });

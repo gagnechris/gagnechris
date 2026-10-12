@@ -10,10 +10,15 @@ import {
   type HomeDraftFields,
 } from '@gagnechris/app-core';
 import { Field, TextArea, TextInput } from '../kit/Field';
-import { publicUrl, withPublicUrls } from './publicUrl';
+import { publicUrl } from './publicUrl';
 import { EditorFrame } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
+import { PublicPagePreview } from './preview/PublicPagePreview';
+import { publicPageStyles } from './preview/publicPageStyles';
+import homeCss from '../App.css?inline';
+
+const HOME_STYLES = publicPageStyles(homeCss);
 
 const HomePreview = ({
   home,
@@ -28,10 +33,7 @@ const HomePreview = ({
     [home, deferred],
   );
   return (
-    <div
-      className="admin-home-preview"
-      dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
-    />
+    <PublicPagePreview title="Home preview" styles={HOME_STYLES} html={html} />
   );
 };
 
@@ -59,7 +61,7 @@ const AdminHomePage = () => {
       loadingLabel="Loading home content…"
       leading={
         <>
-          <Link to="/pages" className="admin-back">
+          <Link to="/pages" className="workspace-back">
             ← Pages
           </Link>
           <h1>Home</h1>
@@ -93,7 +95,7 @@ const AdminHomePage = () => {
                     />
                   </Field>
                 </div>
-                <p className="admin-hint">
+                <p className="kit-hint">
                   Quick Links and the profile photo are not editable yet.
                 </p>
               </section>
@@ -145,7 +147,7 @@ const AdminHomePage = () => {
               <HomePreview home={home} draft={draft} />
             </div>
           </div>
-          <p className="admin-hint">
+          <p className="kit-hint">
             ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
           </p>
         </>

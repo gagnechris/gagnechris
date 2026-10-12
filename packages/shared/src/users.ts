@@ -43,10 +43,14 @@ export const ManagedUserStatusSchema = z.enum([
 ]);
 export type ManagedUserStatus = z.infer<typeof ManagedUserStatusSchema>;
 
+export const MANAGED_USER_ID_MAX_LENGTH = 128;
+export const USER_EMAIL_MAX_LENGTH = 254;
+export const USER_NAME_MAX_LENGTH = 100;
+
 export const ManagedUserIdSchema = z
   .string()
   .min(1)
-  .max(128)
+  .max(MANAGED_USER_ID_MAX_LENGTH)
   .regex(/^[A-Za-z0-9-]+$/);
 
 export const ManagedUserSchema = z.object({
@@ -69,8 +73,8 @@ export const UserResponseSchema = z.object({ user: ManagedUserSchema });
 export type UserResponse = z.infer<typeof UserResponseSchema>;
 
 export const InviteUserRequestSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(254),
-  name: z.string().trim().max(100).optional(),
+  email: z.string().trim().toLowerCase().email().max(USER_EMAIL_MAX_LENGTH),
+  name: z.string().trim().max(USER_NAME_MAX_LENGTH).optional(),
   level: AccessLevelSchema,
 });
 export type InviteUserRequest = z.infer<typeof InviteUserRequestSchema>;
@@ -110,3 +114,20 @@ export const UserConflictResponseSchema = z.object({
   error: UserConflictCodeSchema,
   message: z.string(),
 });
+
+/** A user's name, else the part of their email before the @. */
+export const displayName = (user: {
+  name: string | null;
+  email: string;
+}): string => user.name?.trim() || user.email.split('@')[0] || user.email;
+
+/** Avatar letters for a name or an email: first and last word, or the first two letters of a single word. */
+export function initials(nameOrEmail: string): string {
+  const source = nameOrEmail.trim().split('@')[0] ?? '';
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  const first = parts[0];
+  if (!first) return '?';
+  const last = parts[parts.length - 1]!;
+  const letters = parts.length > 1 ? first[0]! + last[0]! : first.slice(0, 2);
+  return letters.toUpperCase();
+}

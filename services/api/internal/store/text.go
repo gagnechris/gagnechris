@@ -20,7 +20,7 @@ var (
 	trailingHyphen = regexp.MustCompile(`-+$`)
 )
 
-// Slugify is packages/data's slugify, falling back to "untitled".
+// Slugify is shared's slugify, falling back to EMPTY_SLUG_FALLBACK.
 func Slugify(input string) string {
 	decomposed := strings.Map(func(r rune) rune {
 		if r >= 0x300 && r <= 0x36f {

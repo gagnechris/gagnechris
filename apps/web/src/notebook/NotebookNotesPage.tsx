@@ -108,21 +108,21 @@ export default function NotebookNotesPage() {
   const loading = notesQuery.isPending || notesQuery.hasNextPage;
 
   return (
-    <section className="admin-panel notebook-notes">
-      <div className="admin-panel__header">
+    <section className="workspace-panel notebook-notes">
+      <div className="workspace-panel__header">
         <div>
           <h1>Notes</h1>
-          <p className="admin-panel__lede">
+          <p className="workspace-panel__lede">
             Daily notes and pages
             {areaFilter === 'all'
               ? ' · all areas'
               : ` · ${AREA_LABEL[areaFilter]}`}
           </p>
         </div>
-        <div className="admin-panel__actions">
+        <div className="workspace-panel__actions">
           <button
             type="button"
-            className="admin-btn"
+            className="kit-btn"
             onClick={() => void exportZip()}
             disabled={exportBusy}
             aria-busy={exportBusy}
@@ -132,7 +132,7 @@ export default function NotebookNotesPage() {
           </button>
           <button
             type="button"
-            className="admin-btn admin-btn--primary"
+            className="kit-btn kit-btn--primary"
             disabled={createMutation.isPending}
             onClick={() => void createPage()}
           >
@@ -141,19 +141,19 @@ export default function NotebookNotesPage() {
         </div>
       </div>
       {createMutation.error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {errorMessage(createMutation.error, 'Could not create the page.')}
         </p>
       ) : null}
       {exportError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Export failed: {exportError}
         </p>
       ) : null}
 
       <div className="notebook-notes__filters">
         <input
-          className="admin-input"
+          className="kit-input"
           type="search"
           placeholder="Search notes"
           value={q}
@@ -170,13 +170,13 @@ export default function NotebookNotesPage() {
       </div>
 
       {notesQuery.isError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           Could not load notes.
         </p>
       ) : loading ? (
-        <p className="admin-hint">Loading notes…</p>
+        <p className="kit-hint">Loading notes…</p>
       ) : sections.length === 0 ? (
-        <p className="admin-hint">No notes match.</p>
+        <p className="kit-hint">No notes match.</p>
       ) : (
         sections.map((section) => (
           <section

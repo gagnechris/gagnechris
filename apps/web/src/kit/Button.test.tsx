@@ -13,7 +13,7 @@ describe('Button', () => {
       </Button>,
     );
     const btn = screen.getByRole('button', { name: 'Publish' });
-    expect(btn).toHaveClass('admin-btn', 'admin-btn--primary');
+    expect(btn).toHaveClass('kit-btn', 'kit-btn--primary');
     await user.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);
   });

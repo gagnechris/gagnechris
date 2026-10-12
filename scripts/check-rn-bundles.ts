@@ -1,6 +1,8 @@
 import { build, type Plugin } from 'esbuild';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { repoLockfileParityErrors } from './lockfile-parity.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,6 +39,14 @@ const entries: readonly Entry[] = [
       'node_modules/marked/lib/marked.esm.js',
     ],
     allowImports: ['marked'],
+  },
+  {
+    // The dev-only markdown screen's sample note.
+    name: '@gagnechris/shared/fixtures/every-markdown-element',
+    path: join(
+      repoRoot,
+      'packages/shared/src/fixtures/every-markdown-element.ts',
+    ),
   },
   {
     name: '@gagnechris/api-client',
@@ -162,10 +172,88 @@ async function assertNegativeFixtureFails(): Promise<boolean> {
   }
 }
 
+const mobileSourceDirs = ['app', 'src', 'test', 'index.ts'].map((dir) =>
+  join(repoRoot, 'apps/mobile', dir),
+);
+
+function mobileSourceFiles(path: string): string[] {
+  if (/\.tsx?$/.test(path)) return [path];
+  let names: string[];
+  try {
+    names = readdirSync(path);
+  } catch {
+    return [];
+  }
+  return names.flatMap((name) =>
+    name === 'node_modules' ? [] : mobileSourceFiles(join(path, name)),
+  );
+}
+
+/** Every `@gagnechris/*` specifier the iOS app imports, with one file that does. */
+function mobileWorkspaceImports(): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const file of mobileSourceDirs.flatMap(mobileSourceFiles)) {
+    const source = readFileSync(file, 'utf8');
+    for (const [, specifier] of source.matchAll(
+      /(?:from|import)\s*\(?\s*'(@gagnechris\/[^']+)'/g,
+    )) {
+      if (!found.has(specifier!)) {
+        found.set(specifier!, relative(repoRoot, file));
+      }
+    }
+  }
+  return found;
+}
+
+/** Metro resolves with the `react-native` condition; without it a subpath falls back to `import`. */
+function hasReactNativeCondition(specifier: string): boolean {
+  const [, name, ...rest] = specifier.split('/');
+  const manifest = JSON.parse(
+    readFileSync(join(repoRoot, 'packages', name!, 'package.json'), 'utf8'),
+  ) as { exports?: Record<string, unknown> };
+  const key = rest.length ? `./${rest.join('/')}` : '.';
+  const target = manifest.exports?.[key];
+  return (
+    typeof target === 'object' && target !== null && 'react-native' in target
+  );
+}
+
 let failed = false;
 
 if (!(await assertNegativeFixtureFails())) {
   failed = true;
+}
+
+const entryNames = new Set(entries.map((entry) => entry.name));
+for (const [specifier, file] of mobileWorkspaceImports()) {
+  if (!entryNames.has(specifier)) {
+    failed = true;
+    console.error(
+      `${specifier}: imported by ${file} but not checked here; add it to entries.`,
+    );
+  } else if (!hasReactNativeCondition(specifier)) {
+    failed = true;
+    console.error(
+      `${specifier}: imported by ${file} but its package.json export has no "react-native" condition.`,
+    );
+  }
+}
+
+const allowedInApp = new Set(
+  entries.flatMap((entry) => entry.allowImports ?? []),
+);
+const lockfileErrors = repoLockfileParityErrors(
+  repoRoot,
+  (name) => isBannedImport(name) && !allowedInApp.has(name),
+);
+if (lockfileErrors.length > 0) {
+  failed = true;
+  console.error(
+    'Root and apps/mobile lockfiles disagree on what the RN-facing packages run:',
+  );
+  for (const error of lockfileErrors) console.error(`  ${error}`);
+} else {
+  console.log('Lockfile parity: OK (root and apps/mobile agree).');
 }
 
 for (const entry of entries) {

@@ -66,7 +66,7 @@ export function ImageUploadField({
     <input
       ref={inputRef}
       id={inputId}
-      className="admin-visually-hidden"
+      className="kit-visually-hidden"
       type="file"
       accept={MEDIA_CONTENT_TYPES.join(',')}
       aria-label={`Upload ${label.toLowerCase()}`}
@@ -91,7 +91,7 @@ export function ImageUploadField({
 
   return (
     <div
-      className={`admin-field ${layout === 'dropzone' ? 'admin-cover' : 'admin-project-preview'}`}
+      className={`kit-field ${layout === 'dropzone' ? 'admin-cover' : 'admin-project-preview'}`}
     >
       <span>{label}</span>
       {layout === 'dropzone' ? (
@@ -141,8 +141,8 @@ export function ImageUploadField({
           {image ?? (
             <span className="admin-project-preview__empty" aria-hidden="true" />
           )}
-          <div className="admin-actions">
-            <label htmlFor={inputId} className="admin-btn">
+          <div className="workspace-actions">
+            <label htmlFor={inputId} className="kit-btn">
               {uploading
                 ? 'Uploading…'
                 : value
@@ -159,16 +159,16 @@ export function ImageUploadField({
         </div>
       )}
       {error ? (
-        <span className="admin-field-error" role="alert">
+        <span className="kit-field-error" role="alert">
           {error}
         </span>
       ) : null}
       {requiredError ? (
-        <span id={requiredErrorId} className="admin-field-error">
+        <span id={requiredErrorId} className="kit-field-error">
           {requiredError}
         </span>
       ) : null}
-      {hint ? <span className="admin-hint">{hint}</span> : null}
+      {hint ? <span className="kit-hint">{hint}</span> : null}
     </div>
   );
 }

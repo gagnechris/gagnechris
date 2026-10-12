@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: ios-release
   cancel-in-progress: false
@@ -47,25 +51,17 @@ jobs:
         uses: ./.github/actions/setup
         with:
           ignore-scripts: 'true'
+          npm-cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+          go: 'false'
 
       - name: Install mobile
         working-directory: apps/mobile
         run: npm ci --ignore-scripts
 
-      - name: Typecheck, lint and test
-        run: |
-          npm run typecheck -w @gagnechris/app-core
-          npm run typecheck --prefix apps/mobile
-          npm run lint --prefix apps/mobile
-          npm test -w @gagnechris/app-core
-          npm test --prefix apps/mobile
-
-      - name: Check the bundle
-        working-directory: apps/mobile
-        run: |
-          npm run export:ios
-          npm run check:bundle
-          npm run smoke:bundle
+      - name: Typecheck, lint, test and check the bundle
+        run: bash scripts/ci/mobile-checks.sh
 
       - name: Install EAS CLI
         run: npm install --global --ignore-scripts eas-cli@24.7.0

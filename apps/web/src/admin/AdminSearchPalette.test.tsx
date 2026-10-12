@@ -53,7 +53,7 @@ describe('AdminSearchPalette', () => {
           <Routes>
             <Route
               path="/"
-              element={<AdminSearchPalette onClose={() => {}} />}
+              element={<AdminSearchPalette pages={[]} onClose={() => {}} />}
             />
             <Route path="/posts/:id" element={<p>Post editor</p>} />
           </Routes>
