@@ -406,8 +406,6 @@
 .admin-row-handle:hover {
   background: var(--neutral-100);
   color: var(--neutral-900);
-  transform: none;
-  box-shadow: none;
 }
 
 .admin-row-handle:active {
@@ -434,8 +432,6 @@
 .admin-row:hover {
   background: var(--neutral-50);
   color: var(--neutral-900);
-  transform: none;
-  box-shadow: none;
 }
 
 .admin-row__text {
@@ -479,8 +475,6 @@
 .admin-subscreen-back:hover {
   background: none;
   color: var(--primary-800);
-  transform: none;
-  box-shadow: none;
 }
 
 .admin-subscreen-title {

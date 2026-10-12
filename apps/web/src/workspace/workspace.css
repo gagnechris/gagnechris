@@ -1,3 +1,9 @@
+/* index.css lifts every button on hover for the public site; app controls stay flat. */
+:root button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 .workspace-shell {
   /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
      --vv-height accounts for the on-screen keyboard. */
@@ -493,7 +499,8 @@
     justify-content: flex-end;
   }
 
-  .workspace-more__backdrop {
+  .workspace-more__backdrop,
+  .workspace-more__backdrop:hover {
     position: absolute;
     inset: 0;
     border: 0;
@@ -753,7 +760,8 @@
   padding: 10vh var(--space-4) var(--space-4);
 }
 
-.workspace-search__backdrop {
+.workspace-search__backdrop,
+.workspace-search__backdrop:hover {
   position: absolute;
   inset: 0;
   border: 0;
