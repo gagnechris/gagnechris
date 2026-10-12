@@ -3,7 +3,7 @@ import {
   SITE_ADMIN_GROUP,
   USER_ADMIN_GROUP,
 } from '@gagnechris/shared';
-import type { Href } from 'expo-router';
+import { useSegments, type Href } from 'expo-router';
 import {
   createContext,
   useCallback,
@@ -100,10 +100,20 @@ export function useSpace(): SpaceState {
   return value;
 }
 
-/** Records `space` as the one to reopen while its tab bar is mounted. */
+const SPACE_SEGMENT: Record<Space, string> = {
+  notebook: '(tabs)',
+  admin: 'admin',
+};
+
+/**
+ * Records `space` as the one to reopen while its tab bar is showing. Both
+ * space layouts can stay mounted in the root stack, so a layout that isn't
+ * the current route must not record itself, or the two take turns forever.
+ */
 export function useRememberSpace(space: Space) {
   const { last, remember } = useSpace();
+  const showing = useSegments()[0] === SPACE_SEGMENT[space];
   useEffect(() => {
-    if (last !== space) remember(space);
-  }, [last, remember, space]);
+    if (showing && last !== space) remember(space);
+  }, [last, remember, showing, space]);
 }

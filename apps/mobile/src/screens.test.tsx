@@ -41,7 +41,7 @@ import { addPasskeyFromMore } from './auth/passkey';
 import { adminServer, makePost, makeProject } from '../test/adminServer';
 import { expectAccessible } from '../test/accessible';
 import { makeNote, makeTask, notebookServer } from '../test/notebookServer';
-import { router, searchParams } from '../test/router';
+import { router, searchParams, segments } from '../test/router';
 import { canManageUsers, SPACE_STORAGE_KEY, useRememberSpace } from './space';
 import { MIN_TARGET } from './theme';
 
@@ -370,6 +370,7 @@ describe('Spaces', () => {
   });
 
   it('opening a space remembers it for the next launch', async () => {
+    segments.current = ['admin', 'posts'];
     const { store, data } = memoryStore();
     const Remember = () => {
       useRememberSpace('admin');
@@ -382,6 +383,29 @@ describe('Spaces', () => {
     );
     await settle();
     expect(data.get(SPACE_STORAGE_KEY)).toBe('admin');
+  });
+
+  it('remembers only the space showing when both tab bars are mounted', async () => {
+    segments.current = ['admin', 'posts', '[id]'];
+    const { store, data } = memoryStore({ [SPACE_STORAGE_KEY]: 'notebook' });
+    const Notebook = () => {
+      useRememberSpace('notebook');
+      return null;
+    };
+    const Admin = () => {
+      useRememberSpace('admin');
+      return null;
+    };
+    const writes = vi.spyOn(store, 'setItem');
+    await render(
+      <Providers store={store}>
+        <Notebook />
+        <Admin />
+      </Providers>,
+    );
+    await settle();
+    expect(data.get(SPACE_STORAGE_KEY)).toBe('admin');
+    expect(writes).toHaveBeenCalledTimes(1);
   });
 
   it('shows the Users tab only to user admins', () => {
