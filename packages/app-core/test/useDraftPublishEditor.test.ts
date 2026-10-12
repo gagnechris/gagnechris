@@ -118,7 +118,7 @@ describe('useDraftPublishEditor discard then publish', () => {
       await result.current.runDiscard();
     });
     expect(discard).toHaveBeenCalledTimes(1);
-    expect(confirm).toHaveBeenCalledWith('discard?');
+    expect(confirm).toHaveBeenCalledWith('discard?', 'Discard');
     expect(result.current.draft).toBe('restored');
     expect(result.current.dirty).toBe(false);
     expect(result.current.getLastSavedGen()).toBe(result.current.getEditGen());
@@ -198,7 +198,7 @@ describe('useDraftPublishEditor async confirm', () => {
     await act(async () => {
       await result.current.runUnpublish();
     });
-    expect(confirm).toHaveBeenCalledWith('unpublish?');
+    expect(confirm).toHaveBeenCalledWith('unpublish?', 'Unpublish');
     expect(unpublish).toHaveBeenCalledTimes(1);
 
     await act(async () => {
