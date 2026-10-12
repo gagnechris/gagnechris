@@ -255,6 +255,7 @@ jobs:
         run: npm run cdk -- deploy --all --require-approval never
 
       - name: Build, sync to S3, invalidate CloudFront
+        if: needs.plan.outputs.web == 'true'
         run: bash scripts/deploy-web.sh
         env:
           ENV_NAME: prod

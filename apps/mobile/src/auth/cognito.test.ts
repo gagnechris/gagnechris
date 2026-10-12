@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  IOS_AUTH_REDIRECTS,
+  IOS_AUTH_REDIRECT,
   resolveAuthMode,
   type CognitoConfig,
 } from '../config';
@@ -59,7 +59,7 @@ const { cognitoIssuer, cognitoLogoutUrl } = await import('./cognito');
 const config: CognitoConfig = {
   domain: 'auth.gagnechris.com',
   clientId: 'ios-client',
-  ...IOS_AUTH_REDIRECTS.scheme,
+  ...IOS_AUTH_REDIRECT,
   ephemeralSession: true,
 };
 
@@ -71,12 +71,12 @@ const base64Url = (text: string) =>
 const jwt = (claims: object) => `h.${base64Url(JSON.stringify(claims))}.s`;
 
 describe('Cognito sign-in', () => {
-  it('runs the code flow with PKCE in an ephemeral session on the custom scheme', async () => {
+  it('runs the code flow with PKCE in an ephemeral session on the https callback', async () => {
     const tokens = await cognitoIssuer(config).signIn({ newAccount: false });
     expect(tokens).toEqual({ idToken: 'id', refreshToken: 'rt' });
     expect(auth.requests.at(-1)).toMatchObject({
       clientId: 'ios-client',
-      redirectUri: 'gagnechris://auth/callback',
+      redirectUri: 'https://notebook.gagnechris.com/ios/auth/callback',
       responseType: 'code',
       usePKCE: true,
       codeChallengeMethod: 'S256',
@@ -84,7 +84,7 @@ describe('Cognito sign-in', () => {
     });
     expect(auth.prompts.at(-1)).toEqual({
       preferEphemeralSession: true,
-      preferUniversalLinks: false,
+      preferUniversalLinks: true,
     });
     expect(auth.exchangeCodeAsync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -95,19 +95,6 @@ describe('Cognito sign-in', () => {
         tokenEndpoint: 'https://auth.gagnechris.com/oauth2/token',
       }),
     );
-  });
-
-  it('switches to the universal-link callback with one config change', async () => {
-    await cognitoIssuer({
-      ...config,
-      ...IOS_AUTH_REDIRECTS.universalLink,
-    }).signIn({
-      newAccount: false,
-    });
-    expect(auth.requests.at(-1)).toMatchObject({
-      redirectUri: 'https://notebook.gagnechris.com/ios/auth/callback',
-    });
-    expect(auth.prompts.at(-1)).toMatchObject({ preferUniversalLinks: true });
   });
 
   it('asks for a login again when the session is shared and another account is wanted', async () => {
@@ -124,14 +111,12 @@ describe('Cognito sign-in', () => {
     expect(auth.openAuthSessionAsync).not.toHaveBeenCalled();
     await cognitoIssuer({ ...config, ephemeralSession: false }).endSession();
     expect(auth.openAuthSessionAsync).toHaveBeenCalledWith(
-      'https://auth.gagnechris.com/logout?client_id=ios-client&logout_uri=gagnechris%3A%2F%2F',
-      'gagnechris://',
-      { preferUniversalLinks: false },
+      'https://auth.gagnechris.com/logout?client_id=ios-client&logout_uri=https%3A%2F%2Fnotebook.gagnechris.com%2Fios%2Fauth%2Fsigned-out',
+      'https://notebook.gagnechris.com/ios/auth/signed-out',
+      { preferUniversalLinks: true },
     );
-    expect(
-      cognitoLogoutUrl({ ...config, ...IOS_AUTH_REDIRECTS.universalLink }),
-    ).toContain(
-      'logout_uri=https%3A%2F%2Fnotebook.gagnechris.com%2Fios%2Fauth%2Fsigned-out',
+    expect(cognitoLogoutUrl(config)).toBe(
+      'https://auth.gagnechris.com/logout?client_id=ios-client&logout_uri=https%3A%2F%2Fnotebook.gagnechris.com%2Fios%2Fauth%2Fsigned-out',
     );
   });
 

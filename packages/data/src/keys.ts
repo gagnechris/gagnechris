@@ -48,14 +48,6 @@ export function slugRedirectSk(): string {
   return SK_REDIRECT;
 }
 
-export function tagPk(tag: string): string {
-  return `TAG#${tag}`;
-}
-
-export function tagSk(publishedAt: string, postId: string): string {
-  return `TS#${publishedAt}#POST#${postId}`;
-}
-
 export function statusGsi1Pk(status: string): string {
   return `STATUS#${status}`;
 }

@@ -126,10 +126,6 @@ export class AuthStack extends Stack {
       },
     ]);
 
-    // Prod clients never trust localhost; local Vite uses devClient.
-    const callbackUrls = [`https://${APEX_DOMAIN}/auth/callback`];
-    const logoutUrls = [`https://${APEX_DOMAIN}/`];
-
     const clientCommon = {
       generateSecret: false,
       preventUserExistenceErrors: true,
@@ -141,8 +137,6 @@ export class AuthStack extends Stack {
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls,
-        logoutUrls,
       },
       supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
       accessTokenValidity: Duration.hours(1),
@@ -183,6 +177,8 @@ export class AuthStack extends Stack {
       },
     });
 
+    // Local Vite signs in through this client, so the prod clients never
+    // trust localhost.
     this.devClient = this.userPool.addClient('DevClient', {
       ...clientCommon,
       userPoolClientName: 'dev-local',

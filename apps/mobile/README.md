@@ -41,9 +41,8 @@ Against the local API, dev builds use the local fake auth with all groups
 (`EXPO_PUBLIC_LOCAL_AUTH_GROUPS=site-admin` opens only Admin; an empty value
 shows No access). Anything else uses Cognito managed login with the prod `ios`
 client (`EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID` overrides it). That client accepts
-only the https callback, which the `preview` and `production` EAS profiles
-select (`EXPO_PUBLIC_AUTH_REDIRECT=universalLink`), so dev and simulator builds
-sign in with local auth only; see `docs/mobile.md#sign-in`.
+only the https callback, which needs a signed device build, so simulator
+builds sign in with local auth only; see `docs/mobile.md#sign-in`.
 
 ## Packages exercised
 

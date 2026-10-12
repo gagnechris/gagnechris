@@ -1,11 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { cognitoConfig, IOS_AUTH_REDIRECTS } from '../config';
+import { cognitoConfig } from '../config';
 import { addPasskey, addPasskeyUrl, renewManagedLoginUrl } from './passkey';
 
 const config = {
   ...cognitoConfig,
   clientId: 'ios-client',
-  ...IOS_AUTH_REDIRECTS.universalLink,
   ephemeralSession: false,
 };
 const CALLBACK = 'https://notebook.gagnechris.com/ios/auth/callback';

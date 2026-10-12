@@ -14,15 +14,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://gagnechris.com",
-        "EXPO_PUBLIC_AUTH_REDIRECT": "universalLink"
+        "EXPO_PUBLIC_API_BASE_URL": "https://gagnechris.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://gagnechris.com",
-        "EXPO_PUBLIC_AUTH_REDIRECT": "universalLink"
+        "EXPO_PUBLIC_API_BASE_URL": "https://gagnechris.com"
       }
     }
   },
