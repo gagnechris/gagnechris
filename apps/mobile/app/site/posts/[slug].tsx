@@ -7,7 +7,12 @@ import {
   readingTimeLabel,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Stack,
+  useLocalSearchParams,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import {
   openMarkdownLink,
@@ -31,6 +36,8 @@ const postSlugOf = (href: string): string | null => {
 
 const SitePostScreen = () => {
   const router = useRouter();
+  // Home and Posts each stack posts, so Back returns to the tab it came from.
+  const stack = (useSegments() as string[])[1] === 'home' ? 'home' : 'posts';
   const { slug = '' } = useLocalSearchParams<{ slug: string }>();
   const post = useSitePost(slug);
   const refresh = usePullToRefresh(() => post.refetch());
@@ -39,7 +46,7 @@ const SitePostScreen = () => {
 
   const openLink = (href: string) => {
     const other = postSlugOf(href);
-    if (other) router.push(`/site/posts/${other}`);
+    if (other) router.push(`/site/${stack}/${other}`);
     else void openMarkdownLink(href, PUBLIC_SITE_ORIGIN);
   };
 
