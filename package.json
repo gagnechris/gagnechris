@@ -54,7 +54,10 @@
     "go:test": "go -C services/api test ./...",
     "go:fmt": "go -C services/api tool -modfile=tools/go.mod golangci-lint fmt ./...",
     "go:generate": "tsx scripts/generate-go-contract.ts && go -C services/api generate ./...",
-    "go:generate:check": "npm run go:generate && git diff --exit-code -- services/api/internal/contract/contract.json services/api/internal/apitypes/apitypes.gen.go"
+    "go:generate:check": "npm run go:generate && git diff --exit-code -- services/api/internal/contract/contract.json services/api/internal/apitypes/apitypes.gen.go",
+    "verify": "tsx scripts/verify.ts",
+    "verify:all": "tsx scripts/verify.ts --all",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "engines": {
     "node": "^22.12.0"
