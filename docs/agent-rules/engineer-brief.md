@@ -33,7 +33,7 @@ The brief a coordinating session gives each agent it asks to implement a ticket.
 
 ## Done for you = PR opened, not merged
 
-1. Run `npm run verify` (the pre-push hook runs it too; never push with `--no-verify`), plus the integration, browser or mobile checks your change touches.
+1. Run `npm run verify` (the pre-push hook runs it too; never push with `--no-verify`), plus the integration, browser or mobile checks your change touches. For a UI change, run the specs it touches on Chromium (`npm run e2e:browser -- --project=chromium <spec>`); cloud sessions can, see [local-e2e](../local-e2e.md).
 2. Push and open the PR. The body has a summary, a table of each criterion with the test that proves it and the revert result, and a test plan. Don't enable auto-merge.
 3. Wait for the required checks, and fix any failures.
 4. Report back:
