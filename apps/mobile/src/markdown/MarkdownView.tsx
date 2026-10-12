@@ -15,10 +15,11 @@ import {
   Text,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { NOTEBOOK_ORIGIN, openMarkdownLink, resolveMarkdownUrl } from './links';
-import { CELL_CHAR_WIDTH, styles } from './styles';
+import { CELL_CHAR_WIDTH, IMAGE_CELL_WIDTH, styles } from './styles';
 
 export type TaskEmbedLine = { id: string; indent: string };
 
@@ -136,28 +137,22 @@ const MarkdownImage = ({
   );
 };
 
-const Paragraph = ({
-  nodes,
-  ctx,
-}: {
-  nodes: MarkdownInline[];
-  ctx: RenderContext;
-}) => {
-  if (!nodes.some((node) => node.type === 'image')) {
-    return (
-      <Text testID="md-p" style={styles.paragraph}>
-        <Inlines nodes={nodes} ctx={ctx} />
-      </Text>
-    );
-  }
-  // An image inside Text can't size itself, so it becomes its own row.
+const hasImage = (nodes: MarkdownInline[]) =>
+  nodes.some((node) => node.type === 'image');
+
+/** Text runs with each image lifted out as its own row: an image inside Text can't size itself. */
+const imageRows = (
+  nodes: MarkdownInline[],
+  ctx: RenderContext,
+  textStyle: StyleProp<TextStyle>,
+): ReactNode[] => {
   const parts: ReactNode[] = [];
   let run: MarkdownInline[] = [];
   const flush = () => {
     const text = run.filter((n) => n.type !== 'text' || n.text.trim());
     if (text.length) {
       parts.push(
-        <Text key={parts.length} style={styles.paragraphRun}>
+        <Text key={parts.length} style={textStyle}>
           <Inlines nodes={run} ctx={ctx} />
         </Text>,
       );
@@ -180,12 +175,25 @@ const Paragraph = ({
     }
   }
   flush();
-  return (
-    <View testID="md-p" style={styles.paragraphBlock}>
-      {parts}
-    </View>
-  );
+  return parts;
 };
+
+const Paragraph = ({
+  nodes,
+  ctx,
+}: {
+  nodes: MarkdownInline[];
+  ctx: RenderContext;
+}) =>
+  hasImage(nodes) ? (
+    <View testID="md-p" style={styles.paragraphBlock}>
+      {imageRows(nodes, ctx, styles.paragraphRun)}
+    </View>
+  ) : (
+    <Text testID="md-p" style={styles.paragraph}>
+      <Inlines nodes={nodes} ctx={ctx} />
+    </Text>
+  );
 
 const ListItem = ({
   item,
@@ -239,6 +247,7 @@ const cellWidth = (cells: MarkdownInline[][][], column: number): number => {
               : 0),
       0,
     );
+  if (cells.some((row) => hasImage(row[column] ?? []))) return IMAGE_CELL_WIDTH;
   const longest = Math.max(...cells.map((row) => length(row[column] ?? [])));
   return Math.min(240, Math.max(80, longest * CELL_CHAR_WIDTH + 24));
 };
@@ -268,15 +277,23 @@ const Table = ({
                 testID={r === 0 ? 'md-th' : 'md-td'}
                 style={[styles.tableCell, { width: widths[c] }]}
               >
-                <Text
-                  style={[
+                {hasImage(cell) ? (
+                  imageRows(cell, ctx, [
                     styles.tableText,
                     r === 0 && styles.strong,
                     { textAlign: textAlign(c) },
-                  ]}
-                >
-                  <Inlines nodes={cell} ctx={ctx} />
-                </Text>
+                  ])
+                ) : (
+                  <Text
+                    style={[
+                      styles.tableText,
+                      r === 0 && styles.strong,
+                      { textAlign: textAlign(c) },
+                    ]}
+                  >
+                    <Inlines nodes={cell} ctx={ctx} />
+                  </Text>
+                )}
               </View>
             ))}
           </View>

@@ -8,6 +8,8 @@ const lineHeight = Math.round(body * 1.5);
 /** Rough width of one character of table text, to size columns. */
 export const CELL_CHAR_WIDTH = 7.5;
 
+export const IMAGE_CELL_WIDTH = 280;
+
 export const styles = StyleSheet.create({
   root: { gap: tokens.space[3] },
   looseGap: { gap: tokens.space[2] },
@@ -110,6 +112,7 @@ export const styles = StyleSheet.create({
   tableCell: {
     paddingHorizontal: tokens.space[3],
     paddingVertical: tokens.space[2],
+    gap: tokens.space[2],
   },
   tableText: {
     fontSize: tokens.text.sm,

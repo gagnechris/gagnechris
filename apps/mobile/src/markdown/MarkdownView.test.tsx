@@ -280,6 +280,24 @@ describe('unsafe links', () => {
     ]);
   });
 
+  it('shows images in table cells, as the site does', () => {
+    const renderer = render(
+      <MarkdownView
+        markdown={
+          '| Before | After |\n| --- | --- |\n| ![Old](/media/a.png) | ![New](/media/b.png) |'
+        }
+        siteOrigin="https://example.com"
+      />,
+    );
+    const images = findAllByTestId(renderer, 'md-img');
+    expect(
+      images.map((image) => [image.type, image.props.source?.uri]),
+    ).toEqual([
+      ['Image', 'https://example.com/media/a.png'],
+      ['Image', 'https://example.com/media/b.png'],
+    ]);
+  });
+
   it('never opens an unsafe URL', async () => {
     for (const href of [
       'javascript:alert(1)',
