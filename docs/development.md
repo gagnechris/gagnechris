@@ -74,6 +74,18 @@ Prefer `local:dev` unless you intentionally need the production API.
 
 ## Quality gates
 
+`npm run verify` runs the checks below that the branch's changes can affect,
+against `origin/main`: Prettier and ESLint on the changed files, typecheck and
+unit tests for each changed workspace and every workspace that depends on it,
+the generated-file drift checks whose inputs changed, tsconfig coverage and case
+collisions when files are added, and Go lint and test when Go changed. A change
+to the root `package.json`, lockfile, `tsconfig.base.json`, ESLint config,
+`.nvmrc` or `.npmrc` checks every workspace. `npm run verify:all` runs the full
+set. `npm install` points `core.hooksPath` at `.githooks`, whose `pre-push`
+runs `npm run verify`; `git push --no-verify` skips it. The build, web shell,
+RN bundle, CDK synth, e2e and integration checks stay CI-only (run them
+yourself when the change touches them).
+
 ```bash
 npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile
 npm run test:integration -w @gagnechris/api-tests   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs the CI checks the pushed changes can affect. Skip once with
+# `git push --no-verify`.
+set -euo pipefail
+
+# A branch deletion pushes nothing to check.
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  if [ "${local_sha}" != 0000000000000000000000000000000000000000 ]; then
+    exec npm run --silent verify
+  fi
+done

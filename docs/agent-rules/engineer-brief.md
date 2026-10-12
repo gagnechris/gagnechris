@@ -33,7 +33,7 @@ The brief a coordinating session gives each agent it asks to implement a ticket.
 
 ## Done for you = PR opened, not merged
 
-1. Run `npm run lint`, `npm run format:check`, `npm run typecheck` and `npm test`, plus the integration, browser or mobile checks your change touches.
+1. Run `npm run verify` (the pre-push hook runs it too; never push with `--no-verify`), plus the integration, browser or mobile checks your change touches.
 2. Push and open the PR. The body has a summary, a table of each criterion with the test that proves it and the revert result, and a test plan. Don't enable auto-merge.
 3. Wait for the required checks, and fix any failures.
 4. Report back:
