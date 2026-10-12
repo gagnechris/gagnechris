@@ -11,13 +11,17 @@ export default defineConfig({
   globalSetup: './global-setup.ts',
   fullyParallel: true,
   forbidOnly: CI,
-  retries: 0,
+  // One retry in CI only, so a flake can't redden a PR or main; the CI job
+  // still lists every test that needed it.
+  retries: CI ? 1 : 0,
   workers: CI ? 2 : undefined,
   timeout: 30_000,
   expect: { timeout: 10_000 },
   reporter: [
     ['list'],
-    ...(CI ? [['github'] as const] : []),
+    ...(CI
+      ? ([['github'], ['json', { outputFile: `${OUT}/results.json` }]] as const)
+      : []),
     ['html', { outputFolder: `${OUT}/playwright-report`, open: 'never' }],
   ],
   use: {

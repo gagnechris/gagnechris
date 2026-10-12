@@ -180,10 +180,16 @@ jobs:
           COMPOSE_PROJECT_NAME: gagnechris-ci
         run: docker compose -f docker-compose.local.yml -f docker-compose.ci.yml down
 
+  # One job per browser so each has a runner to itself; WebKit under the
+  # other browser's load was the main source of flakes.
   local-e2e:
-    name: Local E2E smoke
+    name: Local E2E smoke (${{ matrix.browser }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -232,7 +238,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ steps.playwright.outputs.version }}
 
       # The Azure apt mirror is sometimes slow enough to eat the job timeout,
       # so the browsers' system packages are cached and handed to apt.
@@ -241,7 +247,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-debs
-          key: playwright-debs-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}
+          key: playwright-debs-${{ runner.os }}-${{ env.ImageOS }}-${{ matrix.browser }}-${{ steps.playwright.outputs.version }}
 
       - name: Seed apt with cached packages
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
@@ -254,11 +260,15 @@ jobs:
 
       - name: Install Playwright browsers
         if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps "${BROWSER}"
+        env:
+          BROWSER: ${{ matrix.browser }}
 
       - name: Install Playwright system deps
         if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium webkit
+        run: npx playwright install-deps "${BROWSER}"
+        env:
+          BROWSER: ${{ matrix.browser }}
 
       - name: Keep apt packages for the cache
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
@@ -270,13 +280,19 @@ jobs:
 
       - name: Run e2e:browser
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
-        run: npm run e2e:browser
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npm run e2e:browser -- --project="${BROWSER}"
+
+      - name: Flaky test summary
+        if: always() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
+        run: npx tsx scripts/ci/e2e-flaky-summary.ts e2e/results.json
 
       - name: Upload Playwright report
         if: failure() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-${{ github.run_attempt }}
+          name: playwright-report-${{ matrix.browser }}-${{ github.run_attempt }}
           path: |
             e2e/playwright-report
             e2e/test-results
@@ -284,3 +300,20 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
+
+  # The required check: one name for both browser jobs, so the ruleset
+  # doesn't change when the browser list does. Runs even when a browser job
+  # failed, since a skipped required check would count as passing.
+  local-e2e-result:
+    name: Local E2E smoke
+    needs: local-e2e
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every browser job passed
+        env:
+          RESULT: ${{ needs.local-e2e.result }}
+        run: |
+          echo "Browser jobs: ${RESULT}"
+          [ "${RESULT}" = 'success' ]
