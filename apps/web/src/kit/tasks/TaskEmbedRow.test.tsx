@@ -35,6 +35,38 @@ describe('TaskEmbedRow', () => {
     ).toHaveAttribute('href', `/tasks/${ID}`);
   });
 
+  test('the open link follows the title, and a press beside them edits the title', async () => {
+    const { container } = render(
+      <MemoryRouter>
+        <TaskEmbedRow
+          view={{
+            kind: 'task',
+            task: { title: 'Write spec', status: 'todo', priority: 'high' },
+            schedule: '@Tue',
+            onToggle: vi.fn(),
+            onRename: vi.fn(),
+            to: `/tasks/${ID}`,
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const title = screen.getByRole('textbox', { name: 'Task title' });
+    const link = screen.getByRole('link', { name: 'Open task Write spec' });
+    expect(title.compareDocumentPosition(link)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(link.nextElementSibling).toHaveTextContent('@Tue');
+
+    await userEvent.pointer({
+      keys: '[MouseLeft]',
+      target: container.querySelector<HTMLElement>('.task-embed')!,
+    });
+    expect(title).toHaveFocus();
+    expect((title as HTMLTextAreaElement).selectionStart).toBe(
+      'Write spec'.length,
+    );
+  });
+
   test('a pending task cannot be toggled; a deleted one is muted', () => {
     const { rerender } = render(
       <TaskEmbedRow

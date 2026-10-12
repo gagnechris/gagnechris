@@ -224,6 +224,15 @@ export function TaskEmbedRow({
     <div
       className={`task-embed${done ? ' task-embed--done' : ''}${dropped ? ' task-embed--dropped' : ''}`}
       data-task-status={task.status}
+      onMouseDown={(e) => {
+        // The title is only as wide as its text; a press on the rest of the
+        // row edits it, as a full-width field would.
+        const field = e.currentTarget.querySelector('textarea');
+        if (e.target !== e.currentTarget || !field) return;
+        e.preventDefault();
+        field.focus();
+        field.setSelectionRange(field.value.length, field.value.length);
+      }}
     >
       <input
         type="checkbox"
