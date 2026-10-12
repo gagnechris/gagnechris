@@ -99,7 +99,7 @@ describe('native build config', () => {
     expect(buildProperties()?.ios?.enableSceneSupport).toBe(true);
   });
 
-  it('embeds the Inter faces the theme names', () => {
+  it('embeds the Inter and Newsreader faces the theme names', () => {
     const fonts = app.plugins.find(
       (plugin) => Array.isArray(plugin) && plugin[0] === 'expo-font',
     )?.[1] as { fonts: string[] } | undefined;
@@ -108,6 +108,9 @@ describe('native build config', () => {
       'Inter_500Medium.ttf',
       'Inter_600SemiBold.ttf',
       'Inter_700Bold.ttf',
+      'Newsreader_400Regular.ttf',
+      'Newsreader_400Regular_Italic.ttf',
+      'Newsreader_500Medium.ttf',
     ]);
   });
 

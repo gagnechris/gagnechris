@@ -10,9 +10,9 @@ import {
   WidgetType,
   type DecorationSet,
 } from '@codemirror/view';
+import { MARKDOWN_IMAGE } from '@gagnechris/shared';
 
 const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
-const IMAGE = /!\[([^\]\n]*)\]\(([^)\s]+)(?:[ \t]+"[^"\n]*")?\)/g;
 
 class ImageWidget extends WidgetType {
   constructor(
@@ -56,7 +56,7 @@ function buildImages(
       fence = opener;
       continue;
     }
-    for (const m of line.text.matchAll(IMAGE)) {
+    for (const m of line.text.matchAll(MARKDOWN_IMAGE)) {
       const from = line.from + m.index;
       out.push(
         Decoration.replace({

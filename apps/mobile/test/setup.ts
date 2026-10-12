@@ -171,6 +171,9 @@ vi.mock('@react-native-community/datetimepicker', () => ({
 
 vi.mock('expo-symbols', () => ({ SymbolView: host('SymbolView') }));
 
+// Screens get the TextInput the editors use without the native view.
+vi.mock('../modules/live-markdown', () => ({ LiveMarkdownNativeView: null }));
+
 vi.mock('react-native-safe-area-context', async () => {
   const { safeAreaInsets } = await import('./safeArea');
   return { useSafeAreaInsets: () => safeAreaInsets.current };

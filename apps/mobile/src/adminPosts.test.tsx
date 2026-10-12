@@ -247,10 +247,15 @@ describe('Post editor', () => {
     );
   });
 
-  it('previews images from the public site', async () => {
+  it('previews images from the public site from the keyboard toolbar', async () => {
     serve([makePost('p1', { bodyMarkdown: '![x](/media/a.jpg)' })]);
     const renderer = await show(<PostScreen />);
-    act(() => byLabel(renderer, 'Preview').props.onPress());
+    act(() =>
+      renderer.root
+        .findByType('InputAccessoryView' as never)
+        .find((node) => node.props.accessibilityLabel === 'Preview')
+        .props.onPress(),
+    );
     const image = renderer.root.find(
       (node) => (node.type as string) === 'Image',
     );
