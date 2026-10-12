@@ -15,9 +15,6 @@ const PNG_1X1 = Buffer.from(
   'base64',
 );
 
-const acceptDialogs = (page: Page) =>
-  page.on('dialog', (dialog) => void dialog.accept());
-
 const saved = (page: Page) =>
   expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible();
 
@@ -141,7 +138,6 @@ test('publish, unpublish and delete a project', async ({
   request,
   seed,
 }) => {
-  acceptDialogs(page);
   const name = `${prefix} Lifecycle`;
   const slug = `${prefix}-lifecycle`;
   const project = await seedProject(seed, { name, slug });
@@ -160,6 +156,10 @@ test('publish, unpublish and delete a project', async ({
   ).toContain(name);
 
   await page.getByRole('button', { name: 'Unpublish' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Unpublish' })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Publish', exact: true }),
   ).toBeVisible();
@@ -170,6 +170,10 @@ test('publish, unpublish and delete a project', async ({
     .toBe(404);
 
   await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole('link', { name: new RegExp(name) })).toHaveCount(
     0,

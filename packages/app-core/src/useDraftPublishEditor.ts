@@ -146,7 +146,7 @@ export function useDraftPublishEditor<TEntity>({
 
   const runUnpublish = useCallback(async () => {
     if (!enabled || isBusy()) return;
-    if (!(await confirm(unpublishConfirm))) return;
+    if (!(await confirm(unpublishConfirm, 'Unpublish'))) return;
     await withHold(() => flushThen(unpublish, 'Unpublish'));
   }, [
     confirm,
@@ -160,7 +160,7 @@ export function useDraftPublishEditor<TEntity>({
 
   const runDiscard = useCallback(async () => {
     if (!enabled || isBusy()) return;
-    if (!(await confirm(discardConfirm))) return;
+    if (!(await confirm(discardConfirm, 'Discard'))) return;
     await withHold(async () => {
       // Wait out any in-flight autosave PUT so Discard does not race into a 409.
       await awaitInFlight();

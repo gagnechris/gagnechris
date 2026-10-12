@@ -9,7 +9,11 @@ import {
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { PAST_AUTOSAVE_MS, QueryClientTestProvider } from '../test-utils';
+import {
+  answerConfirms,
+  PAST_AUTOSAVE_MS,
+  QueryClientTestProvider,
+} from '../test-utils';
 import AdminResumePage from './AdminResumePage';
 import { adminApi } from '../mockAdminApi';
 
@@ -364,7 +368,7 @@ describe('AdminResumePage structured dates', () => {
   });
 
   test('an end before start keeps the leave guard up after the save', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirmSpy = answerConfirms(false);
     const { router } = renderResume();
     await openRole('Architect');
     fireEvent.change(screen.getByLabelText(/^End month/), {
@@ -381,10 +385,10 @@ describe('AdminResumePage structured dates', () => {
     await waitFor(() =>
       expect(confirmSpy).toHaveBeenCalledWith(
         'Your changes could not be saved. Leave without saving?',
+        'Leave',
       ),
     );
     expect(screen.queryByText('Posts list')).not.toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 
   test('an end before start after a saved edit sends the newer saved dates', async () => {

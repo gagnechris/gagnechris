@@ -24,6 +24,7 @@ export const defaultTimers: Timers = {
 };
 
 /** Async because React Native's `Alert.alert` is callback-based. */
-export type ConfirmFn = (message: string) => Promise<boolean>;
+/** `action` labels the confirming button. */
+export type ConfirmFn = (message: string, action?: string) => Promise<boolean>;
 
 export type RetrySignals = (retry: () => void) => () => void;

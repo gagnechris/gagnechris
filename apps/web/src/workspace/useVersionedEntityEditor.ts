@@ -3,7 +3,8 @@ import {
   type VersionedEntityEditorOptions,
 } from '@gagnechris/app-core';
 import { browserRetrySignals } from './browserRetrySignals';
-import { browserConfirm, useVersionedDocShell } from './useVersionedDocShell';
+import { appConfirm } from './confirmDialog';
+import { useVersionedDocShell } from './useVersionedDocShell';
 
 export function useVersionedEntityEditor<
   TEntity extends {
@@ -22,7 +23,7 @@ export function useVersionedEntityEditor<
 }) {
   const editor = useVersionedEntityEditorCore({
     ...options,
-    confirm: browserConfirm,
+    confirm: appConfirm,
     retrySignals: browserRetrySignals,
   });
   const unsavedFields = hasUnsavedFields?.(editor.draft) ?? false;

@@ -3,7 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import type { Note } from '@gagnechris/app-core';
-import { createTestQueryClient, QueryClientTestProvider } from '../test-utils';
+import {
+  answerConfirms,
+  createTestQueryClient,
+  QueryClientTestProvider,
+} from '../test-utils';
 import NotebookNotePage from './NotebookNotePage';
 
 const NOTE_ID = '01JNOTEPAGEAAAAAAAAAAAAAA1';
@@ -200,13 +204,14 @@ describe('NotebookNotePage', () => {
 
   test('Delete asks first, sends the version and goes back to Notes', async () => {
     seedNote();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirm = answerConfirms(true);
     const router = renderPage();
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole('button', { name: 'Delete' }));
     expect(confirm).toHaveBeenCalledWith(
       'Delete this page? It will disappear from your list.',
+      'Delete',
     );
     expect(
       await screen.findByRole('heading', { name: 'Note list' }),
