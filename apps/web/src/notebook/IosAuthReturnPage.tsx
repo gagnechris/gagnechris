@@ -6,7 +6,7 @@ import '../workspace/workspace.css';
 // without the app's PKCE verifier, and nothing here reads it.
 export default function IosAuthReturnPage() {
   return (
-    <div className="admin-shell no-access">
+    <div className="workspace-shell no-access">
       <title>{`Open the app - ${APP_TITLE.notebook}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       <main className="no-access__column">

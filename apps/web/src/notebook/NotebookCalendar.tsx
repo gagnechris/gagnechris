@@ -124,7 +124,7 @@ export function NotebookCalendar({
       <div className="notebook-calendar__toolbar">
         <button
           type="button"
-          className="admin-btn"
+          className="kit-btn"
           onClick={previousMonth}
           aria-label="Previous month"
         >
@@ -135,7 +135,7 @@ export function NotebookCalendar({
         </span>
         <button
           type="button"
-          className="admin-btn"
+          className="kit-btn"
           onClick={nextMonth}
           aria-label="Next month"
         >

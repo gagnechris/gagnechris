@@ -100,7 +100,7 @@ export function TaskDateMenu({
               <input
                 ref={pickerRef}
                 type="date"
-                className="admin-input"
+                className="kit-input"
                 value={picker.value}
                 onChange={(e) => picker.onChange(e.target.value)}
                 onKeyDown={(e) => {
@@ -117,7 +117,7 @@ export function TaskDateMenu({
             </label>
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               disabled={!picker.value}
               onClick={picker.onSet}
             >

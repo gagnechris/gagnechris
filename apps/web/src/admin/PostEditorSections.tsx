@@ -51,7 +51,7 @@ export function PostEditorDetails({
           onSave();
         }}
       >
-        <div className="admin-field">
+        <div className="kit-field">
           <label htmlFor={slugId}>Slug</label>
           <div className="admin-prefixed">
             <span className="admin-prefixed__prefix" aria-hidden="true">
@@ -70,7 +70,7 @@ export function PostEditorDetails({
             />
           </div>
           {!slugManual && (
-            <span id={slugHintId} className="admin-hint">
+            <span id={slugHintId} className="kit-hint">
               Follows the title until you edit it.
             </span>
           )}
@@ -106,7 +106,7 @@ export function PostEditorDetails({
         />
         <details className="admin-seo">
           <summary>SEO overrides</summary>
-          <p className="admin-hint">
+          <p className="kit-hint">
             Title and description default to the post title and excerpt.
           </p>
           <Field label="SEO title">
@@ -152,17 +152,17 @@ function PostProjectsField({
 
   let options;
   if (error) {
-    options = <p className="admin-hint">{error}</p>;
+    options = <p className="kit-hint">{error}</p>;
   } else if (!projects) {
-    options = <p className="admin-hint">Loading projects…</p>;
+    options = <p className="kit-hint">Loading projects…</p>;
   } else if (projects.length === 0) {
-    options = <p className="admin-hint">No projects yet.</p>;
+    options = <p className="kit-hint">No projects yet.</p>;
   } else {
     options = (
       <ul className="admin-post-projects__list">
         {sortProjectsByOrder(projects).map((project) => (
           <li key={project.id}>
-            <label className="admin-check">
+            <label className="kit-check">
               <input
                 type="checkbox"
                 checked={selected.includes(project.id)}
@@ -178,11 +178,11 @@ function PostProjectsField({
 
   return (
     <fieldset
-      className="admin-field admin-field--full admin-post-projects"
+      className="kit-field kit-field--full admin-post-projects"
       aria-describedby={hintId}
     >
       <legend>Part of project</legend>
-      <span id={hintId} className="admin-hint">
+      <span id={hintId} className="kit-hint">
         Lists this post in the project’s Build log. Not the same as Tags.
       </span>
       {options}

@@ -83,7 +83,7 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
 
   if (editor.loadError || editor.isLoading || !entity) {
     return editor.loadError ? (
-      <p className="admin-panel__error" role="alert">
+      <p className="workspace-panel__error" role="alert">
         {editor.loadError}
       </p>
     ) : (
@@ -108,12 +108,12 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
           <h2>{label} template</h2>
           <div className="notebook-templates__actions">
             <SaveIndicator saveState={saveState} dirty={dirty} />
-            <button type="button" className="admin-btn" onClick={insertDate}>
+            <button type="button" className="kit-btn" onClick={insertDate}>
               Insert date
             </button>
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               disabled={unchanged || reset.isPending}
               onClick={() => void resetToDefault()}
             >
@@ -122,12 +122,12 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
           </div>
         </div>
         {error ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             {error}
           </p>
         ) : null}
         {invalidText !== null ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             {DAILY_TEMPLATE_TASK_MESSAGE}
           </p>
         ) : null}
@@ -138,7 +138,7 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
           label={`${label} template`}
           placeholder="Write what each new day starts with…"
         />
-        <p className="admin-hint">
+        <p className="kit-hint">
           Headings, lists and checklists. {DAILY_TEMPLATE_DATE_TOKEN} fills in
           the day when the note is created.
         </p>
@@ -195,14 +195,14 @@ export default function NotebookTemplatesPage() {
         : areaFilter;
 
   return (
-    <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
+    <section className="workspace-panel workspace-panel--editor">
+      <div className="workspace-action-bar">
         <div className="notebook-today__title">
           <p className="notebook-today__kicker">Settings</p>
           <h1>Daily templates</h1>
         </div>
       </div>
-      <p className="admin-panel__lede">
+      <p className="workspace-panel__lede">
         Each new daily note starts from its area’s template. Notes you’ve
         already started never change.
       </p>

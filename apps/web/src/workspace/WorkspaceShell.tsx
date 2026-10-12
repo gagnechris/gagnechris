@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { SITE_AUTHOR_NAME } from '@gagnechris/shared';
+import { initials, SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
 import {
   accessLevel,
@@ -21,6 +21,7 @@ import {
 } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import { useModalDialog } from '../kit/useModalDialog';
+import { visibleNavSections } from './navSections';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import { WorkspaceSearchContext } from './workspaceSearch';
@@ -34,8 +35,8 @@ export type ShellNavItem = {
   tabLabel?: string;
   icon: ShellIconName;
   end?: boolean;
-  /** Other paths whose screens open from this item, so it stays current there. */
-  childPaths?: string[];
+  /** Screens that open from this item: it stays current there, and search finds them. */
+  childPages?: { to: string; label: string }[];
   /** Hidden unless the user is in this Cognito group. */
   group?: string;
   count?: string;
@@ -60,14 +61,6 @@ type WorkspaceFrameProps = {
 };
 
 const PHONE_TABS = 4;
-
-function initials(label: string): string {
-  const name = label.split('@')[0] ?? label;
-  const parts = name.split(/[\s._-]+/).filter(Boolean);
-  const letters =
-    parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : name.slice(0, 2);
-  return letters.toUpperCase();
-}
 
 function navItemClass({ isActive }: { isActive: boolean }): string {
   return isActive
@@ -142,6 +135,8 @@ export function WorkspaceFrame({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        // The palette would open underneath another dialog and take its keys.
+        if (document.querySelector('[aria-modal="true"]')) return;
         e.preventDefault();
         setMoreOpenAt(null);
         setSearchOpen(true);
@@ -151,14 +146,7 @@ export function WorkspaceFrame({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const visibleSections = sections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter(
-        (item) => !item.group || user.groups.includes(item.group),
-      ),
-    }))
-    .filter((section) => section.items.length > 0);
+  const visibleSections = visibleNavSections(sections, user.groups);
   const phoneOverflow = new Set(
     visibleSections.flatMap((s) => s.items).slice(PHONE_TABS),
   );
@@ -244,13 +232,15 @@ export function WorkspaceFrame({
   return (
     <div
       className={
-        rail ? 'admin-shell workspace workspace--rail' : 'admin-shell workspace'
+        rail
+          ? 'workspace-shell workspace workspace--rail'
+          : 'workspace-shell workspace'
       }
     >
       <title>{`${title} - ${SITE_AUTHOR_NAME}`}</title>
       <meta name="robots" content="noindex, nofollow" />
       {prodApi ? (
-        <div className="admin-prod-banner" role="status" aria-live="polite">
+        <div className="workspace-prod-banner" role="status" aria-live="polite">
           PRODUCTION API — edits, autosave, and publish hit the live site
         </div>
       ) : null}
@@ -285,8 +275,8 @@ export function WorkspaceFrame({
                       className={({ isActive }) => {
                         const active =
                           isActive ||
-                          (item.childPaths ?? []).some(
-                            (path) =>
+                          (item.childPages ?? []).some(
+                            ({ to: path }) =>
                               location.pathname === path ||
                               location.pathname.startsWith(`${path}/`),
                           );
@@ -347,7 +337,7 @@ export function WorkspaceFrame({
             {account}
           </div>
         </aside>
-        <main className="admin-main workspace-main">
+        <main className="workspace-main">
           <WorkspaceSearchContext.Provider value={openSearch}>
             {children ?? <Outlet />}
           </WorkspaceSearchContext.Provider>

@@ -114,3 +114,14 @@ export const UserConflictResponseSchema = z.object({
   error: UserConflictCodeSchema,
   message: z.string(),
 });
+
+/** Avatar letters for a name or an email: first and last word, or the first two letters of a single word. */
+export function initials(nameOrEmail: string): string {
+  const source = nameOrEmail.trim().split('@')[0] ?? '';
+  const parts = source.split(/[\s._-]+/).filter(Boolean);
+  const first = parts[0];
+  if (!first) return '?';
+  const last = parts[parts.length - 1]!;
+  const letters = parts.length > 1 ? first[0]! + last[0]! : first.slice(0, 2);
+  return letters.toUpperCase();
+}

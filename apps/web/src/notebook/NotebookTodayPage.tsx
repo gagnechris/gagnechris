@@ -1,42 +1,14 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MutableRefObject,
-} from 'react';
-import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
-import {
-  dailyNoteResource,
-  isTemplateStartedDaily,
-  startDailyNoteBlank,
   useDailyNoteDatesQuery,
-  useDeleteNoteMutation,
-  useTaskPatch,
-  useTaskToggle,
   type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
-import {
-  addDays,
-  formatCalendarDay,
-  isCalendarDay,
-  snoozeBaseDay,
-  taskEmbedIds,
-  taskEmbedToken,
-} from '@gagnechris/shared';
-import { SaveIndicator } from '../workspace/ui/SaveIndicator';
+import { addDays, isCalendarDay, snoozeBaseDay } from '@gagnechris/shared';
 import type { NotebookOutletContext } from './NotebookLayout';
-import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { monthBounds } from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
-import { NotebookMarkdownBody } from './NotebookMarkdownBody';
-import {
-  emptyNoteDraft,
-  noteDraftFromNote,
-  notePayloadFromDraft,
-} from './noteDraft';
 import {
   CarryFooter,
   ComingUpPanel,
@@ -47,226 +19,18 @@ import ShellIcon from '../workspace/ui/ShellIcon';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
 import {
   NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_HEADINGS,
   NOTEBOOK_AREA_LABELS,
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
+import { DayTitle, TodayEditor } from './TodayEditor';
 import { useLocalToday } from './useLocalToday';
+import { useTodayActions } from './useTodayActions';
 import { useTodayTasks } from './useTodayTasks';
 
 function resolveDate(param: string | null, today: string): string {
   if (param && isCalendarDay(param)) return param;
   return today;
-}
-
-function dayHeading(date: string, today: string): string {
-  return formatCalendarDay(date, {
-    weekday: 'long',
-    month: 'long',
-    year: date.slice(0, 4) !== today.slice(0, 4),
-  });
-}
-
-function DayTitle({
-  area,
-  date,
-  today,
-}: {
-  area: NotebookArea | null;
-  date: string;
-  today: string;
-}) {
-  const areaLabel = NOTEBOOK_AREA_HEADINGS[area ?? 'all'];
-  return (
-    <div className="notebook-today__title">
-      <p className="notebook-today__kicker">
-        {areaLabel}
-        {date === today ? ' · Today' : ''}
-      </p>
-      <h1>{dayHeading(date, today)}</h1>
-    </div>
-  );
-}
-
-function TodayEditor({
-  area,
-  date,
-  today,
-  onUnsavedChange,
-  onEmbeddedIds,
-  appendEmbedRef,
-  onNoteReady,
-  highlightTaskId,
-  onHighlighted,
-  onDeleted,
-}: {
-  area: NotebookArea;
-  date: string;
-  today: string;
-  onUnsavedChange: (unsaved: boolean) => void;
-  /** The draft's embeds, which are what the note shows; null while loading. */
-  onEmbeddedIds: (ids: ReadonlySet<string> | null) => void;
-  /** Set while the note can take a new embed line. */
-  appendEmbedRef: MutableRefObject<((taskId: string) => void) | null>;
-  onNoteReady: (ready: boolean) => void;
-  highlightTaskId: string | null;
-  onHighlighted: () => void;
-  onDeleted: () => void;
-}) {
-  const deleteMutation = useDeleteNoteMutation();
-  const {
-    draft,
-    updateDraft,
-    entity,
-    save,
-    saveError,
-    loadError,
-    isLoading,
-    dirty,
-    saveState,
-    replaceFromEntity,
-    busy,
-    runDelete,
-  } = useWorkspaceDocEditor({
-    resource: dailyNoteResource,
-    params: { area, date, carryIn: date === today },
-    initialDraft: emptyNoteDraft(),
-    toDraft: noteDraftFromNote,
-    getEntityId: (note) => `${note.area}:${note.date}:${note.id}`,
-    toPayload: (current, note) => ({
-      id: note.id,
-      ...notePayloadFromDraft(current),
-    }),
-    conflictMessage:
-      'Conflict — another device updated this daily note. Reload and try again.',
-    conflictMessages: {
-      // A placeholder save that lost the race to create this day.
-      daily_taken:
-        'Another tab or device already started this daily note. Copy what you typed, then reload to open it.',
-    },
-    loadErrorFallback: 'Could not load daily note.',
-    delete: {
-      confirm:
-        'Delete this daily note? Its tasks stay in your list; the day starts empty.',
-      mutate: async (version) => {
-        if (entity)
-          await deleteMutation.mutateAsync({ id: entity.id, version });
-      },
-      onDeleted,
-    },
-  });
-
-  const unsaved = dirty || saveState === 'saving';
-  useEffect(() => {
-    onUnsavedChange(unsaved);
-  }, [onUnsavedChange, unsaved]);
-
-  const ready = !loadError && !isLoading && entity !== undefined;
-  const body = draft.bodyMarkdown;
-  useEffect(() => {
-    onEmbeddedIds(ready ? new Set(taskEmbedIds(body)) : null);
-  }, [onEmbeddedIds, ready, body]);
-
-  useEffect(() => {
-    if (!ready) return;
-    appendEmbedRef.current = (taskId) =>
-      updateDraft((prev) => ({
-        ...prev,
-        bodyMarkdown: appendTaskEmbed(prev.bodyMarkdown, taskId),
-      }));
-    onNoteReady(true);
-    return () => {
-      appendEmbedRef.current = null;
-      onNoteReady(false);
-    };
-  }, [appendEmbedRef, onNoteReady, ready, updateDraft]);
-
-  if (loadError || isLoading || !entity) {
-    return (
-      <>
-        <div className="admin-action-bar notebook-today__header">
-          <DayTitle area={area} date={date} today={today} />
-        </div>
-        {loadError ? (
-          <p className="admin-panel__error" role="alert">
-            {loadError}
-          </p>
-        ) : (
-          <p>Loading daily note…</p>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="admin-action-bar notebook-today__header">
-        <DayTitle area={area} date={date} today={today} />
-        <div className="admin-action-bar__status">
-          <SaveIndicator
-            saveState={saveState}
-            dirty={dirty}
-            isNew={entity.version === 0}
-          />
-        </div>
-        {entity.version > 0 ? (
-          <button
-            type="button"
-            className="admin-btn"
-            disabled={busy}
-            onClick={() => void runDelete()}
-          >
-            Delete
-          </button>
-        ) : null}
-      </div>
-      {saveError ? (
-        <p className="admin-panel__error" role="alert">
-          {saveError}
-        </p>
-      ) : null}
-      {isTemplateStartedDaily(entity) && !dirty && saveState !== 'saving' ? (
-        <div className="notebook-today__template" role="note">
-          <span>
-            Started from your <strong>{NOTEBOOK_AREA_LABELS[area]}</strong>{' '}
-            template. It’s saved as soon as you type.
-          </span>
-          <span className="notebook-today__template-actions">
-            <button
-              type="button"
-              className="notebook-today__template-action"
-              onClick={() => replaceFromEntity(startDailyNoteBlank(entity))}
-            >
-              Start blank
-            </button>
-            <Link
-              className="notebook-today__template-action"
-              to={`/settings/templates?template=${area}&area=${area}`}
-            >
-              Edit template
-            </Link>
-          </span>
-        </div>
-      ) : null}
-      <NotebookMarkdownBody
-        note={entity}
-        ensureNoteSaved={save}
-        value={draft.bodyMarkdown}
-        onChange={(bodyMarkdown) =>
-          updateDraft((prev) => ({ ...prev, bodyMarkdown }))
-        }
-        highlightTaskId={highlightTaskId}
-        onHighlighted={onHighlighted}
-      />
-    </>
-  );
-}
-
-/** The embed, then an empty line for the context written under it. */
-function appendTaskEmbed(markdown: string, taskId: string): string {
-  const body = markdown.replace(/\s+$/, '');
-  return `${body}${body ? '\n\n' : ''}${taskEmbedToken(taskId)}\n\n`;
 }
 
 export default function NotebookTodayPage() {
@@ -344,26 +108,19 @@ export default function NotebookTodayPage() {
     day: date,
     embeddedIds,
   });
-  const { toggle, error: toggleError } = useTaskToggle();
-  const { patch, error: patchError } = useTaskPatch();
-  const tasksById = new Map<string, Task>(
-    [...buckets.stillOpen, ...buckets.comingUp.flatMap((d) => d.tasks)].map(
-      (t) => [t.id, t],
-    ),
-  );
-  const withTask = (id: string, run: (task: Task) => void) => {
-    const task = tasksById.get(id);
-    if (task) run(task);
-  };
+  const {
+    onToggle,
+    onSnooze,
+    onDrop,
+    error: actionError,
+  } = useTodayActions(buckets);
   const readOnly = writingArea === null;
   const comingUpCount = buckets.comingUp.reduce(
     (n, d) => n + d.tasks.length,
     0,
   );
   const tasksLoading = loading.stillOpen || loading.comingUp;
-  const tasksError = loadError
-    ? 'Could not load tasks.'
-    : (patchError ?? toggleError ?? null);
+  const tasksError = loadError ? 'Could not load tasks.' : actionError;
 
   const closeSheet = () => {
     setSheetOpen(false);
@@ -390,13 +147,13 @@ export default function NotebookTodayPage() {
   };
 
   return (
-    <section className="admin-panel admin-panel--editor">
+    <section className="workspace-panel workspace-panel--editor">
       <div className="notebook-today">
         <div className="notebook-today__main" ref={editorRef}>
           <div className="notebook-today__day-nav">
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               aria-label="Previous"
               title="Previous day"
               onClick={() => setDate(addDays(date, -1))}
@@ -405,7 +162,7 @@ export default function NotebookTodayPage() {
             </button>
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               aria-label="Jump to today"
               disabled={date === today}
               onClick={() => setDate(today)}
@@ -414,7 +171,7 @@ export default function NotebookTodayPage() {
             </button>
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               aria-label="Next"
               title="Next day"
               onClick={() => setDate(addDays(date, 1))}
@@ -457,7 +214,7 @@ export default function NotebookTodayPage() {
             </details>
             <span className="notebook-today__phone-tools">
               <select
-                className="admin-input notebook-today__area"
+                className="kit-input notebook-today__area"
                 aria-label="Notebook area"
                 value={areaFilter}
                 onChange={(e) =>
@@ -473,7 +230,7 @@ export default function NotebookTodayPage() {
               {openSearch ? (
                 <button
                   type="button"
-                  className="admin-btn notebook-today__search"
+                  className="kit-btn notebook-today__search"
                   aria-label="Search"
                   onClick={openSearch}
                 >
@@ -529,10 +286,10 @@ export default function NotebookTodayPage() {
             />
           ) : (
             <>
-              <div className="admin-action-bar notebook-today__header">
+              <div className="workspace-action-bar notebook-today__header">
                 <DayTitle area={null} date={date} today={today} />
               </div>
-              <p className="admin-panel__lede">
+              <p className="workspace-panel__lede">
                 Choose Work or Personal in the area switcher to write a daily
                 note or act on tasks. All shows both areas, read-only.
               </p>
@@ -552,13 +309,9 @@ export default function NotebookTodayPage() {
             readOnly={readOnly}
             loading={loading.stillOpen}
             error={tasksError}
-            onToggle={(id) => withTask(id, (task) => void toggle(task))}
-            onSnooze={(id, schedule) =>
-              withTask(id, (task) => void patch(task, schedule))
-            }
-            onDrop={(id) =>
-              withTask(id, (task) => void patch(task, { status: 'dropped' }))
-            }
+            onToggle={onToggle}
+            onSnooze={onSnooze}
+            onDrop={onDrop}
             onAddToNote={canAddToNote ? addToNote : undefined}
           />
           <ComingUpPanel
@@ -566,8 +319,8 @@ export default function NotebookTodayPage() {
             day={date}
             readOnly={readOnly}
             loading={loading.comingUp}
-            onToggle={(id) => withTask(id, (task) => void toggle(task))}
-            taskTo={(task) => `/tasks/${task.id}`}
+            onToggle={onToggle}
+            taskTo={taskTo}
             upcomingTo={UPCOMING_ROUTE}
             onAddToNote={canAddToNote ? addToNote : undefined}
           />
@@ -584,15 +337,11 @@ export default function NotebookTodayPage() {
           loading={tasksLoading}
           error={tasksError}
           onClose={closeSheet}
-          onToggle={(id) => withTask(id, (task) => void toggle(task))}
-          onSnooze={(id, schedule) =>
-            withTask(id, (task) => void patch(task, schedule))
-          }
-          onDrop={(id) =>
-            withTask(id, (task) => void patch(task, { status: 'dropped' }))
-          }
+          onToggle={onToggle}
+          onSnooze={onSnooze}
+          onDrop={onDrop}
           onAddToNote={canAddToNote ? addToNote : undefined}
-          taskTo={(task) => `/tasks/${task.id}`}
+          taskTo={taskTo}
         />
       ) : null}
     </section>
@@ -602,3 +351,5 @@ export default function NotebookTodayPage() {
 const NO_IDS: ReadonlySet<string> = new Set();
 
 const UPCOMING_ROUTE = '/upcoming';
+
+const taskTo = (task: Pick<Task, 'id'>) => `/tasks/${task.id}`;

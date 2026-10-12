@@ -12,18 +12,21 @@ const focusables = (root: HTMLElement | null): HTMLElement[] =>
 
 /**
  * A modal dialog: focus moves in on open (to `initialFocus`, or the first
- * focusable inside it, else the dialog's first focusable), Tab and Shift+Tab wrap inside, Escape calls `onClose`, and on
- * unmount focus returns to whatever had it before. Spread `dialogProps` on the
- * element that wraps everything the dialog shows, its backdrop included.
+ * focusable inside it, else a `[data-autofocus]` element, else the dialog's
+ * first focusable), Tab and Shift+Tab wrap inside, Escape calls `onClose`, and
+ * on unmount focus returns to whatever had it before. Spread `dialogProps` on
+ * the element that wraps everything the dialog shows, its backdrop included.
  */
 export function useModalDialog<T extends HTMLElement = HTMLDivElement>({
   label,
   onClose,
   initialFocus,
+  lockScroll = false,
 }: {
   label: string;
   onClose: () => void;
   initialFocus?: RefObject<HTMLElement | null>;
+  lockScroll?: boolean;
 }) {
   const ref = useRef<T>(null);
 
@@ -32,11 +35,16 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    const start = initialFocus?.current;
+    const start =
+      initialFocus?.current ??
+      ref.current?.querySelector<HTMLElement>('[data-autofocus]');
     const target =
       start && (start.tabIndex >= 0 ? start : focusables(start)[0]);
     (target ?? focusables(ref.current)[0] ?? ref.current)?.focus();
+    const { overflow } = document.body.style;
+    if (lockScroll) document.body.style.overflow = 'hidden';
     return () => {
+      if (lockScroll) document.body.style.overflow = overflow;
       if (returnTo?.isConnected) returnTo.focus();
     };
     // Mount and unmount only: refs are stable and focus moves once.

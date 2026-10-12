@@ -125,7 +125,7 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
                   {sub ? <span className="admin-row__sub">{sub}</span> : null}
                 </span>
                 {experienceRangeError(role) ? (
-                  <span className="admin-badge admin-badge--unpublished">
+                  <span className="kit-badge kit-badge--unpublished">
                     Check dates
                   </span>
                 ) : null}
@@ -148,11 +148,11 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
           );
         })}
       </ul>
-      <p id="resume-role-reorder-hint" className="admin-hint">
+      <p id="resume-role-reorder-hint" className="kit-hint">
         Open a role to edit it. Drag the handle, or focus it and press the up
         and down arrows, to reorder.
       </p>
-      <span className="admin-visually-hidden" aria-live="polite">
+      <span className="kit-visually-hidden" aria-live="polite">
         {announcement}
       </span>
       <Button className="admin-row-list__add" onClick={onAdd}>

@@ -109,7 +109,7 @@ export function MarkdownBodyEditor({
               <input
                 ref={fileRef}
                 id={fileId}
-                className="admin-visually-hidden"
+                className="kit-visually-hidden"
                 type="file"
                 multiple
                 accept={MEDIA_CONTENT_TYPES.join(',')}
@@ -166,7 +166,7 @@ export function MarkdownBodyEditor({
           )}
         </div>
       </div>
-      <p className="admin-hint">
+      <p className="kit-hint">
         ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes (in the body editor: no
         publish and no blank line) · ⌘/ / Ctrl+/ previews · paste or drop images
         into the editor

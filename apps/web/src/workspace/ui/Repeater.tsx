@@ -44,10 +44,10 @@ export function Repeater<T extends RepeaterItem>({
     apply((rows) => rows.filter((row) => row.id !== id));
 
   return (
-    <fieldset className="admin-repeat">
+    <fieldset className="workspace-repeat">
       <legend>{legend}</legend>
       {items.map((item, position) => (
-        <div className="admin-repeat__item" key={item.id}>
+        <div className="workspace-repeat__item" key={item.id}>
           {renderItem(item, {
             update: (patch) =>
               apply((rows) =>
@@ -57,7 +57,7 @@ export function Repeater<T extends RepeaterItem>({
               ),
             remove: () => removeItem(item.id),
           })}
-          <div className="admin-repeat__actions">
+          <div className="workspace-repeat__actions">
             {reorderable ? (
               <>
                 <Button

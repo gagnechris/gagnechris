@@ -290,14 +290,14 @@ function ResumeRoleEditor({
           />
         </Field>
         {rangeError ? (
-          <p id={rangeErrorId} className="admin-field-error">
+          <p id={rangeErrorId} className="kit-field-error">
             {rangeError}.{' '}
             {hasSavedDates
               ? 'The last saved dates are kept until this is fixed.'
               : 'Dates for this role are not saved until this is fixed.'}
           </p>
         ) : null}
-        <label className="admin-check">
+        <label className="kit-check">
           <input
             type="checkbox"
             checked={item.present}

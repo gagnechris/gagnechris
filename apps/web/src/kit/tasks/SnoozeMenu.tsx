@@ -96,7 +96,7 @@ export function SnoozeMenu({
         type="button"
         role="combobox"
         className={
-          label ? 'admin-btn' : 'today-row__icon-btn today-row__icon-btn--more'
+          label ? 'kit-btn' : 'today-row__icon-btn today-row__icon-btn--more'
         }
         aria-label={`Snooze ${title} to another day`}
         title="Snooze to another day"

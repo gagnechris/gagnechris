@@ -76,7 +76,7 @@ for (const [name, viewport] of [
           border: RING,
         });
 
-      const hint = page.locator('.admin-hint', { hasText: 'adds a task' });
+      const hint = page.locator('.kit-hint', { hasText: 'adds a task' });
       if (name === 'phone') {
         await expect(hint).toHaveText(
           '[ ] text then Enter adds a task, @ picks its day',

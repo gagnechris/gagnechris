@@ -100,14 +100,14 @@ export function StillOpenPanel(props: StillOpenProps) {
         </p>
       )}
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
       {loading ? (
-        <p className="admin-hint">Loading tasks…</p>
+        <p className="kit-hint">Loading tasks…</p>
       ) : rows.length === 0 ? (
-        <p className="admin-hint">Nothing carried over.</p>
+        <p className="kit-hint">Nothing carried over.</p>
       ) : props.compact ? (
         <ul className="today-panel__list">
           {rows.map(({ task, source, due }) => (
@@ -298,9 +298,9 @@ export function ComingUpPanel<T extends PanelTask>({
         ) : null}
       </header>
       {loading ? (
-        <p className="admin-hint">Loading tasks…</p>
+        <p className="kit-hint">Loading tasks…</p>
       ) : days.length === 0 ? (
-        <p className="admin-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
+        <p className="kit-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
       ) : compact ? (
         <ul className="today-panel__list">
           {days.flatMap(({ date, tasks }) =>

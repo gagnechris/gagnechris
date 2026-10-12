@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent,
-  type ReactNode,
-} from 'react';
+import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDialog } from './useModalDialog';
 import './bottomSheet.css';
@@ -31,19 +25,11 @@ export function BottomSheet({
 }: Props) {
   const [dragY, setDragY] = useState(0);
   const dragFrom = useRef<number | null>(null);
-  const { ref, dialogProps } = useModalDialog<HTMLElement>({
+  const { dialogProps } = useModalDialog<HTMLElement>({
     label,
     onClose,
+    lockScroll: true,
   });
-
-  useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-    const { overflow } = document.body.style;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = overflow;
-    };
-  }, [ref]);
 
   const grab = {
     onPointerDown: (e: PointerEvent) => {

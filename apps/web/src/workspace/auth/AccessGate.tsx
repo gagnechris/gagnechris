@@ -69,7 +69,7 @@ export default function AccessGate({ app, user, children }: Props) {
 
   if (refreshing) {
     return (
-      <div className="admin-shell admin-shell--centered">
+      <div className="workspace-shell workspace-shell--centered">
         <p>Checking sign-in…</p>
       </div>
     );

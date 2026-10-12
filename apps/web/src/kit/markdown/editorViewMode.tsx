@@ -241,7 +241,7 @@ export function useEditorViewMode({
           togglePreview();
         }}
       >
-        <Suspense fallback={<p className="admin-hint">Loading preview…</p>}>
+        <Suspense fallback={<p className="kit-hint">Loading preview…</p>}>
           {children}
         </Suspense>
       </div>

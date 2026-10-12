@@ -40,7 +40,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
 
   if (error) {
     return (
-      <div className="admin-shell admin-shell--centered">
+      <div className="workspace-shell workspace-shell--centered">
         <h1>Could not verify sign-in</h1>
         <p>{error}</p>
         <button type="button" onClick={() => void redirectToSignIn()}>
@@ -52,7 +52,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
 
   if (checking || !user) {
     return (
-      <div className="admin-shell admin-shell--centered">
+      <div className="workspace-shell workspace-shell--centered">
         <p>Checking sign-in…</p>
       </div>
     );

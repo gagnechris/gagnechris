@@ -75,7 +75,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
       back={BACK}
       loadingLabel="Loading editor…"
       leading={
-        <Link to="/projects" className="admin-back">
+        <Link to="/projects" className="workspace-back">
           ← Projects
         </Link>
       }
@@ -87,7 +87,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
       actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         publishBlocked && publishInvalid ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             Not published: fix the highlighted fields first.
           </p>
         ) : null

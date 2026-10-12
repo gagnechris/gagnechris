@@ -1,5 +1,5 @@
-import type { ManagedUser } from '@gagnechris/shared';
-import { initials } from '@gagnechris/app-core';
+import { initials, type ManagedUser } from '@gagnechris/shared';
+import { displayName } from '@gagnechris/app-core';
 
 export function UserAvatar({
   user,
@@ -20,7 +20,7 @@ export function UserAvatar({
         .join(' ')}
       aria-hidden="true"
     >
-      {initials(user)}
+      {initials(displayName(user))}
     </span>
   );
 }

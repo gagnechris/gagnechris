@@ -71,10 +71,10 @@ export default function AdminPostsPage() {
   const counts = data?.pages[0]?.counts;
 
   return (
-    <section className="admin-panel">
-      <div className="admin-panel__header admin-page-header">
+    <section className="workspace-panel">
+      <div className="workspace-panel__header kit-page-header">
         <div>
-          <p className="admin-eyebrow">Site</p>
+          <p className="kit-eyebrow">Site</p>
           <h1>Posts</h1>
         </div>
         <Button
@@ -86,10 +86,10 @@ export default function AdminPostsPage() {
         </Button>
       </div>
 
-      <div className="admin-toolbar">
+      <div className="workspace-toolbar">
         <SegmentedRadio
           label="Filter by status"
-          className="admin-status-filter"
+          className="kit-status-filter"
           options={[
             { value: 'all', label: 'All', count: counts?.all },
             { value: 'draft', label: 'Drafts', count: counts?.draft },
@@ -102,9 +102,9 @@ export default function AdminPostsPage() {
           value={status}
           onChange={setStatus}
         />
-        <div className="admin-search">
+        <div className="kit-search">
           <svg
-            className="admin-search__icon"
+            className="kit-search__icon"
             width="16"
             height="16"
             viewBox="0 0 24 24"
@@ -128,7 +128,7 @@ export default function AdminPostsPage() {
       </div>
 
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}
@@ -141,22 +141,22 @@ export default function AdminPostsPage() {
         </p>
       ) : null}
       {posts && posts.length > 0 ? (
-        <div className="admin-table-box">
-          <table className="admin-table">
+        <div className="kit-table-box">
+          <table className="kit-table">
             <thead>
               <tr>
                 <th scope="col">Title</th>
-                <th scope="col" className="admin-table__status">
+                <th scope="col" className="kit-table__status">
                   Status
                 </th>
-                <th scope="col" className="admin-table__slug">
+                <th scope="col" className="kit-table__slug">
                   Slug
                 </th>
-                <th scope="col" className="admin-table__date">
+                <th scope="col" className="kit-table__date">
                   Date
                 </th>
-                <th scope="col" className="admin-table__actions">
-                  <span className="admin-visually-hidden">Actions</span>
+                <th scope="col" className="kit-table__actions">
+                  <span className="kit-visually-hidden">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -164,33 +164,30 @@ export default function AdminPostsPage() {
               {posts.map((post) => (
                 <tr key={post.id}>
                   <td>
-                    <Link
-                      to={`/posts/${post.id}`}
-                      className="admin-table__link"
-                    >
-                      <span className="admin-table__title">{post.title}</span>
+                    <Link to={`/posts/${post.id}`} className="kit-table__link">
+                      <span className="kit-table__title">{post.title}</span>
                       {post.tags?.length ? (
-                        <span className="admin-table__sub">
+                        <span className="kit-table__sub">
                           {post.tags.join(', ')}
                         </span>
                       ) : null}
                     </Link>
                   </td>
                   <td>
-                    <span className="admin-table__badges">
+                    <span className="kit-table__badges">
                       <StatusBadge
                         status={post.status}
                         hasUnpublishedChanges={post.hasUnpublishedChanges}
                       />
                     </span>
                   </td>
-                  <td className="admin-table__slug">/{post.slug}</td>
-                  <td className="admin-table__date">
+                  <td className="kit-table__slug">/{post.slug}</td>
+                  <td className="kit-table__date">
                     {post.status === 'published'
                       ? formatDate(post.publishedAt)
                       : formatDate(post.updatedAt)}
                   </td>
-                  <td className="admin-table__actions">
+                  <td className="kit-table__actions">
                     <PostRowActions post={post} onError={setActionError} />
                   </td>
                 </tr>
@@ -207,7 +204,7 @@ export default function AdminPostsPage() {
           {isFetchingNextPage ? 'Loading…' : 'Load more'}
         </Button>
       ) : null}
-      <p className="admin-hint">
+      <p className="kit-hint">
         Publishing regenerates the post page, RSS and sitemap.
       </p>
     </section>

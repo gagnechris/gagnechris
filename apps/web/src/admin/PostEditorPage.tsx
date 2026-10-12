@@ -87,7 +87,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
       back={BACK}
       loadingLabel="Loading editor…"
       leading={
-        <Link to="/" className="admin-back">
+        <Link to="/" className="workspace-back">
           ← Posts
         </Link>
       }

@@ -187,11 +187,11 @@ a.today-row__chip:hover {
 }
 
 /* Once the title would be under 6rem (200% zoom), the actions wrap under it. */
-.admin-post-list__link:has(> .task-row__actions) {
+.kit-list__link:has(> .task-row__actions) {
   flex-wrap: wrap;
 }
 
-.admin-post-list__link > .task-row__actions {
+.kit-list__link > .task-row__actions {
   margin-left: auto;
 }
 
@@ -400,7 +400,7 @@ a.today-row__chip:hover {
   color: var(--neutral-600);
 }
 
-.today-sheet__panel > .admin-panel__error {
+.today-sheet__panel > .workspace-panel__error {
   margin: 0 var(--space-4) var(--space-3);
 }
 
@@ -411,7 +411,7 @@ a.today-row__chip:hover {
   overscroll-behavior: contain;
 }
 
-.today-sheet__body > .admin-hint {
+.today-sheet__body > .kit-hint {
   margin: 0;
   padding: 0 var(--space-4);
 }

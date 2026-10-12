@@ -61,7 +61,7 @@ const AdminHomePage = () => {
       loadingLabel="Loading home content…"
       leading={
         <>
-          <Link to="/pages" className="admin-back">
+          <Link to="/pages" className="workspace-back">
             ← Pages
           </Link>
           <h1>Home</h1>
@@ -95,7 +95,7 @@ const AdminHomePage = () => {
                     />
                   </Field>
                 </div>
-                <p className="admin-hint">
+                <p className="kit-hint">
                   Quick Links and the profile photo are not editable yet.
                 </p>
               </section>
@@ -147,7 +147,7 @@ const AdminHomePage = () => {
               <HomePreview home={home} draft={draft} />
             </div>
           </div>
-          <p className="admin-hint">
+          <p className="kit-hint">
             ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
           </p>
         </>

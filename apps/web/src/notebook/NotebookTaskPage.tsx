@@ -74,11 +74,11 @@ export default function NotebookTaskPage() {
 
   if (loadError) {
     return (
-      <section className="admin-panel">
-        <p className="admin-panel__error" role="alert">
+      <section className="workspace-panel">
+        <p className="workspace-panel__error" role="alert">
           {loadError}
         </p>
-        <Link to="/tasks" className="admin-back">
+        <Link to="/tasks" className="workspace-back">
           ← Tasks
         </Link>
       </section>
@@ -87,7 +87,7 @@ export default function NotebookTaskPage() {
 
   if (isLoading || !entity) {
     return (
-      <section className="admin-panel">
+      <section className="workspace-panel">
         <p>Loading task…</p>
       </section>
     );
@@ -96,19 +96,19 @@ export default function NotebookTaskPage() {
   const toggleDone = () => toggleTask(entity);
 
   return (
-    <section className="admin-panel admin-panel--editor">
-      <div className="admin-action-bar">
-        <div className="admin-action-bar__status">
-          <Link to="/tasks" className="admin-back">
+    <section className="workspace-panel workspace-panel--editor">
+      <div className="workspace-action-bar">
+        <div className="workspace-action-bar__status">
+          <Link to="/tasks" className="workspace-back">
             ← Tasks
           </Link>
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
-        <div className="admin-toolbar">
+        <div className="workspace-toolbar">
           {phone ? null : (
             <button
               type="button"
-              className="admin-btn"
+              className="kit-btn"
               disabled={busy || dirty || togglePending}
               onClick={() => void toggleDone()}
               title={dirty ? 'Save before completing' : undefined}
@@ -118,7 +118,7 @@ export default function NotebookTaskPage() {
           )}
           <button
             type="button"
-            className="admin-btn"
+            className="kit-btn"
             disabled={busy}
             onClick={() => void runDelete()}
           >
@@ -132,7 +132,7 @@ export default function NotebookTaskPage() {
         <div className="notebook-task__bottom-bar">
           <button
             type="button"
-            className="admin-btn admin-btn--primary"
+            className="kit-btn kit-btn--primary"
             disabled={busy || dirty || togglePending}
             onClick={() => void toggleDone()}
             title={dirty ? 'Save before completing' : undefined}
@@ -155,12 +155,12 @@ export default function NotebookTaskPage() {
       ) : null}
 
       {saveError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {saveError}
         </p>
       ) : null}
       {toggleError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {toggleError}
         </p>
       ) : null}
@@ -168,7 +168,7 @@ export default function NotebookTaskPage() {
       <h1 className="workspace-visually-hidden">
         {entity.title || 'Untitled task'}
       </h1>
-      <p className="admin-panel__lede">
+      <p className="workspace-panel__lede">
         {NOTEBOOK_AREA_LABELS[entity.area]} task
       </p>
 
@@ -228,7 +228,7 @@ export default function NotebookTaskPage() {
         />
       </Field>
 
-      <label className="admin-check">
+      <label className="kit-check">
         <input
           type="checkbox"
           checked={draft.someday}

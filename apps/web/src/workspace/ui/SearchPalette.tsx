@@ -69,7 +69,7 @@ export default function SearchPalette({
         <div className="workspace-search__toolbar">
           <input
             ref={inputRef}
-            className="admin-input"
+            className="kit-input"
             type="search"
             role="combobox"
             aria-label={label}
@@ -117,7 +117,7 @@ export default function SearchPalette({
           {status}
         </div>
         {error ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             {error}
           </p>
         ) : null}

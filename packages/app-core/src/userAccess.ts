@@ -35,15 +35,6 @@ export const displayName = (user: Pick<ManagedUser, 'name' | 'email'>) =>
 export const firstName = (user: Pick<ManagedUser, 'name' | 'email'>) =>
   displayName(user).split(/\s+/)[0]!;
 
-export function initials(user: Pick<ManagedUser, 'name' | 'email'>): string {
-  const parts = displayName(user)
-    .split(/[\s._-]+/)
-    .filter(Boolean);
-  const letters =
-    parts.length > 1 ? parts[0]![0]! + parts[1]![0]! : (parts[0] ?? '?');
-  return letters.slice(0, 2).toUpperCase();
-}
-
 /** Admin and Notebook as the table shows them: nothing opens while disabled or removed. */
 export function hasApp(user: ManagedUser, app: 'Admin' | 'Notebook'): boolean {
   if (!user.level || user.status === 'disabled' || user.status === 'removed') {

@@ -68,7 +68,6 @@ export {
   firstName,
   formatAdded,
   hasApp,
-  initials,
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
   LEVEL_ORDER,
