@@ -1,7 +1,8 @@
 // A KeyValueStore lets the viewer-request function allowlist /blog/<slug> and
 // /projects/<slug> without rewriting function code. A CloudFront Function can
 // read one KVS, so each allowlist owns a namespace of its keys.
-import { readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import '@aws-sdk/signature-v4a';
 import {
   CloudFrontKeyValueStoreClient,
@@ -303,7 +304,17 @@ function localFileClient(path: string): SlugKvsClient {
       const keys = new Set(await read());
       for (const { Key } of deletes) if (Key) keys.delete(Key);
       for (const { Key } of puts) if (Key) keys.add(Key);
-      await writeFile(path, JSON.stringify({ keys: [...keys].sort() }));
+      // The static server reads the file once per exists(): a read of the
+      // truncated file between "is the slug there" and "is the sentinel
+      // there" would 404 a published page.
+      const tmp = `${path}.${randomUUID()}.tmp`;
+      try {
+        await writeFile(tmp, JSON.stringify({ keys: [...keys].sort() }));
+        await rename(tmp, path);
+      } catch (err) {
+        await rm(tmp, { force: true });
+        throw err;
+      }
       return 'local';
     },
   };

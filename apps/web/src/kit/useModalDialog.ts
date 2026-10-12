@@ -10,6 +10,8 @@ const focusables = (root: HTMLElement | null): HTMLElement[] =>
       )
     : [];
 
+const openDialogs: RefObject<HTMLElement | null>[] = [];
+
 /**
  * A modal dialog: focus moves in on open (to `initialFocus`, or the first
  * focusable inside it, else a `[data-autofocus]` element, else the dialog's
@@ -29,6 +31,40 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>({
   lockScroll?: boolean;
 }) {
   const ref = useRef<T>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // An action that disables or removes the focused control drops focus to
+  // <body>, out of reach of the dialog's own key handler; the topmost dialog
+  // still takes Escape and Tab from there.
+  useEffect(() => {
+    openDialogs.push(ref);
+    const onDocumentKeyDown = (e: globalThis.KeyboardEvent) => {
+      const dialog = ref.current;
+      if (
+        e.defaultPrevented ||
+        openDialogs[openDialogs.length - 1] !== ref ||
+        !dialog
+      )
+        return;
+      if (dialog.contains(document.activeElement)) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCloseRef.current();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        const items = focusables(dialog);
+        items[e.shiftKey ? items.length - 1 : 0]?.focus();
+      }
+    };
+    document.addEventListener('keydown', onDocumentKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onDocumentKeyDown);
+      openDialogs.splice(openDialogs.indexOf(ref), 1);
+    };
+  }, []);
 
   useEffect(() => {
     const returnTo =
