@@ -63,7 +63,11 @@ type Stub = {
 function runDeploy(stub: Stub = {}) {
   const root = tempDir('deploy-web-');
   mkdirSync(join(root, 'scripts'));
-  for (const file of ['deploy-web.sh', 'publisher-owned-paths.generated.txt']) {
+  for (const file of [
+    'deploy-web.sh',
+    'ssm-param-name.sh',
+    'publisher-owned-paths.generated.txt',
+  ]) {
     copyFileSync(join(ROOT, 'scripts', file), join(root, 'scripts', file));
   }
   write(
