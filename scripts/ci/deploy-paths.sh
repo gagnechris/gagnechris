@@ -19,6 +19,10 @@ CDK_PATTERNS=(
   '.github/actions/setup/*'
 )
 
+# web runs deploy-web.sh: build, sync, invalidate and republishAll. Besides
+# the apps it covers what the publisher renders with (so existing pages are
+# re-rendered), what the site's buckets and distributions are, the Cognito
+# clients and SSM names the build reads, and the sync's publisher-owned keys.
 WEB_PATTERNS=(
   'apps/web/*'
   'packages/api-client/*'
@@ -26,6 +30,16 @@ WEB_PATTERNS=(
   'packages/public-ui/*'
   'packages/shared/*'
   'packages/tokens/*'
+  'packages/data/*'
+  'services/publisher/*'
+  'infra/lib/stacks/publisher-stack.ts'
+  'infra/lib/stacks/site-stack.ts'
+  'infra/lib/stacks/auth-stack.ts'
+  'infra/lib/constructs/site-hosting.ts'
+  'infra/lib/constructs/app-host.ts'
+  'infra/lib/cloudfront/*'
+  'infra/lib/config/ssm-params.json'
+  'scripts/publisher-owned-paths.generated.txt'
   'package.json'
   'package-lock.json'
   'tsconfig.base.json'
