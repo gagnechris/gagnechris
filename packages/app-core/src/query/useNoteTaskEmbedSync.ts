@@ -209,24 +209,31 @@ export function useNoteTaskEmbedSync({
     [startCreate, syncDraft],
   );
 
+  // One rename at a time per task, each on the version the last one left.
+  const renames = useRef(new Map<string, Promise<void>>());
   const rename = useCallback(
-    async (task: Task, title: string) => {
-      const current =
-        queryClient.getQueryData<Task>(queryKeys.tasks.detail(task.id)) ?? task;
-      if (title === current.title) return;
+    (task: Task, title: string) => {
       // A later re-conversion of this line must not patch the old title back.
       const draft = latest.current.get(task.id);
       if (draft) latest.current.set(task.id, { ...draft, title });
-      setRenameError(null);
-      try {
-        await patchTask({
-          id: task.id,
-          version: current.version,
-          patch: { title },
-        });
-      } catch (err) {
-        setRenameError(taskActionError('rename', current.title, err));
-      }
+      const prev = renames.current.get(task.id) ?? Promise.resolve();
+      const next = prev.then(async () => {
+        const current =
+          queryClient.getQueryData<Task>(queryKeys.tasks.detail(task.id)) ??
+          task;
+        if (title === current.title) return;
+        setRenameError(null);
+        try {
+          await patchTask({
+            id: task.id,
+            version: current.version,
+            patch: { title },
+          });
+        } catch (err) {
+          setRenameError(taskActionError('rename', current.title, err));
+        }
+      });
+      renames.current.set(task.id, next);
     },
     [patchTask, queryClient],
   );
@@ -270,7 +277,7 @@ export function useNoteTaskEmbedSync({
         schedule: taskScheduleLabel(task.startDate, today, task.someday),
         due: taskDue(task, today),
         onToggle: () => void toggle(task),
-        onRename: (title) => void rename(task, title),
+        onRename: (title) => rename(task, title),
       };
     }
     if (

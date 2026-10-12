@@ -220,7 +220,7 @@ describe('Today', () => {
       [makeTask(B, 'Book flights', { noteId: TODAY_NOTE })],
     );
     const renderer = await launch();
-    act(() => byLabel(renderer, 'Book flights').props.onPress());
+    act(() => byLabel(renderer, 'Open task Book flights').props.onPress());
     expect(router.push).toHaveBeenCalledWith(`/today/task/${B}`);
   });
 
@@ -237,8 +237,8 @@ describe('Today', () => {
       [makeTask(B, 'Book flights', { noteId: TODAY_NOTE })],
     );
     const renderer = await launch();
-    act(() => byLabel(renderer, 'Book flights').props.onPress());
-    act(() => byLabel(renderer, 'Book flights').props.onPress());
+    act(() => byLabel(renderer, 'Open task Book flights').props.onPress());
+    act(() => byLabel(renderer, 'Open task Book flights').props.onPress());
     expect(router.push).toHaveBeenCalledTimes(1);
   });
 
