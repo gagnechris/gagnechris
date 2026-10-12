@@ -171,6 +171,33 @@ describe('MarkdownView', () => {
     }
   });
 
+  it('draws images inside table cells as images, keeping the cell text', () => {
+    const renderer = render(
+      <MarkdownView
+        siteOrigin="https://example.com"
+        markdown={[
+          '| Before | After |',
+          '| --- | --- |',
+          '| ![The site before](/media/before.png) | Shipped ![This site after](/media/after.png) |',
+        ].join('\n')}
+      />,
+    );
+    const images = renderer.root.findAll(
+      (n) => (n.type as string) === 'Image' && n.props.testID === 'md-img',
+    );
+    expect(images.map((image) => image.props.source)).toEqual([
+      { uri: 'https://example.com/media/before.png' },
+      { uri: 'https://example.com/media/after.png' },
+    ]);
+    expect(images.map((image) => image.props.accessibilityLabel)).toEqual([
+      'The site before',
+      'This site after',
+    ]);
+    const cells = findAllByTestId(renderer, 'md-td');
+    expect(cells.map((cell) => cell.props.style[1].width)).toEqual([240, 240]);
+    expect(JSON.stringify(renderer.toJSON())).toContain('Shipped');
+  });
+
   it('opens web links in the in-app browser and mail links with the system', () => {
     const renderer = render(
       <MarkdownView markdown="[site](/notes/x) [mail](mailto:a@example.com)" />,

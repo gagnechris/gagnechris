@@ -15,6 +15,7 @@ import {
   Text,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { NOTEBOOK_ORIGIN, openMarkdownLink, resolveMarkdownUrl } from './links';
@@ -136,28 +137,22 @@ const MarkdownImage = ({
   );
 };
 
-const Paragraph = ({
-  nodes,
-  ctx,
-}: {
-  nodes: MarkdownInline[];
-  ctx: RenderContext;
-}) => {
-  if (!nodes.some((node) => node.type === 'image')) {
-    return (
-      <Text testID="md-p" style={styles.paragraph}>
-        <Inlines nodes={nodes} ctx={ctx} />
-      </Text>
-    );
-  }
-  // An image inside Text can't size itself, so it becomes its own row.
+const hasImage = (nodes: MarkdownInline[]) =>
+  nodes.some((node) => node.type === 'image');
+
+/** An image inside Text can't size itself, so each one becomes its own row between text runs. */
+const liftImages = (
+  nodes: MarkdownInline[],
+  ctx: RenderContext,
+  runStyle: StyleProp<TextStyle>,
+): ReactNode[] => {
   const parts: ReactNode[] = [];
   let run: MarkdownInline[] = [];
   const flush = () => {
     const text = run.filter((n) => n.type !== 'text' || n.text.trim());
     if (text.length) {
       parts.push(
-        <Text key={parts.length} style={styles.paragraphRun}>
+        <Text key={parts.length} style={runStyle}>
           <Inlines nodes={run} ctx={ctx} />
         </Text>,
       );
@@ -180,12 +175,25 @@ const Paragraph = ({
     }
   }
   flush();
-  return (
-    <View testID="md-p" style={styles.paragraphBlock}>
-      {parts}
-    </View>
-  );
+  return parts;
 };
+
+const Paragraph = ({
+  nodes,
+  ctx,
+}: {
+  nodes: MarkdownInline[];
+  ctx: RenderContext;
+}) =>
+  hasImage(nodes) ? (
+    <View testID="md-p" style={styles.paragraphBlock}>
+      {liftImages(nodes, ctx, styles.paragraphRun)}
+    </View>
+  ) : (
+    <Text testID="md-p" style={styles.paragraph}>
+      <Inlines nodes={nodes} ctx={ctx} />
+    </Text>
+  );
 
 const ListItem = ({
   item,
@@ -225,6 +233,8 @@ const ListItem = ({
   </View>
 );
 
+const MAX_CELL_WIDTH = 240;
+
 const cellWidth = (cells: MarkdownInline[][][], column: number): number => {
   const length = (nodes: MarkdownInline[]): number =>
     nodes.reduce(
@@ -239,8 +249,9 @@ const cellWidth = (cells: MarkdownInline[][][], column: number): number => {
               : 0),
       0,
     );
+  if (cells.some((row) => hasImage(row[column] ?? []))) return MAX_CELL_WIDTH;
   const longest = Math.max(...cells.map((row) => length(row[column] ?? [])));
-  return Math.min(240, Math.max(80, longest * CELL_CHAR_WIDTH + 24));
+  return Math.min(MAX_CELL_WIDTH, Math.max(80, longest * CELL_CHAR_WIDTH + 24));
 };
 
 const Table = ({
@@ -262,23 +273,30 @@ const Table = ({
             testID="md-tr"
             style={[styles.tableRow, r === 0 && styles.tableHeadRow]}
           >
-            {row.map((cell, c) => (
-              <View
-                key={c}
-                testID={r === 0 ? 'md-th' : 'md-td'}
-                style={[styles.tableCell, { width: widths[c] }]}
-              >
-                <Text
-                  style={[
-                    styles.tableText,
-                    r === 0 && styles.strong,
-                    { textAlign: textAlign(c) },
-                  ]}
+            {row.map((cell, c) => {
+              const text = [
+                styles.tableText,
+                r === 0 && styles.strong,
+                { textAlign: textAlign(c) },
+              ];
+              return (
+                <View
+                  key={c}
+                  testID={r === 0 ? 'md-th' : 'md-td'}
+                  style={[styles.tableCell, { width: widths[c] }]}
                 >
-                  <Inlines nodes={cell} ctx={ctx} />
-                </Text>
-              </View>
-            ))}
+                  {hasImage(cell) ? (
+                    <View style={styles.paragraphBlock}>
+                      {liftImages(cell, ctx, text)}
+                    </View>
+                  ) : (
+                    <Text style={text}>
+                      <Inlines nodes={cell} ctx={ctx} />
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
         ))}
       </View>
