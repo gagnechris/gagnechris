@@ -13,6 +13,8 @@ type Props = {
   onSelect: (date: string) => void;
   /** Dates (`yyyy-mm-dd`) that have a daily note. */
   markedDates?: ReadonlySet<string>;
+  /** The first day of the month shown, whenever it changes. */
+  onMonthChange?: (month: string) => void;
 };
 
 const WEEKDAYS = WEEKDAY_LONG.map((long) => [long.slice(0, 2), long] as const);
@@ -33,7 +35,12 @@ function sameDayIn(month: string, date: string): string {
   return day > to ? to : day;
 }
 
-export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
+export function NotebookCalendar({
+  selected,
+  onSelect,
+  markedDates,
+  onMonthChange,
+}: Props) {
   // Browsing months only changes what's shown; choosing a day selects it.
   const [month, setMonth] = useState(() => startOfMonth(selected));
   const [shownFor, setShownFor] = useState(selected);
@@ -41,6 +48,9 @@ export function NotebookCalendar({ selected, onSelect, markedDates }: Props) {
     setShownFor(selected);
     setMonth(startOfMonth(selected));
   }
+  useEffect(() => {
+    onMonthChange?.(month);
+  }, [month, onMonthChange]);
   const cells = monthGrid(month);
   const rows = Array.from({ length: cells.length / 7 }, (_, i) =>
     cells.slice(i * 7, i * 7 + 7),

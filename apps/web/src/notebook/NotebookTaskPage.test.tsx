@@ -21,6 +21,9 @@ const api = vi.hoisted(() => ({
   failed: 0,
   putVersions: [] as number[],
   noteQueries: [] as Record<string, unknown>[],
+  /** The next write answers 409 deleted, as for a task deleted elsewhere. */
+  deletedElsewhere: false,
+  deletes: [] as number[],
 }));
 
 type Init = {
@@ -50,6 +53,12 @@ const write = async (body: Record<string, unknown>, patch: Partial<Task>) => {
     api.failed += 1;
     return fail(503, 'unavailable');
   }
+  if (api.deletedElsewhere) {
+    return fail(409, 'deleted', {
+      current: { ...prev, deleted: true },
+      currentVersion: prev.version,
+    });
+  }
   if (body.version !== prev.version) {
     return fail(409, 'conflict', { current: prev });
   }
@@ -60,7 +69,9 @@ const write = async (body: Record<string, unknown>, patch: Partial<Task>) => {
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: async (path: string, init?: Init) => {
-      if (path === '/api/notebook/tasks/{id}') return ok(api.task);
+      if (path === '/api/notebook/tasks/{id}') {
+        return api.task ? ok(api.task) : fail(404, 'Task not found');
+      }
       if (path === '/api/notebook/tasks') return ok({ items: [] });
       if (path === '/api/notebook/notes') {
         api.noteQueries.push(init?.params?.query ?? {});
@@ -74,6 +85,11 @@ vi.mock('../workspace/api/client', () => ({
       if (!api.failWrites) api.putVersions.push(Number(body.version));
       const { version: _version, ...fields } = body;
       return write(body, fields as Partial<Task>);
+    },
+    DELETE: async (path: string, init?: Init) => {
+      if (path !== '/api/notebook/tasks/{id}') return fail(404, 'not_found');
+      api.deletes.push(Number(init?.body?.version));
+      return write(init?.body ?? {}, { deleted: true });
     },
     POST: async (path: string, init?: Init) => {
       const body = init?.body ?? {};
@@ -158,7 +174,10 @@ function renderPage() {
           <Outlet />
         </>
       ),
-      children: [{ path: 'tasks/:id', element: <NotebookTaskPage /> }],
+      children: [
+        { path: 'tasks/:id', element: <NotebookTaskPage /> },
+        { path: 'tasks', element: <h1>Task list</h1> },
+      ],
     },
   ];
   const router = createMemoryRouter(routes, {
@@ -169,6 +188,7 @@ function renderPage() {
       <RouterProvider router={router} />
     </QueryClientTestProvider>,
   );
+  return router;
 }
 
 async function editTitleAfterFailure(trigger: string, rolledBack: () => void) {
@@ -251,5 +271,147 @@ describe('NotebookTaskPage notes', () => {
     await waitFor(() => expect(api.task?.noteId).toBe(NOTE_ID), {
       timeout: 4000,
     });
+  });
+});
+
+describe('NotebookTaskPage', () => {
+  beforeEach(() => {
+    api.failWrites = false;
+    api.putVersions = [];
+    api.deletedElsewhere = false;
+    api.deletes = [];
+  });
+
+  test('shows the task and saves an edit with the version it read', async () => {
+    seedTask({ startDate: '2026-10-09', dueDate: '2026-10-20' });
+    renderPage();
+
+    const title = await screen.findByRole('textbox', { name: 'Title' });
+    expect(title).toHaveValue('Call Sam');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Call Sam' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Work task')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue(
+      'todo',
+    );
+    expect(screen.getByRole('combobox', { name: 'Priority' })).toHaveValue(
+      'high',
+    );
+    expect(screen.getByLabelText(/^Show on/)).toHaveValue('2026-10-09');
+    expect(screen.getByLabelText(/^Deadline/)).toHaveValue('2026-10-20');
+
+    const user = userEvent.setup();
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Priority' }),
+      'low',
+    );
+    await waitFor(() => expect(api.task?.priority).toBe('low'), {
+      timeout: 4000,
+    });
+    expect(api.putVersions).toEqual([3]);
+    expect(api.task?.version).toBe(4);
+  });
+
+  test('Someday clears and locks the show-on date, and saves both', async () => {
+    seedTask({ startDate: '2026-10-09' });
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByRole('textbox', { name: 'Title' });
+
+    await user.click(
+      screen.getByRole('checkbox', {
+        name: /Someday \(never shows on Today\)/,
+      }),
+    );
+    expect(screen.getByLabelText(/^Show on/)).toHaveValue('');
+    expect(screen.getByLabelText(/^Show on/)).toBeDisabled();
+    await waitFor(() => expect(api.task?.someday).toBe(true), {
+      timeout: 4000,
+    });
+    expect(api.task?.startDate).toBeNull();
+  });
+
+  test('Complete marks the task done and offers Reopen', async () => {
+    seedTask();
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Complete' }));
+    expect(await screen.findByRole('button', { name: 'Reopen' })).toBeVisible();
+    expect(api.task).toMatchObject({ status: 'done', version: 4 });
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue(
+      'done',
+    );
+  });
+
+  test('a save that loses to another device says so and keeps the text', async () => {
+    seedTask();
+    renderPage();
+    const user = userEvent.setup();
+    const title = await screen.findByRole('textbox', { name: 'Title' });
+    api.task = { ...api.task!, title: 'Elsewhere', version: 4 };
+
+    await user.clear(title);
+    await user.type(title, 'Mine');
+    expect(
+      await screen.findByText(
+        'Conflict — another device updated this task. Reload and try again.',
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument();
+    expect(title).toHaveValue('Mine');
+    expect(api.task?.title).toBe('Elsewhere');
+  });
+
+  test('a save to a task deleted elsewhere says so', async () => {
+    seedTask();
+    renderPage();
+    const user = userEvent.setup();
+    const title = await screen.findByRole('textbox', { name: 'Title' });
+    api.deletedElsewhere = true;
+
+    await user.type(title, '!');
+    expect(
+      await screen.findByText(
+        'Another device deleted this task. Copy what you typed to keep it.',
+        {},
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument();
+    expect(title).toHaveValue('Call Sam!');
+  });
+
+  test('Delete asks first, sends the version and goes back to Tasks', async () => {
+    seedTask();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
+    const router = renderPage();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    expect(confirm).toHaveBeenCalledWith(
+      'Delete this task? It will disappear from your list.',
+    );
+    expect(api.deletes).toEqual([]);
+
+    confirm.mockReturnValueOnce(true);
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Task list' }),
+    ).toBeInTheDocument();
+    expect(api.deletes).toEqual([3]);
+    expect(router.state.location.pathname).toBe('/tasks');
+    confirm.mockRestore();
+  });
+
+  test('a task that is not there shows why, with a way back', async () => {
+    api.task = null;
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Task not found',
+    );
+    expect(screen.getByRole('link', { name: '← Tasks' })).toHaveAttribute(
+      'href',
+      '/tasks',
+    );
   });
 });

@@ -80,6 +80,7 @@ import {
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
   ITEM_SCHEMAS,
+  slugify,
 } from '@gagnechris/data';
 import {
   ACCESS_GROUPS,
@@ -94,7 +95,10 @@ import {
   carriedInMarkdown,
   dailyTemplateHasTasks,
   fillDailyTemplate,
+  formatCalendarDay,
+  isSafeLinkHref,
   markdownPlainText,
+  noteDisplayTitle,
   taskEmbedIds,
   DEFAULT_HOME,
   DEFAULT_RESUME,
@@ -452,6 +456,44 @@ const EMBED_ID_2 = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
 const TEMPLATE_WITH_TOKENS =
   '# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}';
 
+const LINK_HREFS = [
+  '/x',
+  '//evil.example',
+  'https://a.example/b?c#d',
+  'HTTPS://A.example',
+  'http://a.example',
+  'https://a.example@evil.io',
+  'https://',
+  'mailto:a@b.c',
+  'tel:',
+  'tel:+15550100',
+  'ftp://a.example',
+  'javascript:alert(1)',
+  'https://a b.example',
+  '/a b',
+  '/a\\b',
+  '/a b',
+  '/a　b',
+  '/a\u0000b',
+  '',
+  'no-scheme',
+  `/${'a'.repeat(LINK_HREF_MAX_LENGTH - 1)}`,
+  `/${'a'.repeat(LINK_HREF_MAX_LENGTH)}`,
+  `/${'😀'.repeat(LINK_HREF_MAX_LENGTH / 2)}`,
+];
+
+const CALENDAR_DAYS = [
+  '2026-10-06',
+  '2024-02-29',
+  '2023-02-29',
+  '2026-02-30',
+  '2026-13-01',
+  '2026-1-6',
+  '0001-01-01',
+  '9999-12-31',
+  'not a day',
+];
+
 // The TypeScript helpers' outputs, so the Go ports are tested against them.
 const TEXT_CASES = {
   taskEmbedIds: [
@@ -497,6 +539,38 @@ const TEXT_CASES = {
     '```js\n## kept **as** code\n```\n~~~~\n- [ ] still code\n~~~\nopen',
     '\u00a0## not a heading\n\t- tabbed\n   ### indented\n😀 **é**',
   ].map((input) => ({ input, want: markdownPlainText(input) })),
+  isSafeLinkHrefPost: LINK_HREFS.map((input) => ({
+    input,
+    want: isSafeLinkHref(input, POST_LINK_SCHEMES),
+  })),
+  isSafeLinkHrefProject: LINK_HREFS.map((input) => ({
+    input,
+    want: isSafeLinkHref(input, PROJECT_HREF_SCHEMES),
+  })),
+  slugify: [
+    'Hello, World!',
+    '  Crème Brûlée  ',
+    'Ⅻ ﬁle',
+    '---',
+    '',
+    `${'a'.repeat(MAX_SLUG_LENGTH - 1)} b`,
+    'a'.repeat(MAX_SLUG_LENGTH + 5),
+    'İstanbul ΟΔΟΣ',
+    '日本語 text',
+    'Ångström_über\tSTRASSE ß',
+  ].map((input) => ({ input, want: slugify(input) })),
+  formatCalendarDayLong: CALENDAR_DAYS.map((input) => ({
+    input,
+    want: formatCalendarDay(input, { weekday: 'long' }),
+  })),
+  noteDisplayTitle: [
+    ...CALENDAR_DAYS.map(
+      (date) => ({ type: 'daily', date, title: ' Kept ' }) as const,
+    ),
+    { type: 'daily', date: null, title: '' } as const,
+    { type: 'page', date: '2026-10-06', title: ' ' } as const,
+    { type: 'page', date: null, title: ' Plan　' } as const,
+  ].map((input) => ({ input, want: noteDisplayTitle(input) })),
 };
 
 const contract = {

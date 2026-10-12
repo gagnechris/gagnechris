@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { ulid } from 'ulid';
 import { buildOpenApiDocument } from '@gagnechris/shared/openapi';
 import { notebookUser, siteAdmin } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-concurrency-contract';
@@ -39,10 +40,11 @@ function advertisedByOperation(): Map<string, Advertised> {
   return out;
 }
 
-const h = useApi('http-concurrency');
-
 const claimsFor = (path: string) =>
   path.startsWith('/api/admin/') ? siteAdmin(USER) : notebookUser(USER);
+
+const h = useApi('http-concurrency');
+const { call, ok } = apiCalls(h, { claims: claimsFor });
 
 function openApiPathPattern(path: string): RegExp {
   const parts = path
@@ -53,43 +55,6 @@ function openApiPathPattern(path: string): RegExp {
         : part.replace(/[.*+?^$()|[\]\\]/g, '\\$&'),
     );
   return new RegExp(`^${parts.join('')}$`);
-}
-
-type Response = {
-  status: number;
-  etag: string | undefined;
-  body: Record<string, unknown>;
-};
-
-async function call(
-  method: string,
-  path: string,
-  body?: unknown,
-  ifMatch?: string,
-): Promise<Response> {
-  const res = await h.api.request(method, path, {
-    body,
-    headers: ifMatch ? { 'if-match': ifMatch } : undefined,
-    claims: claimsFor(path),
-  });
-  return {
-    status: res.status,
-    etag: res.headers.get('etag') ?? undefined,
-    body: (res.body ?? {}) as Record<string, unknown>,
-  };
-}
-
-async function ok(
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<{ id: string; version: number }> {
-  const res = await call(method, path, body);
-  expect(
-    res.status >= 200 && res.status < 300,
-    `${method} ${path}: ${res.status} ${JSON.stringify(res.body)}`,
-  ).toBe(true);
-  return res.body as { id: string; version: number };
 }
 
 /** A request whose body already carries the right `version` when it takes one. */
@@ -108,36 +73,44 @@ function nextDate(): string {
 const versionBody = (version: number) => ({ version });
 
 async function post() {
-  return ok('POST', '/api/admin/posts', { title: `Post ${unique()}` });
+  return ok('POST', '/api/admin/posts', {
+    body: { title: `Post ${unique()}` },
+  });
 }
 async function publishedPost() {
   const p = await post();
-  return ok('POST', `/api/admin/posts/${p.id}/publish`, versionBody(p.version));
+  return ok('POST', `/api/admin/posts/${p.id}/publish`, {
+    body: versionBody(p.version),
+  });
 }
 async function editedPublishedPost() {
   const p = await publishedPost();
   return ok('PUT', `/api/admin/posts/${p.id}`, {
-    version: p.version,
-    excerpt: `edit ${unique()}`,
+    body: {
+      version: p.version,
+      excerpt: `edit ${unique()}`,
+    },
   });
 }
 
 async function project() {
-  return ok('POST', '/api/admin/projects', { name: `Project ${unique()}` });
+  return ok('POST', '/api/admin/projects', {
+    body: { name: `Project ${unique()}` },
+  });
 }
 async function publishedProject() {
   const p = await project();
-  return ok(
-    'POST',
-    `/api/admin/projects/${p.id}/publish`,
-    versionBody(p.version),
-  );
+  return ok('POST', `/api/admin/projects/${p.id}/publish`, {
+    body: versionBody(p.version),
+  });
 }
 async function editedPublishedProject() {
   const p = await publishedProject();
   return ok('PUT', `/api/admin/projects/${p.id}`, {
-    version: p.version,
-    pitch: `edit ${unique()}`,
+    body: {
+      version: p.version,
+      pitch: `edit ${unique()}`,
+    },
   });
 }
 
@@ -146,26 +119,30 @@ async function singleton(base: string) {
 }
 async function publishedSingleton(base: string) {
   const s = await singleton(base);
-  return ok('POST', `${base}/publish`, versionBody(s.version));
+  return ok('POST', `${base}/publish`, { body: versionBody(s.version) });
 }
 async function editedPublishedSingleton(base: string, edit: object) {
   const s = await publishedSingleton(base);
-  return ok('PUT', base, { version: s.version, ...edit });
+  return ok('PUT', base, { body: { version: s.version, ...edit } });
 }
 
 async function note() {
   return ok('POST', '/api/notebook/notes', {
-    id: ulid(),
-    area: 'work',
-    type: 'page',
-    title: `Note ${unique()}`,
+    body: {
+      id: ulid(),
+      area: 'work',
+      type: 'page',
+      title: `Note ${unique()}`,
+    },
   });
 }
 async function dailyNote() {
   const date = nextDate();
   const n = await ok('PUT', `/api/notebook/notes/daily/work/${date}`, {
-    id: ulid(),
-    title: 'Daily',
+    body: {
+      id: ulid(),
+      title: 'Daily',
+    },
   });
   return { ...n, date };
 }
@@ -174,25 +151,27 @@ const TEMPLATE = '/api/notebook/templates/daily/work';
 async function dailyTemplate() {
   const t = await ok('GET', TEMPLATE);
   return ok('PUT', TEMPLATE, {
-    version: t.version,
-    bodyMarkdown: `## ${unique()}\n`,
+    body: {
+      version: t.version,
+      bodyMarkdown: `## ${unique()}\n`,
+    },
   });
 }
 
 async function task() {
   return ok('POST', '/api/notebook/tasks', {
-    id: ulid(),
-    area: 'work',
-    title: `Task ${unique()}`,
+    body: {
+      id: ulid(),
+      area: 'work',
+      title: `Task ${unique()}`,
+    },
   });
 }
 async function completedTask() {
   const t = await task();
-  return ok(
-    'POST',
-    `/api/notebook/tasks/${t.id}/complete`,
-    versionBody(t.version),
-  );
+  return ok('POST', `/api/notebook/tasks/${t.id}/complete`, {
+    body: versionBody(t.version),
+  });
 }
 
 const create = (path: string, body: () => unknown) => async () => ({
@@ -436,7 +415,7 @@ async function observe(key: string): Promise<Advertised> {
   const probe = PROBES[key]!;
 
   const plain = await probe();
-  const res = await call(method, plain.path, plain.body);
+  const res = await call(method, plain.path, { body: plain.body });
   expect(
     res.status >= 200 && res.status < 300,
     `${key} without If-Match: ${res.status} ${JSON.stringify(res.body)}`,
@@ -448,12 +427,10 @@ async function observe(key: string): Promise<Advertised> {
   // Body `version` is right, header is stale: only a handler that reads
   // `If-Match` (and lets it win) answers 412.
   const stale = await probe();
-  const staleRes = await call(
-    method,
-    stale.path,
-    stale.body,
-    `"${stale.version + 7}"`,
-  );
+  const staleRes = await call(method, stale.path, {
+    body: stale.body,
+    ifMatch: `"${stale.version + 7}"`,
+  });
   expect(
     [200, 201, 412],
     `${key} with stale If-Match: ${staleRes.status} ${JSON.stringify(staleRes.body)}`,
