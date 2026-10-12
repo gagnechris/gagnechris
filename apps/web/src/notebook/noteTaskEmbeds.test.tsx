@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { undo } from '@codemirror/commands';
+import { undo, undoDepth } from '@codemirror/commands';
 import {
   afterEach,
   beforeAll,
@@ -39,6 +39,7 @@ const api = vi.hoisted(() => ({
   tasks: new Map<string, Task>(),
   puts: [] as string[],
   taskPosts: [] as Record<string, unknown>[],
+  taskPuts: [] as Record<string, unknown>[],
   /** Every task read: `GET <id>` or `BATCH <ids>`. */
   taskReads: [] as string[],
   /** Next task POST is written, then the response is lost. */
@@ -117,7 +118,9 @@ vi.mock('../workspace/api/client', () => ({
           return ok(api.daily);
         }
         if (path === '/api/notebook/tasks/{id}') {
+          api.taskPuts.push(body);
           const prev = api.tasks.get(p.id!)!;
+          if (body.version !== prev.version) return fail(409, 'conflict');
           const next = {
             ...prev,
             title: String(body.title),
@@ -291,6 +294,7 @@ beforeEach(() => {
   api.tasks.clear();
   api.puts = [];
   api.taskPosts = [];
+  api.taskPuts = [];
   api.taskReads = [];
   api.dropNextTaskResponse = false;
   localStorage.clear();
@@ -667,7 +671,7 @@ describe('one task embedded in two notes', () => {
     const { router } = renderTwoNotes();
     const user = userEvent.setup();
     await waitFor(() =>
-      expect(within(noteB()).getAllByText('Call Sam')).toHaveLength(1),
+      expect(within(noteB()).getAllByDisplayValue('Call Sam')).toHaveLength(1),
     );
 
     await user.click(
@@ -681,7 +685,9 @@ describe('one task embedded in two notes', () => {
     for (const note of [noteA(), noteB()]) {
       await waitFor(
         () =>
-          expect(within(note).getAllByText('Call Sam back')).toHaveLength(1),
+          expect(
+            within(note).getAllByDisplayValue('Call Sam back'),
+          ).toHaveLength(1),
         { timeout: 4000 },
       );
     }
@@ -694,5 +700,184 @@ describe('one task embedded in two notes', () => {
       expect(within(noteA()).getAllByText('Deleted task')).toHaveLength(1),
     );
     expect(document.body.textContent).not.toContain('{{task:');
+  });
+});
+
+describe('editing an embedded task title in place', () => {
+  function renderNotes(body: string, onChange = vi.fn()) {
+    const Notes = () => (
+      <>
+        <section aria-label="Note A">
+          <NotebookMarkdownBody
+            note={{ id: NOTE_A, area: 'work' }}
+            value={body}
+            onChange={onChange}
+          />
+        </section>
+        <section aria-label="Note B">
+          <NotebookMarkdownBody
+            note={{ id: NOTE_B, area: 'work' }}
+            value={tokenLine(TASK_ID)}
+            onChange={() => {}}
+          />
+        </section>
+      </>
+    );
+    const router = createMemoryRouter([{ path: '/', element: <Notes /> }]);
+    const utils = render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+    return { ...utils, onChange };
+  }
+
+  const noteA = () => screen.getByRole('region', { name: 'Note A' });
+  const noteB = () => screen.getByRole('region', { name: 'Note B' });
+  const titleIn = (note: HTMLElement) =>
+    within(note).findByRole('textbox', { name: 'Task title' });
+
+  test('typing, pasting and undo keys in the field save the task and leave the note alone', async () => {
+    seedTask();
+    const body = `Standup\n${tokenLine(TASK_ID)}\nnotes`;
+    const { onChange } = renderNotes(body);
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    const view = await editorView(noteA());
+    const depth = undoDepth(view.state);
+
+    await user.click(field);
+    await user.type(field, ' back');
+    await user.paste(' today');
+    await user.keyboard('{Control>}z{/Control}{Meta>}z{/Meta}');
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await user.keyboard('{Backspace}{Delete}{Home}{ArrowRight}');
+    await user.keyboard('{Control>}a{/Control}');
+    await user.clear(field);
+    await user.type(field, 'Call Sam back');
+
+    expect(view.state.doc.toString()).toBe(body);
+    expect(undoDepth(view.state)).toBe(depth);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(api.taskPuts).toEqual([]);
+
+    await user.tab();
+
+    await waitFor(() => expect(api.taskPuts).toHaveLength(1));
+    expect(api.taskPuts[0]).toMatchObject({
+      version: 1,
+      title: 'Call Sam back',
+    });
+    expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam back');
+    await waitFor(() =>
+      expect(within(noteB()).getByDisplayValue('Call Sam back')).toBeTruthy(),
+    );
+    expect(view.state.doc.toString()).toBe(body);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('an emptied title reverts on blur without saving', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+
+    await user.clear(field);
+    expect(field).toHaveValue('');
+    await user.tab();
+
+    expect(field).toHaveValue('Call Sam');
+    expect(api.taskPuts).toEqual([]);
+  });
+
+  test('Enter saves and puts the caret on a new line under the embed', async () => {
+    seedTask();
+    const body = `Standup\n${tokenLine(TASK_ID)}`;
+    const { onChange } = renderNotes(body);
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    const view = await editorView(noteA());
+
+    await user.clear(field);
+    await user.type(field, 'Call Sam back{Enter}');
+
+    await waitFor(() =>
+      expect(api.taskPuts).toEqual([
+        expect.objectContaining({ title: 'Call Sam back' }),
+      ]),
+    );
+    expect(view.state.doc.toString()).toBe(`${body}\n`);
+    expect(view.state.selection.main.head).toBe(view.state.doc.length);
+    expect(view.hasFocus).toBe(true);
+    expect(onChange).toHaveBeenLastCalledWith(`${body}\n`);
+  });
+
+  test('Enter reuses a blank line under the embed instead of adding one', async () => {
+    seedTask();
+    const body = `${tokenLine(TASK_ID)}\n\nnext`;
+    renderNotes(body);
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    const view = await editorView(noteA());
+
+    await user.click(field);
+    await user.keyboard('{Enter}');
+
+    expect(view.state.doc.toString()).toBe(body);
+    expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(
+      2,
+    );
+    expect(view.hasFocus).toBe(true);
+    expect(api.taskPuts).toEqual([]);
+  });
+
+  test('Escape drops the edit and returns to the embed line', async () => {
+    seedTask();
+    const body = `Standup\n${tokenLine(TASK_ID)}\nnotes`;
+    renderNotes(body);
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    const view = await editorView(noteA());
+
+    await user.type(field, ' later{Escape}');
+
+    // The caret on the embed's line redraws the widget, so query it again.
+    expect(await titleIn(noteA())).toHaveValue('Call Sam');
+    expect(view.state.doc.toString()).toBe(body);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(2).to);
+    expect(view.hasFocus).toBe(true);
+    expect(api.taskPuts).toEqual([]);
+  });
+
+  test('a done task stays struck through and can still be renamed', async () => {
+    seedTask({ status: 'done', completedAt: TS });
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    expect(field.closest('.task-embed')).toHaveClass('task-embed--done');
+
+    await user.clear(field);
+    await user.type(field, 'Called Sam{Enter}');
+
+    await waitFor(() =>
+      expect(api.tasks.get(TASK_ID)?.title).toBe('Called Sam'),
+    );
+  });
+
+  test('a conflicting save says so and puts the title back', async () => {
+    seedTask({ version: 3 });
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    api.tasks.set(TASK_ID, { ...api.tasks.get(TASK_ID)!, version: 4 });
+
+    await user.clear(field);
+    await user.type(field, 'Call Sam back');
+    await user.tab();
+
+    expect(
+      await within(noteA()).findByText(/changed on another device/),
+    ).toBeTruthy();
+    await waitFor(() => expect(field).toHaveValue('Call Sam'));
   });
 });
