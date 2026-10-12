@@ -25,6 +25,35 @@ function Modal({ onClose, start }: { onClose: () => void; start?: boolean }) {
   );
 }
 
+function SwapModal({ onClose }: { onClose: () => void }) {
+  const [done, setDone] = useState(false);
+  const { dialogProps } = useModalDialog({ label: 'Swap', onClose });
+  return (
+    <div {...dialogProps}>
+      <button type="button">Close</button>
+      {done ? (
+        <p>Done</p>
+      ) : (
+        <button type="button" onClick={() => setDone(true)}>
+          Finish
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SwapOpener() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open
+      </button>
+      {open ? <SwapModal onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
 function Opener({ start }: { start?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
@@ -84,5 +113,23 @@ describe('useModalDialog', () => {
     outside.mockClear();
     await user.keyboard('{Escape}');
     expect(outside).not.toHaveBeenCalled();
+  });
+
+  test('Escape and Tab still work after the focused control goes away', async () => {
+    const user = userEvent.setup();
+    render(<SwapOpener />);
+    const opener = screen.getByRole('button', { name: 'Open' });
+    await user.click(opener);
+
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    expect(document.body).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+
+    await user.click(document.body);
+    expect(document.body).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(opener).toHaveFocus();
   });
 });
