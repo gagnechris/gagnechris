@@ -890,7 +890,9 @@ describe('editing an embedded task title in place', () => {
   const noteA = () => screen.getByRole('region', { name: 'Note A' });
   const noteB = () => screen.getByRole('region', { name: 'Note B' });
   const titleIn = (note: HTMLElement) =>
-    within(note).findByRole('textbox', { name: 'Task title' });
+    within(note).findByRole<HTMLTextAreaElement>('textbox', {
+      name: 'Task title',
+    });
 
   test('typing, pasting and undo keys in the field save the task and leave the note alone', async () => {
     seedTask();
