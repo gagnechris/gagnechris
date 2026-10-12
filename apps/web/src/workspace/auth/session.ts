@@ -4,7 +4,7 @@ import {
   signInWithRedirect,
   signOut,
 } from 'aws-amplify/auth';
-import { isSitePath } from '@gagnechris/shared';
+import { ACCESS_GROUPS, isSitePath } from '@gagnechris/shared';
 import {
   addPasskeyUrl,
   ensureAmplifyConfigured,
@@ -23,12 +23,10 @@ const isLocalAuth = (): boolean => import.meta.env.VITE_AUTH_MODE === 'local';
 /** Local fake auth only: browser tests switch users by writing this key. */
 export const LOCAL_AUTH_USER_KEY = 'gagnechris.localAuthUser';
 
-const LOCAL_GROUPS = ['site-admin', 'notebook', 'user-admin'] as const;
-
 const DEFAULT_LOCAL_USER: AuthUser = {
   label: 'local@gagnechris.com',
   userId: 'local-dev-user',
-  groups: LOCAL_GROUPS,
+  groups: ACCESS_GROUPS,
 };
 
 const stringArray = (value: unknown): string[] | null =>
@@ -49,11 +47,11 @@ const localUser = (): AuthUser => {
       typeof parsed.label === 'string'
     ) {
       const groups =
-        'groups' in parsed ? stringArray(parsed.groups) : LOCAL_GROUPS;
+        'groups' in parsed ? stringArray(parsed.groups) : ACCESS_GROUPS;
       return {
         label: parsed.label,
         userId: parsed.userId,
-        groups: groups ?? LOCAL_GROUPS,
+        groups: groups ?? ACCESS_GROUPS,
       };
     }
   } catch {

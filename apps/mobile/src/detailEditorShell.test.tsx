@@ -146,7 +146,7 @@ describe('DetailEditorShell', () => {
       />,
     );
     expect(allText(renderer)).toContain('Loading note…');
-    expect(allText(renderer)).toContain('Edited');
+    expect(allText(renderer)).toContain('Unsaved changes');
     expect(byLabel(renderer, 'Note actions').props.disabled).toBe(true);
 
     await act(async () =>

@@ -263,7 +263,7 @@ describe('Note screen', () => {
     expect(allText(renderer)).toContain('Saved');
 
     act(() => byLabel(renderer, 'Note body').props.onChangeText('First line'));
-    expect(allText(renderer)).toContain('Edited');
+    expect(allText(renderer)).toContain('Unsaved changes');
     await vi.waitFor(
       () => expect(server.state.store.get(id)!.bodyMarkdown).toBe('First line'),
       { timeout: 3_000 },

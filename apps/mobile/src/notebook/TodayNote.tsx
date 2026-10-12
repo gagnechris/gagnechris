@@ -7,7 +7,10 @@ import {
   type NotebookArea,
 } from '@gagnechris/app-core';
 import {
+  emptyNoteDraft,
   NOTEBOOK_AREA_LABELS,
+  noteDraftFromNote,
+  notePayloadFromDraft,
   taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
@@ -26,11 +29,6 @@ import {
   useDetailEditor,
 } from './DetailEditorShell';
 import { NoteBodyEditor } from './NoteBodyEditor';
-import {
-  emptyNoteDraft,
-  noteDraftFromNote,
-  notePayloadFromDraft,
-} from './noteDraft';
 
 const DAILY_TAKEN_MESSAGE =
   'Another device started this daily note first. What you typed is still here.';

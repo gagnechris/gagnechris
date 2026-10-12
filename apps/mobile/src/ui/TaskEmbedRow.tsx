@@ -1,5 +1,4 @@
-import type { TaskEmbedState } from '@gagnechris/app-core';
-import type { Task } from '@gagnechris/shared';
+import type { Task, TaskEmbedState } from '@gagnechris/app-core';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

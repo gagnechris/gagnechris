@@ -1,12 +1,11 @@
 import { useId, useState, type FormEvent } from 'react';
-import type { AccessLevel } from '@gagnechris/shared';
-import { useInviteUserMutation } from '@gagnechris/app-core';
+import { displayName, type AccessLevel } from '@gagnechris/shared';
+import { useInviteUserMutation, userErrorMessage } from '@gagnechris/app-core';
 import { BottomSheet } from '../../kit/BottomSheet';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { UsersOverlay } from './UsersOverlay';
-import { displayName, userErrorMessage } from '@gagnechris/app-core';
 
 type Props = {
   onClose: () => void;

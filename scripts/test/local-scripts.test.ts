@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { waitForDynamoDb } from '../../scripts/local/wait-dynamodb.js';
+import { waitForDynamoDb } from '../local/wait-dynamodb.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');

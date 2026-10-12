@@ -8,12 +8,14 @@ import {
   CONTACT_HONEYPOT_MAX_LENGTH,
   CONTACT_MESSAGE_MAX_LENGTH,
   CONTACT_NAME_MAX_LENGTH,
+  RESUME_REFERRER_MAX_LENGTH,
+} from '@gagnechris/shared';
+import {
   CONTACT_PER_IP_PER_HOUR,
   MIN_CONTACT_SUBMIT_MS,
   RESUME_NOTIFY_SES_DAILY_CAP,
-  RESUME_REFERRER_MAX_LENGTH,
   SES_GLOBAL_DAILY_CAP,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/server';
 import { useApi } from './support/harness.js';
 
 type Mail = {

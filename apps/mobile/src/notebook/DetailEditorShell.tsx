@@ -1,4 +1,4 @@
-import type { SaveState } from '@gagnechris/app-core';
+import { saveLabel, type SaveState } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -21,7 +21,6 @@ import { EditorOfflineNotice, useIsOnline } from '../net';
 import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from '../ui/Icon';
 import { ConflictPanel } from './ConflictPanel';
-import { saveLabel } from './saveLabel';
 import { useSaveOnBackground } from './useSaveOnBackground';
 
 /** The parts of app-core's `useVersionedDocEditor` result the chrome reads. */
@@ -65,7 +64,7 @@ export function useDetailEditor({
     />
   );
   return {
-    saveLabel: saveLabel(editor.saveState, editor.dirty, !online),
+    saveLabel: saveLabel(editor.saveState, editor.dirty, { offline: !online }),
     conflict,
   };
 }

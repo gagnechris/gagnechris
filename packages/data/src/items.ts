@@ -9,7 +9,6 @@ import {
   ProjectDemoSchema,
   ProjectLinkSchema,
   ProjectStageSchema,
-  RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES,
   ResumeContentSchema,
   TaskPrioritySchema,
   TaskStatusSchema,
@@ -21,6 +20,7 @@ import {
   type Resume,
   type Task,
 } from '@gagnechris/shared';
+import { RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES } from '@gagnechris/shared/server';
 import { deepEqual, taskEmbedIds } from '@gagnechris/shared';
 import {
   HOME_ID,

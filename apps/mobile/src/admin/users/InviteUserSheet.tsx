@@ -1,9 +1,5 @@
-import {
-  displayName,
-  useInviteUserMutation,
-  userErrorMessage,
-} from '@gagnechris/app-core';
-import type { AccessLevel } from '@gagnechris/shared';
+import { useInviteUserMutation, userErrorMessage } from '@gagnechris/app-core';
+import { displayName, type AccessLevel } from '@gagnechris/shared';
 import { useState } from 'react';
 import { Button } from '../../ui/Button';
 import {

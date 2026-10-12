@@ -1,9 +1,5 @@
-import {
-  comingUpDayLabel,
-  type ComingUpDay,
-  type Task,
-} from '@gagnechris/shared';
-import type { TodayStillOpenRow } from '@gagnechris/app-core';
+import { comingUpDayLabel, type ComingUpDay } from '@gagnechris/shared';
+import type { Task, TodayStillOpenRow } from '@gagnechris/app-core';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
 import {

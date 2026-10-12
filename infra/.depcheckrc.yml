@@ -1,0 +1,5 @@
+ignores:
+  # cdk.json runs the app with `npx tsx`.
+  - tsx
+  # The CloudFront Functions runtime provides this module.
+  - cloudfront

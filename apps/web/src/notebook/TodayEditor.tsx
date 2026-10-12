@@ -8,18 +8,16 @@ import {
   type NotebookArea,
 } from '@gagnechris/app-core';
 import {
+  emptyNoteDraft,
   formatCalendarDay,
+  noteDraftFromNote,
+  notePayloadFromDraft,
   taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
-import {
-  emptyNoteDraft,
-  noteDraftFromNote,
-  notePayloadFromDraft,
-} from './noteDraft';
 import {
   NOTEBOOK_AREA_HEADINGS,
   NOTEBOOK_AREA_LABELS,

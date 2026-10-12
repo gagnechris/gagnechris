@@ -1,5 +1,6 @@
 import {
   ACCESS_LEVEL_LABELS,
+  displayName,
   type AccessLevel,
   type ManagedUser,
   type ManagedUserStatus,
@@ -28,9 +29,6 @@ export const STATUS_LABELS: Record<ManagedUserStatus, string> = {
   disabled: 'Disabled',
   removed: 'Removed · notes kept',
 };
-
-export const displayName = (user: Pick<ManagedUser, 'name' | 'email'>) =>
-  user.name?.trim() || user.email.split('@')[0] || user.email;
 
 export const firstName = (user: Pick<ManagedUser, 'name' | 'email'>) =>
   displayName(user).split(/\s+/)[0]!;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { API_SERVICE_NAME } from '@gagnechris/shared';
+import { API_SERVICE_NAME } from '@gagnechris/shared/server';
 import { useApi } from './support/harness.js';
 
 const h = useApi('health', { truncate: false });

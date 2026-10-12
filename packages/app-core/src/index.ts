@@ -64,7 +64,6 @@ export {
 } from './resumeDraft.js';
 export {
   accessChange,
-  displayName,
   firstName,
   formatAdded,
   hasApp,

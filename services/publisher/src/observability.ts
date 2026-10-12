@@ -3,7 +3,7 @@ import { Metrics } from '@aws-lambda-powertools/metrics';
 import {
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/server';
 
 export const logger = new Logger({ serviceName: PUBLISHER_SERVICE_NAME });
 export const metrics = new Metrics({

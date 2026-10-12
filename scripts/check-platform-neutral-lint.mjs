@@ -109,6 +109,18 @@ const fixtures = [
     expect: 'location',
     rule: 'no-restricted-globals',
   },
+  {
+    dir: 'apps/mobile/src',
+    source: `import type { Task } from '@gagnechris/shared';\nexport type X = Task;\n`,
+    expect: '@gagnechris/app-core',
+    rule: 'no-restricted-imports',
+  },
+  {
+    dir: 'apps/web/src/notebook',
+    source: `import type { Note } from '@gagnechris/shared';\nexport type X = Note;\n`,
+    expect: '@gagnechris/app-core',
+    rule: 'no-restricted-imports',
+  },
 ];
 
 let failed = false;

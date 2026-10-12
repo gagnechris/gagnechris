@@ -49,7 +49,7 @@ A task or note opened from inside a tab is pushed on that tab's stack (`useDetai
 
 Each row has Pin / Unpin and Delete, each behind a confirm alert: long press, the row's ⋯ button and VoiceOver's actions rotor all offer them. Pinning goes through app-core's `usePinNoteMutation`.
 
-`/notes/:id` edits a note with app-core's `useVersionedDocEditor` (the web autosave and debounce); the header shows Saving… / Edited / Saved / Offline, the Preview toggle and a ⋯ menu with Pin / Unpin, Share and Delete. Under the title (read-only for a daily note) are the area, a pin marker, the tags (tap one to remove it) and "+ tag". Leaving the foreground saves straight away, without waiting for the debounce.
+`/notes/:id` edits a note with app-core's `useVersionedDocEditor` (the web autosave and debounce); the header shows the save state from `saveLabel` (`@gagnechris/shared`, the same strings as the web: Saving…, Unsaved changes, Saved, Offline, will retry), the Preview toggle and a ⋯ menu with Pin / Unpin, Share and Delete. Under the title (read-only for a daily note) are the area, a pin marker, the tags (tap one to remove it) and "+ tag". Leaving the foreground saves straight away, without waiting for the debounce.
 
 - **Body.** `NoteBodyEditor` keeps the body as plain markdown. `noteSegments` splits it into runs of text, each a native multiline `TextInput`, around the `{{task:…}}` lines, which show as task rows. A text run sits before, between and after every task, and is keyed by the task after it, so the view being typed in stays mounted when a line above it turns into a task. An empty run between tasks is a thin strip until it has the caret; its tap area reaches 8 pt into the task rows around it. Every task row has the same space above and below, so rows whose pills wrap are spaced like one-line rows.
 - **Tasks from lines.** A `[ ] …` line becomes a task once the caret has left it and typing has paused for 400 ms (`CONVERT_AFTER_MS`, so the text view has taken every keystroke before its text changes), or at once when the field loses focus, with the web rules: `parseTaskLine` from `@gagnechris/shared` (task syntax for `@…`, `due:…` and `!…`), a client ULID, and app-core's `useNoteTaskEmbedSync`, which creates the task (retrying while the API is unreachable) and reports what each row shows. A line is only converted if its text is unchanged, so a backspace that pulls a task line up does not convert it. Lines in a code fence stay text.
@@ -93,14 +93,14 @@ The editor (`app/admin/posts/[id].tsx`) uses app-core's `useVersionedEntityEdito
 
 The Admin Projects tab lists projects in their public order with stage, status, where the card links (`projectCardHref`) and the order number. With none, Create starter projects adds the Posts, Notebook and Don’t Feed the Bears drafts; the + button creates a draft at the end of the list.
 
-The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead (a bad link row is left out), and the save state stays Edited. Publish refuses while a field is invalid or a project with a demo has no preview image.
+The project editor works like the post editor (see [Posts](#posts)) with app-core's shared `projectDraft` helpers: the name is the title, the slug follows it, and the body has the same toolbar and Preview. Details holds the slug (with where the page will be), pitch, stage and stage note, preview image, stack, demo, order, "Link card to…" and links. A field the API would refuse (an order out of range, a bad link or card URL) shows its error and saves the last saved value instead (a bad link row is left out), and the save state stays Unsaved changes. Publish refuses while a field is invalid or a project with a demo has no preview image.
 
 ## Pages
 
 The Admin Pages tab lists the Home page and Resume with their publish status; pull to refresh. Both editors save like the other admin editors, with Publish, Discard, View on site and Unpublish, and take their draft fields and payload from app-core (`homeDraft.ts`, `resumeDraft.ts`), shared with the web editors.
 
 - **Home page:** Name, Title, About me, and an SEO title and description under Search and sharing.
-- **Resume:** Profile (name, headline, earlier-roles cut-off year), Summary, Experience, Skills and Education. Each role opens in a sheet with title, company, Start and End months typed as `YYYY-MM`, Present, note and bullets, plus Move up, Move down and Remove role. A role whose End is before its Start, or with a half-typed month, shows the error and "Check dates" in the list and saves its last saved dates, and the save state stays Edited. Publish refuses while such a role has no saved dates. Education entries are edited in place, with Move up and Remove.
+- **Resume:** Profile (name, headline, earlier-roles cut-off year), Summary, Experience, Skills and Education. Each role opens in a sheet with title, company, Start and End months typed as `YYYY-MM`, Present, note and bullets, plus Move up, Move down and Remove role. A role whose End is before its Start, or with a half-typed month, shows the error and "Check dates" in the list and saves its last saved dates, and the save state stays Unsaved changes. Publish refuses while such a role has no saved dates. Education entries are edited in place, with Move up and Remove.
 
 ## Users
 
@@ -258,7 +258,7 @@ Consequences:
 
 - Install mobile deps with `npm ci` (or `npm install`) **inside `apps/mobile`** — a root install does not cover it.
 - Root `npm run typecheck` / `npm test` / `npm run lint` do not include mobile. Use `--prefix apps/mobile`; the Mobile workflow does this.
-- Adding a dependency to `packages/*` needs `npm install` in `apps/mobile` too, to refresh its lockfile.
+- Adding a dependency to `packages/*` needs `npm install` in `apps/mobile` too, to refresh its lockfile. Metro resolves the shared packages' runtime dependencies from `apps/mobile/node_modules` while root Vitest uses the root install, so `npm run check:rn-bundles` fails when the two lockfiles resolve a runtime dependency of shared, api-client, app-core or tokens (or anything under it) to different versions; bump the other lockfile to match.
 - Add Expo native modules with `npx expo install <package>` inside `apps/mobile`, then check the range matches `node_modules/expo/bundledNativeModules.json` (`expo install` can pick the newest SDK patch's list; `src/native-config.test.ts` fails on a mismatch).
 
 ## React versions

@@ -17,6 +17,7 @@ const workspaces = [
   'services/publisher',
   'infra',
   'e2e',
+  'scripts',
 ];
 
 const ignoreDirNames = new Set([

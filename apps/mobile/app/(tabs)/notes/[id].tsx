@@ -5,7 +5,14 @@ import {
   useNoteTaskEmbedSync,
   useVersionedDocEditor,
 } from '@gagnechris/app-core';
-import { NOTEBOOK_AREA_LABELS, noteTitle } from '@gagnechris/shared';
+import {
+  emptyNoteDraft,
+  NOTEBOOK_AREA_LABELS,
+  noteDraftFromNote,
+  notePayloadFromDraft,
+  noteTitle,
+  parseTagsText,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -33,11 +40,6 @@ import {
   deleteNoteMessage,
   deleteNoteTitle,
 } from '../../../src/notebook/noteActions';
-import {
-  emptyNoteDraft,
-  noteDraftFromNote,
-  notePayloadFromDraft,
-} from '../../../src/notebook/noteDraft';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
@@ -112,16 +114,21 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
     Alert.prompt('Add a tag', undefined, (value) => {
       const tag = value?.trim();
       if (!tag) return;
-      updateDraft((prev) =>
-        prev.tags.includes(tag) ? prev : { ...prev, tags: [...prev.tags, tag] },
-      );
+      updateDraft((prev) => {
+        const tags = parseTagsText(prev.tagsText);
+        return tags.includes(tag)
+          ? prev
+          : { ...prev, tagsText: [...tags, tag].join(', ') };
+      });
     });
 
   const removeTag = async (tag: string) => {
     if (await confirmAction(`Remove “${tag}”?`, '', 'Remove')) {
       updateDraft((prev) => ({
         ...prev,
-        tags: prev.tags.filter((t) => t !== tag),
+        tagsText: parseTagsText(prev.tagsText)
+          .filter((t) => t !== tag)
+          .join(', '),
       }));
     }
   };
@@ -207,7 +214,7 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
                 <Icon name="pin.fill" size={12} color={color.inkSoft} />
               </View>
             ) : null}
-            {draft.tags.map((tag) => (
+            {parseTagsText(draft.tagsText).map((tag) => (
               <Pressable
                 key={tag}
                 accessibilityRole="button"

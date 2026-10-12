@@ -287,6 +287,16 @@ const webDirImport = (...dirs) => ({
   regex: `^\\.{1,2}/(?:.*/)?(?:${dirs.join('|')})(?:/|$)`,
 });
 
+// The signed-in apps work with the API's own types; shared's zod types are
+// for the public site, the kit and the server.
+const apiEntityTypePaths = [
+  {
+    name: '@gagnechris/shared',
+    importNames: ['Note', 'Task', 'Project'],
+    message: 'Import Note, Task and Project from @gagnechris/app-core.',
+  },
+];
+
 // Each web app builds alone; these keep one app's code out of another's bundle.
 // The public Vite build's bundle-boundary plugin is the hard check.
 const webAppZones = [
@@ -392,6 +402,7 @@ const webAppZones = [
       'no-restricted-imports': [
         'error',
         {
+          paths: apiEntityTypePaths,
           patterns: [
             ...crossWorkspaceRelativePatterns,
             {
@@ -409,6 +420,7 @@ const webAppZones = [
       'no-restricted-imports': [
         'error',
         {
+          paths: apiEntityTypePaths,
           patterns: [
             ...crossWorkspaceRelativePatterns,
             {
@@ -426,6 +438,7 @@ const webAppZones = [
       'no-restricted-imports': [
         'error',
         {
+          paths: apiEntityTypePaths,
           patterns: [
             ...crossWorkspaceRelativePatterns,
             {
@@ -601,7 +614,13 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      ...noCrossWorkspaceRelativeImports,
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: apiEntityTypePaths,
+          patterns: crossWorkspaceRelativePatterns,
+        },
+      ],
       ...unusedVarsRule,
       'import-x/no-cycle': ['error', { maxDepth: 10 }],
     },

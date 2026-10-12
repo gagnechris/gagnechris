@@ -1,6 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { SaveState } from '@gagnechris/app-core';
-import { saveLabel } from './saveLabel';
+import { saveLabel, type SaveState } from '@gagnechris/shared';
 
 type Props = {
   saveState: SaveState;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { SaveState } from '@gagnechris/shared';
 import {
   registerPendingFlush,
   resolvePendingFlush,
@@ -7,7 +8,7 @@ import {
 import { defaultTimers, type RetrySignals, type Timers } from './platform.js';
 import { useLatest } from './useLatest.js';
 
-export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+export type { SaveState };
 
 export type AutosaveResult<TEntity> =
   | { ok: true; entity: TEntity }

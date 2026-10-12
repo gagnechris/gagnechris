@@ -1,7 +1,7 @@
 import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
+import { saveLabel } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { saveLabel } from '../notebook/saveLabel';
 import { color, font, MIN_TARGET } from '../theme';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -31,7 +31,7 @@ export const EditorHeaderButtons = ({
 }: HeaderProps) => (
   <View style={styles.headerRight}>
     <Text style={styles.saveState} accessibilityLiveRegion="polite">
-      {saveLabel(actionBar.saveState, actionBar.dirty, offline)}
+      {saveLabel(actionBar.saveState, actionBar.dirty, { offline })}
     </Text>
     {onTogglePreview ? (
       <Pressable

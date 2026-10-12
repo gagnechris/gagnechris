@@ -115,6 +115,12 @@ export const UserConflictResponseSchema = z.object({
   message: z.string(),
 });
 
+/** A user's name, else the part of their email before the @. */
+export const displayName = (user: {
+  name: string | null;
+  email: string;
+}): string => user.name?.trim() || user.email.split('@')[0] || user.email;
+
 /** Avatar letters for a name or an email: first and last word, or the first two letters of a single word. */
 export function initials(nameOrEmail: string): string {
   const source = nameOrEmail.trim().split('@')[0] ?? '';

@@ -1,5 +1,4 @@
-import { initials, type ManagedUser } from '@gagnechris/shared';
-import { displayName } from '@gagnechris/app-core';
+import { displayName, initials, type ManagedUser } from '@gagnechris/shared';
 
 export function UserAvatar({
   user,

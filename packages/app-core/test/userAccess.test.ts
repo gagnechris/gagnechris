@@ -3,7 +3,6 @@ import type { ManagedUser } from '@gagnechris/shared';
 import {
   ApiError,
   accessChange,
-  displayName,
   formatAdded,
   hasApp,
   userErrorMessage,
@@ -44,11 +43,6 @@ describe('accessChange', () => {
 });
 
 describe('people', () => {
-  test('falls back to the email for a name', () => {
-    const anon = { name: null, email: 'jordan.lee@example.com' };
-    expect(displayName(anon)).toBe('jordan.lee');
-  });
-
   test('disabled and removed people open no apps', () => {
     expect(hasApp(user({ level: 'full' }), 'Notebook')).toBe(true);
     expect(hasApp(user({ level: 'cms' }), 'Notebook')).toBe(false);
