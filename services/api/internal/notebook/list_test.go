@@ -15,7 +15,7 @@ import (
 // Queries, not one each.
 func TestSparseTaskFilterReadsWholePages(t *testing.T) {
 	f := &fakeDynamo{partitions: map[string][]data.Item{}}
-	repo := newTasksRepo(fakeTable(t, f), func() time.Time { return testNow })
+	repo := newTasksRepo(fakeTable(f), func() time.Time { return testNow })
 	pk := keys.TaskAreaStatusGSI1Pk("u1", "work", "todo")
 	at := testNow.Format("2006-01-02T15:04:05.000Z")
 	for i := range 401 {

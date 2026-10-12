@@ -2,12 +2,8 @@ package notebook
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -18,120 +14,73 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/data/datatest"
 )
 
-// fakeDynamo answers DynamoDB's JSON protocol, since DynamoDB Local can't
-// produce a TransactionConflictException.
+// fakeDynamo is an in-memory DynamoDB for the calls these tests make, since
+// DynamoDB Local can't produce a TransactionConflictException.
 type fakeDynamo struct {
-	mu       sync.Mutex
-	items    []data.Item // GetItem answers, in order; the last repeats
-	gets     []bool      // ConsistentRead of each GetItem
-	putError string      // PutItem's __type, or "" for success
-	// partitions answer Query by gsi1pk, each sorted by gsi1sk.
+	datatest.Fake
+	mu     sync.Mutex
+	items  []data.Item // GetItem answers, in order; the last repeats
+	gets   []bool      // ConsistentRead of each GetItem
+	putErr error
+	// partitions answer Query by :pk, each sorted by the index's sort key.
 	partitions map[string][]data.Item
 	queries    int
 }
 
-func (f *fakeDynamo) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// indexKeys are each queried index's key attributes, as DynamoDB puts them
+// in LastEvaluatedKey after the table's.
+var indexKeys = map[string][2]string{"gsi1": {"gsi1pk", "gsi1sk"}, "gsi3": {"syncPk", "syncSk"}}
+
+func (f *fakeDynamo) GetItem(_ context.Context, in *dynamodb.GetItemInput, _ ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var body struct {
-		ConsistentRead            bool
-		Limit                     int
-		ExclusiveStartKey         map[string]map[string]string
-		ExpressionAttributeValues map[string]map[string]string
+	f.gets = append(f.gets, aws.ToBool(in.ConsistentRead))
+	out := &dynamodb.GetItemOutput{}
+	if len(f.items) > 0 {
+		out.Item = f.items[0]
+		if len(f.items) > 1 {
+			f.items = f.items[1:]
+		}
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	w.Header().Set("Content-Type", "application/x-amz-json-1.0")
-	switch op := strings.TrimPrefix(r.Header.Get("X-Amz-Target"), "DynamoDB_20120810."); op {
-	case "GetItem":
-		f.gets = append(f.gets, body.ConsistentRead)
-		var item data.Item
-		if len(f.items) > 0 {
-			item = f.items[0]
-			if len(f.items) > 1 {
-				f.items = f.items[1:]
-			}
-		}
-		out := map[string]any{}
-		if item != nil {
-			out["Item"] = wireItem(item)
-		}
-		_ = json.NewEncoder(w).Encode(out)
-	case "PutItem":
-		if f.putError != "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"__type": "com.amazonaws.dynamodb.v20120810#" + f.putError, "message": "conflict"})
-			return
-		}
-		_, _ = w.Write([]byte("{}"))
-	case "Query":
-		f.queries++
-		rows := f.partitions[body.ExpressionAttributeValues[":pk"]["S"]]
-		start := 0
-		if after := body.ExclusiveStartKey["gsi1sk"]["S"]; after != "" {
-			for start < len(rows) && rows[start]["gsi1sk"].(*types.AttributeValueMemberS).Value <= after {
-				start++
-			}
-		}
-		end := min(start+body.Limit, len(rows))
-		out := map[string]any{"Items": []any{}}
-		items := []any{}
-		for _, row := range rows[start:end] {
-			items = append(items, wireItem(row))
-		}
-		out["Items"] = items
-		if end < len(rows) {
-			last := rows[end-1]
-			out["LastEvaluatedKey"] = wireItem(data.Item{"pk": last["pk"], "sk": last["sk"], "gsi1pk": last["gsi1pk"], "gsi1sk": last["gsi1sk"]})
-		}
-		_ = json.NewEncoder(w).Encode(out)
-	default:
-		http.Error(w, "unexpected "+op, http.StatusNotImplemented)
-	}
+	return out, nil
 }
 
-func wireItem(item data.Item) map[string]any {
-	out := make(map[string]any, len(item))
-	for k, v := range item {
-		out[k] = wireValue(v)
-	}
-	return out
+func (f *fakeDynamo) PutItem(context.Context, *dynamodb.PutItemInput, ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
+	return &dynamodb.PutItemOutput{}, f.putErr
 }
 
-func wireValue(v types.AttributeValue) any {
-	switch v := v.(type) {
-	case *types.AttributeValueMemberS:
-		return map[string]string{"S": v.Value}
-	case *types.AttributeValueMemberN:
-		return map[string]string{"N": v.Value}
-	case *types.AttributeValueMemberBOOL:
-		return map[string]bool{"BOOL": v.Value}
-	case *types.AttributeValueMemberNULL:
-		return map[string]bool{"NULL": true}
-	case *types.AttributeValueMemberSS:
-		return map[string][]string{"SS": v.Value}
-	case *types.AttributeValueMemberL:
-		list := make([]any, len(v.Value))
-		for i, e := range v.Value {
-			list[i] = wireValue(e)
+func (f *fakeDynamo) Query(_ context.Context, in *dynamodb.QueryInput, _ ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.queries++
+	index := indexKeys[aws.ToString(in.IndexName)]
+	rows := f.partitions[attrS(in.ExpressionAttributeValues[":pk"])]
+	start := 0
+	if after := attrS(in.ExclusiveStartKey[index[1]]); after != "" {
+		for start < len(rows) && attrS(rows[start][index[1]]) <= after {
+			start++
 		}
-		return map[string]any{"L": list}
-	case *types.AttributeValueMemberM:
-		return map[string]any{"M": wireItem(v.Value)}
 	}
-	panic("unsupported attribute value")
+	end := min(start+int(aws.ToInt32(in.Limit)), len(rows))
+	out := &dynamodb.QueryOutput{Items: rows[start:end]}
+	if end < len(rows) {
+		last := rows[end-1]
+		out.LastEvaluatedKey = data.Item{"pk": last["pk"], "sk": last["sk"], index[0]: last[index[0]], index[1]: last[index[1]]}
+	}
+	return out, nil
 }
 
-func fakeTable(t *testing.T, f *fakeDynamo) *data.Table {
-	srv := httptest.NewServer(f)
-	t.Cleanup(srv.Close)
-	db := dynamodb.New(dynamodb.Options{
-		Region:           "us-east-1",
-		BaseEndpoint:     aws.String(srv.URL),
-		Credentials:      aws.AnonymousCredentials{},
-		RetryMaxAttempts: 1,
-	})
+func attrS(v types.AttributeValue) string {
+	if s, ok := v.(*types.AttributeValueMemberS); ok {
+		return s.Value
+	}
+	return ""
+}
+
+func fakeTable(db data.Client) *data.Table {
 	return &data.Table{DB: db, Name: "test"}
 }
 
@@ -148,8 +97,8 @@ func storedNote(r *notesRepo, version int) data.Item {
 
 // Another request's transaction held the note: a version conflict, not a 500.
 func TestUpdateHittingATransactionIsAVersionConflict(t *testing.T) {
-	f := &fakeDynamo{putError: "TransactionConflictException"}
-	repo := newNotesRepo(fakeTable(t, f), func() time.Time { return testNow })
+	f := &fakeDynamo{putErr: &types.TransactionConflictException{}}
+	repo := newNotesRepo(fakeTable(f), func() time.Time { return testNow })
 	f.items = []data.Item{storedNote(repo, 3), storedNote(repo, 4)}
 
 	title := "Plan B"
@@ -170,7 +119,7 @@ func TestUpdateHittingATransactionIsAVersionConflict(t *testing.T) {
 // A task created right after its note must see that note.
 func TestLinkedNoteCheckReadsConsistently(t *testing.T) {
 	f := &fakeDynamo{}
-	table := fakeTable(t, f)
+	table := fakeTable(f)
 	h := handlers{notes: newNotesRepo(table, time.Now), table: table}
 	f.items = []data.Item{storedNote(h.notes, 1)}
 
