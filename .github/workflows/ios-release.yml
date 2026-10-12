@@ -1,9 +1,10 @@
 name: iOS release
 
-# A tag `ios-vX.Y.Z` on main builds the app on EAS and submits it to
+# A tag `ios-vX.Y.Z` on main builds the app on this runner and submits it to
 # TestFlight. A manual run must pick such a tag as its ref.
-# EAS owns the build number (`autoIncrement`); the App Store Connect API key
-# lives in EAS credentials, so this job only holds the Expo token.
+# `eas build --local` keeps builds off the EAS cloud quota while EAS still
+# holds the signing credentials, the build number (`autoIncrement`) and the
+# App Store Connect API key, so this job only holds the Expo token.
 on:
   push:
     tags: ['ios-v*']
@@ -23,7 +24,7 @@ concurrency:
 jobs:
   release:
     name: Build and submit to TestFlight
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     timeout-minutes: 90
     environment: testflight
     steps:
@@ -46,7 +47,7 @@ jobs:
               process.exit(1);
             }'
 
-      # This job holds EXPO_TOKEN, and EAS auto-submits what it builds.
+      # This job holds EXPO_TOKEN.
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -66,10 +67,18 @@ jobs:
       - name: Install EAS CLI
         run: npm install --global --ignore-scripts eas-cli@24.7.0
 
-      - name: Build and submit
+      - name: Build
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: >-
-          eas build --platform ios --profile production
-          --non-interactive --auto-submit
+          eas build --local --platform ios --profile production
+          --non-interactive --output "${RUNNER_TEMP}/app.ipa"
+
+      - name: Submit to TestFlight
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: >-
+          eas submit --platform ios --profile production
+          --non-interactive --path "${RUNNER_TEMP}/app.ipa"
