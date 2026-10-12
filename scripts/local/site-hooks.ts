@@ -32,7 +32,7 @@ export async function maybeRebuild(
   status: number,
 ) {
   if (status < 200 || status >= 300) return;
-  // Local stand-in for stream filter Keys.sk == PUBLISHED (see isPublishRelevant).
+  // Local stand-in for the publisher stream filter Keys.sk == PUBLISHED.
   if (!isPublishRelevantAdminMutation(method, path)) {
     return;
   }

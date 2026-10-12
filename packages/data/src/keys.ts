@@ -6,8 +6,6 @@
 
 import type { NotebookArea } from '@gagnechris/shared';
 
-export type { NotebookArea };
-
 export const SK_META = 'META';
 export const SK_PUBLISHED = 'PUBLISHED';
 export const SK_POST = 'POST';
@@ -211,14 +209,6 @@ export function syncPk(userId: string): string {
   return `SYNC#${userId}`;
 }
 
-/** Durable so client-ULID ids cannot resurrect after the tombstone TTL. */
-export function syncCreateClaimPk(
-  changeType: string,
-  entityId: string,
-): string {
-  return `CREATED#${changeType.toUpperCase()}#${entityId}`;
-}
-
 /** Includes Cognito `sub` so two users never share a claim even if ULIDs collide. */
 export function ownerSyncCreateClaimPk(
   userId: string,
@@ -319,48 +309,6 @@ export function taskDueGsi1Sk(dueDate: string, taskId: string): string {
   return `DUE#${dueDate}#TASK#${taskId}`;
 }
 
-/** Inclusive `gsi1sk BETWEEN from AND to` on a Notebook GSI1 partition. */
-export type SortKeyRange = { from: string; to: string };
-
-const prefixRange = (prefix: string): SortKeyRange => ({
-  from: prefix,
-  to: `${prefix}\uffff`,
-});
-// `#TASK~` sorts after every `START#<day>#TASK#<id>` for that day.
-const afterDay = (day: string) => `START#${day}#TASK~`;
-
-export const taskGsi1SkRanges = {
-  startOn: (day: string): SortKeyRange[] => [
-    { from: `START#${day}#`, to: afterDay(day) },
-  ],
-  /** startDate on or before `day`, or null; never someday. */
-  showsOn: (day: string): SortKeyRange[] => [
-    { from: 'START#', to: afterDay(day) },
-    prefixRange('UPDATED#'),
-  ],
-  /** startDate after `after` and before `before`; either end may be open. */
-  startsBetween: (after?: string, before?: string): SortKeyRange[] => [
-    {
-      from: after ? afterDay(after) : 'START#',
-      // `START#<day>#` sorts before every row for that day.
-      to: before ? `START#${before}#` : 'START#\uffff',
-    },
-  ],
-  someday: (): SortKeyRange[] => [prefixRange('SOMEDAY#')],
-};
-
-/** Sort-key ranges on a note area partition (`notebookAreaGsi1Pk`). */
-export const noteGsi1SkRanges = {
-  /** Daily notes dated `from`..`to` inclusive; either end may be open. */
-  dates: (from?: string, to?: string): SortKeyRange => ({
-    from: `DATE#${from ?? '0000-01-01'}`,
-    // `#NOTE~` sorts after every `DATE#<day>#NOTE#<id>` for that day.
-    to: `DATE#${to ?? '9999-12-31'}#NOTE~`,
-  }),
-  daily: (): SortKeyRange => prefixRange('DATE#'),
-  pages: (): SortKeyRange => prefixRange('PAGE#'),
-};
-
 export function noteTasksGsi2Pk(userId: string, noteId: string): string {
   return `USER#${userId}#NOTE#${noteId}#TASKS`;
 }
@@ -370,7 +318,7 @@ export function noteTasksGsi2Sk(taskId: string): string {
 }
 
 /** Avoids lexicographic bugs when clients omit ms or send an offset. */
-export function normalizeSyncSince(since: string): string {
+function normalizeSyncSince(since: string): string {
   const ms = Date.parse(since);
   if (Number.isNaN(ms)) {
     throw new SyntaxError(`Invalid sync since timestamp: ${since}`);
@@ -394,15 +342,7 @@ export function syncSk(
   return `${ts}#${entityType.toUpperCase()}#${entityId}`;
 }
 
-export function syncSinceLowerBound(
-  since: string | undefined,
-): string | undefined {
-  if (!since) return undefined;
-  const normalized = normalizeSyncSince(since);
-  return new Date(Date.parse(normalized) - SYNC_OVERLAP_MS).toISOString();
-}
-
-export function normalizeTag(tag: string): string {
+function normalizeTag(tag: string): string {
   return tag.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
@@ -451,21 +391,11 @@ export const keys = {
     },
   },
   sitePublish: () => ({ pk: sitePublishPk(), sk: sitePublishSk() }),
-  contact: {
-    msg: (contactId: string) => ({
-      pk: contactPk(contactId),
-      sk: contactMsgSk(),
-    }),
-  },
   removedUser: (userId: string) => ({
     pk: removedUsersPk(),
     sk: removedUserSk(userId),
   }),
   sync: {
-    createClaim: (changeType: string, id: string) => ({
-      pk: syncCreateClaimPk(changeType, id),
-      sk: syncCreateClaimSk(),
-    }),
     ownerCreateClaim: (userId: string, changeType: string, id: string) => ({
       pk: ownerSyncCreateClaimPk(userId, changeType, id),
       sk: syncCreateClaimSk(),
