@@ -3,10 +3,13 @@ import { useSession } from '../src/session';
 import { openingSpace, SPACE_HOME, useSpace } from '../src/space';
 
 const Index = () => {
-  const { spaces } = useSession();
+  const { status, expired, spaces } = useSession();
   const { last } = useSpace();
+  if (status !== 'signedIn') {
+    return <Redirect href={expired ? '/site/account' : '/site/home'} />;
+  }
   const space = openingSpace(last, spaces);
-  return space ? <Redirect href={SPACE_HOME[space]} /> : null;
+  return <Redirect href={space ? SPACE_HOME[space] : '/no-access'} />;
 };
 
 export default Index;

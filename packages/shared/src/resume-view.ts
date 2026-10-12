@@ -111,3 +111,9 @@ export const resumeView = ({
     education: content.education.map(educationLine),
   };
 };
+
+export const RESUME_PAGE_TITLE = 'Resume';
+
+export const RESUME_UNAVAILABLE_TEXT = 'Resume available on request.';
+
+export const RESUME_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';

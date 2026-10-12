@@ -226,7 +226,8 @@ Same draft / published split as the resume.
 
 `GET /api/admin/home` seeds META as a **draft** from `DEFAULT_HOME`. Publish
 writes `HOME#current` / `PUBLISHED`; unpublish deletes it. On publish the
-publisher also writes `home/last-published.json`; when `PUBLISHED` is missing
+publisher also writes `home/last-published.json` (and `home/index.json`, the iOS
+app's name, title and about, on every Home render); when `PUBLISHED` is missing
 or corrupt it re-renders `index.html` from that snapshot. With no snapshot, a
 missing Home renders `DEFAULT_HOME` (what the SPA falls back to) and a corrupt
 one leaves `index.html` alone.

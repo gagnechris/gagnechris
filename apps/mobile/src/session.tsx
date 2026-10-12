@@ -142,7 +142,7 @@ export function useSession(): SessionState {
   return value;
 }
 
-/** Which root screens a session may see: each space, No access, or sign-in. */
+/** Which signed-in root screens a session may see; the Site space is open to everyone. */
 export function rootGuards(status: SessionStatus, spaces: readonly Space[]) {
   const signedIn = status === 'signedIn';
   return {
@@ -151,6 +151,5 @@ export function rootGuards(status: SessionStatus, spaces: readonly Space[]) {
     // Admin to No access.
     admin: signedIn && spaces.length > 0,
     noAccess: signedIn && !spaces.includes('admin'),
-    signIn: status === 'signedOut',
   };
 }

@@ -77,3 +77,7 @@ export const cognitoConfig: CognitoConfig = {
   // never the iCloud Keychain passkey for auth.gagnechris.com.
   ephemeralSession: false,
 };
+
+/** Where the Site space reads the published JSON; the public site unless set. */
+export const siteOrigin =
+  process.env.EXPO_PUBLIC_SITE_ORIGIN ?? 'https://gagnechris.com';

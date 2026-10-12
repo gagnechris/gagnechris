@@ -51,9 +51,7 @@ const RootStack = () => {
           contentStyle: { backgroundColor: color.background },
         }}
       >
-        <Stack.Protected guard={guards.notebook || guards.admin}>
-          <Stack.Screen name="index" />
-        </Stack.Protected>
+        <Stack.Screen name="index" />
         <Stack.Protected guard={guards.admin}>
           <Stack.Screen name="admin" options={{ animation: 'fade' }} />
         </Stack.Protected>
@@ -65,9 +63,7 @@ const RootStack = () => {
         <Stack.Protected guard={guards.noAccess}>
           <Stack.Screen name="no-access" />
         </Stack.Protected>
-        <Stack.Protected guard={guards.signIn}>
-          <Stack.Screen name="sign-in" />
-        </Stack.Protected>
+        <Stack.Screen name="site" options={{ animation: 'fade' }} />
       </Stack>
     </AppApiProvider>
   );

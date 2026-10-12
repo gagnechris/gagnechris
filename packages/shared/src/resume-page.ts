@@ -2,10 +2,12 @@ import { textExcerpt } from './excerpt.js';
 import type { Resume } from './schemas.js';
 import { SITE_LINKEDIN_URL } from './site-config.js';
 
-export const RESUME_PAGE_TITLE = 'Resume';
-export const RESUME_UNAVAILABLE_TEXT = 'Resume available on request.';
+export {
+  RESUME_DOWNLOAD_FILENAME,
+  RESUME_PAGE_TITLE,
+  RESUME_UNAVAILABLE_TEXT,
+} from './resume-view.js';
 export const RESUME_DOWNLOAD_LABEL = 'Download PDF';
-export const RESUME_DOWNLOAD_FILENAME = 'Chris-Gagne-Resume.pdf';
 export const RESUME_DOWNLOAD_ICON_PATH =
   'M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10';
 

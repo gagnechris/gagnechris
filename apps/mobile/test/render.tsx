@@ -129,6 +129,15 @@ const Api = ({
   );
 };
 
+/** A local-auth backend with no session, as on a first launch. */
+export function signedOutBackend(): AuthBackend {
+  return createAuthBackend({
+    issuer: localIssuer([]),
+    tokens: createTokenStore(memorySecureStore().secure, {}),
+    storage: memoryStore({ [INSTALL_MARKER_KEY]: '1' }).store,
+  });
+}
+
 export const Providers = ({
   store = memoryStore().store,
   backend = signedInBackend(),

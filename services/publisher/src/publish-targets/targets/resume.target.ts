@@ -1,6 +1,7 @@
+import { SITE_RESUME_JSON_KEY, siteResumeJson } from '@gagnechris/shared';
 import { renderResumePage, renderResumeUnavailablePage } from '../../render.js';
 import { buildResumePdfArtifact, RESUME_PDF_KEY } from '../../resume-pdf.js';
-import { htmlArtifact } from '../artifacts.js';
+import { htmlArtifact, jsonArtifact } from '../artifacts.js';
 import type { PublishArtifact, PublishTarget } from '../types.js';
 
 const RESUME_PAGE_KEY = 'resume/index.html';
@@ -25,6 +26,7 @@ const target: PublishTarget = {
       const resume = lookup.entity;
       const artifacts: PublishArtifact[] = [
         htmlArtifact(RESUME_PAGE_KEY, renderResumePage(shell, resume)),
+        jsonArtifact(SITE_RESUME_JSON_KEY, siteResumeJson(resume)),
       ];
       const pdf = await buildResumePdfArtifact(resume);
       let resumePdfFailed = false;
@@ -43,6 +45,7 @@ const target: PublishTarget = {
     return {
       artifacts: [
         htmlArtifact(RESUME_PAGE_KEY, renderResumeUnavailablePage(shell)),
+        jsonArtifact(SITE_RESUME_JSON_KEY, siteResumeJson(null)),
       ],
       deleteKeys: [RESUME_PDF_KEY],
       invalidationPaths: ['/resume*'],

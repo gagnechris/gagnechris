@@ -64,7 +64,7 @@ The CloudFront functions live as readable source in `infra/lib/cloudfront/`. The
    - The rewrite to `/404.html` drops `If-None-Match` and `If-Modified-Since`, so CloudFront can't answer a validator left from an earlier page with a bodiless 304.
 
 3. **Viewer response** (S3 default behavior) forces HTTP 404 when serving `/404.html` and strips its validators. It never sees an S3 4xx.
-4. **S3** holds the site objects (prerendered HTML including `projects/`, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`)
+4. **S3** holds the site objects (prerendered HTML including `projects/`, assets, `posts.json`, `rss.xml`, `sitemap.xml`, `resume.pdf`, and the iOS app's JSON: `home/index.json`, `blog/<slug>/index.json`, `resume/index.json`)
 5. **API Gateway → Go Lambda API** (`gagnechris-prod-api-go`, `services/api/cmd/api`) for CRUD, publish, Notebook, contact, resume download notify. API Gateway has seven routes: public `GET /api/health`, `POST /api/contact` and `POST /api/resume/download`, and `ANY /api/admin`, `/api/admin/{proxy+}`, `/api/notebook`, `/api/notebook/{proxy+}` behind their prefix's JWT authorizer; the function's router matches the rest and answers 404 for unknown paths. It logs and counts under the `gagnechris-api` service
 6. **DynamoDB** single table (`gagnechris-prod`); Streams (`NEW_AND_OLD_IMAGES`) feed the publisher
 7. **Publisher Lambda** renders markdown → HTML, regenerates index feeds/PDF, syncs published slug KeyValueStore, invalidates CloudFront paths. Failed stream records (after retries) land on an SQS on-failure queue.

@@ -1,3 +1,4 @@
+import { sitePostJsonKey } from '@gagnechris/shared';
 import { postPageKey, postSlugsFromKeys } from '../../storage.js';
 import type { PublishTarget } from '../types.js';
 
@@ -27,7 +28,7 @@ const target: PublishTarget = {
       if (!slug || publishedSlugs.has(slug) || corruptPostSlugs.has(slug)) {
         continue;
       }
-      deleteKeys.push(postPageKey(slug));
+      deleteKeys.push(postPageKey(slug), sitePostJsonKey(slug));
     }
     return {
       deleteKeys,

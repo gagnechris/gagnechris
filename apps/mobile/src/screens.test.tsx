@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { ActionSheetIOS, Alert, Linking } from 'react-native';
+import { ActionSheetIOS, Alert } from 'react-native';
 import {
   act,
   type ReactTestInstance,
@@ -26,7 +26,7 @@ import TodayScreen from '../app/(tabs)/today/index';
 import UpcomingScreen from '../app/(tabs)/upcoming/index';
 import AdminLayout from '../app/admin/_layout';
 import NoAccessScreen from '../app/no-access';
-import SignInScreen from '../app/sign-in';
+import AccountScreen from '../app/site/account/index';
 import {
   allText,
   byLabel,
@@ -35,6 +35,7 @@ import {
   render,
   settle,
   signedInBackend,
+  signedOutBackend,
 } from '../test/render';
 import { addPasskeyFromMore } from './auth/passkey';
 import { adminServer, makePost, makeProject } from '../test/adminServer';
@@ -342,8 +343,8 @@ describe('Spaces', () => {
     expect(byLabel(admin, 'Admin, current app')).toBeDefined();
     act(() => byLabel(admin, 'Notebook').props.onPress());
     expect(router.replace).toHaveBeenLastCalledWith('/today');
-    act(() => byLabel(admin, 'Public site').props.onPress());
-    expect(Linking.openURL).toHaveBeenCalledWith('https://gagnechris.com');
+    act(() => byLabel(admin, 'Site').props.onPress());
+    expect(router.replace).toHaveBeenLastCalledWith('/site/home');
     vi.mocked(addPasskeyFromMore).mockClear();
     act(() => byLabel(admin, 'Add a passkey').props.onPress());
     expect(addPasskeyFromMore).toHaveBeenCalledOnce();
@@ -439,10 +440,11 @@ describe('No access', () => {
 
   it('sign-in screen is accessible', async () => {
     const renderer = await render(
-      <Providers>
-        <SignInScreen />
+      <Providers backend={signedOutBackend()}>
+        <AccountScreen />
       </Providers>,
     );
+    expect(headers(renderer)[0]?.props.children).toBe('Sign in');
     expectAccessible(renderer);
   });
 });

@@ -1,7 +1,7 @@
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import type { SFSymbol } from 'expo-symbols';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSession } from '../session';
 import { SPACE_HOME, type Space } from '../space';
 import { color, font } from '../theme';
@@ -31,7 +31,7 @@ const AppIcon = ({ icon, tint }: { icon: SFSymbol; tint: string }) => (
 const chevron = <Icon name="chevron.right" size={14} color={color.muted} />;
 
 /** The spaces the user can open, with `current` marked; the others switch the tab bar. */
-export const YourApps = ({ current }: { current: Space }) => {
+export const YourApps = ({ current }: { current: Space | 'site' }) => {
   const { spaces } = useSession();
   const router = useRouter();
   return (
@@ -67,12 +67,30 @@ export const YourApps = ({ current }: { current: Space }) => {
         );
       })}
       <Row
-        title="Public site"
+        title="Site"
         divider
-        accessibilityHint="Opens gagnechris.com in Safari"
-        leading={<AppIcon icon="globe" tint={color.inkSoft} />}
-        trailing={<Icon name="arrow.up.right" size={14} color={color.muted} />}
-        onPress={() => void Linking.openURL('https://gagnechris.com')}
+        accessibilityLabel={
+          current === 'site' ? 'Site, current app' : undefined
+        }
+        accessibilityHint={
+          current === 'site' ? undefined : 'Home, posts and resume'
+        }
+        leading={
+          <AppIcon
+            icon="globe"
+            tint={current === 'site' ? color.accent : color.inkSoft}
+          />
+        }
+        trailing={
+          current === 'site' ? (
+            <Text style={styles.current}>Current</Text>
+          ) : (
+            chevron
+          )
+        }
+        onPress={
+          current === 'site' ? undefined : () => router.replace('/site/home')
+        }
       />
     </Section>
   );
