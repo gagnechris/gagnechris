@@ -480,7 +480,9 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
   private func bulletGlyph(for font: UIFont) -> CGGlyph? {
     let key = "\(font.fontName)-\(font.pointSize)"
     if let glyph = bulletGlyphs[key] { return glyph }
-    let ctFont = CTFontCreateWithName(font.fontName as CFString, font.pointSize, nil)
+    // By name, the system font (a private .SF name) resolves to another font, and
+    // its glyph id draws the wrong character.
+    let ctFont = font as CTFont
     var characters: [UniChar] = [0x2022]
     var glyphs: [CGGlyph] = [0]
     guard CTFontGetGlyphsForCharacters(ctFont, &characters, &glyphs, 1) else { return nil }
