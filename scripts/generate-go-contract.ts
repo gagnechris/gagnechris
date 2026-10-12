@@ -80,7 +80,6 @@ import {
   ttlEndOfUtcDay,
   ttlEndOfUtcHour,
   ITEM_SCHEMAS,
-  slugify,
 } from '@gagnechris/data';
 import {
   ACCESS_GROUPS,
@@ -99,9 +98,11 @@ import {
   isSafeLinkHref,
   markdownPlainText,
   noteDisplayTitle,
+  slugify,
   taskEmbedIds,
   DEFAULT_HOME,
   DEFAULT_RESUME,
+  EMPTY_SLUG_FALLBACK,
   HomeSchema,
   LINK_HREF_MAX_LENGTH,
   MAX_SLUG_LENGTH,
@@ -558,7 +559,7 @@ const TEXT_CASES = {
     'İstanbul ΟΔΟΣ',
     '日本語 text',
     'Ångström_über\tSTRASSE ß',
-  ].map((input) => ({ input, want: slugify(input) })),
+  ].map((input) => ({ input, want: slugify(input) || EMPTY_SLUG_FALLBACK })),
   formatCalendarDayLong: CALENDAR_DAYS.map((input) => ({
     input,
     want: formatCalendarDay(input, { weekday: 'long' }),
