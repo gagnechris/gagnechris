@@ -607,7 +607,10 @@ describe('deploy job guards', () => {
       );
       expect(owners, context).toHaveLength(1);
       const { path, doc, job } = owners[0]!;
-      expect(job.if, `${context} has a job-level if`).toBeUndefined();
+      // `always()` is the one job-level `if` that can't skip the check.
+      if (job.if !== undefined) {
+        expect(job.if, `${context} has a job-level if`).toBe('always()');
+      }
       expect(doc.on, path).toHaveProperty('pull_request');
       for (const [event, config] of Object.entries(doc.on ?? {})) {
         const keys = Object.keys((config as object | null) ?? {});

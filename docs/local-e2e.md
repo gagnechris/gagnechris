@@ -137,12 +137,18 @@ action was handled (a later request, a rendered state), or for
 
 ### CI
 
-The **Local E2E smoke** job builds the web app, then installs
-cached Chromium + WebKit (`~/.cache/ms-playwright`, keyed by Playwright
-version) and runs `npm run e2e:browser`, which runs the `api` project first. On failure it uploads the
-`playwright-report-<attempt>` artifact: HTML report, `test-results/`
-(traces, screenshots, video) and stack logs. Open a trace with
-`npx playwright show-trace <trace.zip>` or the HTML report's trace viewer.
+**Local E2E smoke** runs one job per browser, **Local E2E smoke (chromium)**
+and **Local E2E smoke (webkit)**, each on its own runner. A small
+**Local E2E smoke** job passes only when both do; that one is the required
+check. Each browser job builds the web app, installs its cached browser
+(`~/.cache/ms-playwright`, keyed by browser and Playwright version) and runs
+`npm run e2e:browser -- --project=<browser>`, which runs the `api` project
+first. CI retries a failed test once; a test that passes only on retry is
+flaky, and the job lists it in its summary and as a warning annotation. On
+failure the job uploads the `playwright-report-<browser>-<attempt>` artifact:
+HTML report, `test-results/` (traces, screenshots, video) and stack logs.
+Open a trace with `npx playwright show-trace <trace.zip>` or the HTML
+report's trace viewer.
 
 ## Day-to-day local admin
 
