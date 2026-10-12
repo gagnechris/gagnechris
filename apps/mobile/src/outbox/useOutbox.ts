@@ -8,7 +8,7 @@ import {
   drainOutbox,
   outboxConflicts,
   outboxFailedCount,
-  outboxPendingCount,
+  outboxUnattendedCount,
   startOutbox,
   stopOutbox,
   subscribeOutbox,
@@ -39,8 +39,12 @@ export const useOutboxSession = (
 export const useOutboxFailedCount = () =>
   useSyncExternalStore(subscribeOutbox, outboxFailedCount, outboxFailedCount);
 
-export const useOutboxPendingCount = () =>
-  useSyncExternalStore(subscribeOutbox, outboxPendingCount, outboxPendingCount);
+export const useOutboxUnattendedCount = () =>
+  useSyncExternalStore(
+    subscribeOutbox,
+    outboxUnattendedCount,
+    outboxUnattendedCount,
+  );
 
 export const useOutboxConflicts = () =>
   useSyncExternalStore(subscribeOutbox, outboxConflicts, outboxConflicts);

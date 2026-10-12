@@ -9,6 +9,19 @@ import { allText, byLabel, Providers, render, settle } from '../test/render';
 import { router, searchParams, segments } from '../test/router';
 import { stopOutbox } from './outbox';
 
+// The sheet renders whenever the screen does, so it counts screen renders.
+const sheetRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock('./notebook/TodaySheet', async (importOriginal) => {
+  const { TodaySheet: Sheet } =
+    await importOriginal<typeof import('./notebook/TodaySheet')>();
+  return {
+    TodaySheet: (props: Parameters<typeof Sheet>[0]) => {
+      sheetRenders.count += 1;
+      return <Sheet {...props} />;
+    },
+  };
+});
+
 const YESTERDAY_NOTE = '01YESTERDAYNOTE00000000000';
 const TODAY_NOTE = '01TODAYNOTE000000000000000';
 const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
@@ -257,6 +270,42 @@ describe('Today', () => {
           )?.bodyMarkdown,
         ).toBe(`{{task:${A}}}\n\n`),
       { timeout: 3_000 },
+    );
+    expect(banner(renderer).props.accessibilityLabel).toBe(
+      '0 still open, 0 coming up. Show list',
+    );
+  });
+
+  it('types into today’s note without re-rendering the screen until its tasks change', async () => {
+    serve(
+      [
+        makeNote(TODAY_NOTE, `Plan\n{{task:${A}}}`, {
+          type: 'daily',
+          date: '2026-10-02',
+          title: '',
+        }),
+      ],
+      [makeTask(A, 'In the note'), makeTask(B, 'Still open one')],
+    );
+    const renderer = await launch();
+    expect(banner(renderer).props.accessibilityLabel).toBe(
+      '1 still open, 0 coming up. Show list',
+    );
+    const plan = () =>
+      renderer.root.find(
+        (node) =>
+          (node.type as string) === 'TextInput' && node.props.value === 'Plan',
+      );
+    const input = plan();
+    const before = sheetRenders.count;
+    for (const text of ['Plan,', 'Plan, then', 'Plan, then lunch']) {
+      await act(async () => input.props.onChangeText(text));
+    }
+    expect(input.props.value).toBe('Plan, then lunch');
+    expect(sheetRenders.count).toBe(before);
+
+    await act(async () =>
+      input.props.onChangeText(`Plan, then lunch\n{{task:${B}}}`),
     );
     expect(banner(renderer).props.accessibilityLabel).toBe(
       '0 still open, 0 coming up. Show list',

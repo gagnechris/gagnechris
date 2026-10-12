@@ -5,6 +5,7 @@ import {
   isTemplateStartedDaily,
   startDailyNoteBlank,
   useDeleteNoteMutation,
+  useReportEmbeddedIds,
   type NotebookArea,
 } from '@gagnechris/app-core';
 import {
@@ -12,7 +13,6 @@ import {
   formatCalendarDay,
   noteDraftFromNote,
   notePayloadFromDraft,
-  taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -126,15 +126,7 @@ export function TodayEditor({
   }, [onUnsavedChange, unsaved]);
 
   const ready = !loadError && !isLoading && entity !== undefined;
-  // A string, so typing that leaves the embeds alone reports nothing new.
-  const embedKey = ready
-    ? [...new Set(taskEmbedIds(draft.bodyMarkdown))].sort().join('\n')
-    : null;
-  useEffect(() => {
-    onEmbeddedIds(
-      embedKey === null ? null : new Set(embedKey ? embedKey.split('\n') : []),
-    );
-  }, [onEmbeddedIds, embedKey]);
+  useReportEmbeddedIds(ready ? draft.bodyMarkdown : null, onEmbeddedIds);
 
   useEffect(() => {
     if (!ready) return;

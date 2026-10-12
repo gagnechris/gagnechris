@@ -3,6 +3,7 @@ import {
   isTemplateStartedDaily,
   startDailyNoteBlank,
   useNoteTaskEmbedSync,
+  useReportEmbeddedIds,
   useVersionedDocEditor,
   type NotebookArea,
 } from '@gagnechris/app-core';
@@ -11,7 +12,6 @@ import {
   NOTEBOOK_AREA_LABELS,
   noteDraftFromNote,
   notePayloadFromDraft,
-  taskEmbedIds,
   taskEmbedToken,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -94,9 +94,7 @@ const DailyNoteEditor = ({
 
   const ready = !editor.loadError && !editor.isLoading && Boolean(entity);
   const body = draft.bodyMarkdown;
-  useEffect(() => {
-    onEmbeddedIds(ready ? new Set(taskEmbedIds(body)) : null);
-  }, [onEmbeddedIds, ready, body]);
+  useReportEmbeddedIds(ready ? body : null, onEmbeddedIds);
 
   useEffect(() => {
     if (!ready) return;

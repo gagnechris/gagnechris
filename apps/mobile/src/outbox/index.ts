@@ -7,6 +7,7 @@ export {
   outboxConflicts,
   outboxMiddleware,
   outboxPendingCount,
+  outboxUnattendedCount,
   resolveConflict,
   startOutbox,
   stopOutbox,
@@ -18,6 +19,6 @@ export {
   useConflict,
   useOutboxConflicts,
   useOutboxFailedCount,
-  useOutboxPendingCount,
+  useOutboxUnattendedCount,
   useOutboxSession,
 } from './useOutbox';

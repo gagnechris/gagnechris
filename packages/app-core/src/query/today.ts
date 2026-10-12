@@ -6,6 +6,7 @@ import {
   stillOpenSource,
   type StillOpenSource,
   taskDue,
+  taskEmbedIds,
   type TaskDue,
 } from '@gagnechris/shared';
 import type { Note, NotebookArea, Task } from './api.js';
@@ -105,6 +106,24 @@ export function useTodayTasks({
     loading: { stillOpen: showingLoading, comingUp: laterLoading },
     loadError: showing.isError || later.isError,
   };
+}
+
+/**
+ * Reports the day's note embeds to `onEmbeddedIds` (null while `markdown`
+ * is), only when the set changes: typing that leaves the embeds alone must
+ * not re-render the screen around the note.
+ */
+export function useReportEmbeddedIds(
+  markdown: string | null,
+  onEmbeddedIds: (ids: ReadonlySet<string> | null) => void,
+) {
+  const key =
+    markdown === null
+      ? null
+      : [...new Set(taskEmbedIds(markdown))].sort().join('\n');
+  useEffect(() => {
+    onEmbeddedIds(key === null ? null : new Set(key ? key.split('\n') : []));
+  }, [onEmbeddedIds, key]);
 }
 
 /** Snooze, Drop and Do today: the row moves at once, and comes back if the write fails. */
