@@ -185,7 +185,7 @@ jobs:
   local-e2e:
     name: Local E2E smoke (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -282,7 +282,7 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         env:
           BROWSER: ${{ matrix.browser }}
-        run: npm run e2e:browser -- --project="${BROWSER}" --retries=0 --repeat-each=20 admin-users.spec.ts admin-post-flows.spec.ts public-project-page.spec.ts notebook-a11y.spec.ts
+        run: npm run e2e:browser -- --project="${BROWSER}"
 
       - name: Flaky test summary
         if: always() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
