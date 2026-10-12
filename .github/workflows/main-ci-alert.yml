@@ -27,6 +27,10 @@ permissions:
 env:
   AWS_REGION: us-east-1
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # No credentials and no environment, so a run that doesn't alert never
   # mints a token or records a prod deployment.
@@ -103,11 +107,4 @@ jobs:
             SUBJECT="${TEST}gagnechris main is red: ${WORKFLOW} ${CONCLUSION}"
             MESSAGE="${TEST}${WORKFLOW} ${CONCLUSION} on main at ${HEAD_SHA}. Nothing deploys until main is green again; fix forward with a PR. Run: ${RUN_URL}"
           fi
-          TOPIC_ARN=$(aws ssm get-parameter \
-            --name "$(bash scripts/ssm-param-name.sh prod alertsTopicArn)" \
-            --query 'Parameter.Value' \
-            --output text)
-          aws sns publish \
-            --topic-arn "$TOPIC_ARN" \
-            --subject "$SUBJECT" \
-            --message "$MESSAGE"
+          bash scripts/ci/notify-alerts.sh "${SUBJECT}" "${MESSAGE}"

@@ -13,7 +13,7 @@ import {
   DynamoDBDocumentClient,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { APP_TABLE, appTableAttributeDefinitions } from '@gagnechris/data';
+import { appTableCreateInput } from '@gagnechris/data';
 import { integrationDynamoEndpoint } from './dynamodb-ci-lifecycle.js';
 
 export const localDynamoEndpoint = integrationDynamoEndpoint();
@@ -47,27 +47,6 @@ export function createLocalDocClient(): DynamoDBDocumentClient {
   });
 }
 
-function createTableInput(tableName: string) {
-  const def = APP_TABLE;
-  return {
-    TableName: tableName,
-    BillingMode: def.billingMode,
-    AttributeDefinitions: [...appTableAttributeDefinitions(def)],
-    KeySchema: [
-      { AttributeName: def.partitionKey.name, KeyType: 'HASH' as const },
-      { AttributeName: def.sortKey.name, KeyType: 'RANGE' as const },
-    ],
-    GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
-      IndexName: gsi.indexName,
-      KeySchema: [
-        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
-        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
-      ],
-      Projection: { ProjectionType: gsi.projectionType },
-    })),
-  };
-}
-
 /** Ignores DATA_TABLE_NAME so sourcing scripts/local/env.sh cannot point tests at gagnechris-local. */
 export async function createEphemeralIntegrationTable(
   fileSlug: string,
@@ -77,7 +56,7 @@ export async function createEphemeralIntegrationTable(
   assertIntegrationTableName(tableName);
 
   const client = createLocalDynamoClient();
-  await client.send(new CreateTableCommand(createTableInput(tableName)));
+  await client.send(new CreateTableCommand(appTableCreateInput(tableName)));
   await waitUntilTableExists(
     { client, maxWaitTime: 60 },
     { TableName: tableName },

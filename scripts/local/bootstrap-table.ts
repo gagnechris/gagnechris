@@ -9,12 +9,7 @@ import {
   UpdateTableCommand,
   waitUntilTableExists,
 } from '@aws-sdk/client-dynamodb';
-import {
-  APP_TABLE,
-  appTableAttributeDefinitions,
-  appTableName,
-  gsiProjection,
-} from '@gagnechris/data';
+import { APP_TABLE, appTableCreateInput, appTableName } from '@gagnechris/data';
 
 const tableName = process.env.DATA_TABLE_NAME || appTableName('local');
 const endpoint =
@@ -36,30 +31,7 @@ const client = new DynamoDBClient({
   },
 });
 
-function createTableInput() {
-  const def = APP_TABLE;
-  return {
-    TableName: tableName,
-    BillingMode: def.billingMode,
-    AttributeDefinitions: [...appTableAttributeDefinitions(def)],
-    KeySchema: [
-      { AttributeName: def.partitionKey.name, KeyType: 'HASH' as const },
-      { AttributeName: def.sortKey.name, KeyType: 'RANGE' as const },
-    ],
-    StreamSpecification: {
-      StreamEnabled: true,
-      StreamViewType: def.streamViewType,
-    },
-    GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
-      IndexName: gsi.indexName,
-      KeySchema: [
-        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
-        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
-      ],
-      Projection: gsiProjection(gsi),
-    })),
-  };
-}
+const createInput = appTableCreateInput(tableName);
 
 async function ensureTtl() {
   const def = APP_TABLE;
@@ -94,36 +66,21 @@ async function ensureTtl() {
 }
 
 async function ensureMissingGsis(existingIndexNames: Set<string>) {
-  const def = APP_TABLE;
-  for (const gsi of def.globalSecondaryIndexes) {
-    if (existingIndexNames.has(gsi.indexName)) continue;
-    console.log(`Adding missing GSI ${gsi.indexName} to ${tableName}`);
+  for (const gsi of createInput.GlobalSecondaryIndexes) {
+    if (existingIndexNames.has(gsi.IndexName)) continue;
+    console.log(`Adding missing GSI ${gsi.IndexName} to ${tableName}`);
     await client.send(
       new UpdateTableCommand({
         TableName: tableName,
-        AttributeDefinitions: [...appTableAttributeDefinitions(def)],
-        GlobalSecondaryIndexUpdates: [
-          {
-            Create: {
-              IndexName: gsi.indexName,
-              KeySchema: [
-                {
-                  AttributeName: gsi.partitionKey.name,
-                  KeyType: 'HASH' as const,
-                },
-                { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
-              ],
-              Projection: gsiProjection(gsi),
-            },
-          },
-        ],
+        AttributeDefinitions: createInput.AttributeDefinitions,
+        GlobalSecondaryIndexUpdates: [{ Create: gsi }],
       }),
     );
     await waitUntilTableExists(
       { client, maxWaitTime: 60 },
       { TableName: tableName },
     );
-    existingIndexNames.add(gsi.indexName);
+    existingIndexNames.add(gsi.IndexName);
   }
 }
 
@@ -147,7 +104,7 @@ async function main() {
   }
 
   try {
-    await client.send(new CreateTableCommand(createTableInput()));
+    await client.send(new CreateTableCommand(createInput));
   } catch (err) {
     if (!(err instanceof ResourceInUseException)) throw err;
   }

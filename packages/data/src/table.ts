@@ -133,6 +133,34 @@ export function gsiProjection(gsi: TableIndexDefinition): {
   return { ProjectionType: gsi.projectionType };
 }
 
+/** The local stack and the HTTP suite create their DynamoDB Local tables from this. */
+export function appTableCreateInput(
+  tableName: string,
+  def: AppTableDefinition = APP_TABLE,
+) {
+  return {
+    TableName: tableName,
+    BillingMode: def.billingMode,
+    AttributeDefinitions: [...appTableAttributeDefinitions(def)],
+    KeySchema: [
+      { AttributeName: def.partitionKey.name, KeyType: 'HASH' as const },
+      { AttributeName: def.sortKey.name, KeyType: 'RANGE' as const },
+    ],
+    StreamSpecification: {
+      StreamEnabled: true,
+      StreamViewType: def.streamViewType,
+    },
+    GlobalSecondaryIndexes: def.globalSecondaryIndexes.map((gsi) => ({
+      IndexName: gsi.indexName,
+      KeySchema: [
+        { AttributeName: gsi.partitionKey.name, KeyType: 'HASH' as const },
+        { AttributeName: gsi.sortKey.name, KeyType: 'RANGE' as const },
+      ],
+      Projection: gsiProjection(gsi),
+    })),
+  };
+}
+
 function sortedNonKeyAttributes(gsi: TableIndexDefinition): string {
   return [...(gsi.nonKeyAttributes ?? [])].sort().join('\u0000');
 }

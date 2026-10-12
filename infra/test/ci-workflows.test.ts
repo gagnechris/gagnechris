@@ -80,6 +80,8 @@ function stepIndex(job: Job, predicate: (step: Step) => boolean): number {
   return (job.steps ?? []).findIndex(predicate);
 }
 
+const NOTIFY_ALERTS = 'bash scripts/ci/notify-alerts.sh';
+
 const isCredentialStep = (s: Step) =>
   s.uses?.startsWith('aws-actions/configure-aws-credentials@') ?? false;
 
@@ -401,7 +403,7 @@ describe('non-strict branch protection', () => {
     expect(job.if).toBe("needs.decide.outputs.alert == 'true'");
     expect(job.environment).toBe('prod');
     const steps = job.steps ?? [];
-    expect(steps.some((s) => s.run?.includes('aws sns publish'))).toBe(true);
+    expect(steps.some((s) => s.run?.includes(NOTIFY_ALERTS))).toBe(true);
     expectNoNpm(job);
   });
 });
@@ -473,7 +475,7 @@ describe('deploy lag alert workflow', () => {
     );
     const notify = stepIndex(
       job,
-      (s) => s.run?.includes('aws sns publish') ?? false,
+      (s) => s.run?.includes(NOTIFY_ALERTS) ?? false,
     );
     expect(check).toBeGreaterThan(stepIndex(job, isCredentialStep));
     expect(notify).toBeGreaterThan(check);
@@ -793,6 +795,7 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   const authStack = commit('infra/lib/stacks/auth-stack.ts');
   const ssmParams = commit('infra/lib/config/ssm-params.json');
   const ownedPaths = commit('scripts/publisher-owned-paths.generated.txt');
+  const ssmNames = commit('scripts/ssm-param-name.sh');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -872,6 +875,7 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
       expect(paths(chain[i - 1]!, chain[i]!)).toBe('cdk=true\nweb=true');
     }
     expect(paths(ssmParams, ownedPaths)).toBe('cdk=false\nweb=true');
+    expect(paths(ownedPaths, ssmNames)).toBe('cdk=false\nweb=true');
   });
 });
 
@@ -1014,5 +1018,153 @@ describe('iOS release', () => {
     expect(env?.custom_branch_policies).toEqual([
       { name: 'ios-v*', type: 'tag' },
     ]);
+  });
+});
+
+describe('mobile jobs', () => {
+  const mobileJobs = [
+    ['mobile.yml', 'mobile'],
+    ['ios-release.yml', 'release'],
+  ].map(([file, jobId]) => ({
+    label: `${file}#${jobId}`,
+    job: loadYaml<Workflow>(join(WORKFLOWS_DIR, file!)).jobs[jobId!]!,
+  }));
+  const setupAction = loadYaml<{
+    inputs: Record<string, { default?: string }>;
+    runs: { steps: Step[] };
+  }>(join(ACTIONS_DIR, 'setup', 'action.yml'));
+
+  it('keys the setup action npm cache on its input and skips Go when asked', () => {
+    const node = setupAction.runs.steps.find((s) =>
+      s.uses?.startsWith('actions/setup-node@'),
+    )!;
+    expect(node.with).toMatchObject({
+      cache: 'npm',
+      'cache-dependency-path': '${{ inputs.npm-cache-dependency-path }}',
+    });
+    expect(setupAction.inputs['npm-cache-dependency-path']?.default).toBe(
+      'package-lock.json',
+    );
+    const go = setupAction.runs.steps.find((s) =>
+      s.uses?.startsWith('actions/setup-go@'),
+    )!;
+    expect(go.if).toBe("inputs.go != 'false'");
+    expect(setupAction.inputs.go?.default).toBe('true');
+  });
+
+  it.each(mobileJobs)(
+    '$label caches both lockfiles and sets up no Go',
+    ({ job }) => {
+      const setup = job.steps!.filter((s) => s.uses === SETUP_ACTION);
+      expect(setup).toHaveLength(1);
+      const lockfiles = String(setup[0]!.with?.['npm-cache-dependency-path'])
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      expect(lockfiles.sort()).toEqual([
+        'apps/mobile/package-lock.json',
+        'package-lock.json',
+      ]);
+      expect(setup[0]!.with?.go).toBe('false');
+      expect(
+        job.steps!.filter((s) => s.uses?.startsWith('actions/setup-go@')),
+      ).toEqual([]);
+      expect(JSON.stringify(job)).not.toMatch(/\bgo (build|test|run)\b/);
+    },
+  );
+
+  it.each(mobileJobs)(
+    '$label runs the shared mobile check script and no checks of its own',
+    ({ job }) => {
+      const runs = job.steps!.map((s) => s.run ?? '');
+      expect(
+        runs.filter((r) => r === 'bash scripts/ci/mobile-checks.sh'),
+      ).toHaveLength(1);
+      expect(runs.join('\n')).not.toMatch(
+        /\bnpm (run )?(typecheck|lint|test|export:ios|check:bundle|smoke:bundle)\b/,
+      );
+    },
+  );
+
+  it('reruns Mobile when the check script changes', () => {
+    const filter = mobileJobs[0]!.job.steps!.find((s) =>
+      s.uses?.startsWith('dorny/paths-filter@'),
+    );
+    const paths = parse(String(filter?.with?.filters)) as Record<
+      string,
+      string[]
+    >;
+    expect(paths.mobile).toContain('scripts/ci/mobile-checks.sh');
+  });
+
+  it('typechecks and tests every package the mobile app imports', () => {
+    const script = readFileSync(
+      join(ROOT, 'scripts', 'ci', 'mobile-checks.sh'),
+      'utf8',
+    );
+    const deps = Object.keys(
+      (
+        JSON.parse(
+          readFileSync(join(ROOT, 'apps', 'mobile', 'package.json'), 'utf8'),
+        ) as { dependencies: Record<string, string> }
+      ).dependencies,
+    ).filter((d) => d.startsWith('@gagnechris/'));
+    expect(deps.length).toBeGreaterThan(0);
+    for (const dep of deps) {
+      expect(script).toContain(`npm run typecheck -w ${dep}`);
+    }
+    expect(script).toContain('npm test --prefix apps/mobile');
+  });
+});
+
+describe('alert notifications', () => {
+  const alertSites = [
+    ['cdk.yml', 'drift'],
+    ['deploy-lag-alert.yml', 'check'],
+    ['main-ci-alert.yml', 'alert'],
+  ] as const;
+
+  it.each(alertSites)(
+    '%s#%s alerts through notify-alerts.sh',
+    (file, jobId) => {
+      const job = loadYaml<Workflow>(join(WORKFLOWS_DIR, file)).jobs[jobId]!;
+      expect(
+        job.steps!.filter((s) => s.run?.includes(NOTIFY_ALERTS)),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('publishes to SNS from no workflow or action directly', () => {
+    for (const file of [...workflowFiles, ...actionFiles]) {
+      const text = readFileSync(file, 'utf8');
+      expect(text, file).not.toMatch(/sns\s+publish|alertsTopicArn/);
+    }
+  });
+
+  it('notify-alerts.sh reads the topic from SSM and publishes the message', () => {
+    const bin = join(tempDir(), 'bin');
+    mkdirSync(bin);
+    const log = join(bin, 'calls');
+    writeFileSync(
+      join(bin, 'aws'),
+      `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> "${log}"\n[ "$1" = ssm ] && printf 'arn:aws:sns:us-east-1:1:alerts\\n'\nexit 0\n`,
+    );
+    chmodSync(join(bin, 'aws'), 0o755);
+    const r = runScript('notify-alerts.sh', ['Subject line', 'Body text'], {
+      PATH: `${bin}:${process.env.PATH}`,
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(readFileSync(log, 'utf8').trim().split('\n')).toEqual([
+      'ssm get-parameter --name /gagnechris/prod/alerts-topic-arn --query Parameter.Value --output text',
+      'sns publish --topic-arn arn:aws:sns:us-east-1:1:alerts --subject Subject line --message Body text',
+    ]);
+  });
+
+  it('notify-alerts.sh fails when the topic cannot be read', () => {
+    const r = runScript('notify-alerts.sh', ['s', 'm'], {
+      PATH: stubAwsPath(),
+      FAKE_AWS_EXIT: '254',
+    });
+    expect(r.status).not.toBe(0);
   });
 });

@@ -45,6 +45,7 @@ WEB_PATTERNS=(
   'tsconfig.base.json'
   '.nvmrc'
   'scripts/deploy-web.sh'
+  'scripts/ssm-param-name.sh'
   '.github/workflows/cdk.yml'
   '.github/actions/setup/*'
 )

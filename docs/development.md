@@ -137,7 +137,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 
 Fake AWS keys are set; `AWS_PROFILE` is unset so the local stack cannot accidentally use SSO credentials. The local API never calls SES: outside Lambda the Go API logs the mail it sends (contact form, resume download) and appends it as JSON lines to `LOCAL_OUTBOX_FILE` when that is set (`contact.Outbox` in `services/api/internal/contact`).
 
-`scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
+`scripts/local/bootstrap-table.ts` and the HTTP suite's ephemeral tables both create the table from `appTableCreateInput` in `@gagnechris/data` (the `APP_TABLE` keys, GSIs with the same projections CDK deploys, and the stream); `http/table-schema.test.ts` checks both against `APP_TABLE` in DynamoDB Local. `scripts/local/bootstrap-table.ts` is idempotent: it adds missing GSIs and enables TTL only when `DescribeTimeToLive` says it is off, so re-running `npm run local:dev` against a running container works.
 
 ### Integration tests
 

@@ -1,5 +1,5 @@
 name: Setup
-description: Node from .nvmrc, Go from services/api/go.mod, npm and Go caches, and npm ci (run after actions/checkout)
+description: Node from .nvmrc, Go from services/api/go.mod (unless go is false), npm and Go caches, and npm ci (run after actions/checkout)
 inputs:
   ignore-scripts:
     description: >-
@@ -7,6 +7,17 @@ inputs:
       runs. Required in every job with `id-token: write` or a secret.
     required: false
     default: 'false'
+  npm-cache-dependency-path:
+    description: >-
+      Lockfiles the npm cache key hashes, one per line. A job that installs
+      another lockfile's tree (apps/mobile) lists it too, so its cache covers
+      that tree.
+    required: false
+    default: package-lock.json
+  go:
+    description: "'false' skips Go and its module and build caches."
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -15,9 +26,11 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: npm
+        cache-dependency-path: ${{ inputs.npm-cache-dependency-path }}
 
     # Go Lambdas are compiled during CDK synth, so every job that synthesizes needs Go.
     - name: Setup Go
+      if: inputs.go != 'false'
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: services/api/go.mod
