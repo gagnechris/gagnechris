@@ -26,12 +26,9 @@ type testApp struct {
 
 func newTestApp(t *testing.T, routes ...Route) testApp {
 	t.Helper()
-	t.Setenv("ADMIN_WEB_CLIENT_ID", "admin-web")
-	t.Setenv("NOTEBOOK_WEB_CLIENT_ID", "notebook-web")
-	t.Setenv("IOS_CLIENT_ID", "ios")
 	var logs, emf bytes.Buffer
 	app := NewApp(
-		NewRouter(append(Routes(nil), routes...)),
+		NewRouter(append(Routes(nil), routes...), ClientIDs{AdminWeb: "admin-web", NotebookWeb: "notebook-web", IOS: "ios"}),
 		observability.NewLogger(&logs, "gagnechris-api"),
 		observability.NewMetrics(&emf, "gagnechris", "gagnechris-api"),
 		time.Now(),
@@ -276,7 +273,7 @@ func TestNewRouterRejectsMisdeclaredAuth(t *testing.T) {
 			t.Error("public route under /admin accepted")
 		}
 	}()
-	NewRouter([]Route{{Method: "GET", Pattern: "/admin/posts", Auth: Public, Handler: ok(nil)}})
+	NewRouter([]Route{{Method: "GET", Pattern: "/admin/posts", Auth: Public, Handler: ok(nil)}}, ClientIDs{})
 }
 
 func TestHandlerErrors(t *testing.T) {
@@ -429,11 +426,9 @@ func TestHTTPHandlerClaims(t *testing.T) {
 }
 
 func TestLocalClaims(t *testing.T) {
-	t.Setenv("ADMIN_WEB_CLIENT_ID", "")
-	t.Setenv("IOS_CLIENT_ID", "")
 	now := time.Unix(1700000000, 0)
 
-	got := LocalClaims("local-dev-token", SiteAdmin, now)
+	got := LocalClaims("local-dev-token", SiteAdmin, ClientIDs{}, now)
 	want := map[string]string{
 		"sub": "local-dev-user", "email": "local@gagnechris.com", "cognito:username": "local-admin",
 		"token_use": "id", "aud": "local-admin-web", "cognito:groups": "[site-admin]", "auth_time": "1700000000",
@@ -443,7 +438,7 @@ func TestLocalClaims(t *testing.T) {
 			t.Errorf("%s = %q, want %q", k, got[k], v)
 		}
 	}
-	ios := LocalClaims("Bearer local-ios:sam", Notebook, now)
+	ios := LocalClaims("Bearer local-ios:sam", Notebook, ClientIDs{}, now)
 	if ios["aud"] != "local-ios" || ios["email"] != "sam@local.gagnechris.com" || ios["cognito:groups"] != "[notebook]" {
 		t.Errorf("ios claims %v", ios)
 	}

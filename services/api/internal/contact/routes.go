@@ -6,27 +6,50 @@ package contact
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
+// Config is where mail goes and the domain its subjects name.
+type Config struct {
+	FromEmail  string
+	ToEmail    string
+	ApexDomain string
+}
+
+// WithDefaults fills an unset domain with the site's and, when local, unset
+// addresses with local ones.
+func (c Config) WithDefaults(local bool) Config {
+	if local && c.FromEmail == "" {
+		c.FromEmail = "local-from@gagnechris.com"
+	}
+	if local && c.ToEmail == "" {
+		c.ToEmail = "local-to@gagnechris.com"
+	}
+	if c.ApexDomain == "" {
+		c.ApexDomain = contract.Data.API.ApexDomain
+	}
+	return c
+}
+
 type Deps struct {
-	Table *data.Table
-	Mail  Mailer
-	Now   func() time.Time
+	Table  *data.Table
+	Mail   Mailer
+	Config Config
+	Now    func() time.Time
 }
 
 func Routes(d Deps) []api.Route {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
-	h := handlers{store: store{table: d.Table, now: d.Now}, mail: d.Mail, now: d.Now}
+	h := handlers{store: store{table: d.Table, now: d.Now}, mail: d.Mail, cfg: d.Config, now: d.Now}
 	return []api.Route{
 		{Method: http.MethodPost, Pattern: "/contact", Auth: api.Public, Metric: "ContactSubmit", Handler: h.contact},
 		{Method: http.MethodPost, Pattern: "/resume/download", Auth: api.Public, Metric: "ResumeDownloadNotify", Handler: h.resumeDownload},
@@ -46,7 +69,13 @@ type backend interface {
 type handlers struct {
 	store backend
 	mail  Mailer
+	cfg   Config
 	now   func() time.Time
+}
+
+func (h handlers) send(ctx context.Context, m Mail) error {
+	m.From, m.To = h.cfg.FromEmail, h.cfg.ToEmail
+	return h.mail.Send(ctx, m)
 }
 
 var okBody = map[string]bool{"ok": true}
@@ -56,13 +85,6 @@ func sourceIP(r *api.Request) string {
 		return ip
 	}
 	return "unknown"
-}
-
-func apexDomain() string {
-	if apex := strings.TrimSpace(os.Getenv("SITE_APEX_DOMAIN")); apex != "" {
-		return apex
-	}
-	return contract.Data.API.ApexDomain
 }
 
 type contactForm struct {
@@ -140,8 +162,8 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 		return nil, &api.RateLimitedError{Message: errSESDailyLimit}
 	}
 
-	err = h.mail.Send(ctx, Mail{
-		Subject: "[" + apexDomain() + "] Contact from " + form.name,
+	err = h.send(ctx, Mail{
+		Subject: "[" + h.cfg.ApexDomain + "] Contact from " + form.name,
 		ReplyTo: form.email,
 		Text: strings.Join([]string{
 			"Name: " + form.name,
@@ -207,11 +229,11 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 		ua = "(none)"
 	}
 	// Best effort: the download already happened in the browser.
-	err = h.mail.Send(ctx, Mail{
-		Subject: "[" + apexDomain() + "] Resume downloaded",
+	err = h.send(ctx, Mail{
+		Subject: "[" + h.cfg.ApexDomain + "] Resume downloaded",
 		Text: strings.Join([]string{
 			"A visitor downloaded the resume PDF.",
-			"Time: " + h.now().UTC().Format(isoMillis),
+			"Time: " + jstime.ISO(h.now()),
 			"Referrer: " + referrer,
 			"User-Agent: " + ua,
 		}, "\n"),

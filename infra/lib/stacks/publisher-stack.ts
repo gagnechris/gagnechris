@@ -29,9 +29,9 @@ import type { EnvironmentConfig } from '../config/environments.js';
 import { emfServiceAlarm } from '../constructs/emf-alarm.js';
 import {
   LambdaFailureDestination,
-  NodeLambda,
   REPO_ROOT,
-} from '../constructs/node-lambda.js';
+} from '../constructs/lambda-common.js';
+import { NodeLambda } from '../constructs/node-lambda.js';
 
 export const PUBLISHER_TABLE_LEADING_KEYS = [
   'POST#*',
@@ -241,7 +241,7 @@ export class PublisherStack extends Stack {
       'StreamFailures',
       {
         alertsTopic,
-        depthAlarmName: `gagnechris-${config.name}-publisher-stream-dlq-depth`,
+        alarmName: `gagnechris-${config.name}-publisher-stream-dlq-depth`,
         queueName: `gagnechris-${config.name}-publisher-stream-failures`,
       },
     );
