@@ -142,18 +142,6 @@ export function useSession(): SessionState {
   return value;
 }
 
-export function displayName(user: SessionUser): string {
-  return user.name?.trim() || user.email;
-}
-
-export function initials(user: SessionUser): string {
-  const source = user.name?.trim() || user.email.split('@')[0] || '?';
-  const parts = source.split(/[\s._-]+/).filter(Boolean);
-  const letters =
-    parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : source[0];
-  return letters.toUpperCase();
-}
-
 /** Which root screens a session may see: each space, No access, or sign-in. */
 export function rootGuards(status: SessionStatus, spaces: readonly Space[]) {
   const signedIn = status === 'signedIn';

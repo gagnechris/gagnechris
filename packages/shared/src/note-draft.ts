@@ -1,10 +1,16 @@
-import type { Note } from '@gagnechris/app-core';
-import { parseTagsText } from '@gagnechris/shared';
+import { parseTagsText } from './tags-text.js';
 
 export type NoteDraft = {
   title: string;
   bodyMarkdown: string;
   tagsText: string;
+  pinned: boolean;
+};
+
+type DraftableNote = {
+  title: string;
+  bodyMarkdown: string;
+  tags: readonly string[];
   pinned: boolean;
 };
 
@@ -15,7 +21,7 @@ export const emptyNoteDraft = (): NoteDraft => ({
   pinned: false,
 });
 
-export const noteDraftFromNote = (note: Note): NoteDraft => ({
+export const noteDraftFromNote = (note: DraftableNote): NoteDraft => ({
   title: note.title,
   bodyMarkdown: note.bodyMarkdown,
   tagsText: note.tags.join(', '),

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   API_COLD_START_QUERY,
@@ -9,8 +10,9 @@ import {
   parseQueryResults,
   stats,
   type QueryResults,
-} from '../../scripts/api-cold-start-report.js';
-import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
+} from '../api-cold-start-report.js';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function row(fields: Record<string, string>): QueryResults[number] {
   return Object.entries({ invocation: 'req', lineCount: '2', ...fields }).map(

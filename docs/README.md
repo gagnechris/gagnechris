@@ -54,7 +54,7 @@ apps/web/              React/Vite public site, admin and Notebook apps
 apps/mobile/           Expo iOS app (Notebook and Admin); own lockfile, not a root workspace
 services/api/          Go API (cmd/api, internal/), the restore-test validator, the black-box HTTP suite (test/)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
-packages/shared/       Domain schemas/types; `/render`, `/openapi` and other subpaths
+packages/shared/       Domain schemas/types; `/server`, `/render`, `/openapi` and other subpaths
 packages/data/         DynamoDB keys, item schemas and builders for the publisher, ops, infra and tests
 packages/api-client/   OpenAPI types and `createApiClient`
 packages/app-core/     UI-free hooks shared by the web apps and the iOS app
@@ -62,7 +62,7 @@ packages/public-ui/    Public page components: publisher SSR, hydrated by the si
 packages/tokens/       Design tokens (TS → CSS variables)
 packages/ops/          Restore copy-back and row migrations
 infra/                 AWS CDK (CloudFront, S3, API, Cognito, SES, …)
-scripts/               Local stack, deploy-web, branch protection
+scripts/               Local stack, deploy-web, branch protection, CI guards, repo-wide tests (test/)
 docs/                  Architecture, development, data model, E2E
 e2e/                   Playwright browser tests
 ```

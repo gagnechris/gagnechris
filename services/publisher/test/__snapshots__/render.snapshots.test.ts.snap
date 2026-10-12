@@ -24,7 +24,7 @@ exports[`render HTML snapshots > matches frozen output for a post with every mar
 <li>The second ordered item</li>
 </ol>
 <h3>A third-level heading</h3>
-<pre tabindex="0"><code class="language-ts">export const readingMinutes = (markdown: string): number =&gt; Math.max(1, Math.round(countWords(markdown) / 230));
+<pre tabindex="0"><code class="language-ts">export const averageOf = (values: readonly number[]): number =&gt; values.reduce((total, value) =&gt; total + value, 0) / Math.max(1, values.length);
 </code></pre>
 <figure><img src="https://gagnechris.com/og-image.jpg" alt="A view of the site" /><figcaption>A caption under the image</figcaption></figure><div class="post-table" role="region" tabindex="0" aria-label="Table 1"><table>
 <thead>

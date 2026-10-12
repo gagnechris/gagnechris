@@ -1,14 +1,17 @@
 import {
   accessChange,
   changeToast,
-  displayName,
   formatAdded,
   STATUS_LABELS,
   useUserActionMutation,
   userErrorMessage,
   type UserChange,
 } from '@gagnechris/app-core';
-import { ACCESS_LEVEL_LABELS, type ManagedUser } from '@gagnechris/shared';
+import {
+  ACCESS_LEVEL_LABELS,
+  displayName,
+  type ManagedUser,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';

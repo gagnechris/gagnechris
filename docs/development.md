@@ -75,7 +75,7 @@ Prefer `local:dev` unless you intentionally need the production API.
 ## Quality gates
 
 ```bash
-npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra); mobile: npm test --prefix apps/mobile
+npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile
 npm run test:integration -w @gagnechris/api-tests   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
@@ -90,7 +90,7 @@ npm run publish-surface:check # Option B pages, KVS keys, publish routes and pub
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
 npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, entry JS within budget and without zod, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
-npm run check:rn-bundles            # packages mobile imports bundle without Node-only or banned imports (CI)
+npm run check:rn-bundles            # every package and subpath mobile imports bundles without Node-only or banned imports, and both lockfiles agree on their runtime deps (CI)
 npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)
 npm run check:tsconfig-coverage     # each workspace's typecheck covers every .ts file in it (CI)
 npm run check:case-collisions       # no tracked paths or module stems that differ only by case (CI)

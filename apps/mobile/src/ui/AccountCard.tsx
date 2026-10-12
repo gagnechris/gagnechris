@@ -1,7 +1,12 @@
-import { ACCESS_LEVEL_LABELS, accessLevelFromGroups } from '@gagnechris/shared';
+import {
+  ACCESS_LEVEL_LABELS,
+  accessLevelFromGroups,
+  displayName,
+  initials,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { StyleSheet, Text, View } from 'react-native';
-import { displayName, initials, type SessionUser } from '../session';
+import type { SessionUser } from '../session';
 import { color, font } from '../theme';
 
 export const AccountCard = ({ user }: { user: SessionUser }) => {
@@ -21,7 +26,7 @@ export const AccountCard = ({ user }: { user: SessionUser }) => {
         .join(', ')}
     >
       <View style={styles.avatar}>
-        <Text style={styles.initials}>{initials(user)}</Text>
+        <Text style={styles.initials}>{initials(name)}</Text>
       </View>
       <View style={styles.accountText}>
         <Text style={styles.name}>{name}</Text>

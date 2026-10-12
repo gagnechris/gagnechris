@@ -1,5 +1,9 @@
 import { useRef, useState } from 'react';
-import { ACCESS_LEVEL_LABELS, type ManagedUser } from '@gagnechris/shared';
+import {
+  ACCESS_LEVEL_LABELS,
+  displayName,
+  type ManagedUser,
+} from '@gagnechris/shared';
 import { BottomSheet } from '../../kit/BottomSheet';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
 import ShellIcon from '../../workspace/ui/ShellIcon';
@@ -11,7 +15,6 @@ import {
   accessChange,
   changeToast,
   type UserChange,
-  displayName,
   formatAdded,
   userErrorMessage,
 } from '@gagnechris/app-core';

@@ -1,16 +1,18 @@
 import {
-  API_METRICS,
-  API_SERVICE_NAME,
   APEX_DOMAIN,
   NOTEBOOK_GROUP,
+  SITE_ADMIN_GROUP,
+  USER_ADMIN_GROUP,
+} from '@gagnechris/shared';
+import {
+  API_METRICS,
+  API_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
   RESTORE_TEST_METRICS,
   RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
   RESTORE_TEST_SERVICE_NAME,
-  SITE_ADMIN_GROUP,
-  USER_ADMIN_GROUP,
-} from '@gagnechris/shared';
+} from '@gagnechris/shared/server';
 import ssmParams from './ssm-params.json' with { type: 'json' };
 
 export {

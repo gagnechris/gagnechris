@@ -1,4 +1,5 @@
-import type { Task, TaskDue } from '@gagnechris/shared';
+import type { Task } from '@gagnechris/app-core';
+import type { TaskDue } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

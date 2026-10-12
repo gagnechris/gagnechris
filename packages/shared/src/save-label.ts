@@ -1,4 +1,4 @@
-import type { SaveState } from '@gagnechris/app-core';
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export type SaveLabelOptions = {
   /** The entity exists only on this device so far. */

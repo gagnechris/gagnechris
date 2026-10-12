@@ -8,7 +8,7 @@ import {
   emptyNoteDraft,
   noteDraftFromNote,
   notePayloadFromDraft,
-} from './noteDraft';
+} from '@gagnechris/shared';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 import { noteHref } from './noteHref';
 

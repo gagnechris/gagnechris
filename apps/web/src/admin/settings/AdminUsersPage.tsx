@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   ACCESS_LEVEL_LABELS,
+  displayName,
   type AccessLevel,
   type ManagedUser,
   USER_ADMIN_GROUP,
@@ -17,7 +18,6 @@ import { useUserChange } from './useUserChange';
 import { takePendingChange } from './userChange';
 import {
   changeToast,
-  displayName,
   formatAdded,
   hasApp,
   LEVEL_APPS,
