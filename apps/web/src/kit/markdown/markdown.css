@@ -157,7 +157,7 @@
   flex: none;
 }
 
-label.markdown-toolbar__btn:has(+ .admin-visually-hidden:focus-visible) {
+label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   outline: 2px solid var(--primary-500);
   outline-offset: 1px;
 }

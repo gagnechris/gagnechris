@@ -47,7 +47,7 @@
 }
 
 /* One chip: Draft, Published or Unpublished changes. */
-.posts-demo__status .admin-badge--published:has(+ .admin-badge--unpublished) {
+.posts-demo__status .kit-badge--published:has(+ .kit-badge--unpublished) {
   display: none;
 }
 
@@ -57,7 +57,7 @@
   margin-left: auto;
 }
 
-.posts-demo__actions .admin-btn {
+.posts-demo__actions .kit-btn {
   padding: 6px 12px;
   font-size: var(--text-caption);
 }
@@ -73,7 +73,7 @@
 }
 
 /* The title input is the field's label visually; the label stays for screen readers. */
-.posts-demo__editor .admin-field > span:first-child {
+.posts-demo__editor .kit-field > span:first-child {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -82,7 +82,7 @@
   white-space: nowrap;
 }
 
-.posts-demo__editor .admin-field .posts-demo__title {
+.posts-demo__editor .kit-field .posts-demo__title {
   min-width: 0;
   padding: 9px 12px;
   font-size: var(--text-body);
@@ -90,7 +90,7 @@
   color: var(--color-ink);
 }
 
-.posts-demo__editor .admin-field .admin-hint {
+.posts-demo__editor .kit-field .kit-hint {
   margin: 0;
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -109,7 +109,7 @@
   padding: 10px 4px;
 }
 
-.posts-demo__editor-body > .admin-hint {
+.posts-demo__editor-body > .kit-hint {
   margin: 0;
   font-size: 0.75rem;
 }

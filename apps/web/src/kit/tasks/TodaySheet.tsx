@@ -142,10 +142,10 @@ export function TodaySheet<T extends SheetTask>({
     ) : null;
 
   const body = loading ? (
-    <p className="admin-hint">Loading tasks…</p>
+    <p className="kit-hint">Loading tasks…</p>
   ) : tab === 'open' ? (
     stillOpen.length === 0 ? (
-      <p className="admin-hint">Nothing carried over.</p>
+      <p className="kit-hint">Nothing carried over.</p>
     ) : (
       <ul className="today-sheet__list">
         {stillOpen.map((row) => (
@@ -170,7 +170,7 @@ export function TodaySheet<T extends SheetTask>({
       </ul>
     )
   ) : comingCount === 0 ? (
-    <p className="admin-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
+    <p className="kit-hint">{`Nothing in ${comingUpWindow(horizonDays)}.`}</p>
   ) : (
     <ul className="today-sheet__list">
       {comingUp.flatMap(({ date, tasks }) =>
@@ -240,7 +240,7 @@ export function TodaySheet<T extends SheetTask>({
               : `Starting in ${comingUpWindow(horizonDays)}.`}
         </p>
         {error ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             {error}
           </p>
         ) : null}

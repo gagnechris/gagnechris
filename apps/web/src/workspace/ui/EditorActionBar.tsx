@@ -49,8 +49,8 @@ export function EditorActionBar({
   }, [menuOpen]);
 
   return (
-    <div className="admin-action-bar">
-      <div className="admin-action-bar__status">
+    <div className="workspace-action-bar">
+      <div className="workspace-action-bar__status">
         {leading}
         <StatusBadge
           status={status}
@@ -58,12 +58,12 @@ export function EditorActionBar({
         />
         <SaveIndicator saveState={saveState} dirty={dirty} />
       </div>
-      <div className="admin-actions" ref={actions}>
+      <div className="workspace-actions" ref={actions}>
         {/* Phones only: the secondary actions fold into this menu. */}
         <button
           ref={toggle}
           type="button"
-          className="admin-actions__toggle"
+          className="workspace-actions__toggle"
           aria-label="More actions"
           aria-expanded={menuOpen}
           aria-controls={menuId}
@@ -73,7 +73,7 @@ export function EditorActionBar({
         </button>
         <div
           id={menuId}
-          className="admin-actions__more"
+          className="workspace-actions__more"
           data-open={menuOpen || undefined}
           onClick={(event) => {
             if (menuOpen && (event.target as Element).closest('a, button')) {
@@ -111,7 +111,7 @@ export function EditorActionBar({
         {showPublish ? (
           <Button variant="primary" disabled={busy} onClick={onPublish}>
             {hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-            <kbd className="admin-kbd" aria-hidden="true">
+            <kbd className="workspace-action-kbd" aria-hidden="true">
               ⌘⏎
             </kbd>
           </Button>

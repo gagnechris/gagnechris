@@ -104,7 +104,7 @@ const AdminResumePage = () => {
       loadingLabel="Loading resume…"
       leading={
         <>
-          <Link to="/pages" className="admin-back">
+          <Link to="/pages" className="workspace-back">
             ← Pages
           </Link>
           <h1>Resume</h1>
@@ -114,7 +114,7 @@ const AdminResumePage = () => {
       actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         blockedRole ? (
-          <p className="admin-panel__error" role="alert">
+          <p className="workspace-panel__error" role="alert">
             Not published: {blockedRole.title.trim() || 'a new role'} has an End
             month before its Start month and no saved dates yet.{' '}
             <a
@@ -149,7 +149,7 @@ const AdminResumePage = () => {
               <ResumePreview resume={resume} draft={draft} content={content} />
             </div>
           </div>
-          <p className="admin-hint">
+          <p className="kit-hint">
             ⌘S / Ctrl+S saves · ⌘⏎ / Ctrl+Enter publishes
           </p>
         </>

@@ -36,7 +36,7 @@
   color: var(--neutral-500);
 }
 
-.admin-sheet-open .admin-field-error {
+.admin-sheet-open .kit-field-error {
   margin-left: auto;
 }
 
@@ -119,7 +119,7 @@
   object-fit: cover;
 }
 
-.admin-project-preview .admin-hint {
+.admin-project-preview .kit-hint {
   margin-top: 0;
   font-weight: 400;
 }
@@ -165,12 +165,12 @@
   margin: 0;
 }
 
-.admin-project-form .admin-field-error {
+.admin-project-form .kit-field-error {
   margin: 0;
   font-weight: 400;
 }
 
-.admin-project-form .admin-hint {
+.admin-project-form .kit-hint {
   margin-top: 0;
   font-weight: 400;
 }

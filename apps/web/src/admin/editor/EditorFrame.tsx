@@ -17,8 +17,8 @@ export function EditorNotice({
   back?: BackLink;
 }) {
   return (
-    <section className="admin-panel">
-      <p className="admin-panel__error" role="alert">
+    <section className="workspace-panel">
+      <p className="workspace-panel__error" role="alert">
         {message}
       </p>
       {back ? <Link to={back.to}>{back.label}</Link> : null}
@@ -28,7 +28,7 @@ export function EditorNotice({
 
 export function EditorError({ message }: { message: string | null }) {
   return message ? (
-    <p className="admin-panel__error" role="alert">
+    <p className="workspace-panel__error" role="alert">
       {message}
     </p>
   ) : null;
@@ -80,14 +80,14 @@ export function EditorFrame<TEntity>({
 
   if (editor.isLoading || !entity) {
     return (
-      <section className="admin-panel">
+      <section className="workspace-panel">
         <p>{loadingLabel}</p>
       </section>
     );
   }
 
   return (
-    <section className="admin-panel admin-panel--editor">
+    <section className="workspace-panel workspace-panel--editor">
       <EditorActionBar
         leading={leading}
         {...editor.actionBarProps}

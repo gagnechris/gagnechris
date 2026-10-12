@@ -59,7 +59,7 @@ export function TaskRow({
   const body = (
     <>
       <span
-        className="admin-post-list__title"
+        className="kit-list__title"
         style={
           list && closed
             ? { textDecoration: 'line-through', opacity: 0.7 }
@@ -67,23 +67,21 @@ export function TaskRow({
         }
       >
         {task.title}
-        <span className="admin-badge">{task.priority}</span>
+        <span className="kit-badge">{task.priority}</span>
         {list && task.status === 'in_progress' ? (
-          <span className="admin-badge admin-badge--published">
-            in progress
-          </span>
+          <span className="kit-badge kit-badge--published">in progress</span>
         ) : null}
         {list && task.status === 'dropped' ? (
-          <span className="admin-badge">dropped</span>
+          <span className="kit-badge">dropped</span>
         ) : null}
       </span>
-      <span className="admin-post-list__meta">{meta}</span>
+      <span className="kit-list__meta">{meta}</span>
     </>
   );
   return (
-    <li className="admin-post-list__item">
+    <li className="kit-list__item">
       <div
-        className="admin-post-list__link"
+        className="kit-list__link"
         style={{
           display: 'flex',
           gap: list ? '0.75rem' : '0.5rem',

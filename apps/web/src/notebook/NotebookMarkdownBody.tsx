@@ -191,12 +191,12 @@ export function NotebookMarkdownBody({
       ) : null}
       {withTasks ? dateMenu.menu : null}
       {embeds.toggleError ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {embeds.toggleError}
         </p>
       ) : null}
       {phone && withTasks ? (
-        <p className="admin-hint">
+        <p className="kit-hint">
           `[ ] text` then Enter adds a task, `@` picks its day
         </p>
       ) : null}

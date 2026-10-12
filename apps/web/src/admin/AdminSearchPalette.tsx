@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { usePostsQuery, useProjectsQuery } from '@gagnechris/app-core';
 import { useDebouncedValue } from '../kit/useDebouncedValue';
+import type { NavPage } from '../workspace/navSections';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 
 const GROUPS = ['Pages', 'Posts', 'Projects'] as const;
@@ -8,20 +9,15 @@ const GROUPS = ['Pages', 'Posts', 'Projects'] as const;
 const HITS_PER_GROUP = 8;
 const SEARCH_DEBOUNCE_MS = 200;
 
-const PAGES = [
-  { to: '/', title: 'Posts' },
-  { to: '/home', title: 'Home page' },
-  { to: '/resume', title: 'Resume' },
-  { to: '/projects', title: 'Projects' },
-];
-
 const matches = (needle: string, ...fields: (string | undefined)[]) =>
   fields.some((f) => f?.toLowerCase().includes(needle));
 
 /** Posts are searched on the server; projects are one short list, matched here. */
 export default function AdminSearchPalette({
+  pages,
   onClose,
 }: {
+  pages: readonly NavPage[];
   onClose: () => void;
 }) {
   const [q, setQ] = useState('');
@@ -35,14 +31,14 @@ export default function AdminSearchPalette({
 
   const hits = useMemo((): SearchHit[] => {
     if (!needle) return [];
-    const pages = PAGES.filter((p) => matches(needle, p.title)).map(
-      (p): SearchHit => ({
+    const pageHits = pages
+      .filter((p) => matches(needle, p.title))
+      .map((p): SearchHit => ({
         key: `page-${p.to}`,
         group: 'Pages',
         to: p.to,
         title: p.title,
-      }),
-    );
+      }));
     const postHits = (posts.data?.pages[0]?.items ?? [])
       .slice(0, HITS_PER_GROUP)
       .map((p): SearchHit => ({
@@ -52,7 +48,7 @@ export default function AdminSearchPalette({
         title: (
           <>
             {p.title || 'Untitled'}
-            <span className="admin-badge">{p.status}</span>
+            <span className="kit-badge">{p.status}</span>
           </>
         ),
         detail: `/${p.slug}`,
@@ -67,8 +63,8 @@ export default function AdminSearchPalette({
         title: p.name || 'Untitled',
         detail: `/projects/${p.slug}`,
       }));
-    return [...pages, ...postHits, ...projectHits];
-  }, [needle, posts.data, projects.data]);
+    return [...pageHits, ...postHits, ...projectHits];
+  }, [needle, pages, posts.data, projects.data]);
 
   const loading =
     needle !== postQuery || posts.isFetching || projects.isPending;
@@ -87,11 +83,11 @@ export default function AdminSearchPalette({
       }
       status={
         !needle ? (
-          <p className="admin-hint">Type to search. Esc to close.</p>
+          <p className="kit-hint">Type to search. Esc to close.</p>
         ) : loading ? (
-          <p className="admin-hint">Loading…</p>
+          <p className="kit-hint">Loading…</p>
         ) : hits.length === 0 ? (
-          <p className="admin-hint">No matches.</p>
+          <p className="kit-hint">No matches.</p>
         ) : null
       }
     />

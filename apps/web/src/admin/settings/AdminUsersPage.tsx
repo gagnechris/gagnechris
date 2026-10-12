@@ -53,10 +53,10 @@ function AppTag({ app, on = true }: { app: string; on?: boolean }) {
 
 function NoAccess() {
   return (
-    <section className="admin-panel">
+    <section className="workspace-panel">
       <title>No access - Admin</title>
       <h1>No access</h1>
-      <p className="admin-panel__lede">
+      <p className="workspace-panel__lede">
         Only Full Admins can manage users. Ask a Full Admin if you need this
         page.
       </p>
@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
     : rowError;
 
   return (
-    <section className="admin-panel users-page">
+    <section className="workspace-panel users-page">
       <title>Users & access - Admin</title>
       <div className="users-header">
         <div>
@@ -169,7 +169,7 @@ export default function AdminUsersPage() {
       </section>
 
       {error ? (
-        <p className="admin-panel__error" role="alert">
+        <p className="workspace-panel__error" role="alert">
           {error}
         </p>
       ) : null}

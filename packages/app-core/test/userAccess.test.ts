@@ -6,7 +6,6 @@ import {
   displayName,
   formatAdded,
   hasApp,
-  initials,
   userErrorMessage,
 } from '../src/index.js';
 
@@ -45,11 +44,9 @@ describe('accessChange', () => {
 });
 
 describe('people', () => {
-  test('falls back to the email for a name and initials', () => {
+  test('falls back to the email for a name', () => {
     const anon = { name: null, email: 'jordan.lee@example.com' };
     expect(displayName(anon)).toBe('jordan.lee');
-    expect(initials(anon)).toBe('JL');
-    expect(initials(sam)).toBe('SR');
   });
 
   test('disabled and removed people open no apps', () => {

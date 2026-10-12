@@ -1,9 +1,12 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClientTestProvider } from '../test-utils';
+import { getAuthUser } from '../workspace/auth/session';
 import AdminLayout from './AdminLayout';
 import AdminPostsPage from './AdminPostsPage';
+import AdminUsersPage from './settings/AdminUsersPage';
 
 const { isDevProdApiTargetMock, pending } = vi.hoisted(() => ({
   isDevProdApiTargetMock: vi.fn(() => false),
@@ -33,17 +36,38 @@ vi.mock('../workspace/auth/session', () => ({
   canAddPasskey: () => false,
   signOutUser: vi.fn(),
   getIdToken: vi.fn(async () => 'fake-id-token'),
+  getAuthTime: async () => null,
 }));
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
-    GET: async () => ({
-      data: { items: [] },
+    GET: async (path: string) => ({
+      data:
+        path === '/api/admin/users'
+          ? {
+              users: [
+                {
+                  id: 'sam',
+                  email: 'sam@example.com',
+                  name: 'Sam Rivera',
+                  level: 'cms',
+                  status: 'active',
+                  createdAt: null,
+                },
+              ],
+            }
+          : { items: [] },
       error: undefined,
       response: { status: 200 },
     }),
   }),
 }));
+
+const fullAdmin = {
+  label: 'chris@example.com',
+  userId: 'me',
+  groups: ['site-admin', 'notebook', 'user-admin'],
+};
 
 describe('AdminLayout', () => {
   beforeEach(() => {
@@ -53,7 +77,7 @@ describe('AdminLayout', () => {
     pending.cleared = 0;
   });
 
-  const renderLayout = () =>
+  const renderPosts = () =>
     render(
       <QueryClientTestProvider>
         <MemoryRouter initialEntries={['/']}>
@@ -67,7 +91,7 @@ describe('AdminLayout', () => {
     );
 
   test('warns on unload only while unmounted editors still have saves queued', async () => {
-    renderLayout();
+    renderPosts();
     await screen.findByRole('navigation', { name: 'Admin' });
     // The nav can be in the DOM a macrotask before React runs the effect
     // that adds the listener; act() flushes pending effects.
@@ -156,6 +180,62 @@ describe('AdminLayout', () => {
     expect(within(nav).getByRole('link', { name: 'Posts' })).not.toHaveClass(
       'workspace-nav__item--active',
     );
+  });
+
+  const renderUsers = () =>
+    render(
+      <QueryClientTestProvider>
+        <MemoryRouter initialEntries={['/settings/users']}>
+          <Routes>
+            <Route path="/" element={<AdminLayout />}>
+              <Route path="settings/users" element={<AdminUsersPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </QueryClientTestProvider>,
+    );
+  const palette = () =>
+    screen.queryByRole('dialog', { name: 'Search posts, projects and pages' });
+
+  test('⌘K does nothing while the user drawer is open', async () => {
+    vi.mocked(getAuthUser).mockResolvedValueOnce(fullAdmin);
+    const user = userEvent.setup();
+    renderUsers();
+    await user.click(await screen.findByText('Sam Rivera'));
+    const drawer = screen.getByRole('dialog', {
+      name: 'Edit access for Sam Rivera',
+    });
+
+    await user.keyboard('{Control>}k{/Control}');
+    expect(palette()).not.toBeInTheDocument();
+    expect(drawer).toContainElement(document.activeElement as HTMLElement);
+
+    await user.keyboard('{Escape}');
+    expect(drawer).not.toBeInTheDocument();
+    await user.keyboard('{Control>}k{/Control}');
+    expect(palette()).toBeInTheDocument();
+  });
+
+  test('search finds Users & access only for someone who has it', async () => {
+    vi.mocked(getAuthUser).mockResolvedValueOnce(fullAdmin);
+    const user = userEvent.setup();
+    const { unmount } = renderPosts();
+    await screen.findByRole('navigation', { name: 'Admin' });
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('users');
+    expect(
+      await screen.findByRole('option', { name: 'Users & access' }),
+    ).toBeInTheDocument();
+    unmount();
+
+    renderPosts();
+    await screen.findByRole('navigation', { name: 'Admin' });
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('users');
+    expect(await screen.findByText('No matches.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: 'Users & access' }),
+    ).not.toBeInTheDocument();
   });
 
   test('shows PRODUCTION banner when Vite proxies to prod API', async () => {

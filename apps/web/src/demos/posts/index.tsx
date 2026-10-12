@@ -143,14 +143,14 @@ function EditorPane({
       <div className="posts-demo__editor-body">
         <Field label="Title" hint={`/posts/${demoPostSlug(draft.title)}`}>
           <TextInput
-            className="admin-input posts-demo__title"
+            className="kit-input posts-demo__title"
             value={draft.title}
             onChange={(e) =>
               dispatch({ type: 'edit', patch: { title: e.target.value } })
             }
           />
         </Field>
-        <Suspense fallback={<p className="admin-hint">Loading editor…</p>}>
+        <Suspense fallback={<p className="kit-hint">Loading editor…</p>}>
           <MarkdownEditor
             label="Body"
             lineNumbers={false}
@@ -160,7 +160,7 @@ function EditorPane({
             }
           />
         </Suspense>
-        <p className="admin-hint posts-demo__hint">{POSTS_DEMO_BODY_HINT}</p>
+        <p className="kit-hint posts-demo__hint">{POSTS_DEMO_BODY_HINT}</p>
       </div>
     </section>
   );

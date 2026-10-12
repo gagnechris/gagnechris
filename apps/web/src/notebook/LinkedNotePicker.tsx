@@ -53,11 +53,11 @@ export function LinkedNotePicker({ value, onChange }: Props) {
   };
 
   return (
-    <div className="admin-field notebook-note-picker">
+    <div className="kit-field notebook-note-picker">
       <label htmlFor={`${id}-input`}>Linked note</label>
       <input
         id={`${id}-input`}
-        className="admin-input"
+        className="kit-input"
         role="combobox"
         aria-expanded={open && options.length > 0}
         aria-controls={`${id}-list`}
@@ -110,13 +110,13 @@ export function LinkedNotePicker({ value, onChange }: Props) {
           >
             {option.label}
             {option.detail ? (
-              <span className="admin-hint"> · {option.detail}</span>
+              <span className="kit-hint"> · {option.detail}</span>
             ) : null}
           </li>
         ))}
       </ul>
       {open && searchText && search.isSuccess && options.length === 0 ? (
-        <span className="admin-hint">No notes match.</span>
+        <span className="kit-hint">No notes match.</span>
       ) : null}
     </div>
   );

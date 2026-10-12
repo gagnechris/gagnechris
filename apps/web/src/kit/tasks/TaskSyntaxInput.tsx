@@ -147,7 +147,7 @@ export function TaskSyntaxInput({
         ref={inputRef}
         type="text"
         role="combobox"
-        className={className ?? 'admin-input'}
+        className={className ?? 'kit-input'}
         value={value}
         autoComplete="off"
         aria-autocomplete="list"

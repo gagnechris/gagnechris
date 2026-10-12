@@ -25,7 +25,7 @@ export function SaveIndicator({ saveState, dirty, isNew }: Props) {
   );
   return (
     <span
-      className="admin-save-indicator"
+      className="workspace-save-indicator"
       data-state={saveState}
       role="status"
       aria-live="polite"
