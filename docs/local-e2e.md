@@ -27,6 +27,19 @@ npm run e2e:browser -- --ui              # interactive UI mode
 npm run e2e:browser -- --project=webkit --headed tests/admin-posts.spec.ts
 ```
 
+`E2E_CHROMIUM_EXECUTABLE` points the `chromium` project at a Chromium that
+Playwright didn't download, and turns video off. Cloud Claude Code sessions
+have no WebKit and a preinstalled Chromium of a different build, so their
+session-start hook sets it to `/opt/pw-browsers/chromium` and starts Docker.
+There, run the specs a UI change touches on Chromium before pushing:
+
+```bash
+npm run build      # with the VITE_COGNITO_* placeholders from .github/workflows/ci.yml
+npm run e2e:browser -- --project=chromium <spec>.spec.ts
+```
+
+WebKit runs in CI only.
+
 Projects: `api` runs `publish-lifecycle.spec.ts` alone first, since it publishes Home and checks its recent posts, which other specs' publishes would race; `chromium` and `webkit` run every other spec once it passes.
 
 `e2e/global-setup.ts` boots a private stack for each run and tears it down

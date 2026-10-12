@@ -4,6 +4,9 @@ const CI = Boolean(process.env.CI);
 // Playwright wipes its output dir on start, so concurrent runs in one
 // checkout need their own.
 const OUT = process.env.E2E_OUTPUT_DIR ?? '.';
+// A Chromium Playwright didn't download, such as the one preinstalled in
+// cloud sessions. Its ffmpeg may not match either, so video is off.
+const CHROMIUM = process.env.E2E_CHROMIUM_EXECUTABLE?.trim() || undefined;
 
 export default defineConfig({
   testDir: './tests',
@@ -27,7 +30,7 @@ export default defineConfig({
   use: {
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: CHROMIUM ? 'off' : 'retain-on-failure',
   },
   projects: [
     // HTTP only, run alone first: it publishes Home and checks its recent
@@ -37,7 +40,10 @@ export default defineConfig({
       name: 'chromium',
       testIgnore: /publish-lifecycle\.spec\.ts$/,
       dependencies: ['api'],
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(CHROMIUM ? { launchOptions: { executablePath: CHROMIUM } } : {}),
+      },
     },
     {
       name: 'webkit',
