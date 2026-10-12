@@ -3,6 +3,7 @@ import {
   APP_TABLE,
   LAST_DEPLOYED_GSIS,
   appTableAttributeDefinitions,
+  appTableCreateInput,
   appTableName,
   assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,
@@ -154,6 +155,44 @@ describe('gsiProjection', () => {
     for (const gsi of APP_TABLE.globalSecondaryIndexes) {
       expect(() => gsiProjection(gsi)).not.toThrow();
     }
+  });
+});
+
+describe('appTableCreateInput', () => {
+  it('projects every GSI as CDK does', () => {
+    const def = {
+      ...APP_TABLE,
+      globalSecondaryIndexes: [
+        ...APP_TABLE.globalSecondaryIndexes,
+        { ...gsi4, projectionType: 'KEYS_ONLY' as const },
+        {
+          ...gsi5,
+          projectionType: 'INCLUDE' as const,
+          nonKeyAttributes: ['title', 'updatedAt'],
+        },
+      ],
+    };
+    const input = appTableCreateInput('gagnechris-it-x', def);
+    expect(input.TableName).toBe('gagnechris-it-x');
+    expect(
+      input.GlobalSecondaryIndexes.map((g) => [g.IndexName, g.Projection]),
+    ).toEqual(
+      def.globalSecondaryIndexes.map((g) => [g.indexName, gsiProjection(g)]),
+    );
+    expect(input.GlobalSecondaryIndexes.at(-1)!.Projection).toEqual({
+      ProjectionType: 'INCLUDE',
+      NonKeyAttributes: ['title', 'updatedAt'],
+    });
+  });
+
+  it('round-trips through tableIndexesFromDescribeTable', () => {
+    const input = appTableCreateInput('gagnechris-local');
+    expect(
+      tableIndexesFromDescribeTable({
+        GlobalSecondaryIndexes: input.GlobalSecondaryIndexes,
+        AttributeDefinitions: input.AttributeDefinitions,
+      }),
+    ).toEqual(APP_TABLE.globalSecondaryIndexes);
   });
 });
 

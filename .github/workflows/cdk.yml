@@ -368,15 +368,7 @@ jobs:
 
       - name: Notify SNS on failure
         if: failure()
-        env:
-          ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: |
-          ALERTS_TOPIC_PARAM="$(bash scripts/ssm-param-name.sh prod alertsTopicArn)"
-          TOPIC_ARN=$(aws ssm get-parameter \
-            --name "${ALERTS_TOPIC_PARAM}" \
-            --query 'Parameter.Value' \
-            --output text)
-          aws sns publish \
-            --topic-arn "$TOPIC_ARN" \
-            --subject "gagnechris CDK drift detected" \
-            --message "Nightly/manual cdk drift failed on ${GITHUB_SHA}. See Actions run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          bash scripts/ci/notify-alerts.sh \
+            "gagnechris CDK drift detected" \
+            "Nightly/manual cdk drift failed on ${GITHUB_SHA}. See Actions run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
