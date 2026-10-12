@@ -10,7 +10,7 @@ import {
   stats,
   type QueryResults,
 } from '../../scripts/api-cold-start-report.js';
-import { REPO_ROOT } from '../lib/constructs/node-lambda.js';
+import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
 
 function row(fields: Record<string, string>): QueryResults[number] {
   return Object.entries({ invocation: 'req', lineCount: '2', ...fields }).map(

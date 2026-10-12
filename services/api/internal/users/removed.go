@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
@@ -98,7 +99,7 @@ func (s removedRepo) put(ctx context.Context, r removedUser, removedBy string) e
 	item["userId"] = data.S(r.UserID)
 	item["email"] = data.S(r.Email)
 	item["previousLevel"] = data.OptS(r.PreviousLevel)
-	item["createdAt"] = data.S(store.ISOTime(s.now()))
+	item["createdAt"] = data.S(jstime.ISO(s.now()))
 	item["removedBy"] = data.S(removedBy)
 	_, err := s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{TableName: &s.table.Name, Item: item})
 	return err

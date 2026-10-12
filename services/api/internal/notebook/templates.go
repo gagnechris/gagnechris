@@ -11,6 +11,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
@@ -115,7 +116,7 @@ func (r *templatesRepo) write(ctx context.Context, userID, area, bodyMarkdown st
 	if existing == nil && reset {
 		return defaultTemplate(area), nil
 	}
-	now := store.ISOTime(r.now())
+	now := jstime.ISO(r.now())
 	createdAt := now
 	if existing != nil {
 		createdAt = existing.createdAt

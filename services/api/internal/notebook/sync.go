@@ -15,6 +15,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
@@ -92,13 +93,11 @@ type syncQuery struct {
 	limit         int
 }
 
-func isoMs(t time.Time) string { return store.ISOTime(t) }
-
 // changesSince reads the feed from since, less an overlap window that
 // absorbs clock skew; nextSince is the watermark the next poll passes back.
 func changesSince(ctx context.Context, table *data.Table, now time.Time, userID string, q syncQuery, log func(*api.DataIntegrityError)) (changesPage, error) {
 	now = now.Truncate(time.Millisecond)
-	watermark := isoMs(now)
+	watermark := jstime.ISO(now)
 	lowerBound := ""
 	if q.since != "" {
 		since, ok := api.ParseDatetime(q.since)
@@ -111,7 +110,7 @@ func changesSince(ctx context.Context, table *data.Table, now time.Time, userID 
 		if since.Before(horizon) {
 			return changesPage{}, &api.ResyncRequiredError{Message: "Sync watermark is older than the tombstone retention horizon; full resync required"}
 		}
-		lowerBound = isoMs(since.Add(-time.Duration(sc.OverlapMs) * time.Millisecond))
+		lowerBound = jstime.ISO(since.Add(-time.Duration(sc.OverlapMs) * time.Millisecond))
 	}
 	pk := keys.SyncPk(userID)
 	decoded, err := store.DecodeCursor(q.cursor, syncCursorKeys)

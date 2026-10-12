@@ -16,6 +16,7 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
@@ -69,7 +70,7 @@ func Routes(table *data.Table, now func() time.Time) []api.Route {
 // idParam is UlidSchema, which uppercases before matching.
 func idParam(r *api.Request) (string, error) {
 	v := api.NewQueryValidator(map[string]string{"id": strings.ToUpper(r.Params["id"])})
-	id, _ := v.String("id", true, false, api.Matches(ulidPattern))
+	id, _ := v.String("id", true, false, api.Matches(api.ULIDPattern))
 	return id, v.ErrWith("Invalid path parameters")
 }
 
@@ -246,7 +247,7 @@ func (r *repo) create(ctx context.Context, req *api.Request) (*api.Response, err
 		Href:         in.href,
 		Publishable: store.Publishable{
 			Status:    store.StatusDraft,
-			UpdatedAt: store.ISOTime(r.now()),
+			UpdatedAt: jstime.ISO(r.now()),
 			Version:   1,
 		},
 	})

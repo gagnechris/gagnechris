@@ -7,9 +7,10 @@ Attribute names are lowercase. Keys use string partition/sort values with `#`
 separators so entity types never collide.
 
 **Key builders, item zod schemas, and mappers** live in `@gagnechris/data`
-(`packages/data`). The publisher, ops tools and tests import those helpers; the
-Go API builds keys with `services/api/internal/keys`, which `keys_test.go`
-holds to the builders through the generated contract. Do not hard-code
+(`packages/data`). The publisher, ops tools, infra, the Go contract generator
+and tests import those helpers; the Go API builds keys with
+`services/api/internal/keys`, which `keys_test.go` holds to the builders
+through the generated contract. Do not hard-code
 `POST#…`, `PROJECT#…`, `META`, `PUBLISHED`, `HOME#current`, or `RESUME#current`
 in application code.
 

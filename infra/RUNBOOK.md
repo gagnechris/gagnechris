@@ -645,7 +645,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Email-prod Api-prod --require
 
 ## Publisher
 
-`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `index.html` (Home), `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `resume/index.html`, `resume.pdf`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. `scripts/publisher-owned-paths.generated.txt` lists the keys it owns. Shared `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns bundling defaults, log retention and Powertools env; errors/throttles alarms come from `lambda-guardrails.ts`, which `GoLambda` uses too.
+`Publisher-prod`: DynamoDB Streams (PUBLISHED filter) → Lambda → writes `index.html` (Home), `blog/<slug>/index.html`, `blog/index.html`, `blog/posts.json`, `projects/index.html`, `projects/<slug>/index.html`, `resume/index.html`, `resume.pdf`, `sitemap.xml`, `rss.xml`, then invalidates those CloudFront paths. `scripts/publisher-owned-paths.generated.txt` lists the keys it owns. The `NodeLambda` construct (`infra/lib/constructs/node-lambda.ts`) owns the bundling defaults; log retention, Powertools env and the errors/throttles alarms come from `lambdaBase` (`lambda-common.ts`), which `GoLambda` uses too.
 
 **Alarms** (Guardrails SNS): API `HandlerError` / `DataIntegrityError` / `SyncAdapterMissing` (a sync row type with no registered adapter; the feed returns 500 until `syncAdapters` in `services/api/internal/notebook/sync.go` lists it), `SyncCorruptRow` (the sync feed skipped a row that failed to parse; the warning log `Skipping corrupt stored item` names its `pk`/`sk`; fix the row through the API or a script that writes a newer `updatedAt` and `syncSk` so clients pick it up), `ContactEmailFailed` (SES refused a contact message; the error log `Contact email failed` names the `contactId`, and the `CONTACT#<id>` row keeps `emailError`), `SesCapReached` (the daily email cap is used up; contact messages are saved with `emailStatus: failed` until the next UTC day), publisher `DataIntegrityError`, resume-pdf, kvs-sync and `RebuildUnsettled` (a rebuild gave up after 4 passes while publishes kept landing; invoke `{"action":"republishAll"}` if the site looks stale), API Gateway `5xx`, DynamoDB AppTable `SystemErrors` / `ThrottledRequests`. Handled API 500s do not increment Lambda Errors.
 
@@ -661,8 +661,9 @@ To test alert delivery, set an alarm to ALARM with the admin profile, for exampl
 Site resources (bucket, distribution ID, blog-slugs KVS ARN) come from SSM — Publisher does not import Site CloudFormation exports. Deploy Publisher after Site so those parameters exist. Dns still imports Site's distribution for Route 53 aliases.
 
 After stream retries (`retryAttempts: 3`), discarded records go to SQS
-`gagnechris-prod-publisher-stream-failures` (on-failure destination). The depth
-alarm watches `NumberOfMessagesSent` (Sum ≥ 1) so each new failure re-notifies;
+`gagnechris-prod-publisher-stream-failures` (on-failure destination). Its alarm,
+`gagnechris-prod-publisher-stream-dlq-depth` (named for depth, but it measures
+messages sent), watches `NumberOfMessagesSent` (Sum ≥ 1) so each new failure re-notifies;
 `ApproximateNumberOfMessagesVisible` would stay ALARM until purge and mute
 follow-up alerts for up to 14 days.
 

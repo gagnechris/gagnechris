@@ -15,6 +15,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
@@ -79,7 +80,7 @@ type versioned[T any, P entity[T]] struct {
 	claim      *uniqueClaim[T]
 }
 
-func (s *versioned[T, P]) nowISO() string { return store.ISOTime(s.now()) }
+func (s *versioned[T, P]) nowISO() string { return jstime.ISO(s.now()) }
 
 func (s *versioned[T, P]) notFound(id string) error {
 	return api.NotFound(s.label + " " + id + " not found")
@@ -462,7 +463,7 @@ func (s *versioned[T, P]) softDelete(ctx context.Context, userID, id string, exp
 	}
 	base := expected.Of(P(&existing).ver())
 	at := s.now()
-	tombstone := build(existing, store.ISOTime(at))
+	tombstone := build(existing, jstime.ISO(at))
 	P(&tombstone).setVersion(base + 1)
 	ttl := ttlDaysFrom(tombstoneTTLDays, at)
 	// No createHash: a deleted id never replays, so its fingerprint isn't kept.
