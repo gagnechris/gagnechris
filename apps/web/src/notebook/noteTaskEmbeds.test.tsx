@@ -24,7 +24,11 @@ import {
   PAST_AUTOSAVE_MS,
   QueryClientTestProvider,
 } from '../test-utils';
-import { EMBED_RETRY_DELAYS_MS } from '@gagnechris/app-core';
+import {
+  EMBED_DELETE_GRACE_MS,
+  EMBED_RETRY_DELAYS_MS,
+} from '@gagnechris/app-core';
+import { useState } from 'react';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
@@ -40,6 +44,7 @@ const api = vi.hoisted(() => ({
   puts: [] as string[],
   taskPosts: [] as Record<string, unknown>[],
   taskPuts: [] as Record<string, unknown>[],
+  taskDeletes: [] as string[],
   /** Every task read: `GET <id>` or `BATCH <ids>`. */
   taskReads: [] as string[],
   /** Next task POST is written, then the response is lost. */
@@ -202,6 +207,20 @@ vi.mock('../workspace/api/client', () => ({
         }
         return fail(404, 'not_found');
       },
+      DELETE: async (path: string, init?: Init) => {
+        const body = init?.body ?? {};
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/tasks/{id}') {
+          api.taskDeletes.push(p.id!);
+          const prev = api.tasks.get(p.id!);
+          if (!prev || prev.deleted) return fail(404, 'not_found');
+          if (body.version !== prev.version) return fail(409, 'conflict');
+          const next = { ...prev, deleted: true, version: prev.version + 1 };
+          api.tasks.set(next.id, next);
+          return ok(next);
+        }
+        return fail(404, 'not_found');
+      },
     }),
 }));
 
@@ -255,6 +274,8 @@ function typeInto(view: EditorView, text: string) {
 }
 
 const KEY_CODES: Record<string, number> = {
+  Backspace: 8,
+  Delete: 46,
   Enter: 13,
   Escape: 27,
   ArrowUp: 38,
@@ -295,6 +316,7 @@ beforeEach(() => {
   api.puts = [];
   api.taskPosts = [];
   api.taskPuts = [];
+  api.taskDeletes = [];
   api.taskReads = [];
   api.dropNextTaskResponse = false;
   localStorage.clear();
@@ -401,6 +423,7 @@ describe('writing [ ] text in a daily note', () => {
     expect([...api.tasks.keys()]).toEqual([id]);
     expect(new Set(api.taskPosts.map((b) => b.id))).toEqual(new Set([id]));
     expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n`);
+    expect(api.taskDeletes).toEqual([]);
   }, 15_000);
 
   test('opening a note that embeds three tasks reads them in one request', async () => {
@@ -432,6 +455,11 @@ describe('writing [ ] text in a daily note', () => {
       deleted: false,
     };
     const { container } = renderToday();
+    // The deleted task's line leaves the note, and the note saves without it.
+    await waitFor(
+      () => expect(last(api.puts)).toBe(ids.map(tokenLine).join('\n')),
+      { timeout: 4000 },
+    );
     for (const n of [1, 2, 3]) {
       expect(
         await within(container).findByRole('checkbox', {
@@ -439,8 +467,8 @@ describe('writing [ ] text in a daily note', () => {
         }),
       ).toBeInTheDocument();
     }
-    expect(await within(container).findByText('Deleted task')).toBeVisible();
-    expect(api.taskReads).toEqual([`BATCH ${[...ids, gone].sort().join(',')}`]);
+    expect(within(container).queryByText('Deleted task')).toBeNull();
+    expect(api.taskReads[0]).toBe(`BATCH ${[...ids, gone].sort().join(',')}`);
   });
 
   test('waits for the first save of a new day before linking the task', async () => {
@@ -693,13 +721,140 @@ describe('one task embedded in two notes', () => {
     }
     expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam back');
   });
+});
 
-  test('a deleted task renders as a muted row, not the token', async () => {
-    renderTwoNotes();
-    await waitFor(() =>
-      expect(within(noteA()).getAllByText('Deleted task')).toHaveLength(1),
+describe('deleting an embedded task', () => {
+  let body = '';
+  function renderNote(initial: string) {
+    body = initial;
+    const Note = () => {
+      const [value, setValue] = useState(initial);
+      return (
+        <NotebookMarkdownBody
+          note={{ id: NOTE_A, area: 'work' }}
+          value={value}
+          onChange={(next) => {
+            body = next;
+            setValue(next);
+          }}
+        />
+      );
+    };
+    const router = createMemoryRouter([{ path: '/', element: <Note /> }]);
+    return render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
     );
-    expect(document.body.textContent).not.toContain('{{task:');
+  }
+
+  function deleteEmbedLine(view: EditorView, userEvent = 'delete') {
+    const at = view.state.doc.toString().indexOf(tokenLine(TASK_ID));
+    const line = view.state.doc.lineAt(at);
+    act(() => {
+      view.dispatch({
+        changes: { from: line.from - 1, to: line.to },
+        userEvent,
+      });
+    });
+  }
+
+  const tick = (ms: number) =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  // A delete would start by now; its request settles on timers too.
+  const deletedAfterGrace = async () => {
+    await tick(EMBED_DELETE_GRACE_MS + 10);
+    for (let i = 0; i < 10; i += 1) await tick(20);
+  };
+
+  test('deleting its line deletes the task once the line stays gone', async () => {
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view);
+    expect(body).toBe('Standup');
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMBED_DELETE_GRACE_MS / 2),
+    );
+    expect(api.taskDeletes).toEqual([]);
+
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]), {
+      timeout: EMBED_DELETE_GRACE_MS * 2,
+    });
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(true);
+  }, 15_000);
+
+  test('undo brings the line back and keeps the task', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view);
+    act(() => {
+      undo(view);
+    });
+    expect(body).toBe(`Standup\n${tokenLine(TASK_ID)}`);
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('cutting the line keeps the task, since it is being moved', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view, 'delete.cut');
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('closing the note right after deleting the line deletes the task at once', async () => {
+    seedTask();
+    const { container, unmount } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    deleteEmbedLine(await editorView(container));
+
+    unmount();
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]));
+  });
+
+  test('Backspace in an emptied title deletes the line and the task', async () => {
+    seedTask();
+    const { container, unmount } = renderNote(
+      `Standup\n${tokenLine(TASK_ID)}\nnotes`,
+    );
+    const user = userEvent.setup();
+    const field = await within(container).findByRole('textbox', {
+      name: 'Task title',
+    });
+
+    await user.clear(field);
+    expect(body).toContain(tokenLine(TASK_ID));
+    await user.keyboard('{Backspace}');
+    expect(body).toBe('Standup\nnotes');
+    expect(api.taskPuts).toEqual([]);
+
+    unmount();
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]));
+  });
+
+  test('the line of a task deleted elsewhere leaves the note', async () => {
+    seedTask({ deleted: true });
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}\nnotes`);
+
+    await waitFor(() => expect(body).toBe('Standup\nnotes'));
+    expect(within(container).queryByText('Deleted task')).toBeNull();
+    expect(api.taskDeletes).toEqual([]);
   });
 });
 
@@ -735,7 +890,9 @@ describe('editing an embedded task title in place', () => {
   const noteA = () => screen.getByRole('region', { name: 'Note A' });
   const noteB = () => screen.getByRole('region', { name: 'Note B' });
   const titleIn = (note: HTMLElement) =>
-    within(note).findByRole('textbox', { name: 'Task title' });
+    within(note).findByRole<HTMLTextAreaElement>('textbox', {
+      name: 'Task title',
+    });
 
   test('typing, pasting and undo keys in the field save the task and leave the note alone', async () => {
     seedTask();
@@ -847,6 +1004,108 @@ describe('editing an embedded task title in place', () => {
     expect(view.state.selection.main.head).toBe(view.state.doc.line(2).to);
     expect(view.hasFocus).toBe(true);
     expect(api.taskPuts).toEqual([]);
+  });
+
+  describe('from the keyboard', () => {
+    const body = `Standup\n${tokenLine(TASK_ID)}\nnotes`;
+
+    test('arrowing onto the embed line puts the caret in its title', async () => {
+      seedTask();
+      renderNotes(body);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+
+      act(() => {
+        view.focus();
+        view.dispatch({
+          selection: { anchor: view.state.doc.line(2).from },
+          userEvent: 'select',
+        });
+      });
+
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(field.selectionStart).toBe(0);
+    });
+
+    test('arrow keys in the title leave for the lines above and below', async () => {
+      seedTask();
+      renderNotes(body);
+      const user = userEvent.setup();
+      const view = await editorView(noteA());
+
+      await user.click(await titleIn(noteA()));
+      await user.keyboard('{ArrowUp}');
+      expect(view.hasFocus).toBe(true);
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+
+      await user.click(await titleIn(noteA()));
+      await user.keyboard('{ArrowDown}');
+      expect(view.hasFocus).toBe(true);
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(3).from);
+      expect(view.state.doc.toString()).toBe(body);
+    });
+
+    test('typing beside the row goes into the title, not the token', async () => {
+      seedTask();
+      const { onChange } = renderNotes(body);
+      const user = userEvent.setup();
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+
+      act(() => {
+        view.focus();
+        const end = view.state.doc.line(2).to;
+        view.dispatch({
+          changes: { from: end, insert: '!' },
+          selection: { anchor: end + 1 },
+          userEvent: 'input.type',
+        });
+      });
+
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveValue('Call Sam!'));
+      expect(field).toHaveFocus();
+      expect(view.state.doc.toString()).toBe(body);
+      expect(onChange).not.toHaveBeenCalled();
+
+      await user.tab();
+      await waitFor(() =>
+        expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam!'),
+      );
+    });
+
+    test('Backspace at the start of the next line goes into the title instead of joining', async () => {
+      seedTask();
+      renderNotes(body);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+      act(() => {
+        view.dispatch({ selection: { anchor: view.state.doc.line(3).from } });
+      });
+
+      press(view, 'Backspace');
+
+      expect(view.state.doc.toString()).toBe(body);
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(field.selectionStart).toBe('Call Sam'.length);
+    });
+
+    test('Backspace on an empty line under the row removes the line', async () => {
+      seedTask();
+      renderNotes(`Standup\n${tokenLine(TASK_ID)}\n`);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+      act(() => {
+        view.dispatch({ selection: { anchor: view.state.doc.length } });
+      });
+
+      press(view, 'Backspace');
+
+      expect(view.state.doc.toString()).toBe(`Standup\n${tokenLine(TASK_ID)}`);
+      await waitFor(async () => expect(await titleIn(noteA())).toHaveFocus());
+    });
   });
 
   test('a done task stays struck through and can still be renamed', async () => {

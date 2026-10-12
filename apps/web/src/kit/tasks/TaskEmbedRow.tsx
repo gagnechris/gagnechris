@@ -35,6 +35,12 @@ export type TaskEmbedView =
 /** Returns focus to the surrounding editor: below the row, or onto its line. */
 export type TaskEmbedLeave = (below: boolean) => void;
 
+/** Deletes the row's line from the note, which deletes its task. */
+export type TaskEmbedDelete = () => void;
+
+/** Arrow keys out of the title, to the line or row above or below. */
+export type TaskEmbedMove = (dir: 'up' | 'down') => void;
+
 const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   high: 'High',
   med: null,
@@ -45,10 +51,14 @@ function TaskEmbedTitle({
   title,
   onRename,
   onLeave,
+  onDelete,
+  onMove,
 }: {
   title: string;
   onRename: (title: string) => void;
   onLeave?: TaskEmbedLeave;
+  onDelete?: TaskEmbedDelete;
+  onMove?: TaskEmbedMove;
 }) {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -111,6 +121,27 @@ function TaskEmbedTitle({
       edit(null);
       if (onLeave) onLeave(false);
       else e.currentTarget.blur();
+    } else if (e.key === 'Backspace' && onDelete && !e.currentTarget.value) {
+      e.preventDefault();
+      edit(null);
+      onDelete();
+    } else if (onMove && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+      const { selectionStart, selectionEnd, value } = e.currentTarget;
+      const collapsed = selectionStart === selectionEnd;
+      const dir =
+        e.key === 'ArrowUp' ||
+        (e.key === 'ArrowLeft' && collapsed && selectionStart === 0)
+          ? 'up'
+          : e.key === 'ArrowDown' ||
+              (e.key === 'ArrowRight' &&
+                collapsed &&
+                selectionEnd === value.length)
+            ? 'down'
+            : null;
+      if (!dir) return;
+      e.preventDefault();
+      commit();
+      onMove(dir);
     }
   };
 
@@ -140,9 +171,13 @@ function TaskEmbedTitle({
 export function TaskEmbedRow({
   view,
   onLeave,
+  onDelete,
+  onMove,
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
+  onDelete?: TaskEmbedDelete;
+  onMove?: TaskEmbedMove;
 }) {
   if (view.kind === 'loading') {
     return (
@@ -200,6 +235,8 @@ export function TaskEmbedRow({
           title={task.title}
           onRename={onRename}
           onLeave={onLeave}
+          onDelete={onDelete}
+          onMove={onMove}
         />
       ) : (
         <span className="task-embed__title">{task.title}</span>

@@ -124,6 +124,7 @@ export {
   findTaskEmbeds,
   parseTaskEmbedLine,
   replaceTaskEmbeds,
+  removeTaskEmbedLines,
   taskEmbedFallbackLine,
   taskEmbedIds,
   taskEmbedToken,

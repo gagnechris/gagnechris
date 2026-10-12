@@ -322,6 +322,7 @@ export {
   type TodayStillOpenRow,
 } from './query/today.js';
 export {
+  EMBED_DELETE_GRACE_MS,
   EMBED_RETRY_DELAYS_MS,
   useNoteTaskEmbedSync,
   type EmbedNote,

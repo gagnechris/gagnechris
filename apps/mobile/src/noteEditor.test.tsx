@@ -1,4 +1,8 @@
-import { clearPendingFlushes, useTasksQuery } from '@gagnechris/app-core';
+import {
+  clearPendingFlushes,
+  EMBED_DELETE_GRACE_MS,
+  useTasksQuery,
+} from '@gagnechris/app-core';
 import * as Haptics from 'expo-haptics';
 import { NOTEBOOK_TITLE_MAX_LENGTH } from '@gagnechris/shared';
 import { ActionSheetIOS, Alert, AppState, Share, Text } from 'react-native';
@@ -591,28 +595,71 @@ describe('note editor', () => {
     const title = byLabel(renderer, 'Task title');
     expect(title.props.value).toBe('Ship it');
     expect(title.props.accessibilityActions).toEqual([
-      { name: 'remove', label: 'Remove from note' },
+      { name: 'remove', label: 'Delete task' },
     ]);
     expect(byLabel(renderer, 'Open task Ship it').props.accessibilityRole).toBe(
       'button',
     );
   });
 
-  it('removes an embed from the note, leaving the task', async () => {
+  it('deletes a task from its long-press menu, line and all', async () => {
     serve(
       [makeNote(NOTE, `a\n{{task:${TASK}}}\nb`)],
       [makeTask(TASK, 'Ship it')],
     );
     const renderer = await renderNote();
     act(() => byLabel(renderer, 'Open task Ship it').props.onLongPress());
-    const [, pick] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions).mock
-      .lastCall!;
+    const [sheet, pick] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
+      .mock.lastCall!;
+    expect(sheet.options).toEqual(['Delete task', 'Cancel']);
     act(() => pick(0));
     await vi.waitFor(
       () => expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe('a\nb'),
       { timeout: 3_000 },
     );
-    expect(server.state.taskStore.get(TASK)!.deleted).toBe(false);
+    await vi.waitFor(
+      () => expect(server.state.taskStore.get(TASK)!.deleted).toBe(true),
+      { timeout: EMBED_DELETE_GRACE_MS * 2 },
+    );
+  }, 15_000);
+
+  it('deletes a task when Backspace is pressed in its emptied title', async () => {
+    serve(
+      [makeNote(NOTE, `a\n{{task:${TASK}}}\nb`)],
+      [makeTask(TASK, 'Ship it')],
+    );
+    const renderer = await renderNote();
+    const field = () => byLabel(renderer, 'Task title');
+    act(() => field().props.onFocus());
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    expect(allText(renderer)).toContain('Ship it');
+
+    act(() => field().props.onChangeText(''));
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    expect(() => byLabel(renderer, 'Task title')).toThrow();
+    await vi.waitFor(
+      () => expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe('a\nb'),
+      { timeout: 3_000 },
+    );
+    await vi.waitFor(
+      () => expect(server.state.taskStore.get(TASK)!.deleted).toBe(true),
+      { timeout: EMBED_DELETE_GRACE_MS * 2 },
+    );
+    expect(server.state.taskStore.get(TASK)!.title).toBe('Ship it');
+  }, 15_000);
+
+  it('takes the line of a task deleted elsewhere out of the note', async () => {
+    serve(
+      [makeNote(NOTE, `a\n{{task:${TASK}}}\nb`)],
+      [makeTask(TASK, 'Ship it')],
+    );
+    server.deleteTask(TASK);
+    const renderer = await renderNote();
+    await vi.waitFor(
+      () => expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe('a\nb'),
+      { timeout: 3_000 },
+    );
+    expect(allText(renderer)).not.toContain('Deleted task');
   });
 
   it('pins, shares and deletes from the ⋯ menu', async () => {

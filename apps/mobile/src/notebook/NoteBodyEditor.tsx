@@ -326,19 +326,22 @@ export const NoteBodyEditor = ({
     else setPicking({ key: focus.key, query: dateQuery });
   };
 
-  const removeEmbed = (key: string, title: string) =>
+  const deleteEmbed = (key: string, id: string) => {
+    onChange(removeSegment(latest.current.segments, key));
+    embeds.onRemoved([id]);
+  };
+
+  const confirmDeleteEmbed = (key: string, id: string, title: string) =>
     ActionSheetIOS.showActionSheetWithOptions(
       {
         title,
-        options: ['Remove from note', 'Cancel'],
+        options: ['Delete task', 'Cancel'],
         destructiveButtonIndex: 0,
         cancelButtonIndex: 1,
-        message: 'The task stays in your task list.',
+        message: 'Takes it out of this note and your task list.',
       },
       (index) => {
-        if (index === 0) {
-          onChange(removeSegment(latest.current.segments, key));
-        }
+        if (index === 0) deleteEmbed(key, id);
       },
     );
 
@@ -379,7 +382,10 @@ export const NoteBodyEditor = ({
                   ? () => onOpenTask(segment.id)
                   : undefined
               }
-              onRemove={() => removeEmbed(segment.key, title)}
+              onRemove={() =>
+                confirmDeleteEmbed(segment.key, segment.id, title)
+              }
+              onDelete={() => deleteEmbed(segment.key, segment.id)}
               editable
               onTitleSubmit={() => continueAfter(segment.key)}
             />
