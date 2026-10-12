@@ -11,16 +11,6 @@ import {
 
 export const PUBLISH_STREAM_SK = SK_PUBLISHED;
 
-export interface DynamoStreamKeyImage {
-  readonly sk?: { readonly S?: string };
-}
-
-export function isPublishRelevant(
-  keys: DynamoStreamKeyImage | undefined,
-): boolean {
-  return keys?.sk?.S === PUBLISH_STREAM_SK;
-}
-
 function startsWithAny(path: string, prefixes: readonly string[]): boolean {
   for (const prefix of prefixes) {
     if (path === prefix || path.startsWith(prefix + '/')) {
@@ -30,7 +20,7 @@ function startsWithAny(path: string, prefixes: readonly string[]): boolean {
   return false;
 }
 
-/** Local API cannot see stream records, so this approximates {@link isPublishRelevant}. */
+/** Local API cannot see stream records, so this approximates the stream filter from the request. */
 export function isPublishRelevantAdminMutation(
   method: string,
   path: string,

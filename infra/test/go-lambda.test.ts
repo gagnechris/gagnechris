@@ -1,15 +1,23 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
 import { App, Duration, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   GO_MODULE_ROOT,
   GoLambda,
   goVersion,
+  localGoBundling,
 } from '../lib/constructs/go-lambda.js';
-import { REPO_ROOT } from '../lib/constructs/node-lambda.js';
+import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
 
 const FIXTURE_MODULE = join(REPO_ROOT, 'infra/test/fixtures/go-lambda');
 
@@ -120,5 +128,48 @@ describe('GoLambda', () => {
 describe('Go toolchain pin', () => {
   it('builds the fixture with the same Go version as the services/api module', () => {
     expect(goVersion(FIXTURE_MODULE)).toBe(goVersion(GO_MODULE_ROOT));
+  });
+});
+
+describe('local Go bundling', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // A `go` on PATH that reports `version` and records a build by writing the -o file.
+  const fakeGo = (version: string) => {
+    const dir = mkdtempSync(join(tmpdir(), 'fake-go-'));
+    const script = join(dir, 'go');
+    writeFileSync(
+      script,
+      [
+        '#!/bin/sh',
+        'if [ "$1" = version ]; then echo "go version ' +
+          version +
+          ' linux/amd64"; exit 0; fi',
+        `if [ "$1" = env ]; then echo "${version}"; exit 0; fi`,
+        'while [ $# -gt 0 ]; do if [ "$1" = -o ]; then : > "$2"; fi; shift; done',
+      ].join('\n'),
+    );
+    chmodSync(script, 0o755);
+    vi.stubEnv('PATH', `${dir}${delimiter}${process.env.PATH ?? ''}`);
+  };
+
+  const tryBundle = () => {
+    const out = mkdtempSync(join(tmpdir(), 'go-out-'));
+    const built = localGoBundling(FIXTURE_MODULE, 'hello').tryBundle(out, {
+      image: { image: 'unused' } as never,
+    });
+    return { built, wrote: existsSync(join(out, 'bootstrap')) };
+  };
+
+  it('refuses a local go whose version differs from go.mod', () => {
+    fakeGo('go1.0.1');
+    expect(tryBundle()).toEqual({ built: false, wrote: false });
+  });
+
+  it('builds with a local go at the go.mod version', () => {
+    fakeGo(`go${goVersion(FIXTURE_MODULE)}`);
+    expect(tryBundle()).toEqual({ built: true, wrote: true });
   });
 });

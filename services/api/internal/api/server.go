@@ -61,7 +61,7 @@ func (a *App) HTTPHandler(mode ClaimsMode) http.Handler {
 			SourceIP:  remoteHost(r.RemoteAddr),
 		}
 		if auth := a.router.AuthFor(r.Method, rawPath); auth != Public {
-			req.Claims, err = requestClaims(mode, r, auth)
+			req.Claims, err = requestClaims(mode, r, auth, a.router.clients)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -77,7 +77,7 @@ func (a *App) HTTPHandler(mode ClaimsMode) http.Handler {
 	})
 }
 
-func requestClaims(mode ClaimsMode, r *http.Request, auth Auth) (map[string]string, error) {
+func requestClaims(mode ClaimsMode, r *http.Request, auth Auth, clients ClientIDs) (map[string]string, error) {
 	switch mode {
 	case ClaimsTest:
 		header := r.Header.Get(testClaimsHeader)
@@ -90,7 +90,7 @@ func requestClaims(mode ClaimsMode, r *http.Request, auth Auth) (map[string]stri
 		}
 		return stringClaims(raw), nil
 	case ClaimsLocal:
-		return LocalClaims(r.Header.Get("Authorization"), auth, time.Now()), nil
+		return LocalClaims(r.Header.Get("Authorization"), auth, clients, time.Now()), nil
 	}
 	return nil, nil
 }

@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 )
 
 const (
@@ -48,7 +50,7 @@ func powertoolsKeys(groups []string, a slog.Attr) slog.Attr {
 		a.Key = "message"
 	case slog.TimeKey:
 		a.Key = "timestamp"
-		a.Value = slog.StringValue(a.Value.Time().UTC().Format("2006-01-02T15:04:05.000Z"))
+		a.Value = slog.StringValue(a.Value.Time().UTC().Format(jstime.ISOLayout))
 	case slog.LevelKey:
 		a.Value = slog.StringValue(levelName(a.Value.Any().(slog.Level)))
 	}

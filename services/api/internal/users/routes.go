@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -22,9 +21,15 @@ import (
 type Deps struct {
 	Table *data.Table
 	AWS   aws.Config
-	// Directory replaces the one USER_DIRECTORY and USER_POOL_ID pick.
-	Directory Directory
-	Now       func() time.Time
+	// UserPoolID is the Cognito pool the directory manages, when Directory is nil.
+	UserPoolID string
+	Directory  Directory
+	Now        func() time.Time
+}
+
+// LocalDirectory is the local stack's stand-in for the Cognito pool.
+func LocalDirectory(now func() time.Time) Directory {
+	return NewMemoryDirectory(localSeed(), now)
 }
 
 // localSeed is the local fake-auth user, as a Full Admin, so the local stack
@@ -55,18 +60,14 @@ func Routes(d Deps) []api.Route {
 	switch {
 	case d.Directory != nil:
 		h.directory = func() (Directory, error) { return d.Directory, nil }
-	case os.Getenv("USER_DIRECTORY") == "memory":
-		// The local stack's stand-in for the Cognito pool.
-		memory := NewMemoryDirectory(localSeed(), d.Now)
-		h.directory = func() (Directory, error) { return memory, nil }
+	case d.UserPoolID == "":
+		h.directory = func() (Directory, error) {
+			return nil, &api.ServiceUnavailableError{Message: "User management is not configured"}
+		}
 	default:
 		cognito := sync.OnceValue(func() *cip.Client { return cip.NewFromConfig(d.AWS) })
 		h.directory = func() (Directory, error) {
-			pool := strings.TrimSpace(os.Getenv("USER_POOL_ID"))
-			if pool == "" {
-				return nil, &api.ServiceUnavailableError{Message: "User management is not configured"}
-			}
-			return CognitoDirectory{Client: cognito(), UserPoolID: pool}, nil
+			return CognitoDirectory{Client: cognito(), UserPoolID: d.UserPoolID}, nil
 		}
 	}
 

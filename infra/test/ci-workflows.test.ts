@@ -3,14 +3,16 @@ import {
   chmodSync,
   mkdtempSync,
   mkdirSync,
+  existsSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, matchesGlob } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 import { afterAll, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 
@@ -243,6 +245,62 @@ describe('path-filtered jobs', () => {
       expect(filters(mobile.jobs.mobile!).mobile).toContain(file);
       expect(filters(ci.jobs['api-integration']!).api).toContain(file);
     }
+  });
+
+  // Workspace imports are followed through each package's `exports`, so
+  // their package.json files count as loaded too. The harness also reads
+  // CloudFront function sources from disk at runtime.
+  async function localStaticServerFiles(): Promise<string[]> {
+    const { metafile } = await build({
+      entryPoints: ['scripts/local/static-server.ts'],
+      absWorkingDir: ROOT,
+      bundle: true,
+      write: false,
+      metafile: true,
+      platform: 'node',
+      format: 'esm',
+      logLevel: 'silent',
+      plugins: [
+        {
+          name: 'external-third-party',
+          setup(b) {
+            b.onResolve({ filter: /^[^./]/ }, ({ path }) =>
+              path.startsWith('@gagnechris/') ? undefined : { external: true },
+            );
+          },
+        },
+      ],
+    });
+    const files = new Set(Object.keys(metafile.inputs));
+    for (const input of [...files]) {
+      let dir = dirname(input);
+      while (dir !== '.' && !existsSync(join(ROOT, dir, 'package.json'))) {
+        dir = dirname(dir);
+      }
+      files.add(dir === '.' ? 'package.json' : `${dir}/package.json`);
+    }
+    const harness = 'infra/lib/cloudfront/harness.ts';
+    expect(files.has(harness)).toBe(true);
+    const harnessSource = readFileSync(join(ROOT, harness), 'utf8');
+    for (const [, name] of harnessSource.matchAll(
+      /functionSource\(\s*'([^']+)'/g,
+    )) {
+      files.add(`${dirname(harness)}/${name}`);
+    }
+    return [...files].sort();
+  }
+
+  it('runs Local E2E smoke when a file the local static server loads changes', async () => {
+    const patterns = filters(ci.jobs['local-e2e']!).e2e ?? [];
+    const files = await localStaticServerFiles();
+    for (const file of files) {
+      expect(existsSync(join(ROOT, file)), file).toBe(true);
+    }
+    expect(files).toContain('infra/lib/cloudfront/app-viewer-request.js');
+    const unmatched = files.filter(
+      (file) => !patterns.some((pattern) => matchesGlob(file, pattern)),
+    );
+    expect(unmatched).toEqual([]);
   });
 
   it('runs every filtered step on a push to main', () => {

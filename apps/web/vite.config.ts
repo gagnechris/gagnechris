@@ -181,6 +181,8 @@ export default defineConfig(({ mode, command }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/setupTests.ts'],
+      // The admin previews carry public CSS as strings; tests read them.
+      css: { include: [/\.css\?inline$/] },
     },
   };
 });

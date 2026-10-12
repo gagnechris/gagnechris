@@ -29,7 +29,7 @@ import (
 func serve(t *testing.T, headers map[string]string, handler api.Handler) (int, map[string]any) {
 	t.Helper()
 	app := api.NewApp(
-		api.NewRouter([]api.Route{{Method: "GET", Pattern: "/t", Auth: api.Public, Handler: handler}}),
+		api.NewRouter([]api.Route{{Method: "GET", Pattern: "/t", Auth: api.Public, Handler: handler}}, api.ClientIDs{}),
 		observability.NewLogger(io.Discard, "test"), observability.NewMetrics(io.Discard, "test", "test"), time.Now(),
 	)
 	if headers == nil {

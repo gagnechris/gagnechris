@@ -7,13 +7,12 @@ import {
 } from '@gagnechris/app-core';
 import { NOTEBOOK_AREA_LABELS, noteTitle } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   Text,
@@ -21,11 +20,13 @@ import {
   View,
 } from 'react-native';
 import { MarkdownView } from '../../../src/markdown/MarkdownView';
+import { nativeRetrySignals } from '../../../src/net';
 import {
-  EditorOfflineNotice,
-  nativeRetrySignals,
-  useIsOnline,
-} from '../../../src/net';
+  DetailEditorShell,
+  detailEditorRoute,
+  detailStyles,
+  type DetailScreenProps,
+} from '../../../src/notebook/DetailEditorShell';
 import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { NoteBodyEditor } from '../../../src/notebook/NoteBodyEditor';
 import {
@@ -37,10 +38,7 @@ import {
   noteDraftFromNote,
   notePayloadFromDraft,
 } from '../../../src/notebook/noteDraft';
-import { ConflictPanel } from '../../../src/notebook/ConflictPanel';
-import { saveLabel } from '../../../src/notebook/saveLabel';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
-import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
 import { Icon } from '../../../src/ui/Icon';
@@ -48,11 +46,9 @@ import { TaskEmbedRow } from '../../../src/ui/TaskEmbedRow';
 
 const DELETE_PROMPT = 'delete-note';
 
-const NoteScreen = ({ onReload }: { onReload: () => void }) => {
-  const { id = '' } = useLocalSearchParams<{ id: string }>();
+const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
   const router = useRouter();
   const routes = useDetailRoutes();
-  const online = useIsOnline();
   const today = useLocalToday();
   const [preview, setPreview] = useState(false);
   const deleteMutation = useDeleteNoteMutation();
@@ -85,13 +81,11 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
       onDeleted: () => router.back(),
     },
   });
-  const { draft, updateDraft, entity, dirty, saveState, save } = editor;
+  const { draft, updateDraft, entity } = editor;
 
   const noteType: { readonly current: 'daily' | 'page' } = useLatest(
     entity?.type ?? 'page',
   );
-
-  useSaveOnBackground(dirty, save);
 
   const embedNote = useMemo(
     () => (entity ? { id: entity.id, area: entity.area } : null),
@@ -156,98 +150,44 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
     );
   };
 
-  const conflict = (
-    <ConflictPanel
-      entityId={id}
-      onResolved={(after) => {
-        if (after.type === 'open') router.replace(routes.notePath(after.id));
-        else if (after.type === 'close') router.back();
-        else onReload();
-      }}
-    />
-  );
-
-  if (editor.loadError) {
-    // A note or task deleted elsewhere no longer loads; its conflict still shows.
-    return (
-      <View style={styles.content}>
-        {conflict}
-        <Text style={styles.status} accessibilityRole="alert">
-          {editor.loadError}
-        </Text>
-      </View>
-    );
-  }
-
-  const ready = !editor.isLoading && entity;
-
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      contentInsetAdjustmentBehavior="automatic"
-      automaticallyAdjustKeyboardInsets
-      keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
+    <DetailEditorShell
+      editor={editor}
+      conflictId={id}
+      onReload={onReload}
+      openPath={routes.notePath}
+      loadingText="Loading note…"
+      menuLabel="Note actions"
+      onMenu={showMenu}
+      headerLargeTitleEnabled={false}
+      headerActions={(ready) => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Preview"
+          accessibilityState={{ selected: preview }}
+          onPress={() => setPreview((on) => !on)}
+          style={detailStyles.headerButton}
+          disabled={!ready}
+        >
+          <Icon
+            name={preview ? 'eye.fill' : 'eye'}
+            color={preview ? color.accent : color.ink}
+          />
+        </Pressable>
+      )}
+      backgroundColor={color.surface}
+      contentStyle={styles.content}
     >
-      <Stack.Screen
-        options={{
-          title: '',
-          headerLargeTitleEnabled: false,
-          headerRight: () => (
-            <View style={styles.headerRight}>
-              <Text
-                style={styles.saveState}
-                accessibilityRole="text"
-                accessibilityLiveRegion="polite"
-              >
-                {saveLabel(saveState, dirty, !online)}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Preview"
-                accessibilityState={{ selected: preview }}
-                onPress={() => setPreview((on) => !on)}
-                style={styles.headerButton}
-                disabled={!ready}
-              >
-                <Icon
-                  name={preview ? 'eye.fill' : 'eye'}
-                  color={preview ? color.accent : color.ink}
-                />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Note actions"
-                onPress={showMenu}
-                style={styles.headerButton}
-                disabled={!ready}
-              >
-                <Icon name="ellipsis.circle" color={color.ink} />
-              </Pressable>
-            </View>
-          ),
-        }}
-      />
-      {conflict}
-      {editor.saveError ? (
-        <Text style={styles.error} accessibilityRole="alert">
-          {editor.saveError}
-        </Text>
-      ) : null}
-      <EditorOfflineNotice dirty={dirty} />
-      {!ready ? (
-        <Text style={styles.status}>Loading note…</Text>
-      ) : (
+      {(note) => (
         <>
           <TextInput
             style={styles.title}
             accessibilityLabel="Title"
             placeholder="Untitled"
             placeholderTextColor={color.muted}
-            value={entity.type === 'daily' ? noteTitle(entity) : draft.title}
+            value={note.type === 'daily' ? noteTitle(note) : draft.title}
             onChangeText={setTitle}
-            editable={entity.type === 'page' && !preview}
+            editable={note.type === 'page' && !preview}
             multiline
             scrollEnabled={false}
             submitBehavior="blurAndSubmit"
@@ -256,10 +196,10 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
             <View
               style={styles.chip}
               accessible
-              accessibilityLabel={`Area: ${NOTEBOOK_AREA_LABELS[entity.area]}`}
+              accessibilityLabel={`Area: ${NOTEBOOK_AREA_LABELS[note.area]}`}
             >
               <Text style={styles.chipText}>
-                {NOTEBOOK_AREA_LABELS[entity.area]}
+                {NOTEBOOK_AREA_LABELS[note.area]}
               </Text>
             </View>
             {draft.pinned ? (
@@ -314,55 +254,26 @@ const NoteScreen = ({ onReload }: { onReload: () => void }) => {
               embeds={embeds}
               today={today}
               onOpenTask={openTask}
-              autoFocus={entity.type === 'page' && !entity.bodyMarkdown}
+              autoFocus={note.type === 'page' && !note.bodyMarkdown}
             />
           )}
         </>
       )}
-    </ScrollView>
+    </DetailEditorShell>
   );
 };
 
-/** Remounts the editor after a conflict is settled, so it takes the result. */
-const NoteScreenRoute = () => {
-  const { id = '' } = useLocalSearchParams<{ id: string }>();
-  const [epoch, setEpoch] = useState(0);
-  return (
-    <NoteScreen
-      key={`${id}:${epoch}`}
-      onReload={() => setEpoch((n) => n + 1)}
-    />
-  );
-};
-
-export default NoteScreenRoute;
+export default detailEditorRoute(NoteScreen);
 
 const CHIP_HEIGHT = 32;
 // Tag chips stay compact; the slop makes each a 44pt target.
 const CHIP_SLOP = (MIN_TARGET - CHIP_HEIGHT) / 2;
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: color.surface },
   content: {
     paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.space[12],
     gap: tokens.space[2],
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[1],
-  },
-  headerButton: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveState: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.inkSoft,
   },
   title: {
     ...font.bold,
@@ -399,17 +310,5 @@ const styles = StyleSheet.create({
     ...font.medium,
     fontSize: tokens.text.caption,
     color: color.accent,
-  },
-  error: {
-    ...font.medium,
-    fontSize: tokens.text.base,
-    color: color.alert,
-  },
-  status: {
-    ...font.regular,
-    fontSize: tokens.text.base,
-    color: color.inkSoft,
-    textAlign: 'center',
-    padding: tokens.space[6],
   },
 });

@@ -11,11 +11,7 @@ import {
   tableIndexesFromDescribeTable,
   type TableIndexDefinition,
 } from '../src/table.js';
-import {
-  isPublishRelevant,
-  isPublishRelevantAdminMutation,
-  PUBLISH_STREAM_SK,
-} from '../src/publish-relevance.js';
+import { isPublishRelevantAdminMutation } from '../src/publish-relevance.js';
 
 const gsi4: TableIndexDefinition = {
   indexName: 'gsi4',
@@ -319,15 +315,6 @@ describe('tableIndexesFromDescribeTable', () => {
     expect(() => assertAppTableGsiUpdateSafe(deployed)).toThrow(
       /at most one GSI create or delete/,
     );
-  });
-});
-
-describe('isPublishRelevant', () => {
-  it('matches the publisher stream sk filter', () => {
-    expect(PUBLISH_STREAM_SK).toBe('PUBLISHED');
-    expect(isPublishRelevant({ sk: { S: 'PUBLISHED' } })).toBe(true);
-    expect(isPublishRelevant({ sk: { S: 'META' } })).toBe(false);
-    expect(isPublishRelevant(undefined)).toBe(false);
   });
 });
 

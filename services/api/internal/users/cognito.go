@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
-	"github.com/gagnechris/gagnechris/services/api/internal/store"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 )
 
 type CognitoDirectory struct {
@@ -54,7 +54,7 @@ func isoMillis(t *time.Time) *string {
 	if t == nil {
 		return nil
 	}
-	s := store.ISOTime(*t)
+	s := jstime.ISO(*t)
 	return &s
 }
 
