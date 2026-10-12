@@ -72,7 +72,6 @@ test('a page is created, edited and deleted', async ({
   seed,
   prefix,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   await signIn();
   await page.goto(`${apps.notebook}/notes`);
   await page.getByRole('button', { name: 'New page' }).click();
@@ -92,6 +91,10 @@ test('a page is created, edited and deleted', async ({
     .toEqual({ title: `${prefix} Plan`, body: 'First draft' });
 
   await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await expect(page).toHaveURL(/\/notes(\?|$)/);
   await expect(page.getByText(`${prefix} Plan`)).toHaveCount(0);
   const { response } = await seed.api.GET('/api/notebook/notes/{id}', {
@@ -107,7 +110,6 @@ test('a quick-added task gets its title, deadline and priority, then completes, 
   seed,
   prefix,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
   await page.goto(`${apps.notebook}/tasks`);
@@ -139,6 +141,10 @@ test('a quick-added task gets its title, deadline and priority, then completes, 
     .not.toBe('done');
 
   await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await expect(page).toHaveURL(/\/tasks(\?|$)/);
   const { response } = await seed.api.GET('/api/notebook/tasks/{id}', {
     params: { path: { id } },

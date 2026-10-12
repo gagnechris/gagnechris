@@ -6,6 +6,7 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import '../index.css';
+import { ConfirmDialogHost } from './ui/ConfirmDialogHost';
 import { setAuthClientId } from './auth/config';
 
 export function mountWorkspaceApp(
@@ -17,6 +18,7 @@ export function mountWorkspaceApp(
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <RouterProvider router={router} />
+      <ConfirmDialogHost />
     </StrictMode>,
   );
 }

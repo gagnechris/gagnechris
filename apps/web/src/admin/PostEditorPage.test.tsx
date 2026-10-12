@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
+  answerConfirms,
   createTestQueryClient,
   PAST_AUTOSAVE_MS,
   QueryClientTestProvider,
@@ -356,7 +357,7 @@ describe('PostEditorPage delete', () => {
   test('no PUT after DELETE starts, no GET of deleted post, no leave prompt', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmSpy = answerConfirms(true);
 
     let resolveDelete!: (value: unknown) => void;
     del.mockImplementation(
@@ -393,6 +394,7 @@ describe('PostEditorPage delete', () => {
     await waitFor(() => expect(del).toHaveBeenCalledTimes(1));
     expect(confirmSpy).toHaveBeenCalledWith(
       expect.stringContaining('Soft-delete'),
+      'Delete',
     );
 
     // Autosave hold: no PUT while DELETE is in flight.
@@ -417,13 +419,11 @@ describe('PostEditorPage delete', () => {
         ([msg]) => typeof msg === 'string' && msg.includes('Leave'),
       ),
     ).toBe(false);
-
-    confirmSpy.mockRestore();
   });
 
   test('Delete waits for an in-flight PUT before calling DELETE', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    answerConfirms(true);
 
     let resolvePut!: (value: unknown) => void;
     let putStarted = false;
@@ -478,7 +478,6 @@ describe('PostEditorPage delete', () => {
     await waitFor(() => expect(del).toHaveBeenCalledTimes(1));
     expect(deleteOrder).toEqual(['put-resolve', 'delete']);
     await screen.findByText('Posts list');
-    confirmSpy.mockRestore();
   });
 
   test('a new post’s placeholder slug follows the title until the slug is edited', async () => {
@@ -642,7 +641,7 @@ describe('PostEditorPage navigation', () => {
 
   test('leave guard saves dirty edits before navigating away', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmSpy = answerConfirms(true);
     const router = renderWithRoutes();
 
     await screen.findByDisplayValue('Hello');
@@ -679,12 +678,11 @@ describe('PostEditorPage navigation', () => {
     await screen.findByText('Posts list');
     // Save landed, so there was nothing to ask about.
     expect(confirmSpy).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   test('leave guard asks when the save fails and stays on cancel', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirmSpy = answerConfirms(false);
     put.mockResolvedValue({
       data: undefined,
       error: { error: 'internal', message: 'Boom' },
@@ -702,17 +700,17 @@ describe('PostEditorPage navigation', () => {
     await waitFor(() =>
       expect(confirmSpy).toHaveBeenCalledWith(
         'Your changes could not be saved. Leave without saving?',
+        'Leave',
       ),
     );
     expect(router.state.location.pathname).toBe(`/posts/${basePost.id}`);
     expect(screen.queryByText('Posts list')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Markdown')).toHaveValue('line one dirty');
-    confirmSpy.mockRestore();
   });
 
   test('switching posts remounts the editor so A state does not leak into B', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    answerConfirms(true);
     put.mockResolvedValue({
       data: undefined,
       error: { error: 'conflict', message: 'Conflict' },
@@ -736,7 +734,6 @@ describe('PostEditorPage navigation', () => {
     // A's conflict banner must not carry over to B.
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText(/Reload and try again/)).not.toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 });
 

@@ -13,7 +13,7 @@ import type { Project } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import { projectPageView } from '@gagnechris/shared/render';
 import { renderProjectPageBodyHtml } from '@gagnechris/public-ui/server';
-import { QueryClientTestProvider } from '../test-utils';
+import { answerConfirms, QueryClientTestProvider } from '../test-utils';
 import ProjectEditorPage from './ProjectEditorPage';
 import { adminApi } from '../mockAdminApi';
 
@@ -245,7 +245,7 @@ describe('ProjectEditorPage fields', () => {
 
   test('an invalid link keeps the leave guard up and other link edits still save', async () => {
     const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const confirmSpy = answerConfirms(false);
     const router = renderEditor();
     await screen.findByDisplayValue('Notebook');
 
@@ -269,10 +269,10 @@ describe('ProjectEditorPage fields', () => {
     await waitFor(() =>
       expect(confirmSpy).toHaveBeenCalledWith(
         'Your changes could not be saved. Leave without saving?',
+        'Leave',
       ),
     );
     expect(screen.queryByText('Projects list')).not.toBeInTheDocument();
-    confirmSpy.mockRestore();
   });
 
   test('a link with a URL but no label asks for a label', async () => {
@@ -533,7 +533,7 @@ describe('ProjectEditorPage lifecycle', () => {
 
   test('Publish, Unpublish, Discard and Delete call the project routes', async () => {
     const user = userEvent.setup();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    answerConfirms(true);
     const published = {
       ...baseProject,
       status: 'published' as const,
@@ -609,7 +609,6 @@ describe('ProjectEditorPage lifecycle', () => {
     );
     await screen.findByText('Projects list');
     expect(router.state.location.pathname).toBe('/projects');
-    confirm.mockRestore();
   });
 
   test('a published project with href views live at its href', async () => {

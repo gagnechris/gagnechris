@@ -1,9 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useBlocker } from 'react-router-dom';
-import { useLatest, type ConfirmFn } from '@gagnechris/app-core';
-
-export const browserConfirm: ConfirmFn = (message) =>
-  Promise.resolve(window.confirm(message));
+import { useLatest } from '@gagnechris/app-core';
+import { appConfirm } from './confirmDialog';
 
 export type VersionedDocShellOptions = {
   dirty: boolean;
@@ -57,9 +55,10 @@ export function useVersionedDocShell({
       );
       const leave =
         saved ||
-        window.confirm(
+        (await appConfirm(
           'Your changes could not be saved. Leave without saving?',
-        );
+          'Leave',
+        ));
       handlingRef.current = false;
       if (leave) {
         blocker.proceed();

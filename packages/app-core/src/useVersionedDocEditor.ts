@@ -297,7 +297,7 @@ export function useVersionedDocController<
 
   const runDelete = useCallback(async () => {
     if (!deleteOpts || !enabled || isBusy()) return;
-    if (!(await confirm(deleteOpts.confirm))) return;
+    if (!(await confirm(deleteOpts.confirm, 'Delete'))) return;
     await withHold(async () => {
       // Wait out any in-flight autosave PUT so DELETE sends the version that save
       // produced, not the one before it.

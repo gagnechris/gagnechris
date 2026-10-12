@@ -2,7 +2,11 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { QueryClientTestProvider, testAuthUser } from '../test-utils';
+import {
+  answerConfirms,
+  QueryClientTestProvider,
+  testAuthUser,
+} from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookNotePage from './NotebookNotePage';
 import NotebookTodayPage from './NotebookTodayPage';
@@ -206,7 +210,7 @@ describe('Today after deleting its daily note', () => {
 
   test('shows an empty editor and the next save creates a new note', async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    answerConfirms(true);
     const router = renderNotebook();
     expect(
       await screen.findByRole('textbox', { name: 'Note body' }),

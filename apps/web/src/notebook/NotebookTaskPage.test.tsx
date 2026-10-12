@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
@@ -164,7 +164,7 @@ const SnoozeButton = () => {
   );
 };
 
-function renderPage() {
+function renderPage(initialEntries = [`/tasks/${TASK_ID}`]) {
   const routes: RouteObject[] = [
     {
       path: '/',
@@ -177,11 +177,13 @@ function renderPage() {
       children: [
         { path: 'tasks/:id', element: <NotebookTaskPage /> },
         { path: 'tasks', element: <h1>Task list</h1> },
+        { path: 'notes/:id', element: <h1>Standup note</h1> },
       ],
     },
   ];
   const router = createMemoryRouter(routes, {
-    initialEntries: [`/tasks/${TASK_ID}`],
+    initialEntries,
+    initialIndex: initialEntries.length - 1,
   });
   render(
     <QueryClientTestProvider queryClient={createTestQueryClient()}>
@@ -382,25 +384,44 @@ describe('NotebookTaskPage', () => {
     expect(title).toHaveValue('Call Sam!');
   });
 
-  test('Delete asks first, sends the version and goes back to Tasks', async () => {
+  test('Delete asks in the app first, sends the version and goes back to Tasks', async () => {
     seedTask();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
     const router = renderPage();
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'Delete' }));
-    expect(confirm).toHaveBeenCalledWith(
-      'Delete this task? It will disappear from your list.',
-    );
+    const dialog = screen.getByRole('alertdialog', {
+      name: 'Delete this task? It will disappear from your list.',
+    });
+    expect(
+      within(dialog).getByRole('button', { name: 'Delete' }),
+    ).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(api.deletes).toEqual([]);
 
-    confirm.mockReturnValueOnce(true);
     await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.keyboard('{Enter}');
     expect(
       await screen.findByRole('heading', { name: 'Task list' }),
     ).toBeInTheDocument();
     expect(api.deletes).toEqual([3]);
     expect(router.state.location.pathname).toBe('/tasks');
-    confirm.mockRestore();
+  });
+
+  test('Delete goes back to the note the task was opened from', async () => {
+    seedTask();
+    const router = renderPage(['/notes/n1', `/tasks/${TASK_ID}`]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', {
+        name: 'Delete',
+      }),
+    );
+    expect(
+      await screen.findByRole('heading', { name: 'Standup note' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/notes/n1');
   });
 
   test('a task that is not there shows why, with a way back', async () => {

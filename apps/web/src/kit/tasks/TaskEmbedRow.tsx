@@ -145,26 +145,29 @@ function TaskEmbedTitle({
     }
   };
 
+  // The wrapper mirrors the text so the field is only as wide as its title.
   return (
-    <textarea
-      ref={fieldRef}
-      rows={1}
-      className="task-embed__title task-embed__title-input"
-      aria-label="Task title"
-      value={value}
-      maxLength={NOTEBOOK_TITLE_MAX_LENGTH}
-      enterKeyHint="done"
-      spellCheck
-      onFocus={() => {
-        if (draftRef.current === null) edit(title);
-      }}
-      onChange={(e) => edit(e.target.value.replace(/\s*\n\s*/g, ' '))}
-      onBlur={() => {
-        if (draftRef.current !== null) commit();
-      }}
-      onKeyDown={onKeyDown}
-      onPaste={(e) => e.stopPropagation()}
-    />
+    <span className="task-embed__title-wrap" data-value={value}>
+      <textarea
+        ref={fieldRef}
+        rows={1}
+        className="task-embed__title task-embed__title-input"
+        aria-label="Task title"
+        value={value}
+        maxLength={NOTEBOOK_TITLE_MAX_LENGTH}
+        enterKeyHint="done"
+        spellCheck
+        onFocus={() => {
+          if (draftRef.current === null) edit(title);
+        }}
+        onChange={(e) => edit(e.target.value.replace(/\s*\n\s*/g, ' '))}
+        onBlur={() => {
+          if (draftRef.current !== null) commit();
+        }}
+        onKeyDown={onKeyDown}
+        onPaste={(e) => e.stopPropagation()}
+      />
+    </span>
   );
 }
 
@@ -221,6 +224,15 @@ export function TaskEmbedRow({
     <div
       className={`task-embed${done ? ' task-embed--done' : ''}${dropped ? ' task-embed--dropped' : ''}`}
       data-task-status={task.status}
+      onMouseDown={(e) => {
+        // The title is only as wide as its text; a press on the rest of the
+        // row edits it, as a full-width field would.
+        const field = e.currentTarget.querySelector('textarea');
+        if (e.target !== e.currentTarget || !field) return;
+        e.preventDefault();
+        field.focus();
+        field.setSelectionRange(field.value.length, field.value.length);
+      }}
     >
       <input
         type="checkbox"
@@ -241,6 +253,16 @@ export function TaskEmbedRow({
       ) : (
         <span className="task-embed__title">{task.title}</span>
       )}
+      {to ? (
+        <Link
+          to={to}
+          className="task-embed__open"
+          aria-label={`Open task ${task.title}`}
+          title="Open task"
+        >
+          ↗
+        </Link>
+      ) : null}
       {dropped ? <span className="task-embed__pill">Dropped</span> : null}
       {schedule ? (
         <span className="task-embed__pill task-embed__pill--schedule">
@@ -252,16 +274,6 @@ export function TaskEmbedRow({
         <span className={`task-embed__pill task-embed__pill--${task.priority}`}>
           {priority}
         </span>
-      ) : null}
-      {to ? (
-        <Link
-          to={to}
-          className="task-embed__open"
-          aria-label={`Open task ${task.title}`}
-          title="Open task"
-        >
-          ↗
-        </Link>
       ) : null}
     </div>
   );

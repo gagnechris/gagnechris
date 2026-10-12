@@ -215,11 +215,31 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   color: var(--color-error);
 }
 
-.task-embed__title-input {
-  flex: 1 1 auto;
-  width: 0;
-  height: auto;
+/* A hidden copy of the text sizes the wrapper and the field fills it, so the
+   field is as wide as its title and wraps once the row runs out of room. */
+.task-embed__title-wrap {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
   margin: 0 -0.25rem;
+}
+
+.task-embed__title-wrap::after {
+  content: attr(data-value) ' ';
+  display: block;
+  min-width: 2ch;
+  padding: 0.0625rem 0.25rem;
+  visibility: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.task-embed__title-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: auto;
+  margin: 0;
   padding: 0.0625rem 0.25rem;
   overflow: hidden;
   border: 0;
@@ -266,13 +286,21 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 }
 
 .task-embed__open {
-  margin-inline-start: auto;
-  color: var(--neutral-400);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  color: var(--primary-600);
+  font-weight: 600;
   text-decoration: none;
 }
 
 .task-embed__open:hover,
 .task-embed__open:focus-visible {
+  background: var(--primary-50);
   color: var(--primary-700);
 }
 
@@ -354,8 +382,13 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
     outline-offset: -9px;
   }
 
-  .task-embed__title-input {
+  .task-embed__title-wrap {
     font-size: max(16px, 1em);
+  }
+
+  .task-embed__open {
+    width: 2.25rem;
+    height: 44px;
   }
 }
 

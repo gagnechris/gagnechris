@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   emptyTaskDraft,
   taskDraftFromTask,
@@ -26,6 +26,7 @@ import {
 export default function NotebookTaskPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const today = useLocalToday();
   const phone = useMediaQuery(PHONE_QUERY);
   const deleteMutation = useDeleteTaskMutation();
@@ -67,7 +68,9 @@ export default function NotebookTaskPage() {
         await deleteMutation.mutateAsync({ id: id, version });
       },
       onDeleted: () => {
-        void navigate('/tasks');
+        // Back to wherever the task was opened from; Tasks when it was the first page.
+        if (location.key === 'default') void navigate('/tasks');
+        else void navigate(-1);
       },
     },
   });

@@ -39,7 +39,8 @@ test('a task lists every note that embeds it, with the context under the embed',
   // Removing the embed drops the note from the list once the note saves.
   await page.goto(`${apps.notebook}/notes/${second.id}`);
   const editor = page.getByRole('textbox', { name: 'Note body' });
-  await editor.click();
+  // On the text line: a press on the task row would edit the task's title.
+  await editor.getByText('Dry run on staging.').click();
   await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('Dry run on staging.');
   await expect

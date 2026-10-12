@@ -25,8 +25,8 @@ export const confirmAction = (
   });
 
 /** app-core's confirm for editor prompts (leave without saving, delete). */
-export const nativeConfirm: ConfirmFn = (message) =>
-  confirmAction(message, '', 'OK');
+export const nativeConfirm: ConfirmFn = (message, action = 'OK') =>
+  confirmAction(message, '', action);
 
 export const showError = (title: string, message: string) =>
   Alert.alert(title, message);

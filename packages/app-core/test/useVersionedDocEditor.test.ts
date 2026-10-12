@@ -149,7 +149,7 @@ describe('useVersionedDocEditor fake note', () => {
     await act(async () => {
       await result.current.runDelete();
     });
-    expect(confirm).toHaveBeenCalledWith('Delete this note?');
+    expect(confirm).toHaveBeenCalledWith('Delete this note?', 'Delete');
     expect(onDeleted).toHaveBeenCalledTimes(1);
     expect(result.current.suppressLeaveGuardRef.current).toBe(true);
     expect(result.current.dirty).toBe(false);

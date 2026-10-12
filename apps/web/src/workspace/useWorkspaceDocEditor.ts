@@ -3,7 +3,8 @@ import {
   type VersionedDocEditorOptions,
 } from '@gagnechris/app-core';
 import { browserRetrySignals } from './browserRetrySignals';
-import { browserConfirm, useVersionedDocShell } from './useVersionedDocShell';
+import { appConfirm } from './confirmDialog';
+import { useVersionedDocShell } from './useVersionedDocShell';
 
 /** For non-publishable docs: no ⌘⏎ publish. */
 export function useWorkspaceDocEditor<
@@ -15,7 +16,7 @@ export function useWorkspaceDocEditor<
 ) {
   const editor = useVersionedDocEditor({
     ...options,
-    confirm: browserConfirm,
+    confirm: appConfirm,
     retrySignals: browserRetrySignals,
   });
 

@@ -86,7 +86,6 @@ test('a daily note opened by id is deleted on Today and can be started again', a
   seed,
 }) => {
   const old = await seed.daily('2026-10-02', 'Old notes');
-  page.on('dialog', (dialog) => void dialog.accept());
   await signIn();
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await page.goto(`${apps.notebook}/notes/${old.id}`);
@@ -94,6 +93,10 @@ test('a daily note opened by id is deleted on Today and can be started again', a
   const editor = page.getByRole('textbox', { name: 'Note body' });
   await expect(editor).toContainText('Old notes');
   await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await expect(editor).not.toContainText('Old notes');
   await editor.click();
   await page.keyboard.type('Fresh start');
