@@ -215,6 +215,33 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   color: var(--color-error);
 }
 
+.task-embed__title-input {
+  flex: 1 1 auto;
+  width: 0;
+  height: auto;
+  margin: 0 -0.25rem;
+  padding: 0.0625rem 0.25rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  resize: none;
+}
+
+@media (hover: hover) {
+  .task-embed__title-input:hover {
+    background: var(--neutral-50);
+  }
+}
+
+.task-embed__title-input:focus {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 0;
+}
+
 .task-embed__pill {
   flex: none;
   padding: 0 0.4rem;
@@ -325,6 +352,10 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   .task-embed__check:focus-visible {
     outline: 2px solid var(--primary-600);
     outline-offset: -9px;
+  }
+
+  .task-embed__title-input {
+    font-size: max(16px, 1em);
   }
 }
 

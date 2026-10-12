@@ -91,6 +91,7 @@ export function useNoteTaskEmbedSync({
   const { mutateAsync: patchTask } = usePatchTaskMutation();
   const { toggle, error: toggleError } = useTaskToggle();
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const [pending, setPending] = useState<ReadonlyMap<string, Pending>>(
     () => new Map(),
   );
@@ -176,28 +177,6 @@ export function useNoteTaskEmbedSync({
     [patchTask, queryClient],
   );
 
-  // One rename at a time per task, each on the version the last one left.
-  const renames = useRef(new Map<string, Promise<void>>());
-  const rename = useCallback(
-    (id: string, title: string) => {
-      const prev = renames.current.get(id) ?? Promise.resolve();
-      const next = prev.then(async () => {
-        const current = queryClient.getQueryData<Task>(
-          queryKeys.tasks.detail(id),
-        );
-        if (!current || current.title === title) return;
-        setSyncError(null);
-        try {
-          await patchTask({ id, version: current.version, patch: { title } });
-        } catch (err) {
-          setSyncError(taskActionError('rename', current.title, err));
-        }
-      });
-      renames.current.set(id, next);
-    },
-    [patchTask, queryClient],
-  );
-
   const startCreate = useCallback(
     (id: string, draft: TaskLineDraft) => {
       chains.current.set(
@@ -228,6 +207,35 @@ export function useNoteTaskEmbedSync({
       );
     },
     [startCreate, syncDraft],
+  );
+
+  // One rename at a time per task, each on the version the last one left.
+  const renames = useRef(new Map<string, Promise<void>>());
+  const rename = useCallback(
+    (task: Task, title: string) => {
+      // A later re-conversion of this line must not patch the old title back.
+      const draft = latest.current.get(task.id);
+      if (draft) latest.current.set(task.id, { ...draft, title });
+      const prev = renames.current.get(task.id) ?? Promise.resolve();
+      const next = prev.then(async () => {
+        const current =
+          queryClient.getQueryData<Task>(queryKeys.tasks.detail(task.id)) ??
+          task;
+        if (title === current.title) return;
+        setRenameError(null);
+        try {
+          await patchTask({
+            id: task.id,
+            version: current.version,
+            patch: { title },
+          });
+        } catch (err) {
+          setRenameError(taskActionError('rename', current.title, err));
+        }
+      });
+      renames.current.set(task.id, next);
+    },
+    [patchTask, queryClient],
   );
 
   const ids = useMemo(
@@ -269,7 +277,7 @@ export function useNoteTaskEmbedSync({
         schedule: taskScheduleLabel(task.startDate, today, task.someday),
         due: taskDue(task, today),
         onToggle: () => void toggle(task),
-        onRename: (title) => rename(id, title),
+        onRename: (title) => rename(task, title),
       };
     }
     if (
@@ -281,5 +289,5 @@ export function useNoteTaskEmbedSync({
     return { kind: 'loading' };
   };
 
-  return { onCreate, stateOf, error: toggleError ?? syncError };
+  return { onCreate, stateOf, error: toggleError ?? renameError ?? syncError };
 }
