@@ -113,8 +113,6 @@
 
 .users-icon-btn:hover {
   background: var(--neutral-100);
-  transform: none;
-  box-shadow: none;
 }
 
 .users-link-btn {
