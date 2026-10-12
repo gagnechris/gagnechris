@@ -274,6 +274,8 @@ function typeInto(view: EditorView, text: string) {
 }
 
 const KEY_CODES: Record<string, number> = {
+  Backspace: 8,
+  Delete: 46,
   Enter: 13,
   Escape: 27,
   ArrowUp: 38,
@@ -1000,6 +1002,108 @@ describe('editing an embedded task title in place', () => {
     expect(view.state.selection.main.head).toBe(view.state.doc.line(2).to);
     expect(view.hasFocus).toBe(true);
     expect(api.taskPuts).toEqual([]);
+  });
+
+  describe('from the keyboard', () => {
+    const body = `Standup\n${tokenLine(TASK_ID)}\nnotes`;
+
+    test('arrowing onto the embed line puts the caret in its title', async () => {
+      seedTask();
+      renderNotes(body);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+
+      act(() => {
+        view.focus();
+        view.dispatch({
+          selection: { anchor: view.state.doc.line(2).from },
+          userEvent: 'select',
+        });
+      });
+
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(field.selectionStart).toBe(0);
+    });
+
+    test('arrow keys in the title leave for the lines above and below', async () => {
+      seedTask();
+      renderNotes(body);
+      const user = userEvent.setup();
+      const view = await editorView(noteA());
+
+      await user.click(await titleIn(noteA()));
+      await user.keyboard('{ArrowUp}');
+      expect(view.hasFocus).toBe(true);
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+
+      await user.click(await titleIn(noteA()));
+      await user.keyboard('{ArrowDown}');
+      expect(view.hasFocus).toBe(true);
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(3).from);
+      expect(view.state.doc.toString()).toBe(body);
+    });
+
+    test('typing beside the row goes into the title, not the token', async () => {
+      seedTask();
+      const { onChange } = renderNotes(body);
+      const user = userEvent.setup();
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+
+      act(() => {
+        view.focus();
+        const end = view.state.doc.line(2).to;
+        view.dispatch({
+          changes: { from: end, insert: '!' },
+          selection: { anchor: end + 1 },
+          userEvent: 'input.type',
+        });
+      });
+
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveValue('Call Sam!'));
+      expect(field).toHaveFocus();
+      expect(view.state.doc.toString()).toBe(body);
+      expect(onChange).not.toHaveBeenCalled();
+
+      await user.tab();
+      await waitFor(() =>
+        expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam!'),
+      );
+    });
+
+    test('Backspace at the start of the next line goes into the title instead of joining', async () => {
+      seedTask();
+      renderNotes(body);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+      act(() => {
+        view.dispatch({ selection: { anchor: view.state.doc.line(3).from } });
+      });
+
+      press(view, 'Backspace');
+
+      expect(view.state.doc.toString()).toBe(body);
+      const field = await titleIn(noteA());
+      await waitFor(() => expect(field).toHaveFocus());
+      expect(field.selectionStart).toBe('Call Sam'.length);
+    });
+
+    test('Backspace on an empty line under the row removes the line', async () => {
+      seedTask();
+      renderNotes(`Standup\n${tokenLine(TASK_ID)}\n`);
+      await titleIn(noteA());
+      const view = await editorView(noteA());
+      act(() => {
+        view.dispatch({ selection: { anchor: view.state.doc.length } });
+      });
+
+      press(view, 'Backspace');
+
+      expect(view.state.doc.toString()).toBe(`Standup\n${tokenLine(TASK_ID)}`);
+      await waitFor(async () => expect(await titleIn(noteA())).toHaveFocus());
+    });
   });
 
   test('a done task stays struck through and can still be renamed', async () => {

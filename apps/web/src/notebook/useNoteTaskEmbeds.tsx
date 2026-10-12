@@ -1,12 +1,10 @@
 import { useNoteTaskEmbedSync, type EmbedNote } from '@gagnechris/app-core';
 import type { Extension } from '@codemirror/state';
-import { useTaskEmbedEditor } from '../kit/markdown/taskEmbeds';
 import {
-  TaskEmbedRow,
-  type TaskEmbedDelete,
-  type TaskEmbedLeave,
-  type TaskEmbedView,
-} from '../kit/tasks/TaskEmbedRow';
+  useTaskEmbedEditor,
+  type TaskEmbedControls,
+} from '../kit/markdown/taskEmbeds';
+import { TaskEmbedRow, type TaskEmbedView } from '../kit/tasks/TaskEmbedRow';
 import { useLocalToday } from './useLocalToday';
 
 const NO_EXTENSIONS: Extension[] = [];
@@ -43,11 +41,14 @@ export function useNoteTaskEmbeds({
     return saved ? { ...view, to: `/tasks/${saved.id}` } : view;
   };
 
-  const renderEmbed = (
-    id: string,
-    leave?: TaskEmbedLeave,
-    remove?: TaskEmbedDelete,
-  ) => <TaskEmbedRow view={viewOf(id)} onLeave={leave} onDelete={remove} />;
+  const renderEmbed = (id: string, controls?: TaskEmbedControls) => (
+    <TaskEmbedRow
+      view={viewOf(id)}
+      onLeave={controls?.leave}
+      onDelete={controls?.remove}
+      onMove={controls?.move}
+    />
+  );
   const { extensions, portals } = useTaskEmbedEditor({
     onCreate,
     onRemove: onRemoved,
