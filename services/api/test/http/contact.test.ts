@@ -4,9 +4,14 @@ import { join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { GetCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import {
+  CONTACT_EMAIL_MAX_LENGTH,
+  CONTACT_HONEYPOT_MAX_LENGTH,
+  CONTACT_MESSAGE_MAX_LENGTH,
+  CONTACT_NAME_MAX_LENGTH,
   CONTACT_PER_IP_PER_HOUR,
   MIN_CONTACT_SUBMIT_MS,
   RESUME_NOTIFY_SES_DAILY_CAP,
+  RESUME_REFERRER_MAX_LENGTH,
   SES_GLOBAL_DAILY_CAP,
 } from '@gagnechris/shared';
 import { useApi } from './support/harness.js';
@@ -115,10 +120,10 @@ describe('POST /api/contact', () => {
       'too long fields',
       {
         ...valid,
-        name: 'n'.repeat(201),
-        email: `${'e'.repeat(320)}@example.com`,
-        message: 'm'.repeat(10_001),
-        hp_field: 'h'.repeat(201),
+        name: 'n'.repeat(CONTACT_NAME_MAX_LENGTH + 1),
+        email: `${'e'.repeat(CONTACT_EMAIL_MAX_LENGTH - '@example.com'.length + 1)}@example.com`,
+        message: 'm'.repeat(CONTACT_MESSAGE_MAX_LENGTH + 1),
+        hp_field: 'h'.repeat(CONTACT_HONEYPOT_MAX_LENGTH + 1),
       },
       {
         name: 'too_big',
@@ -156,7 +161,7 @@ describe('POST /api/contact', () => {
 
   it('counts length in code points, as the form does', async () => {
     const res = await h.api.request('POST', '/api/contact', {
-      body: { ...valid, name: '😀'.repeat(200) },
+      body: { ...valid, name: '😀'.repeat(CONTACT_NAME_MAX_LENGTH) },
     });
     expect(res.status).toBe(200);
   });
@@ -330,7 +335,7 @@ describe('POST /api/resume/download', () => {
 
   it('rejects a bad referrer', async () => {
     const res = await h.api.request('POST', '/api/resume/download', {
-      body: { referrer: 'r'.repeat(501) },
+      body: { referrer: 'r'.repeat(RESUME_REFERRER_MAX_LENGTH + 1) },
     });
     expect(res.status).toBe(400);
     expect(res.body).toEqual({

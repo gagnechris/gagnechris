@@ -6,18 +6,27 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 )
 
 // Auth is who may call a route. Protected routes live under the prefixes API
 // Gateway's JWT authorizer covers (infra/lib/stacks/api-stack.ts).
-type Auth string
+type Auth int
 
 const (
-	Public    Auth = "public"
-	SiteAdmin Auth = "site-admin"
-	UserAdmin Auth = "user-admin"
-	Notebook  Auth = "notebook"
+	Public Auth = iota
+	SiteAdmin
+	UserAdmin
+	Notebook
 )
+
+func (a Auth) String() string {
+	if policy, ok := authPolicies[a]; ok {
+		return policy.group
+	}
+	return "public"
+}
 
 // ClientIDs are the Cognito app clients whose tokens the router trusts. The
 // iOS app has both spaces, so its client is trusted on every prefix; the group
@@ -37,10 +46,12 @@ type authPolicy struct {
 func adminWeb(c ClientIDs) string    { return c.AdminWeb }
 func notebookWeb(c ClientIDs) string { return c.NotebookWeb }
 
+var groups = contract.Data.Users.Groups
+
 var authPolicies = map[Auth]authPolicy{
-	SiteAdmin: {prefix: "/admin", group: "site-admin", clientID: adminWeb},
-	UserAdmin: {prefix: "/admin", group: "user-admin", clientID: adminWeb},
-	Notebook:  {prefix: "/notebook", group: "notebook", clientID: notebookWeb},
+	SiteAdmin: {prefix: "/admin", group: groups.SiteAdmin, clientID: adminWeb},
+	UserAdmin: {prefix: "/admin", group: groups.UserAdmin, clientID: adminWeb},
+	Notebook:  {prefix: "/notebook", group: groups.Notebook, clientID: notebookWeb},
 }
 
 const userAdminPath = "/admin/users"

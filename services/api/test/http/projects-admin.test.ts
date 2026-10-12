@@ -1,4 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import {
+  MAX_SLUG_LENGTH,
+  PROJECT_LINKS_MAX,
+  PROJECT_LINK_LABEL_MAX_LENGTH,
+  PROJECT_NAME_MAX_LENGTH,
+  PROJECT_ORDER_MAX,
+  PROJECT_PITCH_MAX_LENGTH,
+  PROJECT_STACK_ITEM_MAX_LENGTH,
+  PROJECT_STACK_MAX,
+  PROJECT_STAGE_NOTE_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import type { Project } from '@gagnechris/shared';
@@ -141,9 +152,9 @@ describe('POST /api/admin/projects', () => {
       {
         name: '   ',
         slug: '',
-        pitch: 'x'.repeat(301),
+        pitch: 'x'.repeat(PROJECT_PITCH_MAX_LENGTH + 1),
         stage: 'done',
-        stageNote: 'x'.repeat(81),
+        stageNote: 'x'.repeat(PROJECT_STAGE_NOTE_MAX_LENGTH + 1),
         previewImage: 'a.png',
         bodyMarkdown: null,
         stack: 'Go',
@@ -169,17 +180,20 @@ describe('POST /api/admin/projects', () => {
     ],
     [
       {
-        name: 'x'.repeat(121),
-        slug: 'x'.repeat(121),
+        name: 'x'.repeat(PROJECT_NAME_MAX_LENGTH + 1),
+        slug: 'x'.repeat(MAX_SLUG_LENGTH + 1),
         previewImage: '/media/../a.png',
-        stack: [' ', 'x'.repeat(51), 3],
+        stack: [' ', 'x'.repeat(PROJECT_STACK_ITEM_MAX_LENGTH + 1), 3],
         links: [
           'x',
           { label: ' ', url: 'javascript:alert(1)' },
-          { label: 'x'.repeat(101), url: '//evil.example' },
+          {
+            label: 'x'.repeat(PROJECT_LINK_LABEL_MAX_LENGTH + 1),
+            url: '//evil.example',
+          },
           { url: 'https://a.example@evil.example' },
         ],
-        order: 1_000_000,
+        order: PROJECT_ORDER_MAX + 1,
         href: '//evil.example',
       },
       {
@@ -202,8 +216,11 @@ describe('POST /api/admin/projects', () => {
     ],
     [
       {
-        stack: Array.from({ length: 31 }, (_, i) => `s${i}`),
-        links: Array.from({ length: 21 }, () => ({ label: 'x', url: '/x' })),
+        stack: Array.from({ length: PROJECT_STACK_MAX + 1 }, (_, i) => `s${i}`),
+        links: Array.from({ length: PROJECT_LINKS_MAX + 1 }, () => ({
+          label: 'x',
+          url: '/x',
+        })),
         order: 1.5,
         href: 'https://a b.example',
         previewImage: '/media/a\u00a0b.png',

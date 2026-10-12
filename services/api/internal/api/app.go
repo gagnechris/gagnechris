@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
@@ -77,6 +78,6 @@ func (a *App) internalError(log *slog.Logger, err error, stack string) *Response
 		attrs = append(attrs, "stack", stack)
 	}
 	log.Error("handler error", attrs...)
-	a.metrics.Add("HandlerError", observability.Count, 1)
+	a.metrics.Add(contract.Data.API.Metrics.HandlerError, observability.Count, 1)
 	return withAPIHeaders(JSON(http.StatusInternalServerError, map[string]any{"error": "internal_error"}), true)
 }

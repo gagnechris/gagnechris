@@ -12,15 +12,16 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
+var pageSize = contract.Data.Limits.PostsPageSize
+
 const (
-	gsi1Name = "gsi1"
-	pageSize = 50
 	// A search keeps few rows per read, so it reads full pages instead of
 	// what is left of the page.
 	searchReadPage = 200
@@ -66,7 +67,7 @@ func (r *repo) list(ctx context.Context, status, cursor string, limit int, q str
 		pk := keys.StatusGSI1Pk(partition)
 		query := store.PageQuery{
 			Input: dynamodb.QueryInput{
-				IndexName:                 aws.String(gsi1Name),
+				IndexName:                 aws.String(keys.GSI1),
 				KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 				ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 				ScanIndexForward:          aws.Bool(false),
@@ -135,7 +136,7 @@ func (r *repo) counts(ctx context.Context) (counts, error) {
 func (r *repo) countStatus(ctx context.Context, status string) (int, error) {
 	pages := dynamodb.NewQueryPaginator(r.table.DB, &dynamodb.QueryInput{
 		TableName:                 aws.String(r.table.Name),
-		IndexName:                 aws.String(gsi1Name),
+		IndexName:                 aws.String(keys.GSI1),
 		KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(keys.StatusGSI1Pk(status))},
 		Select:                    types.SelectCount,

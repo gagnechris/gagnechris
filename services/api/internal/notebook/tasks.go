@@ -18,7 +18,6 @@ import (
 
 const (
 	taskChangeType = "task"
-	gsi2           = "gsi2"
 	// carryInMax keeps a carried-in block readable; the rest stay in Still
 	// open.
 	carryInMax = 100
@@ -301,7 +300,7 @@ func (r *tasksRepo) listByNote(ctx context.Context, userID string, q listTasksQu
 	pk := keys.NoteTasksGSI2Pk(userID, q.noteID)
 	page, err := store.QueryPage(ctx, r.table, store.PageQuery{
 		Input: dynamodb.QueryInput{
-			IndexName:                 aws.String(gsi2),
+			IndexName:                 aws.String(keys.GSI2),
 			KeyConditionExpression:    aws.String("gsi2pk = :pk"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 			ScanIndexForward:          aws.Bool(true),

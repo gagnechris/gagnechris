@@ -10,6 +10,8 @@ export {
 export {
   API_LAMBDA_TIMEOUT_MS,
   GSI1_NAME,
+  GSI2_NAME,
+  GSI3_NAME,
   SK_META,
   SK_PUBLISHED,
   SYNC_CREATE_CLAIM_TTL_DAYS,
@@ -75,7 +77,7 @@ export {
 export {
   APP_TABLE,
   LAST_DEPLOYED_GSIS,
-  appTableAttributeDefinitions,
+  appTableCreateInput,
   appTableName,
   assertAppTableGsiUpdateSafe,
   assertSafeGsiUpdate,

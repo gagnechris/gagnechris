@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 )
 
 type memRemoved map[string]removedUser
@@ -34,24 +36,24 @@ func (m memRemoved) delete(_ context.Context, id string) error {
 	return nil
 }
 
-func TestLevelFromGroups(t *testing.T) {
-	for _, tc := range []struct {
-		groups []string
-		want   string
-	}{
-		{[]string{"user-admin", "notebook", "site-admin"}, "full"},
-		{[]string{"user-admin", "site-admin"}, "cms"},
-		{[]string{"notebook", "user-admin"}, "notebook"},
-		{[]string{"user-admin"}, ""},
-	} {
-		got := ""
-		if l := levelFromGroups(tc.groups); l != nil {
-			got = *l
-		}
-		if got != tc.want {
-			t.Errorf("%v: %q, want %q", tc.groups, got, tc.want)
+func TestLevelFromGroupsMatchesTypeScript(t *testing.T) {
+	cases := contract.Data.Users.LevelCases
+	if len(cases) == 0 {
+		t.Fatal("no level cases in the contract")
+	}
+	for _, tc := range cases {
+		got, want := levelFromGroups(tc.Groups), tc.Level
+		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
+			t.Errorf("%v: %v, want %v", tc.Groups, deref(got), deref(want))
 		}
 	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
 }
 
 func TestRemoveKeepsTheFirstLevelAndRestoreBringsItBack(t *testing.T) {
