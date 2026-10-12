@@ -13,8 +13,9 @@ export type ToolbarAction =
   | 'dateToken'
   | 'link';
 
-const lineStart = (text: string, offset: number) =>
-  text.lastIndexOf('\n', offset - 1) + 1;
+// lastIndexOf clamps a negative start to 0, which would find a leading '\n'.
+export const lineStart = (text: string, offset: number) =>
+  offset <= 0 ? 0 : text.lastIndexOf('\n', offset - 1) + 1;
 
 const INDENT = /^[ \t]*/;
 

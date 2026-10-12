@@ -44,6 +44,7 @@ import {
 import { PickDateModal } from './PickDateModal';
 import {
   applyToolbarAction,
+  lineStart,
   type Selection,
   type ToolbarAction,
 } from './toolbarEdits';
@@ -296,8 +297,8 @@ export const NoteBodyEditor = ({
     const text = segmentText(focusedText);
     const caret = focus.selection.end;
     if (focus.selection.start !== caret) return null;
-    const lineStart = text.lastIndexOf('\n', caret - 1) + 1;
-    if (!TASK_LINE_PREFIX.test(text.slice(lineStart))) return null;
+    const from = lineStart(text, caret);
+    if (!TASK_LINE_PREFIX.test(text.slice(from))) return null;
     return openTaskDateQuery(text, caret, today);
   }, [focus, focusedText, today]);
 
