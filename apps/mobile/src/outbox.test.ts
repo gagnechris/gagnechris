@@ -13,6 +13,7 @@ import {
   outboxFailedCount,
   outboxMiddleware,
   outboxPendingCount,
+  outboxUnattendedCount,
   startOutbox,
   stopOutbox,
 } from './outbox';
@@ -21,7 +22,7 @@ import {
   resetUpgradeRequired,
   setUpgradeRequired,
 } from './sync/upgradeRequired';
-import { hasLocalEdits } from './outbox/session';
+import { hasLocalEdits, subscribeOutbox } from './outbox/session';
 
 vi.mock('@react-native-async-storage/async-storage', async () => ({
   default: (await import('../test/nativeFakes')).asyncStorage,
@@ -98,6 +99,48 @@ describe('the outbox', () => {
     expect(data?.version).toBe(2);
     expect(server.state.store.get('n1')?.bodyMarkdown).toBe('online');
     expect(outboxPendingCount()).toBe(0);
+  });
+
+  it('never counts an online save as unsaved while its caller waits for the server', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal('fetch', async (request: Request) => {
+      await gate;
+      return server.fetch(request);
+    });
+    await stopOutbox();
+    client = createApiClient({
+      baseUrl: 'http://api.test',
+      getToken: async () => 'local-ios:u1',
+      before: [outboxMiddleware],
+    });
+    await startOutbox({ db: openOutboxDb, client, queryClient });
+    const seen: number[] = [];
+    const unsubscribe = subscribeOutbox(() =>
+      seen.push(outboxUnattendedCount()),
+    );
+
+    const reply = putNote('n1', { version: 1, bodyMarkdown: 'typing' });
+    await vi.waitFor(() => expect(outboxPendingCount()).toBe(1));
+    expect(outboxUnattendedCount()).toBe(0);
+    release();
+    expect((await reply).data?.version).toBe(2);
+    unsubscribe();
+    expect(outboxPendingCount()).toBe(0);
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((count) => count === 0)).toBe(true);
+  });
+
+  it('counts a save once its caller stops waiting on a failing server', async () => {
+    server.state.refuseWrites = {
+      status: 503,
+      body: { error: 'unavailable', message: 'Unavailable' },
+    };
+    const reply = await putNote('n1', { version: 1, bodyMarkdown: 'later' });
+    expect(reply.data?.bodyMarkdown).toBe('later');
+    expect(outboxUnattendedCount()).toBe(1);
   });
 
   it('keeps a day of offline edits through a relaunch and sends each once', async () => {

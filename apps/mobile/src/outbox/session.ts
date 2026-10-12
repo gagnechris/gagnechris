@@ -162,6 +162,12 @@ export const subscribeOutbox = (listener: () => void) => {
 export const outboxPendingCount = () =>
   current ? current.count() - current.failedCount() : 0;
 
+/**
+ * Pending edits no editor is still waiting on: an online save shows as
+ * Saving… in its editor until the server answers, so it isn't counted.
+ */
+export const outboxUnattendedCount = () => current?.unattendedCount() ?? 0;
+
 /** Edits the server refused; they wait for a decision. */
 export const outboxFailedCount = () => current?.failedCount() ?? 0;
 

@@ -117,6 +117,11 @@ export class Outbox {
 
   failedCount = () => this.ops.filter((op) => op.state === 'failed').length;
 
+  /** Pending ops whose caller has stopped waiting for the server's reply. */
+  unattendedCount = () =>
+    this.ops.filter((op) => op.state !== 'failed' && !this.waiters.has(op.seq))
+      .length;
+
   hasEntity = (id: string) => this.ops.some((op) => op.entityId === id);
 
   pending = (): readonly Op[] => this.ops;
@@ -153,20 +158,28 @@ export class Outbox {
     );
     if (!target) return undefined;
 
-    const queued = await this.serial(() => this.enqueue({ ...target, body }));
-    if (!queued) return undefined;
-    if (queued.seq === null || !this.deps.isOnline()) return queued.optimistic;
-    const reply = new Promise<Response>((resolve) => {
-      const list = this.waiters.get(queued.seq!) ?? [];
-      list.push({ resolve, optimistic: queued.optimistic });
-      this.waiters.set(queued.seq!, list);
+    const online = this.deps.isOnline();
+    let resolve: (response: Response) => void = () => {};
+    const reply = new Promise<Response>((done) => {
+      resolve = done;
     });
+    const queued = await this.serial(() =>
+      this.enqueue({ ...target, body }, online ? resolve : undefined),
+    );
+    if (!queued) return undefined;
+    if (queued.seq === null || !online) return queued.optimistic;
     void this.drain();
     return reply;
   }
 
+  /**
+   * The caller's `reply`, if given, waits for the server; it is registered
+   * before listeners hear of the op, so a save the caller still waits on is
+   * never counted as unattended, even for a moment.
+   */
   private async enqueue(
     next: Target,
+    reply?: (response: Response) => void,
   ): Promise<
     { seq: number | null; optimistic: Response; entity?: Entity } | undefined
   > {
@@ -212,6 +225,10 @@ export class Outbox {
       merged!.body = plan.body;
       merged!.path = path;
       merged!.base = plan.base;
+      if (reply) {
+        this.wait(plan.seq, { resolve: reply, optimistic });
+        this.notify();
+      }
       return { seq: plan.seq, optimistic, entity };
     }
 
@@ -231,6 +248,7 @@ export class Outbox {
       status: null,
       error: null,
     });
+    if (reply) this.wait(seq, { resolve: reply, optimistic });
     this.notify();
     return { seq, optimistic, entity };
   }
@@ -563,18 +581,25 @@ export class Outbox {
     void this.drain();
   }
 
+  private wait(seq: number, waiter: Waiter) {
+    this.waiters.set(seq, [...(this.waiters.get(seq) ?? []), waiter]);
+  }
+
   private resolveWaiters(seq: number, response: (waiter: Waiter) => Response) {
     const list = this.waiters.get(seq);
     if (!list) return;
     this.waiters.delete(seq);
     for (const waiter of list) waiter.resolve(response(waiter));
+    this.notify();
   }
 
   private settleWaiters() {
+    if (!this.waiters.size) return;
     for (const [seq, list] of this.waiters) {
       this.waiters.delete(seq);
       for (const waiter of list) waiter.resolve(waiter.optimistic);
     }
+    this.notify();
   }
 
   private scheduleRetry() {

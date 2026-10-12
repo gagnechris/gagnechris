@@ -316,6 +316,7 @@ export {
 } from './query/taskDraft.js';
 export {
   useLoadAllPages,
+  useReportEmbeddedIds,
   useTaskPatch,
   useTodayTasks,
   type TodayStillOpenRow,
