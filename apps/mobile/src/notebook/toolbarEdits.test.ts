@@ -19,6 +19,7 @@ describe('Notes keyboard toolbar', () => {
     expect(run('Call Sam|', 'task')).toBe('[ ] Call Sam|');
     expect(run('a\n  Call| Sam', 'task')).toBe('a\n  [ ] Call| Sam');
     expect(run('|', 'task')).toBe('[ ] |');
+    expect(run('|\nnext', 'task')).toBe('[ ] |\nnext');
   });
 
   it('Task takes the checkbox off a line that has one', () => {
@@ -31,6 +32,7 @@ describe('Notes keyboard toolbar', () => {
     expect(run('## Plan|', 'heading')).toBe('Plan|');
     expect(run('milk|', 'list')).toBe('- milk|');
     expect(run('- milk|', 'list')).toBe('milk|');
+    expect(run('|\nmilk', 'list')).toBe('- |\nmilk');
   });
 
   it('the date and priority buttons type @ and ! as a new word', () => {
