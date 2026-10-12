@@ -10,10 +10,15 @@ import {
   type HomeDraftFields,
 } from '@gagnechris/app-core';
 import { Field, TextArea, TextInput } from '../kit/Field';
-import { publicUrl, withPublicUrls } from './publicUrl';
+import { publicUrl } from './publicUrl';
 import { EditorFrame } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
+import { PublicPagePreview } from './preview/PublicPagePreview';
+import { publicPageStyles } from './preview/publicPageStyles';
+import homeCss from '../App.css?inline';
+
+const HOME_STYLES = publicPageStyles(homeCss);
 
 const HomePreview = ({
   home,
@@ -28,10 +33,7 @@ const HomePreview = ({
     [home, deferred],
   );
   return (
-    <div
-      className="admin-home-preview"
-      dangerouslySetInnerHTML={{ __html: withPublicUrls(html) }}
-    />
+    <PublicPagePreview title="Home preview" styles={HOME_STYLES} html={html} />
   );
 };
 
