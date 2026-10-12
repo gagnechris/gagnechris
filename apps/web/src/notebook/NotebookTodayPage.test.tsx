@@ -34,6 +34,8 @@ const state = vi.hoisted(() => ({
   /** Holds each PUT in flight until it resolves; `offline` is read at send time. */
   putGate: null as null | Promise<void>,
   puts: 0,
+  /** Daily notes the list route answers with, filtered by `from` and `to`. */
+  listed: null as null | DailyNote[],
   note: null as null | {
     id: string;
     userId: string;
@@ -124,6 +126,20 @@ vi.mock('../workspace/api/client', () => ({
           }
           return {
             data: state.note,
+            error: undefined,
+            response: { status: 200 },
+          };
+        }
+        if (path === '/api/notebook/notes' && state.listed) {
+          const query = (
+            init as { params?: { query?: Record<string, string> } }
+          )?.params?.query;
+          const from = query?.from ?? '';
+          const to = query?.to ?? '9999-12-31';
+          return {
+            data: {
+              items: state.listed.filter((n) => n.date >= from && n.date <= to),
+            },
             error: undefined,
             response: { status: 200 },
           };
@@ -302,6 +318,7 @@ describe('NotebookTodayPage', () => {
     state.putDelayMs = 0;
     state.putGate = null;
     state.puts = 0;
+    state.listed = null;
     localStorage.clear();
     // Pin "today" away from the dates under test; only Date is faked.
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -562,6 +579,60 @@ describe('NotebookTodayPage', () => {
     ).toBeInTheDocument();
     expect(router.state.location.search).toContain('date=2026-09-30');
     expect(screen.queryByRole('grid')).not.toBeVisible();
+  });
+
+  test('the month buttons show each month with its own note markers, across a year end', async () => {
+    const daily = (date: string): DailyNote => ({
+      id: `01TESTDAILY${date.replace(/-/g, '')}0000000`,
+      userId: 'u1',
+      area: 'work',
+      type: 'daily',
+      date,
+      title: '',
+      bodyMarkdown: 'note',
+      tags: [],
+      pinned: false,
+      version: 1,
+      createdAt: `${date}T09:00:00.000Z`,
+      updatedAt: `${date}T09:00:00.000Z`,
+      deleted: false,
+    });
+    state.listed = ['2026-11-03', '2026-12-04', '2027-01-04'].map(daily);
+    const user = userEvent.setup();
+    const { router } = renderToday('2026-12-10');
+    await screen.findByRole('heading', { level: 1, name: /December 10/ });
+
+    await user.click(screen.getByText('Calendar'));
+    expect(
+      await screen.findByRole('gridcell', {
+        name: 'Friday, December 4, 2026, has a note',
+      }),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Next month' }));
+    expect(screen.getByRole('grid', { name: 'January 2027' })).toBeVisible();
+    expect(
+      await screen.findByRole('gridcell', {
+        name: 'Monday, January 4, 2027, has a note',
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('gridcell', { name: 'Tuesday, January 5, 2027' }),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(screen.getByRole('grid', { name: 'November 2026' })).toBeVisible();
+    expect(
+      await screen.findByRole('gridcell', {
+        name: 'Tuesday, November 3, 2026, has a note',
+      }),
+    ).toBeVisible();
+
+    expect(router.state.location.search).toContain('date=2026-12-10');
+    expect(
+      screen.getByRole('heading', { level: 1, name: /December 10/ }),
+    ).toBeInTheDocument();
   });
 
   test('Back steps through the days visited', async () => {

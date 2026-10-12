@@ -18,7 +18,7 @@ import {
   deleteIntegrationTable,
   truncateTable,
 } from '../support/dynamo-local.js';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const OWNER = 'owner-sub-copyback';
@@ -33,64 +33,43 @@ const DAILY_G = '01ARZ3NDEKTSV4RRFFQ69G5CG1'; // deleted daily → undelete + cl
 const TASK_T = '01ARZ3NDEKTSV4RRFFQ69G5CT1'; // linked to A, deleted → undelete
 const OTHER_N = '01ARZ3NDEKTSV4RRFFQ69G5CN1'; // another owner: never touched
 
-// Bodies are whatever JSON the server sent; tests assert on their shape.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Json = any;
-
 const h = useApi('copyback-live');
-
-async function call(
-  user: string,
-  method: string,
-  path: string,
-  opts: { body?: unknown; query?: Record<string, string> } = {},
-): Promise<{ status: number; body: Json }> {
-  const res = await h.api.request(method, path, {
-    ...opts,
-    claims: notebookUser(user),
-  });
-  return { status: res.status, body: res.body };
-}
-
-async function ok(
-  user: string,
-  method: string,
-  path: string,
-  body?: unknown,
-): Promise<Json> {
-  const res = await call(user, method, path, { body });
-  expect(
-    res.status >= 200 && res.status < 300,
-    `${method} ${path}: ${res.status} ${JSON.stringify(res.body)}`,
-  ).toBe(true);
-  return res.body;
-}
+const { call, ok } = apiCalls(h);
 
 const page = (id: string, title: string, user = OWNER) =>
-  ok(user, 'POST', '/api/notebook/notes', {
-    id,
-    area: 'work',
-    type: 'page',
-    title,
-    bodyMarkdown: `${title} body`,
-    tags: [],
-    pinned: false,
+  ok('POST', '/api/notebook/notes', {
+    user,
+    body: {
+      id,
+      area: 'work',
+      type: 'page',
+      title,
+      bodyMarkdown: `${title} body`,
+      tags: [],
+      pinned: false,
+    },
   });
 
 const daily = (id: string, date: string, body: string) =>
-  ok(OWNER, 'POST', '/api/notebook/notes', {
-    id,
-    area: 'personal',
-    type: 'daily',
-    date,
-    title: '',
-    bodyMarkdown: body,
-    tags: [],
-    pinned: false,
+  ok('POST', '/api/notebook/notes', {
+    user: OWNER,
+    body: {
+      id,
+      area: 'personal',
+      type: 'daily',
+      date,
+      title: '',
+      bodyMarkdown: body,
+      tags: [],
+      pinned: false,
+    },
   });
 
 const deleteNote = (id: string, user = OWNER) =>
-  ok(user, 'DELETE', `/api/notebook/notes/${id}`, { version: 1 });
+  ok('DELETE', `/api/notebook/notes/${id}`, {
+    user,
+    body: { version: 1 },
+  });
 
 describe('restore copy-back (DynamoDB Local)', () => {
   let scratch: string;
@@ -135,29 +114,38 @@ describe('restore copy-back (DynamoDB Local)', () => {
     await page(PAGE_F, 'Foxtrot');
     await daily(DAILY_G, '2026-09-28', 'original G');
     await page(OTHER_N, 'Not mine', OTHER);
-    await ok(OWNER, 'POST', '/api/notebook/tasks', {
-      id: TASK_T,
-      area: 'work',
-      title: 'Task on Alpha',
-      description: '',
-      priority: 'high',
-      status: 'todo',
-      dueDate: null,
-      noteId: PAGE_A,
-      tags: [],
+    await ok('POST', '/api/notebook/tasks', {
+      user: OWNER,
+      body: {
+        id: TASK_T,
+        area: 'work',
+        title: 'Task on Alpha',
+        description: '',
+        priority: 'high',
+        status: 'todo',
+        dueDate: null,
+        noteId: PAGE_A,
+        tags: [],
+      },
     });
 
     await snapshotLiveIntoScratch();
     // "Newer" compares updatedAt at millisecond precision.
     await new Promise((r) => setTimeout(r, 5));
 
-    await ok(OWNER, 'DELETE', `/api/notebook/tasks/${TASK_T}`, {
-      version: 1,
+    await ok('DELETE', `/api/notebook/tasks/${TASK_T}`, {
+      user: OWNER,
+      body: {
+        version: 1,
+      },
     });
     await deleteNote(PAGE_A);
-    await ok(OWNER, 'PUT', `/api/notebook/notes/${DAILY_B}`, {
-      version: 1,
-      bodyMarkdown: 'overwritten B',
+    await ok('PUT', `/api/notebook/notes/${DAILY_B}`, {
+      user: OWNER,
+      body: {
+        version: 1,
+        bodyMarkdown: 'overwritten B',
+      },
     });
     await deleteNote(DAILY_D);
     await daily(DAILY_E, '2026-09-29', 'new owner of D day');
@@ -215,7 +203,7 @@ describe('restore copy-back (DynamoDB Local)', () => {
     );
 
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/notes/${PAGE_A}`),
+      await ok('GET', `/api/notebook/notes/${PAGE_A}`, { user: OWNER }),
     ).toMatchObject({
       title: 'Alpha',
       version: 3,
@@ -223,23 +211,28 @@ describe('restore copy-back (DynamoDB Local)', () => {
       updatedAt: applyAt,
     });
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/notes/${PAGE_F}`),
+      await ok('GET', `/api/notebook/notes/${PAGE_F}`, { user: OWNER }),
     ).toMatchObject({ title: 'Foxtrot', version: 2 });
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/tasks/${TASK_T}`),
+      await ok('GET', `/api/notebook/tasks/${TASK_T}`, { user: OWNER }),
     ).toMatchObject({ noteId: PAGE_A, version: 3 });
     // Daily claim re-taken: the day resolves to the restored note again.
     expect(
-      await ok(OWNER, 'GET', '/api/notebook/notes/daily/personal/2026-09-28'),
+      await ok('GET', '/api/notebook/notes/daily/personal/2026-09-28', {
+        user: OWNER,
+      }),
     ).toMatchObject({ id: DAILY_G, bodyMarkdown: 'original G' });
     // D's day still belongs to E; B keeps its newer content.
     expect(
-      await ok(OWNER, 'GET', '/api/notebook/notes/daily/personal/2026-09-29'),
+      await ok('GET', '/api/notebook/notes/daily/personal/2026-09-29', {
+        user: OWNER,
+      }),
     ).toMatchObject({ id: DAILY_E });
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/notes/${DAILY_B}`),
+      await ok('GET', `/api/notebook/notes/${DAILY_B}`, { user: OWNER }),
     ).toMatchObject({ bodyMarkdown: 'overwritten B' });
-    const list = await call(OWNER, 'GET', '/api/notebook/notes', {
+    const list = await call('GET', '/api/notebook/notes', {
+      user: OWNER,
       query: { area: 'work' },
     });
     expect(list.status).toBe(200);
@@ -247,12 +240,14 @@ describe('restore copy-back (DynamoDB Local)', () => {
       expect.arrayContaining([PAGE_A, PAGE_F]),
     );
     expect(
-      (await call(OTHER, 'GET', `/api/notebook/notes/${OTHER_N}`)).status,
+      (await call('GET', `/api/notebook/notes/${OTHER_N}`, { user: OTHER }))
+        .status,
     ).toBe(404);
 
     // Clients polling since before the copy-back see the restored versions.
     const since = new Date(Date.parse(applyAt) - 60_000).toISOString();
-    const feed = await call(OWNER, 'GET', '/api/notebook/sync/changes', {
+    const feed = await call('GET', '/api/notebook/sync/changes', {
+      user: OWNER,
       query: { since },
     });
     expect(feed.status).toBe(200);
@@ -287,7 +282,7 @@ describe('restore copy-back (DynamoDB Local)', () => {
     expect(actions(plan)).toEqual({ [DAILY_B]: 'overwrite' });
     await applyCopyBack(h.doc, opts(), plan);
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/notes/${DAILY_B}`),
+      await ok('GET', `/api/notebook/notes/${DAILY_B}`, { user: OWNER }),
     ).toMatchObject({ bodyMarkdown: 'original B', version: 3 });
     const raw = await h.doc.send(
       new GetCommand({
@@ -312,16 +307,19 @@ describe('restore copy-back (DynamoDB Local)', () => {
       h.doc,
       opts({ ids: [DAILY_B], overwriteNewer: true }),
     );
-    await ok(OWNER, 'PUT', `/api/notebook/notes/${DAILY_B}`, {
-      version: 2,
-      bodyMarkdown: 'edited during the copy-back',
+    await ok('PUT', `/api/notebook/notes/${DAILY_B}`, {
+      user: OWNER,
+      body: {
+        version: 2,
+        bodyMarkdown: 'edited during the copy-back',
+      },
     });
     const results = await applyCopyBack(h.doc, opts(), plan);
     expect(results).toEqual([
       expect.objectContaining({ id: DAILY_B, outcome: 'conflict' }),
     ]);
     expect(
-      await ok(OWNER, 'GET', `/api/notebook/notes/${DAILY_B}`),
+      await ok('GET', `/api/notebook/notes/${DAILY_B}`, { user: OWNER }),
     ).toMatchObject({ bodyMarkdown: 'edited during the copy-back' });
   });
 

@@ -10,6 +10,13 @@ import {
   taskEmbedIds,
   taskShowsOn,
 } from '@gagnechris/shared';
+import {
+  conflict,
+  ifMatchVersion,
+  json,
+  preconditionFailed,
+  versionConflict,
+} from './apiErrors';
 
 export const makeNote = (
   id: string,
@@ -57,12 +64,6 @@ export const makeTask = (
   deleted: false,
   ...fields,
 });
-
-const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
 
 const isOpen = (task: Task) => isOpenTaskStatus(task.status);
 
@@ -148,18 +149,27 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
   let clock = Date.parse('2026-10-02T12:00:00.000Z');
   const now = () => new Date((clock += 1_000)).toISOString();
 
+  /** As the API: `If-Match` wins over the body's version and fails as 412. */
   const put = <T extends { version: number }>(
     map: Map<string, T>,
     current: T,
     body: Partial<T> & { version?: number },
+    ifMatch: string | null,
   ): Response | T => {
-    if (body.version !== undefined && body.version !== current.version) {
+    const expected = ifMatchVersion(ifMatch);
+    if (expected !== null) {
+      if (expected !== '*' && expected !== current.version) {
+        state.conflicts += 1;
+        return preconditionFailed({
+          error: 'precondition_failed',
+          message: `Version conflict: expected ${expected}, current ${current.version}`,
+          currentVersion: current.version,
+          current,
+        });
+      }
+    } else if (body.version !== undefined && body.version !== current.version) {
       state.conflicts += 1;
-      return json(412, {
-        error: 'version_conflict',
-        current,
-        currentVersion: current.version,
-      });
+      return versionConflict(body.version, current);
     }
     const { version: _version, ...fields } = body;
     const next = {
@@ -193,7 +203,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
   /** A write to an entity another device deleted, as the API answers it. */
   const deletedConflict = (kind: 'note' | 'task', current: Note | Task) => {
     state.conflicts += 1;
-    return json(409, {
+    return conflict({
       error: 'deleted',
       message: `${kind} ${current.id} was deleted`,
       current,
@@ -247,6 +257,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       return json(state.refuseWrites.status, state.refuseWrites.body);
     }
     const clientVersion = input.headers.get(CLIENT_VERSION_HEADER);
+    const ifMatch = input.headers.get('if-match');
     state.clientVersions.push(clientVersion);
     const params = url.searchParams;
     const note = url.pathname.match(/^\/api\/notebook\/notes\/([^/]+)$/);
@@ -423,15 +434,15 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
         // meanwhile, it loses the claim.
         if (existing && body.version === undefined && body.id !== existing.id) {
           state.conflicts += 1;
-          return json(409, { error: 'daily_taken', current: existing });
+          return conflict({
+            error: 'daily_taken',
+            message: 'Daily note already exists for this area and date',
+            current: existing,
+          });
         }
         if (existing) {
-          const result = put(store, existing, body);
+          const result = put(store, existing, body, ifMatch);
           return result instanceof Response ? result : json(200, result);
-        }
-        if (body.version !== undefined && body.version !== 0) {
-          state.conflicts += 1;
-          return json(412, { error: 'version_conflict' });
         }
         const created = makeNote(
           body.id ?? `d-${date}`,
@@ -461,7 +472,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       if (!current) return json(404, { error: 'not_found' });
       if (current.deleted) return deletedConflict('note', current);
       const body = (await input.json()) as Partial<Note> & { version: number };
-      const result = put(store, current, body);
+      const result = put(store, current, body, ifMatch);
       if (result instanceof Response) return result;
       if (state.loseNextResponse) {
         state.loseNextResponse = false;
@@ -473,10 +484,15 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       const current = store.get(note[1]!);
       if (!current) return json(404, { error: 'not_found' });
       if (current.deleted) return deletedConflict('note', current);
-      const result = put(store, current, {
-        ...((await input.json()) as { version: number }),
-        deleted: true,
-      } as Partial<Note> & { version: number });
+      const result = put(
+        store,
+        current,
+        {
+          ...((await input.json()) as { version: number }),
+          deleted: true,
+        } as Partial<Note> & { version: number },
+        ifMatch,
+      );
       return result instanceof Response ? result : json(200, result);
     }
 
@@ -521,7 +537,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
             : input.method === 'DELETE'
               ? { version: body.version, deleted: true }
               : body;
-      const result = put(taskStore, current, fields);
+      const result = put(taskStore, current, fields, ifMatch);
       return result instanceof Response ? result : json(200, result);
     }
     return json(404, { error: 'not_found' });

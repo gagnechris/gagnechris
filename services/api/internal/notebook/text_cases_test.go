@@ -2,60 +2,32 @@ package notebook
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 
-	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract/textcases"
 )
 
 func TestTextHelpersMatchTypeScript(t *testing.T) {
 	type template struct{ Markdown, Area, Date string }
-	run := map[string]func(json.RawMessage) any{
-		"taskEmbedIds": func(in json.RawMessage) any { return TaskEmbedIDs(decode[string](t, in)) },
+	textcases.Replay(t, "notebook", map[string]func(json.RawMessage) any{
+		"taskEmbedIds": func(in json.RawMessage) any { return TaskEmbedIDs(textcases.Decode[string](t, in)) },
 		"carriedInMarkdown": func(in json.RawMessage) any {
-			return CarriedInMarkdown(decode[[]string](t, in))
+			return CarriedInMarkdown(textcases.Decode[[]string](t, in))
 		},
-		"normalizeTags": func(in json.RawMessage) any { return NormalizeTags(decode[[]string](t, in)) },
+		"normalizeTags": func(in json.RawMessage) any { return NormalizeTags(textcases.Decode[[]string](t, in)) },
 		"fillDailyTemplate": func(in json.RawMessage) any {
-			c := decode[template](t, in)
+			c := textcases.Decode[template](t, in)
 			return FillDailyTemplate(c.Markdown, c.Area, c.Date)
 		},
 		"dailyTemplateHasTasks": func(in json.RawMessage) any {
-			return DailyTemplateHasTasks(decode[string](t, in))
+			return DailyTemplateHasTasks(textcases.Decode[string](t, in))
 		},
 		"markdownPlainText": func(in json.RawMessage) any {
-			return MarkdownPlainText(decode[string](t, in))
+			return MarkdownPlainText(textcases.Decode[string](t, in))
 		},
-	}
-	for name, cases := range contract.Data.TextCases {
-		fn, ok := run[name]
-		if !ok {
-			t.Errorf("no Go check for %s", name)
-			continue
-		}
-		for _, c := range cases {
-			got, err := json.Marshal(fn(c.Input))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var gotV, wantV any
-			_ = json.Unmarshal(got, &gotV)
-			_ = json.Unmarshal(c.Want, &wantV)
-			if !reflect.DeepEqual(gotV, wantV) {
-				t.Errorf("%s(%s) = %s, want %s", name, c.Input, got, c.Want)
-			}
-		}
-	}
-	if len(contract.Data.TextCases) != len(run) {
-		t.Errorf("contract has %d text helpers, Go checks %d", len(contract.Data.TextCases), len(run))
-	}
-}
-
-func decode[T any](t *testing.T, raw json.RawMessage) T {
-	t.Helper()
-	var v T
-	if err := json.Unmarshal(raw, &v); err != nil {
-		t.Fatal(err)
-	}
-	return v
+		"formatCalendarDayLong": func(in json.RawMessage) any { return LongDay(textcases.Decode[string](t, in)) },
+		"noteDisplayTitle": func(in json.RawMessage) any {
+			return NoteDisplayTitle(textcases.Decode[Note](t, in))
+		},
+	})
 }

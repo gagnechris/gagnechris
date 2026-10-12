@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-hard-delete';
@@ -10,17 +10,7 @@ const TASK_ID = '01ARZ3NDEKTSV4RRFFQ69G5FB0';
 
 describe('hard-delete recreate guard (DynamoDB Local)', () => {
   const h = useApi('hard-delete');
-
-  const call = (
-    method: string,
-    path: string,
-    opts: { body?: unknown; ifMatch?: string } = {},
-  ) =>
-    h.api.request(method, path, {
-      body: opts.body,
-      headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
-      claims: notebookUser(USER),
-    });
+  const { call } = apiCalls(h, { user: USER });
 
   const readRow = async (key: Record<string, string>) =>
     (

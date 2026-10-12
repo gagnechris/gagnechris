@@ -7,6 +7,7 @@ import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import type { ManagedUser } from '@gagnechris/shared';
 import { idToken, siteAdmin, userAdmin } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const OWNER = 'owner';
@@ -20,24 +21,14 @@ describe('users and access', () => {
     env: { USER_DIRECTORY: 'memory' },
     truncate: false,
   });
-
-  async function call(
-    method: string,
-    path: string,
-    body?: unknown,
-    claims = userAdmin(OWNER),
-  ): Promise<Res> {
-    const res = await h.api.request(method, `/api${path}`, { body, claims });
-    return {
-      status: res.status,
-      body: (res.body ?? {}) as Record<string, unknown>,
-    };
-  }
+  const { call } = apiCalls(h, { prefix: '/api', claims: userAdmin(OWNER) });
 
   const user = (res: Res) => res.body.user as ManagedUser;
 
   async function invite(email: string, level = 'cms', name?: string) {
-    const res = await call('POST', '/admin/users', { email, level, name });
+    const res = await call('POST', '/admin/users', {
+      body: { email, level, name },
+    });
     expect(res.status).toBe(200);
     return user(res);
   }
@@ -49,10 +40,12 @@ describe('users and access', () => {
 
   it('invites with the level’s groups, trimmed and lowercased', async () => {
     const res = await call('POST', '/admin/users', {
-      email: '  Ada@Example.com ',
-      name: '  Ada  ',
-      level: 'full',
-      extra: true,
+      body: {
+        email: '  Ada@Example.com ',
+        name: '  Ada  ',
+        level: 'full',
+        extra: true,
+      },
     });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -69,17 +62,21 @@ describe('users and access', () => {
     expect(
       user(
         await call('POST', '/admin/users', {
-          email: 'noname@example.com',
-          name: ' ',
-          level: 'notebook',
+          body: {
+            email: 'noname@example.com',
+            name: ' ',
+            level: 'notebook',
+          },
         }),
       ),
     ).toMatchObject({ name: null, level: 'notebook' });
 
     expect(
       await call('POST', '/admin/users', {
-        email: 'ADA@example.com',
-        level: 'cms',
+        body: {
+          email: 'ADA@example.com',
+          level: 'cms',
+        },
       }),
     ).toEqual({
       status: 409,
@@ -125,7 +122,7 @@ describe('users and access', () => {
       { email: 'too_big' },
     ],
   ])('rejects the invite %j', async (body, fields) => {
-    expect(await call('POST', '/admin/users', body)).toEqual({
+    expect(await call('POST', '/admin/users', { body })).toEqual({
       status: 400,
       body: { error: 'bad_request', message: 'Invalid request body', fields },
     });
@@ -134,22 +131,30 @@ describe('users and access', () => {
   it('changes access, signing out only when it drops a group', async () => {
     const reader = await invite('reader@example.com', 'notebook');
     const path = `/admin/users/${reader.id}/access`;
-    expect(user(await call('PUT', path, { level: 'full' }))).toMatchObject({
+    expect(
+      user(await call('PUT', path, { body: { level: 'full' } })),
+    ).toMatchObject({
       level: 'full',
     });
-    expect(user(await call('PUT', path, { level: 'cms' }))).toMatchObject({
+    expect(
+      user(await call('PUT', path, { body: { level: 'cms' } })),
+    ).toMatchObject({
       level: 'cms',
     });
 
-    expect(await call('PUT', path, { level: 'owner' })).toMatchObject({
-      status: 400,
-      body: {
-        message: 'Invalid request body',
-        fields: { level: 'invalid_value' },
+    expect(await call('PUT', path, { body: { level: 'owner' } })).toMatchObject(
+      {
+        status: 400,
+        body: {
+          message: 'Invalid request body',
+          fields: { level: 'invalid_value' },
+        },
       },
-    });
+    );
     expect(
-      await call('PUT', '/admin/users/bad_id/access', { level: 'cms' }),
+      await call('PUT', '/admin/users/bad_id/access', {
+        body: { level: 'cms' },
+      }),
     ).toMatchObject({
       status: 400,
       body: {
@@ -158,7 +163,9 @@ describe('users and access', () => {
       },
     });
     expect(
-      await call('PUT', '/admin/users/nobody/access', { level: 'cms' }),
+      await call('PUT', '/admin/users/nobody/access', {
+        body: { level: 'cms' },
+      }),
     ).toEqual({
       status: 404,
       body: { error: 'not_found', message: 'User not found' },
@@ -172,7 +179,7 @@ describe('users and access', () => {
       ['POST', `/admin/users/${OWNER}/sign-out`, undefined],
       ['POST', `/admin/users/${OWNER}/remove`, undefined],
     ] as const) {
-      expect(await call(method, path, body)).toEqual({
+      expect(await call(method, path, { body })).toEqual({
         status: 409,
         body: {
           error: 'self_change',
@@ -206,7 +213,9 @@ describe('users and access', () => {
       },
     };
     expect(
-      await call('PUT', `/admin/users/${LOCAL_ADMIN}/access`, { level: 'cms' }),
+      await call('PUT', `/admin/users/${LOCAL_ADMIN}/access`, {
+        body: { level: 'cms' },
+      }),
     ).toEqual(last);
     expect(await call('POST', `/admin/users/${LOCAL_ADMIN}/disable`)).toEqual(
       last,
@@ -220,7 +229,9 @@ describe('users and access', () => {
     expect(
       user(
         await call('PUT', `/admin/users/${LOCAL_ADMIN}/access`, {
-          level: 'full',
+          body: {
+            level: 'full',
+          },
         }),
       ),
     ).toMatchObject({ level: 'full' });
@@ -243,27 +254,31 @@ describe('users and access', () => {
         message: 'This user was removed. Restore them first.',
       },
     };
-    expect(await call('PUT', `${base}/access`, { level: 'full' })).toEqual(
-      blocked,
-    );
+    expect(
+      await call('PUT', `${base}/access`, { body: { level: 'full' } }),
+    ).toEqual(blocked);
     expect(await call('POST', `${base}/enable`)).toEqual(blocked);
     expect(await call('POST', `${base}/resend-invite`)).toEqual(blocked);
 
-    expect(user(await call('POST', `${base}/restore`, {}))).toMatchObject({
+    expect(
+      user(await call('POST', `${base}/restore`, { body: {} })),
+    ).toMatchObject({
       status: 'invited',
       level: 'cms',
     });
-    expect(await call('POST', `${base}/restore`, {})).toEqual({
+    expect(await call('POST', `${base}/restore`, { body: {} })).toEqual({
       status: 409,
       body: { error: 'not_removed', message: 'This user was not removed.' },
     });
 
     await call('POST', `${base}/remove`);
     expect(
-      user(await call('POST', `${base}/restore`, { level: 'notebook' })),
+      user(
+        await call('POST', `${base}/restore`, { body: { level: 'notebook' } }),
+      ),
     ).toMatchObject({ level: 'notebook' });
     expect(
-      await call('POST', `${base}/restore`, { level: 'owner' }),
+      await call('POST', `${base}/restore`, { body: { level: 'owner' } }),
     ).toMatchObject({
       status: 400,
       body: { fields: { level: 'invalid_value' } },
@@ -271,8 +286,10 @@ describe('users and access', () => {
 
     await call('POST', `${base}/remove`);
     const again = await call('POST', '/admin/users', {
-      email: 'editor@example.com',
-      level: 'full',
+      body: {
+        email: 'editor@example.com',
+        level: 'full',
+      },
     });
     expect(again.body).toMatchObject({
       user: { id: editor.id, level: 'full', status: 'invited' },
@@ -296,7 +313,7 @@ describe('users and access', () => {
       status: 'removed',
       level: null,
     });
-    expect(await call('POST', `${base}/restore`, {})).toEqual({
+    expect(await call('POST', `${base}/restore`, { body: {} })).toEqual({
       status: 400,
       body: {
         error: 'bad_request',
@@ -342,30 +359,25 @@ describe('users and access', () => {
         ['POST', `/admin/users/${target.id}/remove`, undefined],
         ['POST', `/admin/users/${target.id}/restore`, {}],
       ] as const) {
-        expect(await call(method, path, body, claims)).toEqual(reauth);
+        expect(await call(method, path, { body, claims })).toEqual(reauth);
       }
     }
-    expect((await call('GET', '/admin/users', undefined, stale())).status).toBe(
-      200,
-    );
+    expect(
+      (await call('GET', '/admin/users', { claims: stale() })).status,
+    ).toBe(200);
     expect(
       (
-        await call(
-          'POST',
-          '/admin/users',
-          { email: 'late@example.com', level: 'cms' },
-          stale(),
-        )
+        await call('POST', '/admin/users', {
+          body: { email: 'late@example.com', level: 'cms' },
+          claims: stale(),
+        })
       ).status,
     ).toBe(200);
     expect(
       (
-        await call(
-          'POST',
-          `/admin/users/${target.id}/resend-invite`,
-          undefined,
-          stale(),
-        )
+        await call('POST', `/admin/users/${target.id}/resend-invite`, {
+          claims: stale(),
+        })
       ).status,
     ).toBe(200);
   });
@@ -375,25 +387,19 @@ describe('users and access', () => {
       status: 403,
       body: { error: 'forbidden', message: 'Requires the user-admin group' },
     };
-    expect(await call('GET', '/admin/users', undefined, siteAdmin())).toEqual(
+    expect(await call('GET', '/admin/users', { claims: siteAdmin() })).toEqual(
       forbidden,
     );
     expect(
-      await call(
-        'GET',
-        '/admin/users',
-        undefined,
-        idToken('ios-admin', 'ios', ['site-admin', 'notebook']),
-      ),
+      await call('GET', '/admin/users', {
+        claims: idToken('ios-admin', 'ios', ['site-admin', 'notebook']),
+      }),
     ).toEqual(forbidden);
     expect(
       (
-        await call(
-          'GET',
-          '/admin/users',
-          undefined,
-          idToken(OWNER, 'ios', ['user-admin']),
-        )
+        await call('GET', '/admin/users', {
+          claims: idToken(OWNER, 'ios', ['user-admin']),
+        })
       ).status,
     ).toBe(200);
   });

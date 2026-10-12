@@ -36,28 +36,6 @@ func TestTaskEmbedFallbackLine(t *testing.T) {
 	}
 }
 
-func TestNoteDisplayTitle(t *testing.T) {
-	day, bad := "2026-10-06", "2026-02-30"
-	for _, tc := range []struct {
-		note Note
-		want string
-	}{
-		{Note{Type: "daily", Date: &day, Title: "ignored"}, "Tuesday, Oct 6"},
-		{Note{Type: "daily", Date: &bad, Title: " Kept "}, "Kept"},
-		{Note{Type: "page", Date: &day, Title: " "}, "Untitled"},
-	} {
-		if got := NoteDisplayTitle(tc.note); got != tc.want {
-			t.Errorf("got %q, want %q", got, tc.want)
-		}
-	}
-	if _, ok := ParseCalendarDay("2024-02-29"); !ok {
-		t.Error("leap day rejected")
-	}
-	if _, ok := ParseCalendarDay("2023-02-29"); ok {
-		t.Error("2023-02-29 accepted")
-	}
-}
-
 func TestSortTasksForList(t *testing.T) {
 	d := func(s string) *string { return &s }
 	tasks := []Task{
