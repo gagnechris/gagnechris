@@ -17,6 +17,7 @@ import SiteHomeScreen from '../app/site/home/index';
 import SitePostScreen from '../app/site/posts/[slug]';
 import SitePostsScreen from '../app/site/posts/index';
 import SiteResumeScreen from '../app/site/resume/index';
+import { MarkdownView } from './markdown/MarkdownView';
 import { expectAccessible } from '../test/accessible';
 import {
   allText,
@@ -26,7 +27,7 @@ import {
   settle,
   signedOutBackend,
 } from '../test/render';
-import { router, searchParams } from '../test/router';
+import { router, searchParams, segments } from '../test/router';
 
 vi.mock('expo-file-system', () => ({
   Paths: { cache: { uri: 'file:///cache/' } },
@@ -138,7 +139,7 @@ describe('Site space', () => {
     act(() =>
       byLabel(renderer, 'Title four, September 1, 2026').props.onPress(),
     );
-    expect(router.push).toHaveBeenCalledWith('/site/posts/four');
+    expect(router.push).toHaveBeenCalledWith('/site/home/four');
     act(() => byLabel(renderer, 'All posts').props.onPress());
     expect(router.navigate).toHaveBeenCalledWith('/site/posts');
   });
@@ -178,6 +179,19 @@ describe('Site space', () => {
       url: 'https://gagnechris.com/posts/four',
       message: 'Title four',
     });
+  });
+
+  it('a linked post opens on the stack the post is on', async () => {
+    searchParams.current = { slug: 'four' };
+    for (const stack of ['home', 'posts']) {
+      segments.current = ['site', stack, '[slug]'];
+      const renderer = await signedOut(<SitePostScreen />);
+      await settle();
+      act(() =>
+        renderer.root.findByType(MarkdownView).props.onLinkPress('/posts/one'),
+      );
+      expect(router.push).toHaveBeenLastCalledWith(`/site/${stack}/one`);
+    }
   });
 
   it('a post that is gone says so', async () => {

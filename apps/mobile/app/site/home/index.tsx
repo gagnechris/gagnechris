@@ -84,7 +84,7 @@ const SiteHomeScreen = () => {
           <PostPreview
             key={post.id}
             post={post}
-            onPress={() => router.push(`/site/posts/${post.slug}`)}
+            onPress={() => router.push(`/site/home/${post.slug}`)}
           />
         ))}
         {recent.length > 0 ? (

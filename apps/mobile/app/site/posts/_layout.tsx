@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { largeTitleStack } from '../../../src/ui/stackOptions';
 
-// A post opened from Home gets the list under it.
+// A post opened by link gets the list under it.
 export const unstable_settings = { anchor: 'index' };
 
 const PostsStack = () => (
