@@ -50,58 +50,8 @@ func newRepo(table *data.Table, now func() time.Time) *repo {
 		Slug:           func(p Post) string { return p.Slug },
 		SlugClaims:     slugClaims,
 		PublishedIDSet: "postIds",
-		ExtraItems: func(_, after Post, opts store.PersistOptions[Post]) []types.TransactWriteItem {
-			return tagSyncItems(table.Name, after, opts)
-		},
 	}, table, now)
 	return r
-}
-
-// tagSyncItems keep the tag index rows mirroring the PUBLISHED post, so
-// they change only when it is written or deleted, never on a draft edit.
-func tagSyncItems(tableName string, after Post, opts store.PersistOptions[Post]) []types.TransactWriteItem {
-	if !opts.SyncPublished && !opts.DeletePublished {
-		return nil
-	}
-	var beforeTags []string
-	var beforePublishedAt *string
-	if prev := opts.PreviousPublished; prev != nil {
-		beforeTags, beforePublishedAt = prev.Tags, prev.PublishedAt
-	}
-	var afterTags []string
-	var afterPublishedAt *string
-	if opts.SyncPublished && after.Status == store.StatusPublished {
-		afterTags, afterPublishedAt = after.Tags, after.PublishedAt
-	}
-	samePublishedAt := beforePublishedAt != nil && afterPublishedAt != nil && *beforePublishedAt == *afterPublishedAt
-
-	var items []types.TransactWriteItem
-	if beforePublishedAt != nil {
-		for _, tag := range beforeTags {
-			if opts.SyncPublished && slices.Contains(afterTags, tag) && samePublishedAt {
-				continue
-			}
-			items = append(items, types.TransactWriteItem{Delete: &types.Delete{
-				TableName: aws.String(tableName),
-				Key:       data.Key(keys.TagPk(tag), keys.TagSk(*beforePublishedAt, after.ID)),
-			}})
-		}
-	}
-	if afterPublishedAt != nil {
-		for _, tag := range afterTags {
-			if slices.Contains(beforeTags, tag) && samePublishedAt {
-				continue
-			}
-			item := data.Key(keys.TagPk(tag), keys.TagSk(*afterPublishedAt, after.ID))
-			item["gsi2pk"] = data.S(keys.TagPk(tag))
-			item["gsi2sk"] = data.S(keys.TagSk(*afterPublishedAt, after.ID))
-			item["entityType"] = data.S("tagIndex")
-			item["postId"] = data.S(after.ID)
-			item["slug"] = data.S(after.Slug)
-			items = append(items, types.TransactWriteItem{Put: &types.Put{TableName: aws.String(tableName), Item: item}})
-		}
-	}
-	return items
 }
 
 // list is grouped by status, newest first within each.

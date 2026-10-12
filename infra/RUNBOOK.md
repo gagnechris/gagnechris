@@ -492,11 +492,11 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
 1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it in the Linear ticket.
 2. Restore a scratch copy from before the damage (step 2 above).
 3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
-4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`, `SITE#publish`, `REMOVED_USERS`) and daily templates (`USER#<sub>#DAILY_TEMPLATE#<area>`) are not covered by copy-back, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
+4. CMS rows (`POST#`, `SLUG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`, `SITE#publish`, `REMOVED_USERS`) and daily templates (`USER#<sub>#DAILY_TEMPLATE#<area>`) are not covered by copy-back, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#`, `CREATED#` or `TAG#` rows:
 
    ```bash
    aws dynamodb scan --table-name "$SCRATCH" --output json \
-     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT|SITE)#|^REMOVED_USERS$|^USER#[^#]+#DAILY_TEMPLATE#"))]
+     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT|SITE)#|^REMOVED_USERS$|^USER#[^#]+#DAILY_TEMPLATE#"))]
               | . as $all | range(0; length; 25) | $all[.:(. + 25)]
               | {"gagnechris-prod": [ .[] | {PutRequest: {Item: .}} ]}' > /tmp/cms-batches.jsonl
    wc -l /tmp/cms-batches.jsonl     # batches of 25
@@ -557,6 +557,18 @@ The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_END
 AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts           # dry run: counts
 AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-task-start-dates.ts --apply      # exit 1: raced an API save, re-run
 AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts --verify  # exit 2 while anything is unmigrated
+```
+
+The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.
+
+### Tag row cleanup
+
+`scripts/migrate-tag-rows.ts` deletes the posts' old tag index rows (`TAG#<tag>` / `TS#<publishedAt>#POST#<postId>`, `entityType` `tagIndex`). Nothing reads or writes them, so deleting them changes nothing served or published. It prints one JSON line of counts (`scanned`, `tagRows`, `deleted`). Re-running `--apply` is a no-op.
+
+```bash
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-tag-rows.ts           # dry run: counts
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-tag-rows.ts --apply
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-tag-rows.ts --verify  # exit 2 while any remain
 ```
 
 The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.

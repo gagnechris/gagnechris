@@ -1,10 +1,11 @@
+/// <reference types="vite/client" />
 import bundledNativeModules from 'expo/bundledNativeModules.json';
 import { describe, expect, it } from 'vitest';
 import appJson from '../app.json';
 import eas from '../eas.json';
 import lock from '../package-lock.json';
 import pkg from '../package.json';
-import { resolveAuthRedirect } from './config';
+import rootLock from '../../../package-lock.json';
 
 const app = appJson.expo;
 
@@ -37,15 +38,11 @@ describe('native build config', () => {
     }
   });
 
-  it('signs device builds in through the https callback, dev builds through the scheme', () => {
-    for (const profile of [eas.build.preview, eas.build.production]) {
-      expect(resolveAuthRedirect(profile.env.EXPO_PUBLIC_AUTH_REDIRECT)).toBe(
-        'universalLink',
-      );
-    }
+  it('sets no auth redirect env in any build profile', () => {
     expect(eas.build.development).not.toHaveProperty('env');
-    expect(resolveAuthRedirect(undefined)).toBe('scheme');
-    expect(resolveAuthRedirect('universal-link')).toBe('scheme');
+    for (const profile of [eas.build.preview, eas.build.production]) {
+      expect(Object.keys(profile.env)).toEqual(['EXPO_PUBLIC_API_BASE_URL']);
+    }
   });
 
   it('builds for TestFlight without the export-compliance question', () => {
@@ -88,6 +85,22 @@ describe('native build config', () => {
     expect(pkg.dependencies['@tanstack/query-async-storage-persister']).toBe(
       installed,
     );
+  });
+
+  // The app parses note previews with this install of marked and the web with
+  // the root one; both must split markdown into the same blocks.
+  it('pins marked to the version @gagnechris/shared and the root lockfile use', () => {
+    const [sharedPkg] = Object.values(
+      import.meta.glob<{ dependencies: Record<string, string> }>(
+        '../../../packages/shared/package.json',
+        { eager: true, import: 'default' },
+      ),
+    );
+    const version = sharedPkg?.dependencies.marked;
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(pkg.dependencies.marked).toBe(version);
+    expect(lock.packages['node_modules/marked'].version).toBe(version);
+    expect(rootLock.packages['node_modules/marked'].version).toBe(version);
   });
 
   const buildProperties = () =>

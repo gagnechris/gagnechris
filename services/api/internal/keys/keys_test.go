@@ -20,8 +20,6 @@ func TestKeysMatchTheTypeScriptBuilders(t *testing.T) {
 		"postPk({postId})":                               PostPk("{postId}"),
 		"slugPk({slug})":                                 SlugPk("{slug}"),
 		"slugPostSk()":                                   SlugPostSk(),
-		"tagPk({tag})":                                   TagPk("{tag}"),
-		"tagSk({publishedAt},{postId})":                  TagSk("{publishedAt}", "{postId}"),
 		"statusGsi1Pk({status})":                         StatusGSI1Pk("{status}"),
 		"statusGsi1Sk({sortTs},{postId})":                StatusGSI1Sk("{sortTs}", "{postId}"),
 		"projectPk({projectId})":                         ProjectPk("{projectId}"),
