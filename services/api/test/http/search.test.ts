@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  NOTEBOOK_SEARCH_LIMIT_MAX,
+  NOTEBOOK_SEARCH_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { ulid } from 'ulid';
 import { notebookUser } from './support/claims.js';
 import { useApi } from './support/harness.js';
@@ -267,20 +271,22 @@ describe('POST /api/notebook/search', () => {
       cursor = page.nextCursor as string | undefined;
     } while (cursor);
 
-    const found = await search({ q: 'same', limit: 50 });
+    const found = await search({ q: 'same', limit: NOTEBOOK_SEARCH_LIMIT_MAX });
     expect(found.tasks.map((t) => t.id)).toEqual(
-      (firstPage.items as Entity[]).slice(0, 50).map((t) => t.id),
+      (firstPage.items as Entity[])
+        .slice(0, NOTEBOOK_SEARCH_LIMIT_MAX)
+        .map((t) => t.id),
     );
     expect(found.notes.map((n) => n.id)).toEqual(notes.map((n) => n.id));
   });
 
   it.each([
     [
-      { q: '', limit: 500 },
+      { q: '', limit: NOTEBOOK_SEARCH_LIMIT_MAX + 1 },
       { q: 'too_small', limit: 'too_big' },
     ],
     [{ q: '   ' }, { q: 'too_small' }],
-    [{ q: 'x'.repeat(201) }, { q: 'too_big' }],
+    [{ q: 'x'.repeat(NOTEBOOK_SEARCH_MAX_LENGTH + 1) }, { q: 'too_big' }],
     [
       { q: 5, area: 'home', limit: 1.5 },
       { q: 'invalid_type', area: 'invalid_value', limit: 'invalid_type' },

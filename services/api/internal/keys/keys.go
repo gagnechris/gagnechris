@@ -6,6 +6,15 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+)
+
+// Index names, as packages/data/src/keys.ts names them.
+var (
+	GSI1 = contract.Data.GSINames.GSI1
+	GSI2 = contract.Data.GSINames.GSI2
+	GSI3 = contract.Data.GSINames.GSI3
 )
 
 const (

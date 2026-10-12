@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
@@ -81,7 +82,7 @@ type Router struct {
 func NewRouter(routes []Route, clients ClientIDs) *Router {
 	for _, r := range routes {
 		if want := RequiredAuth(r.Pattern); r.Auth != want {
-			panic("api: " + r.Method + " " + r.Pattern + " must declare auth " + string(want))
+			panic("api: " + r.Method + " " + r.Pattern + " must declare auth " + want.String())
 		}
 	}
 	return &Router{routes: routes, clients: clients}
@@ -235,14 +236,14 @@ func (rt *Router) dispatchMatched(ctx context.Context, req *Request, rawPath str
 		return mapError(err, req.Log, req.Metrics), false, nil
 	}
 	if len(matches) == 0 {
-		req.Metrics.Add("NotFound", observability.Count, 1)
+		req.Metrics.Add(contract.Data.API.Metrics.NotFound, observability.Count, 1)
 		return errorJSON(http.StatusNotFound, "not_found",
 			"No route for "+req.Method+" "+normalizePath(rawPath)), false, nil
 	}
 
 	m, ok := rt.match(req.Method, req.Path)
 	if !ok {
-		req.Metrics.Add("MethodNotAllowed", observability.Count, 1)
+		req.Metrics.Add(contract.Data.API.Metrics.MethodNotAllowed, observability.Count, 1)
 		var allowed []string
 		for _, pm := range matches {
 			allowed = append(allowed, pm.route.Method)

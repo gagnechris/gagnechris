@@ -13,6 +13,20 @@ export const RESUME_NOTIFY_SES_DAILY_CAP = 50;
 /** Contact submits faster than this are treated as bots. */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
 
+/** EMF metric names the API Lambda emits under API_SERVICE_NAME; the API stack alarms on some. */
+export const API_METRICS = {
+  handlerError: 'HandlerError',
+  dataIntegrityError: 'DataIntegrityError',
+  writeConflict: 'WriteConflict',
+  syncAdapterMissing: 'SyncAdapterMissing',
+  syncCorruptRow: 'SyncCorruptRow',
+  contactEmailFailed: 'ContactEmailFailed',
+  contactEmailStatusUpdateFailed: 'ContactEmailStatusUpdateFailed',
+  sesCapReached: 'SesCapReached',
+  notFound: 'NotFound',
+  methodNotAllowed: 'MethodNotAllowed',
+} as const;
+
 /** EMF metric names the restore-test Lambda emits and Data-prod alarms on. */
 export const RESTORE_TEST_METRICS = {
   validationSucceeded: 'RestoreValidationSucceeded',

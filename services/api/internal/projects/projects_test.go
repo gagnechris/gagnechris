@@ -10,23 +10,24 @@ import (
 func TestSafeHrefMatchesShared(t *testing.T) {
 	post := safeHref(limits.PostLinkSchemes)
 	https := safeHref(limits.ProjectHrefSchemes)
+	atMax := "/" + strings.Repeat("a", limits.LinkHrefMaxLength-1)
 	for href, want := range map[string][2]bool{
-		"/x":                            {true, true},
-		"//evil.example":                {false, false},
-		"https://a.example/b?c#d":       {true, true},
-		"HTTPS://A.example":             {true, true},
-		"http://a.example":              {true, false},
-		"https://a.example@evil.io":     {false, false},
-		"https://":                      {false, false},
-		"mailto:a@b.c":                  {true, false},
-		"tel:":                          {false, false},
-		"javascript:alert(1)":           {false, false},
-		"https://a b.example":           {false, false},
-		"/a b":                          {false, false},
-		"/a\\b":                         {false, false},
-		"":                              {false, false},
-		"/" + strings.Repeat("a", 2047): {true, true},
-		"/" + strings.Repeat("a", 2048): {false, false},
+		"/x":                        {true, true},
+		"//evil.example":            {false, false},
+		"https://a.example/b?c#d":   {true, true},
+		"HTTPS://A.example":         {true, true},
+		"http://a.example":          {true, false},
+		"https://a.example@evil.io": {false, false},
+		"https://":                  {false, false},
+		"mailto:a@b.c":              {true, false},
+		"tel:":                      {false, false},
+		"javascript:alert(1)":       {false, false},
+		"https://a b.example":       {false, false},
+		"/a b":                      {false, false},
+		"/a\\b":                     {false, false},
+		"":                          {false, false},
+		atMax:                       {true, true},
+		atMax + "a":                 {false, false},
 	} {
 		if got := [2]bool{post(href), https(href)}; got != want {
 			t.Errorf("%q: %v, want %v", href, got, want)

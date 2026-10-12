@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
 
@@ -167,13 +168,13 @@ func mapError(err error, log *slog.Logger, m *observability.Metrics) *Response {
 			"minClientVersion": upgrade.MinClientVersion,
 		})
 	case errors.As(err, &precondition):
-		m.Add("WriteConflict", observability.Count, 1)
+		m.Add(contract.Data.API.Metrics.WriteConflict, observability.Count, 1)
 		return JSON(http.StatusPreconditionFailed, withCurrent(map[string]any{
 			"error":   "precondition_failed",
 			"message": precondition.Message,
 		}, precondition.CurrentVersion, precondition.Current))
 	case errors.As(err, &conflict):
-		m.Add("WriteConflict", observability.Count, 1)
+		m.Add(contract.Data.API.Metrics.WriteConflict, observability.Count, 1)
 		code := conflict.Code
 		if code == "" {
 			code = CodeConflict
@@ -188,11 +189,11 @@ func mapError(err error, log *slog.Logger, m *observability.Metrics) *Response {
 			attrs = append(attrs, "causeMessage", integrity.Cause.Error())
 		}
 		log.Error("Data integrity error", attrs...)
-		m.Add("DataIntegrityError", observability.Count, 1)
+		m.Add(contract.Data.API.Metrics.DataIntegrityError, observability.Count, 1)
 		return errorJSON(http.StatusInternalServerError, "data_integrity", "Stored data failed validation")
 	case errors.As(err, &noAdapter):
 		log.Error("Sync row has no registered adapter", "changeType", noAdapter.ChangeType)
-		m.Add("SyncAdapterMissing", observability.Count, 1)
+		m.Add(contract.Data.API.Metrics.SyncAdapterMissing, observability.Count, 1)
 		return errorJSON(http.StatusInternalServerError, "sync_adapter_missing", "Sync feed cannot decode a stored change")
 	case errors.As(err, &unavailable):
 		return errorJSON(http.StatusServiceUnavailable, "service_unavailable", unavailable.Message)

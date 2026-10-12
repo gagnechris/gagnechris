@@ -1,5 +1,6 @@
 /** Platform-neutral: no marked, HTML renderers, OpenAPI, or Node DynamoDB helpers. */
 export {
+  API_METRICS,
   API_SERVICE_NAME,
   APEX_DOMAIN,
   CONTACT_PER_IP_PER_HOUR,

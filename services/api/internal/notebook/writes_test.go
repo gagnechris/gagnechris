@@ -15,6 +15,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/data/datatest"
+	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
 // fakeDynamo is an in-memory DynamoDB for the calls these tests make, since
@@ -32,7 +33,7 @@ type fakeDynamo struct {
 
 // indexKeys are each queried index's key attributes, as DynamoDB puts them
 // in LastEvaluatedKey after the table's.
-var indexKeys = map[string][2]string{"gsi1": {"gsi1pk", "gsi1sk"}, "gsi3": {"syncPk", "syncSk"}}
+var indexKeys = map[string][2]string{keys.GSI1: {"gsi1pk", "gsi1sk"}, keys.GSI3: {"syncPk", "syncSk"}}
 
 func (f *fakeDynamo) GetItem(_ context.Context, in *dynamodb.GetItemInput, _ ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
 	f.mu.Lock()

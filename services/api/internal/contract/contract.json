@@ -6,7 +6,24 @@
     "contactPerIpPerHour": 3,
     "sesGlobalDailyCap": 100,
     "resumeNotifySesDailyCap": 50,
-    "minContactSubmitMs": 2000
+    "minContactSubmitMs": 2000,
+    "metrics": {
+      "handlerError": "HandlerError",
+      "dataIntegrityError": "DataIntegrityError",
+      "writeConflict": "WriteConflict",
+      "syncAdapterMissing": "SyncAdapterMissing",
+      "syncCorruptRow": "SyncCorruptRow",
+      "contactEmailFailed": "ContactEmailFailed",
+      "contactEmailStatusUpdateFailed": "ContactEmailStatusUpdateFailed",
+      "sesCapReached": "SesCapReached",
+      "notFound": "NotFound",
+      "methodNotAllowed": "MethodNotAllowed"
+    }
+  },
+  "gsiNames": {
+    "gsi1": "gsi1",
+    "gsi2": "gsi2",
+    "gsi3": "gsi3"
   },
   "restoreTest": {
     "serviceName": "gagnechris-restore-test",
@@ -125,7 +142,29 @@
     "projectDemoIds": [
       "posts",
       "notebook"
-    ]
+    ],
+    "pageLimitMax": 100,
+    "postProjectIdsMax": 20,
+    "postSearchMaxLength": 200,
+    "postsPageSize": 50,
+    "mediaMaxBytes": 10485760,
+    "mediaContentTypes": [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif"
+    ],
+    "mediaFilenameMaxLength": 200,
+    "contactNameMaxLength": 200,
+    "contactEmailMaxLength": 320,
+    "contactMessageMaxLength": 10000,
+    "contactHoneypotMaxLength": 200,
+    "resumeReferrerMaxLength": 500,
+    "resumeYearMin": 1900,
+    "resumeYearMax": 2100,
+    "managedUserIdMaxLength": 128,
+    "userEmailMaxLength": 254,
+    "userNameMaxLength": 100
   },
   "defaults": {
     "home": {
@@ -301,6 +340,8 @@
     "tagsMax": 50,
     "batchMaxIds": 100,
     "pageSize": 50,
+    "searchMaxLength": 200,
+    "searchLimitMax": 50,
     "dailyTemplates": {
       "work": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
       "personal": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n"
@@ -327,6 +368,16 @@
       "notebook",
       "user-admin"
     ],
+    "groups": {
+      "siteAdmin": "site-admin",
+      "notebook": "notebook",
+      "userAdmin": "user-admin"
+    },
+    "accessLevels": [
+      "full",
+      "cms",
+      "notebook"
+    ],
     "accessLevelGroups": {
       "full": [
         "site-admin",
@@ -340,6 +391,67 @@
         "notebook"
       ]
     },
+    "levelCases": [
+      {
+        "groups": [],
+        "level": null
+      },
+      {
+        "groups": [
+          "site-admin"
+        ],
+        "level": "cms"
+      },
+      {
+        "groups": [
+          "notebook"
+        ],
+        "level": "notebook"
+      },
+      {
+        "groups": [
+          "user-admin"
+        ],
+        "level": null
+      },
+      {
+        "groups": [
+          "site-admin",
+          "notebook"
+        ],
+        "level": "cms"
+      },
+      {
+        "groups": [
+          "notebook",
+          "user-admin"
+        ],
+        "level": "notebook"
+      },
+      {
+        "groups": [
+          "user-admin",
+          "notebook",
+          "site-admin"
+        ],
+        "level": "full"
+      },
+      {
+        "groups": [
+          "site-admin",
+          "notebook",
+          "user-admin",
+          "other"
+        ],
+        "level": "full"
+      },
+      {
+        "groups": [
+          "other"
+        ],
+        "level": null
+      }
+    ],
     "reauthSeconds": 300,
     "reauthRequired": "reauth_required"
   },

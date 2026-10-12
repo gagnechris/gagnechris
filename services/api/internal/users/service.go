@@ -14,29 +14,19 @@ import (
 var (
 	accessGroups      = contract.Data.Users.AccessGroups
 	accessLevelGroups = contract.Data.Users.AccessLevelGroups
-	accessLevels      = []string{"full", "cms", "notebook"}
+	accessLevels      = contract.Data.Users.AccessLevels
 )
 
-const (
-	groupSiteAdmin = "site-admin"
-	groupNotebook  = "notebook"
-)
-
-// levelFromGroups: Full Admin needs every access group; anything less falls
-// back to the CMS, then Notebook.
+// levelFromGroups is the first level, most access first, whose groups are
+// all held: Full Admin needs every access group; anything less falls back to
+// the CMS, then Notebook.
 func levelFromGroups(groups []string) *string {
-	level := ""
-	switch {
-	case !slices.ContainsFunc(accessGroups, func(g string) bool { return !slices.Contains(groups, g) }):
-		level = "full"
-	case slices.Contains(groups, groupSiteAdmin):
-		level = "cms"
-	case slices.Contains(groups, groupNotebook):
-		level = "notebook"
-	default:
-		return nil
+	for _, level := range accessLevels {
+		if !slices.ContainsFunc(accessLevelGroups[level], func(g string) bool { return !slices.Contains(groups, g) }) {
+			return &level
+		}
 	}
-	return &level
+	return nil
 }
 
 type ManagedUser struct {

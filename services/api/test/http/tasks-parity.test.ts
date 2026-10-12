@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { NOTEBOOK_TEXT_MAX_BYTES } from '@gagnechris/shared';
+import {
+  NOTEBOOK_BATCH_MAX_IDS,
+  NOTEBOOK_TAG_MAX_LENGTH,
+  NOTEBOOK_TEXT_MAX_BYTES,
+  NOTEBOOK_TITLE_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { notebookUser } from './support/claims.js';
 import { useApi } from './support/harness.js';
 
@@ -204,7 +209,9 @@ describe('tasks parity over HTTP (DynamoDB Local)', () => {
       body: badBody({ 'ids.0': 'invalid_format' }),
     });
     expect(
-      await batch(Array.from({ length: 101 }, () => TASK_A)),
+      await batch(
+        Array.from({ length: NOTEBOOK_BATCH_MAX_IDS + 1 }, () => TASK_A),
+      ),
     ).toMatchObject({ status: 400, body: badBody({ ids: 'too_big' }) });
     expect(
       await call('POST', '/api/notebook/tasks/batch', { body: {} }),
@@ -605,8 +612,8 @@ describe('tasks parity over HTTP (DynamoDB Local)', () => {
     });
 
     // Limits count code points: each emoji is two UTF-16 units.
-    const emojiTitle = '😀'.repeat(300);
-    const emojiTag = '😀'.repeat(50);
+    const emojiTitle = '😀'.repeat(NOTEBOOK_TITLE_MAX_LENGTH);
+    const emojiTag = '😀'.repeat(NOTEBOOK_TAG_MAX_LENGTH);
     expect(
       await createTask({ id: TASK_A, title: emojiTitle, tags: [emojiTag] }),
     ).toMatchObject({ body: { title: emojiTitle, tags: [emojiTag] } });

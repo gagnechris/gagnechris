@@ -161,7 +161,7 @@ var managedUserID = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 
 func idParam(r *api.Request) (string, error) {
 	v := api.NewQueryValidator(map[string]string{"id": r.Params["id"]})
-	id, _ := v.String("id", true, false, api.MinLen(1), api.MaxLen(128), api.Matches(managedUserID))
+	id, _ := v.String("id", true, false, api.MinLen(1), api.MaxLen(contract.Data.Limits.ManagedUserIDMaxLength), api.Matches(managedUserID))
 	return id, v.ErrWith("Invalid path parameters")
 }
 
@@ -184,13 +184,13 @@ func (h handlers) invite(ctx context.Context, r *api.Request) (*api.Response, er
 	email, ok := v.String("email", true, true)
 	if ok {
 		email = strings.ToLower(email)
-		for _, rule := range []api.StringRule{api.Email, api.MaxLen(254)} {
+		for _, rule := range []api.StringRule{api.Email, api.MaxLen(contract.Data.Limits.UserEmailMaxLength)} {
 			if code := rule(email); code != "" {
 				v.Fail("email", code)
 			}
 		}
 	}
-	name, hasName := v.String("name", false, true, api.MaxLen(100))
+	name, hasName := v.String("name", false, true, api.MaxLen(contract.Data.Limits.UserNameMaxLength))
 	level, _ := v.Enum("level", true, accessLevels...)
 	if err := v.Err(); err != nil {
 		return nil, err
