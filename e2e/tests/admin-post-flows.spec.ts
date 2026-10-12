@@ -39,10 +39,14 @@ test('a new post: type, autosave, reload, Publish, and it is on the site', async
   prefix,
   request,
 }) => {
-  // Slow saves, so Saving… is on screen long enough to see.
+  // Saves wait until the test has seen Saving…; a polled assertion can miss
+  // a fixed-length window between two polls.
+  let releaseSaves!: () => void;
+  const savesReleased = new Promise<void>((resolve) => {
+    releaseSaves = resolve;
+  });
   await page.route('**/api/admin/posts/*', async (route) => {
-    if (route.request().method() === 'PUT')
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    if (route.request().method() === 'PUT') await savesReleased;
     await route.continue();
   });
   await signIn();
@@ -59,6 +63,7 @@ test('a new post: type, autosave, reload, Publish, and it is on the site', async
   await expect(
     page.getByRole('status').filter({ hasText: /^Saving/ }),
   ).toBeVisible();
+  releaseSaves();
   await saved(page);
   expect(await stored(seed, id)).toMatchObject({
     title,

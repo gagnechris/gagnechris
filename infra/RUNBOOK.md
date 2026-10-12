@@ -838,7 +838,7 @@ For API + publisher without touching prod DynamoDB or CloudFront, see **[docs/lo
 
 ## iOS release (TestFlight)
 
-The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions with such a tag picked as the ref). It refuses any other ref and any tag whose commit is not on `main`, installs both lockfiles with `--ignore-scripts` (the job holds `EXPO_TOKEN`), runs `scripts/ci/mobile-checks.sh` (the same checks as the **Mobile typecheck, lint, test, bundle** PR check), then `eas build --platform ios --profile production --non-interactive --auto-submit`, so EAS builds and signs in the cloud and submits the build to App Store Connect. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
+The iOS app ships only through TestFlight; there is no public App Store listing. `.github/workflows/ios-release.yml` runs on a pushed `ios-v*` tag (or by hand from Actions with such a tag picked as the ref). It refuses any other ref and any tag whose commit is not on `main`, installs both lockfiles with `--ignore-scripts` (the job holds `EXPO_TOKEN`), runs `scripts/ci/mobile-checks.sh` (the same checks as the **Mobile typecheck, lint, test, bundle** PR check), then `eas build --local --platform ios --profile production --non-interactive` on the `macos-26` runner and `eas submit` with the resulting `.ipa` to App Store Connect. The build runs on GitHub's runner (free for this public repo), so it does not use the Expo free plan's monthly EAS Build quota; EAS still supplies the signing credentials and the App Store Connect API key. EAS owns the build number (`autoIncrement`, `appVersionSource: "remote"` in `apps/mobile/eas.json`). The EAS project is `@gagnechris/gagnechris-mobile`, linked by `expo.extra.eas.projectId` in `apps/mobile/app.json`; non-interactive builds fail without it.
 
 **One-time setup**
 
@@ -855,7 +855,7 @@ Tag a commit that is already on `main`:
 git tag ios-v1.0.0 origin/main && git push origin ios-v1.0.0
 ```
 
-The job takes about as long as the EAS build (20 to 40 minutes). App Store Connect processes the build for a few more minutes before TestFlight offers it.
+The job takes 20 to 40 minutes, most of it the Xcode build. App Store Connect processes the build for a few more minutes before TestFlight offers it.
 
 **Testers**
 

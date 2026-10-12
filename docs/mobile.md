@@ -284,7 +284,7 @@ The two lockfiles produce two copies on disk, which is harmless at runtime (Metr
 
 ## CI
 
-Releases go to TestFlight from an `ios-v*` tag through `.github/workflows/ios-release.yml` (EAS build and submit); setup and tester management are in [infra/RUNBOOK.md](../infra/RUNBOOK.md#ios-release-testflight).
+Releases go to TestFlight from an `ios-v*` tag through `.github/workflows/ios-release.yml` (`eas build --local` on a GitHub macOS runner, then `eas submit`); setup and tester management are in [infra/RUNBOOK.md](../infra/RUNBOOK.md#ios-release-testflight).
 
 `.github/workflows/mobile.yml` uses no AWS credentials. It runs on every PR and push to `main` so the required check **Mobile typecheck, lint, test, bundle** always reports; on a PR, an in-job `dorny/paths-filter` step skips the steps below (the job still passes) unless mobile, the client packages, the root lockfile, `.nvmrc`, `.npmrc`, `eslint.config.js`, `tsconfig.base.json`, the setup action, `scripts/ci/mobile-checks.sh` or the workflow changed; a push to `main` always runs them. The setup action skips Go and keys the npm cache on both lockfiles, so the Expo tree is cached too. When it applies, it runs (steps 2 to 5 are `scripts/ci/mobile-checks.sh`, which the TestFlight release runs too):
 
