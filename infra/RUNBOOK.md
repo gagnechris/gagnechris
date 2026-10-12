@@ -158,8 +158,10 @@ bash scripts/apply-branch-protection.sh
      - **PR (`CDK diff (PR)`):** `cdk synth` + `check:deployed-gsi` (early warning) + `cdk diff` (diff role); sticky PR comment.
      - **main deploy:** runs only after CI succeeds (`workflow_run`), as two jobs that share concurrency group `cdk-prod` (never cancels in flight):
        - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK and/or web, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy, including `*.md` under `infra/` (markdown never changes synth).
+         - `cdk=true` for any non-markdown change under `infra/`, `services/` or `packages/`, root `package.json`, `package-lock.json`, `tsconfig.base.json` or `.nvmrc`, `cdk.yml` or the setup action.
+         - `web=true` (build, sync, invalidate and `republishAll`) for the web app and the packages it bundles (`api-client`, `app-core`, `public-ui`, `shared`, `tokens`); the publisher and what it renders with (`services/publisher/`, `packages/data/`, `infra/lib/stacks/publisher-stack.ts`), since existing pages only change on a republish; what the site is served from (`site-stack.ts`, `constructs/site-hosting.ts`, `constructs/app-host.ts`, `infra/lib/cloudfront/`); what the build and sync read (`auth-stack.ts` for the Cognito client IDs, `infra/lib/config/ssm-params.json`, `scripts/publisher-owned-paths.generated.txt`, `scripts/deploy-web.sh`); and the root files, `cdk.yml` and the setup action. Any other infra or API change (the Go API, data and API stacks, alarms) deploys CDK only.
          - `infra/test/ci-workflows.test.ts` pins this: a docs-only head after an infra commit whose build never deployed gives `cdk=true` from `deployed-sha` (a `HEAD~1` base would give `cdk=false`).
-       - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all`, `scripts/deploy-web.sh`, and finally writes `deployed-sha`. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
+       - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all` (when `cdk=true`), `scripts/deploy-web.sh` (when `web=true`), and finally writes `deployed-sha`, so a CDK-only deploy still records the SHA and clears deploy lag. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
      - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write`, and every job that reads a `secrets.*` value (the TestFlight release), installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`), and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `infra/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` or secret-reading job, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. SNS alert on failure uses SSM `alerts-topic-arn`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
@@ -253,7 +255,7 @@ curl -sS https://app-site-association.cdn-apple.com/a/v1/gagnechris.com
 
 ## Web deploy pipeline
 
-On merge to `main`, in the same `CDK + web deploy (main)` job and after `cdk deploy --all`, CI runs `scripts/deploy-web.sh`. **Prod only**. It reads everything from SSM under `/gagnechris/prod/`: `site-bucket-name`, `cloudfront-distribution-id`, `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`, `cognito-user-pool-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-auth-domain` and `publisher-function-name`. The deploy role (`gagnechris-prod-gha-deploy`, `AdministratorAccess`) covers the syncs, invalidations and SSM reads.
+On merge to `main`, when `scripts/ci/deploy-paths.sh` reports `web=true`, CI runs `scripts/deploy-web.sh` in the same `CDK + web deploy (main)` job, after `cdk deploy --all`. **Prod only**. It reads everything from SSM under `/gagnechris/prod/`: `site-bucket-name`, `cloudfront-distribution-id`, `admin-site-bucket-name`, `admin-cloudfront-distribution-id`, `notebook-site-bucket-name`, `notebook-cloudfront-distribution-id`, `cognito-user-pool-id`, `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-auth-domain` and `publisher-function-name`. The deploy role (`gagnechris-prod-gha-deploy`, `AdministratorAccess`) covers the syncs, invalidations and SSM reads.
 
 1. `npm run build -w @gagnechris/web` builds all three apps; `check:web-shells` must pass before anything uploads.
 2. Admin and Notebook: `assets/` (immutable cache), then `sync --delete` (excluding `assets/*`) to the host's bucket, `.well-known/*` as `application/json`, `manifest.json` as `application/manifest+json`, and a `/*` invalidation on that host's distribution.
@@ -492,11 +494,11 @@ Use this for the realistic single-user case: notes or tasks deleted or overwritt
 1. Stop writers: stop using the admin app and iOS. Throttling the API (for example reserved concurrency 0) is a break-glass change: ask first and record it in the Linear ticket.
 2. Restore a scratch copy from before the damage (step 2 above).
 3. Notebook rows: run the copy-back for the owner with `--types note,task --overwrite-newer`. Dry run first, then `--apply`.
-4. CMS rows (`POST#`, `SLUG#`, `TAG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`, `SITE#publish`, `REMOVED_USERS`) and daily templates (`USER#<sub>#DAILY_TEMPLATE#<area>`) are not covered by copy-back, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#` or `CREATED#` rows:
+4. CMS rows (`POST#`, `SLUG#`, `PROJECT#`, `PROJECT_SLUG#`, `HOME#`, `RESUME#`, `CONTACT#`, `SITE#publish`, `REMOVED_USERS`) and daily templates (`USER#<sub>#DAILY_TEMPLATE#<area>`) are not covered by copy-back, so copy them back raw. Review the dry count first, and do not copy `RATE#`, `SYNC#`, `CREATED#` or `TAG#` rows:
 
    ```bash
    aws dynamodb scan --table-name "$SCRATCH" --output json \
-     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|TAG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT|SITE)#|^REMOVED_USERS$|^USER#[^#]+#DAILY_TEMPLATE#"))]
+     | jq -c '[.Items[] | select(.pk.S | test("^(POST|SLUG|PROJECT|PROJECT_SLUG|HOME|RESUME|CONTACT|SITE)#|^REMOVED_USERS$|^USER#[^#]+#DAILY_TEMPLATE#"))]
               | . as $all | range(0; length; 25) | $all[.:(. + 25)]
               | {"gagnechris-prod": [ .[] | {PutRequest: {Item: .}} ]}' > /tmp/cms-batches.jsonl
    wc -l /tmp/cms-batches.jsonl     # batches of 25
@@ -557,6 +559,18 @@ The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_END
 AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts           # dry run: counts
 AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-task-start-dates.ts --apply      # exit 1: raced an API save, re-run
 AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-task-start-dates.ts --verify  # exit 2 while anything is unmigrated
+```
+
+The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.
+
+### Tag row cleanup
+
+`scripts/migrate-tag-rows.ts` deletes the posts' old tag index rows (`TAG#<tag>` / `TS#<publishedAt>#POST#<postId>`, `entityType` `tagIndex`). Nothing reads or writes them, so deleting them changes nothing served or published. It prints one JSON line of counts (`scanned`, `tagRows`, `deleted`). Re-running `--apply` is a no-op.
+
+```bash
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-tag-rows.ts           # dry run: counts
+AWS_PROFILE=gagnechris-admin npx tsx scripts/migrate-tag-rows.ts --apply
+AWS_PROFILE=gagnechris-readonly npx tsx scripts/migrate-tag-rows.ts --verify  # exit 2 while any remain
 ```
 
 The table is `--table`, else `DATA_TABLE_NAME`, else `gagnechris-prod`; `AWS_ENDPOINT_URL_DYNAMODB` points it at DynamoDB Local.

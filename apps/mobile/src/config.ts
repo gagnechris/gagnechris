@@ -45,29 +45,15 @@ export const authMode = resolveAuthMode(
 const IOS_CLIENT_ID = '4abm22if5quulq4paaelcsmbmm';
 
 /**
- * Where managed login sends the code back. `universalLink` needs a build with
- * the notebook host's `webcredentials` entitlement and the AASA served;
- * simulator and dev builds use `scheme`.
+ * Where managed login sends the code back: the only URLs the `ios` client
+ * registers. Sign-in needs a build with the notebook host's `webcredentials`
+ * entitlement and the AASA served, so simulator builds use local auth.
  */
-export const IOS_AUTH_REDIRECTS = {
-  scheme: {
-    redirectUri: 'gagnechris://auth/callback',
-    logoutUri: 'gagnechris://',
-    preferUniversalLinks: false,
-  },
-  universalLink: {
-    redirectUri: 'https://notebook.gagnechris.com/ios/auth/callback',
-    logoutUri: 'https://notebook.gagnechris.com/ios/auth/signed-out',
-    preferUniversalLinks: true,
-  },
+export const IOS_AUTH_REDIRECT = {
+  redirectUri: 'https://notebook.gagnechris.com/ios/auth/callback',
+  logoutUri: 'https://notebook.gagnechris.com/ios/auth/signed-out',
+  preferUniversalLinks: true,
 } as const;
-
-export type AuthRedirect = keyof typeof IOS_AUTH_REDIRECTS;
-
-/** Device builds set `EXPO_PUBLIC_AUTH_REDIRECT=universalLink` in `eas.json`. */
-export function resolveAuthRedirect(raw: string | undefined): AuthRedirect {
-  return raw === 'universalLink' ? 'universalLink' : 'scheme';
-}
 
 export type CognitoConfig = {
   domain: string;
@@ -86,11 +72,7 @@ export type CognitoConfig = {
 export const cognitoConfig: CognitoConfig = {
   domain: process.env.EXPO_PUBLIC_COGNITO_DOMAIN ?? 'auth.gagnechris.com',
   clientId: process.env.EXPO_PUBLIC_COGNITO_IOS_CLIENT_ID || IOS_CLIENT_ID,
-  ...IOS_AUTH_REDIRECTS[
-    resolveAuthRedirect(
-      process.env.EXPO_PUBLIC_AUTH_REDIRECT as string | undefined,
-    )
-  ],
+  ...IOS_AUTH_REDIRECT,
   // On a real iPhone the ephemeral session offered only email and password,
   // never the iCloud Keychain passkey for auth.gagnechris.com.
   ephemeralSession: false,

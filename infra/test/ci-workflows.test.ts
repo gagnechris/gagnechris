@@ -514,6 +514,33 @@ describe('deploy job guards', () => {
     expect(web).toBeGreaterThan(cdkDeploy);
   });
 
+  it('runs the web deploy only when plan says web, and records every deploy', () => {
+    expect(deploy.if).toBe(
+      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true'",
+    );
+    const web = stepIndex(
+      deploy,
+      (s) => s.run?.includes('scripts/deploy-web.sh') ?? false,
+    );
+    expect(deploy.steps![web]!.if).toBe("needs.plan.outputs.web == 'true'");
+    expect(
+      (deploy.steps ?? []).filter(
+        (s) =>
+          s.run?.includes('deploy-web.sh') ||
+          s.run?.includes('republishAll') ||
+          s.run?.includes('create-invalidation') ||
+          s.run?.includes('s3 sync'),
+      ),
+    ).toHaveLength(1);
+    // A CDK-only deploy must still advance deployed-sha, or deploy-lag alerts.
+    const record = stepIndex(
+      deploy,
+      (s) => s.run?.includes('deployedSha') ?? false,
+    );
+    expect(record).toBeGreaterThan(web);
+    expect(deploy.steps![record]!.if).toBe('success()');
+  });
+
   it('checks the built web shells in the Lint, test, and build job', () => {
     const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
     const build = ci.jobs.build!;
@@ -754,6 +781,18 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   const runbook = commit('infra/RUNBOOK.md');
   const goSource = commit('services/api/internal/observability/logger.go');
   const publicUi = commit('packages/public-ui/src/home/HomeBody.tsx');
+  const apiStack = commit('infra/lib/stacks/api-stack.ts');
+  const goLambda = commit('services/api/cmd/api/main.go');
+  const publisher = commit('services/publisher/src/rebuild.ts');
+  const dataPkg = commit('packages/data/src/keys.ts');
+  const publisherStack = commit('infra/lib/stacks/publisher-stack.ts');
+  const viewerRequest = commit(
+    'infra/lib/cloudfront/viewer-request-function.js',
+  );
+  const siteHosting = commit('infra/lib/constructs/site-hosting.ts');
+  const authStack = commit('infra/lib/stacks/auth-stack.ts');
+  const ssmParams = commit('infra/lib/config/ssm-params.json');
+  const ownedPaths = commit('scripts/publisher-owned-paths.generated.txt');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -805,6 +844,34 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
     expect(paths(runbook, goSource)).toBe('cdk=true\nweb=false');
     // The public app bundles public-ui, as the publisher does.
     expect(paths(goSource, publicUi)).toBe('cdk=true\nweb=true');
+  });
+
+  it('skips the web deploy for infra and API changes that the site never sees', () => {
+    const paths = (from: string, to: string) =>
+      runScript('deploy-paths.sh', [from, to], {}, repo).stdout;
+    expect(paths(publicUi, apiStack)).toBe('cdk=true\nweb=false');
+    expect(paths(publicUi, goLambda)).toBe('cdk=true\nweb=false');
+  });
+
+  // Prerendered pages only change on republishAll, and the build bakes in
+  // Cognito client IDs and SSM names, so these still run the web deploy.
+  it('runs the web deploy for publisher, hosting, auth and deploy-input changes', () => {
+    const paths = (from: string, to: string) =>
+      runScript('deploy-paths.sh', [from, to], {}, repo).stdout;
+    const chain = [
+      goLambda,
+      publisher,
+      dataPkg,
+      publisherStack,
+      viewerRequest,
+      siteHosting,
+      authStack,
+      ssmParams,
+    ];
+    for (let i = 1; i < chain.length; i++) {
+      expect(paths(chain[i - 1]!, chain[i]!)).toBe('cdk=true\nweb=true');
+    }
+    expect(paths(ssmParams, ownedPaths)).toBe('cdk=false\nweb=true');
   });
 });
 
