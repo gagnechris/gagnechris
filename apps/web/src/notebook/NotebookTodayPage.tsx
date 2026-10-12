@@ -68,7 +68,12 @@ export default function NotebookTodayPage() {
     followsTodayRef.current = followsToday && heldDay === null;
   }, [followsToday, heldDay]);
   const date = resolveDate(dateParam, heldDay ?? today);
-  const { from, to } = useMemo(() => monthBounds(date), [date]);
+  // The calendar can show another month than the day's; mark that one.
+  const [calendarMonth, setCalendarMonth] = useState<string | null>(null);
+  const { from, to } = useMemo(
+    () => monthBounds(calendarMonth ?? date),
+    [calendarMonth, date],
+  );
 
   const writingArea: NotebookArea | null =
     areaFilter === 'all' ? null : areaFilter;
@@ -204,6 +209,7 @@ export default function NotebookTodayPage() {
                   calendar.querySelector('summary')?.focus();
                 }}
                 markedDates={datesQuery.data}
+                onMonthChange={setCalendarMonth}
               />
             </details>
             <span className="notebook-today__phone-tools">

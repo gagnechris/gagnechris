@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER_A = 'user-a-owner';
@@ -17,32 +17,15 @@ const TASK_2 = '01ARZ3NDEKTSV4RRFFQ69G5FD1';
 type Body = Record<string, unknown>;
 
 const h = useApi('owner-scoped');
-
-async function call(
-  user: string,
-  method: string,
-  path: string,
-  opts: {
-    body?: unknown;
-    query?: Record<string, string>;
-    ifMatch?: string;
-  } = {},
-): Promise<{ status: number; body: Body }> {
-  const res = await h.api.request(method, path, {
-    body: opts.body,
-    query: opts.query,
-    headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
-    claims: notebookUser(user),
-  });
-  return { status: res.status, body: res.body ?? {} };
-}
+const { call } = apiCalls(h);
 
 async function createDaily(
   user: string,
   id: string,
   fields: { title: string; area: string; date: string },
 ): Promise<{ status: number; body: Body }> {
-  return call(user, 'POST', '/api/notebook/notes', {
+  return call('POST', '/api/notebook/notes', {
+    user,
     body: { id, type: 'daily', ...fields },
   });
 }
@@ -69,7 +52,7 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
     ).toBe(201);
 
     const path = `/api/notebook/notes/${NOTE_A}`;
-    const attempts: [string, Parameters<typeof call>[3]][] = [
+    const attempts: [string, Parameters<typeof call>[2]][] = [
       ['GET', {}],
       ['PUT', { body: { title: 'hijack' }, ifMatch: '"1"' }],
       ['PUT', { body: { version: 1, title: 'hijack' } }],
@@ -77,10 +60,10 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
       ['DELETE', { body: { version: 1 } }],
     ];
     for (const [method, opts] of attempts) {
-      const res = await call(USER_B, method, path, opts);
+      const res = await call(method, path, { user: USER_B, ...opts });
       expect(res.status, `B ${method} ${JSON.stringify(opts)}`).toBe(404);
     }
-    expect((await call(USER_A, 'GET', path)).body).toMatchObject({
+    expect((await call('GET', path, { user: USER_A })).body).toMatchObject({
       title: 'A private',
       version: 1,
       deleted: false,
@@ -88,10 +71,12 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
 
     // A's id lookup of B's note is a miss (different pk).
     expect(
-      (await call(USER_A, 'GET', `/api/notebook/notes/${NOTE_B}`)).status,
+      (await call('GET', `/api/notebook/notes/${NOTE_B}`, { user: USER_A }))
+        .status,
     ).toBe(404);
 
-    const aList = await call(USER_A, 'GET', '/api/notebook/notes', {
+    const aList = await call('GET', '/api/notebook/notes', {
+      user: USER_A,
       query: { area: 'work' },
     });
     expect(idsOf(aList)).toEqual([NOTE_A]);
@@ -99,9 +84,13 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
       true,
     );
 
-    const feedA = await call(USER_A, 'GET', '/api/notebook/sync/changes');
+    const feedA = await call('GET', '/api/notebook/sync/changes', {
+      user: USER_A,
+    });
     expect((feedA.body.changes as Body[]).map((c) => c.id)).toEqual([NOTE_A]);
-    const feedB = await call(USER_B, 'GET', '/api/notebook/sync/changes');
+    const feedB = await call('GET', '/api/notebook/sync/changes', {
+      user: USER_B,
+    });
     expect((feedB.body.changes as Body[]).map((c) => c.id)).toEqual([NOTE_B]);
   });
 
@@ -123,10 +112,18 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
       current: { id: first.body.id, title: 'device-1' },
     });
     expect(
-      (await call(USER_A, 'GET', `/api/notebook/notes/${DAILY_ULID_2}`)).status,
+      (
+        await call('GET', `/api/notebook/notes/${DAILY_ULID_2}`, {
+          user: USER_A,
+        })
+      ).status,
     ).toBe(404);
     expect(
-      (await call(USER_A, 'GET', `/api/notebook/notes/${DAILY_ULID_1}`)).body,
+      (
+        await call('GET', `/api/notebook/notes/${DAILY_ULID_1}`, {
+          user: USER_A,
+        })
+      ).body,
     ).toMatchObject({
       title: 'device-1',
       area: 'personal',
@@ -159,7 +156,8 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
     for (const id of [TASK_1, TASK_2]) {
       expect(
         (
-          await call(USER_A, 'POST', '/api/notebook/tasks', {
+          await call('POST', '/api/notebook/tasks', {
+            user: USER_A,
             body: { id, area: 'work', title: id, noteId: NOTE_A },
           })
         ).status,
@@ -167,7 +165,7 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
     }
 
     const notesPage = (query: Record<string, string>) =>
-      call(USER_A, 'GET', '/api/notebook/notes', { query });
+      call('GET', '/api/notebook/notes', { user: USER_A, query });
 
     const gsi1Page1 = await notesPage({ area: 'work', limit: '1' });
     expect(gsi1Page1.status).toBe(200);
@@ -190,7 +188,7 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
     expect(idsOf(gsi1Page2)[0]).not.toBe(idsOf(gsi1Page1)[0]);
 
     const tasksPage = (query: Record<string, string>) =>
-      call(USER_A, 'GET', '/api/notebook/tasks', { query });
+      call('GET', '/api/notebook/tasks', { user: USER_A, query });
     const gsi2Page = await tasksPage({ noteId: NOTE_A, limit: '1' });
     expect(gsi2Page.status).toBe(200);
     expect(gsi2Page.body.items).toHaveLength(1);
@@ -220,7 +218,8 @@ describe('owner-scoped notes over HTTP (DynamoDB Local)', () => {
     const live = (gsi1Page1.body.items as Body[])[0]!;
     expect(
       (
-        await call(USER_A, 'DELETE', `/api/notebook/notes/${live.id}`, {
+        await call('DELETE', `/api/notebook/notes/${live.id}`, {
+          user: USER_A,
           body: { version: live.version },
         })
       ).status,

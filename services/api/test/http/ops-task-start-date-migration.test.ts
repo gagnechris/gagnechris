@@ -11,7 +11,7 @@ import {
   type TaskStartDateMigrationMode,
 } from '@gagnechris/ops/task-start-date-migration';
 import { testUlid } from '../support/paging-cases.js';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-start-dates';
@@ -36,22 +36,7 @@ const NEW_NOW = testUlid('M', 20);
 type Json = any;
 
 const h = useApi('task-start-dates');
-
-async function ok(
-  method: string,
-  path: string,
-  opts: { body?: unknown; query?: Record<string, string | number> } = {},
-): Promise<Json> {
-  const res = await h.api.request(method, path, {
-    ...opts,
-    claims: notebookUser(USER),
-  });
-  expect(
-    res.status >= 200 && res.status < 300,
-    `${method} ${path}: ${res.status} ${JSON.stringify(res.body)}`,
-  ).toBe(true);
-  return res.body;
-}
+const { call, ok } = apiCalls(h, { user: USER });
 
 /** Rewrites a task row to the shape stored before startDate existed. */
 async function storeAsLegacyTask(
@@ -157,9 +142,7 @@ describe('task start-date migration (DynamoDB Local)', () => {
   const served = async (): Promise<Json[]> =>
     Promise.all(
       [...LEGACY.map((l) => idOf(l.key)), NEW_NOW].map(async (id) => {
-        const res = await h.api.request('GET', `/api/notebook/tasks/${id}`, {
-          claims: notebookUser(USER),
-        });
+        const res = await call('GET', `/api/notebook/tasks/${id}`);
         return { status: res.status, body: res.body };
       }),
     );

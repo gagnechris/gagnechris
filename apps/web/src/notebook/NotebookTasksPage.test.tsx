@@ -31,6 +31,7 @@ const state = vi.hoisted(() => ({
   tasks: [] as Task[],
   created: [] as Record<string, unknown>[],
   failCreate: false,
+  queries: [] as Record<string, unknown>[],
 }));
 
 vi.mock('../workspace/api/client', () => ({
@@ -47,6 +48,7 @@ vi.mock('../workspace/api/client', () => ({
             startBefore?: string;
             someday?: string;
             undated?: string;
+            priority?: string;
             limit?: number;
             cursor?: string;
           };
@@ -56,6 +58,7 @@ vi.mock('../workspace/api/client', () => ({
       if (path === '/api/notebook/tasks') {
         // Honour the filters and paging the UI sends, like the API.
         const q = init?.params?.query ?? {};
+        state.queries.push(q);
         const matches = state.tasks.filter(
           (t) =>
             !t.deleted &&
@@ -70,7 +73,8 @@ vi.mock('../workspace/api/client', () => ({
             (!q.startBefore ||
               (t.startDate !== null && t.startDate < q.startBefore)) &&
             (!q.someday || t.someday === (q.someday === 'true')) &&
-            (!q.undated || (!t.someday && t.startDate === null)),
+            (!q.undated || (!t.someday && t.startDate === null)) &&
+            (!q.priority || t.priority === q.priority),
         );
         const start = Number(q.cursor ?? 0);
         const end = start + (q.limit ?? 50);
@@ -201,6 +205,7 @@ describe('NotebookTasksPage', () => {
     state.tasks = [];
     state.created = [];
     state.failCreate = false;
+    state.queries = [];
   });
 
   test('a failed quick add shows an error and keeps the text', async () => {
@@ -466,5 +471,82 @@ describe('NotebookTasksPage', () => {
       renderTasks('/tasks?show=week');
       expect(await screen.findByText('No tasks match.')).toBeInTheDocument();
     });
+  });
+
+  test('a filter that spans pages keeps its filter on every Load more', async () => {
+    const today = localDateString();
+    const mk = (
+      i: number,
+      priority: Task['priority'],
+      status: Task['status'],
+    ): Task => ({
+      id: `01TASKPAGES${String(i).padStart(15, '0')}`,
+      userId: 'u1',
+      area: 'work',
+      title: `${priority} ${status} ${i}`,
+      description: '',
+      priority,
+      status,
+      dueDate: null,
+      startDate: today,
+      someday: false,
+      completedAt: status === 'done' ? '2026-09-01T12:00:00.000Z' : null,
+      noteId: null,
+      tags: [],
+      version: 1,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      updatedAt: '2026-09-01T12:00:00.000Z',
+      deleted: false,
+    });
+    // Low tasks first, so an unfiltered page would be all low.
+    state.tasks = [
+      ...Array.from({ length: 70 }, (_, i) => mk(i, 'low', 'todo')),
+      ...Array.from({ length: 60 }, (_, i) => mk(100 + i, 'high', 'todo')),
+      ...Array.from({ length: 55 }, (_, i) => mk(200 + i, 'high', 'dropped')),
+      ...Array.from({ length: 52 }, (_, i) => mk(300 + i, 'high', 'done')),
+    ];
+    const user = userEvent.setup();
+    renderTasks();
+    const rows = (name: string) =>
+      screen.getByRole('list', { name }).querySelectorAll('li');
+    const loadMore = () => screen.getByRole('button', { name: 'Load more' });
+
+    await user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Filter by priority' }),
+      'high',
+    );
+    await waitFor(() => expect(rows('Open tasks')).toHaveLength(50));
+    await user.click(loadMore());
+    await waitFor(() => expect(rows('Open tasks')).toHaveLength(60));
+    expect(
+      screen.getByRole('list', { name: 'Open tasks' }),
+    ).not.toHaveTextContent(/low/);
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    const nextPage = state.queries.find((q) => q.cursor === '50');
+    expect(nextPage).toMatchObject({ priority: 'high', open: 'true' });
+
+    await user.click(screen.getByText('Completed'));
+    expect(await screen.findByText('Completed (50+)')).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: 'Load more completed' }),
+    );
+    expect(await screen.findByText('Completed (52)')).toBeInTheDocument();
+    expect(rows('Completed tasks')).toHaveLength(52);
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Filter by status' }),
+      'dropped',
+    );
+    await waitFor(() => expect(rows('Dropped tasks')).toHaveLength(50));
+    await user.click(loadMore());
+    await waitFor(() => expect(rows('Dropped tasks')).toHaveLength(55));
+    expect(
+      state.queries.filter((q) => q.status === 'dropped').map((q) => q.cursor),
+    ).toEqual([undefined, '50']);
+    expect(
+      state.queries
+        .filter((q) => q.status === 'dropped')
+        .every((q) => q.priority === 'high'),
+    ).toBe(true);
   });
 });

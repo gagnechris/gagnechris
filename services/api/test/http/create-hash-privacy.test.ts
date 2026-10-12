@@ -4,7 +4,7 @@ import {
   NOTEBOOK_TEXT_MAX_BYTES,
   NOTEBOOK_TITLE_MAX_LENGTH,
 } from '@gagnechris/shared';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-create-hash';
@@ -15,17 +15,7 @@ const SECRET = 'my bank password is hunter2';
 
 describe('createHash privacy and size limits', () => {
   const h = useApi('create-hash');
-
-  async function call(method: string, path: string, body?: unknown) {
-    const res = await h.api.request(method, path, {
-      body,
-      claims: notebookUser(USER),
-    });
-    return {
-      status: res.status,
-      body: (res.body ?? {}) as Record<string, unknown>,
-    };
-  }
+  const { call } = apiCalls(h, { user: USER });
 
   async function scanAll(): Promise<Record<string, unknown>[]> {
     const out = await h.doc.send(new ScanCommand({ TableName: h.tableName }));
@@ -34,20 +24,24 @@ describe('createHash privacy and size limits', () => {
 
   const createNote = (bodyMarkdown: string, id = NOTE_ID) =>
     call('POST', '/api/notebook/notes', {
-      id,
-      area: 'work',
-      type: 'page',
-      title: 'Secrets',
-      bodyMarkdown,
+      body: {
+        id,
+        area: 'work',
+        type: 'page',
+        title: 'Secrets',
+        bodyMarkdown,
+      },
     });
 
   it('keeps no copy of the original text after edit and delete', async () => {
     expect((await createNote(SECRET)).status).toBe(201);
     const task = await call('POST', '/api/notebook/tasks', {
-      id: TASK_ID,
-      area: 'work',
-      title: 'Task',
-      description: SECRET,
+      body: {
+        id: TASK_ID,
+        area: 'work',
+        title: 'Task',
+        description: SECRET,
+      },
     });
     expect(task.status).toBe(201);
 
@@ -58,23 +52,33 @@ describe('createHash privacy and size limits', () => {
     }
 
     const edited = await call('PUT', `/api/notebook/notes/${NOTE_ID}`, {
-      version: 1,
-      bodyMarkdown: 'redacted',
+      body: {
+        version: 1,
+        bodyMarkdown: 'redacted',
+      },
     });
     expect(edited.status).toBe(200);
     const editedTask = await call('PUT', `/api/notebook/tasks/${TASK_ID}`, {
-      version: 1,
-      description: 'redacted',
+      body: {
+        version: 1,
+        description: 'redacted',
+      },
     });
     expect(editedTask.status).toBe(200);
 
     expect(
-      (await call('DELETE', `/api/notebook/notes/${NOTE_ID}`, { version: 2 }))
-        .status,
+      (
+        await call('DELETE', `/api/notebook/notes/${NOTE_ID}`, {
+          body: { version: 2 },
+        })
+      ).status,
     ).toBe(200);
     expect(
-      (await call('DELETE', `/api/notebook/tasks/${TASK_ID}`, { version: 2 }))
-        .status,
+      (
+        await call('DELETE', `/api/notebook/tasks/${TASK_ID}`, {
+          body: { version: 2 },
+        })
+      ).status,
     ).toBe(200);
 
     const items = await scanAll();
@@ -133,8 +137,10 @@ describe('createHash privacy and size limits', () => {
     });
 
     const update = await call('PUT', `/api/notebook/notes/${NOTE_ID}`, {
-      version: 1,
-      bodyMarkdown: 'b'.repeat(NOTEBOOK_TEXT_MAX_BYTES + 1),
+      body: {
+        version: 1,
+        bodyMarkdown: 'b'.repeat(NOTEBOOK_TEXT_MAX_BYTES + 1),
+      },
     });
     expect(update.status).toBe(413);
 
@@ -142,16 +148,20 @@ describe('createHash privacy and size limits', () => {
       'PUT',
       '/api/notebook/notes/daily/work/2026-10-03',
       {
-        id: BIG_ID,
-        bodyMarkdown: 'c'.repeat(NOTEBOOK_TEXT_MAX_BYTES + 1),
+        body: {
+          id: BIG_ID,
+          bodyMarkdown: 'c'.repeat(NOTEBOOK_TEXT_MAX_BYTES + 1),
+        },
       },
     );
     expect(daily.status).toBe(413);
 
     const task = await call('POST', '/api/notebook/tasks', {
-      id: TASK_ID,
-      area: 'work',
-      title: 't'.repeat(NOTEBOOK_TITLE_MAX_LENGTH + 1),
+      body: {
+        id: TASK_ID,
+        area: 'work',
+        title: 't'.repeat(NOTEBOOK_TITLE_MAX_LENGTH + 1),
+      },
     });
     expect(task.status).toBe(413);
     expect(task.body).toMatchObject({ fields: { title: 'too_big' } });

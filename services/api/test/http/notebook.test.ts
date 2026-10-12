@@ -2,61 +2,20 @@
 import { describe, expect, it } from 'vitest';
 import { ulid } from 'ulid';
 import { SYNC_TOMBSTONE_TTL_DAYS } from '@gagnechris/data';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const A = 'user-notebook-http-a';
 const B = 'user-notebook-http-b';
 
-type Res = {
-  status: number;
-  etag: string | undefined;
-  body: Record<string, unknown>;
-};
-
 type Entity = { id: string; version: number; [key: string]: unknown };
 
 const h = useApi('notebook-http');
-
-async function call(
-  user: string,
-  method: string,
-  path: string,
-  opts: {
-    body?: unknown;
-    query?: Record<string, string>;
-    ifMatch?: string;
-  } = {},
-): Promise<Res> {
-  const res = await h.api.request(method, path, {
-    body: opts.body,
-    query: opts.query,
-    headers: opts.ifMatch ? { 'if-match': opts.ifMatch } : undefined,
-    claims: notebookUser(user),
-  });
-  return {
-    status: res.status,
-    etag: res.headers.get('etag') ?? undefined,
-    body: res.body ?? {},
-  };
-}
-
-async function ok(
-  user: string,
-  method: string,
-  path: string,
-  opts?: Parameters<typeof call>[3],
-): Promise<Entity> {
-  const res = await call(user, method, path, opts);
-  expect(
-    res.status >= 200 && res.status < 300,
-    `${method} ${path}: ${res.status} ${JSON.stringify(res.body)}`,
-  ).toBe(true);
-  return res.body as Entity;
-}
+const { call, ok } = apiCalls(h);
 
 const createPage = (user: string, over: Record<string, unknown> = {}) =>
-  ok(user, 'POST', '/api/notebook/notes', {
+  ok('POST', '/api/notebook/notes', {
+    user,
     body: { id: ulid(), area: 'work', type: 'page', ...over },
   });
 
@@ -66,12 +25,14 @@ const putDaily = (
   date: string,
   body: Record<string, unknown> = {},
 ) =>
-  ok(user, 'PUT', `/api/notebook/notes/daily/${area}/${date}`, {
+  ok('PUT', `/api/notebook/notes/daily/${area}/${date}`, {
+    user,
     body: { id: ulid(), ...body },
   });
 
 const createTask = (user: string, over: Record<string, unknown> = {}) =>
-  ok(user, 'POST', '/api/notebook/tasks', {
+  ok('POST', '/api/notebook/tasks', {
+    user,
     body: { id: ulid(), area: 'work', title: 'Task', ...over },
   });
 
@@ -84,7 +45,8 @@ async function listAll(
   const items: Entity[] = [];
   let cursor: string | undefined;
   do {
-    const page = await ok(user, 'GET', path, {
+    const page = await ok('GET', path, {
+      user,
       query: {
         ...query,
         limit: String(limit),
@@ -101,7 +63,8 @@ async function syncAll(user: string): Promise<Entity[]> {
   const changes: Entity[] = [];
   let cursor: string | undefined;
   do {
-    const page = await ok(user, 'GET', '/api/notebook/sync/changes', {
+    const page = await ok('GET', '/api/notebook/sync/changes', {
+      user,
       query: { limit: '25', ...(cursor ? { cursor } : {}) },
     });
     changes.push(...(page.changes as Entity[]));
@@ -149,13 +112,14 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     await createTask(A, { title: 'A second task' });
 
     const notesCursor = (
-      await ok(A, 'GET', '/api/notebook/notes', { query: { limit: '1' } })
+      await ok('GET', '/api/notebook/notes', { user: A, query: { limit: '1' } })
     ).nextCursor as string;
     const tasksCursor = (
-      await ok(A, 'GET', '/api/notebook/tasks', { query: { limit: '1' } })
+      await ok('GET', '/api/notebook/tasks', { user: A, query: { limit: '1' } })
     ).nextCursor as string;
     const syncCursor = (
-      await ok(A, 'GET', '/api/notebook/sync/changes', {
+      await ok('GET', '/api/notebook/sync/changes', {
+        user: A,
         query: { limit: '1' },
       })
     ).nextCursor as string;
@@ -163,7 +127,7 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
 
     const notePath = `/api/notebook/notes/${page.id}`;
     const taskPath = `/api/notebook/tasks/${task.id}`;
-    const attempts: [string, string, Parameters<typeof call>[3]][] = [
+    const attempts: [string, string, Parameters<typeof call>[2]][] = [
       ['GET', notePath, {}],
       ['PUT', notePath, { body: { title: 'B was here' }, ifMatch: '*' }],
       ['PUT', notePath, { body: { version: 1, title: 'B was here' } }],
@@ -177,27 +141,29 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       ['DELETE', taskPath, { ifMatch: '*' }],
     ];
     for (const [method, path, opts] of attempts) {
-      const res = await call(B, method, path, opts);
+      const res = await call(method, path, { user: B, ...opts });
       expect(res.status, `B ${method} ${path} ${JSON.stringify(opts)}`).toBe(
         404,
       );
     }
 
     expect(
-      await ok(B, 'GET', '/api/notebook/notes/daily/work/2026-10-01'),
+      await ok('GET', '/api/notebook/notes/daily/work/2026-10-01', { user: B }),
     ).toMatchObject({ exists: false });
     const bDaily = await putDaily(B, 'work', '2026-10-01', {
       bodyMarkdown: 'B daily',
     });
     expect(bDaily.id).not.toBe(daily.id);
 
-    const linkToA = await call(B, 'POST', '/api/notebook/tasks', {
+    const linkToA = await call('POST', '/api/notebook/tasks', {
+      user: B,
       body: { id: ulid(), area: 'work', title: 'B task', noteId: page.id },
     });
     expect(linkToA.status).toBe(400);
 
     // Reusing A's ULID gives B a separate row or a refusal, never A's row.
-    const sameId = await call(B, 'POST', '/api/notebook/notes', {
+    const sameId = await call('POST', '/api/notebook/notes', {
+      user: B,
       body: { id: page.id, area: 'work', type: 'page', title: 'B copy' },
     });
     expect([201, 409]).toContain(sameId.status);
@@ -212,11 +178,12 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       ['/api/notebook/tasks', tasksCursor],
       ['/api/notebook/sync/changes', syncCursor],
     ] as const) {
-      const res = await call(B, 'GET', path, { query: { cursor } });
+      const res = await call('GET', path, { user: B, query: { cursor } });
       expect(res.status, `B ${path} with A's cursor`).toBe(400);
     }
 
-    const search = await ok(B, 'POST', '/api/notebook/search', {
+    const search = await ok('POST', '/api/notebook/search', {
+      user: B,
       body: { q: 'aardvark' },
     });
     expect(search).toEqual({ notes: [], tasks: [] });
@@ -227,19 +194,19 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       bSync.every((c) => (c.entity as { userId?: string })?.userId === B),
     ).toBe(true);
 
-    expect(await ok(A, 'GET', notePath)).toMatchObject({
+    expect(await ok('GET', notePath, { user: A })).toMatchObject({
       version: 1,
       title: 'A plan',
       bodyMarkdown: 'aardvark secret',
       deleted: false,
     });
-    expect(await ok(A, 'GET', taskPath)).toMatchObject({
+    expect(await ok('GET', taskPath, { user: A })).toMatchObject({
       version: 1,
       title: 'aardvark task',
       status: 'todo',
     });
     expect(
-      await ok(A, 'GET', '/api/notebook/notes/daily/work/2026-10-01'),
+      await ok('GET', '/api/notebook/notes/daily/work/2026-10-01', { user: A }),
     ).toMatchObject({ id: daily.id, bodyMarkdown: 'aardvark daily' });
   });
 
@@ -270,7 +237,8 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       });
       const status = statuses[i % 4]!;
       if (status === 'todo') return created;
-      return ok(A, 'PUT', `/api/notebook/tasks/${created.id}`, {
+      return ok('PUT', `/api/notebook/tasks/${created.id}`, {
+        user: A,
         body: { status },
         ifMatch: `"${created.version}"`,
       });
@@ -346,7 +314,8 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
 
     // Oldest, newest and a few between: search is not one page of the list.
     for (const i of [0, 1, 2, 77, 158, 159]) {
-      const hits = await ok(A, 'POST', '/api/notebook/search', {
+      const hits = await ok('POST', '/api/notebook/search', {
+        user: A,
         body: { q: `marker${i}x` },
       });
       expect(ids(hits.notes as Entity[]), `note marker${i}x`).toEqual([
@@ -380,7 +349,8 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     );
     expect(ids(found)).toEqual(ids([page, daily]));
 
-    const bad = await call(A, 'GET', '/api/notebook/notes', {
+    const bad = await call('GET', '/api/notebook/notes', {
+      user: A,
       query: { taskId: 'not-a-ulid' },
     });
     expect(bad.status).toBe(400);
@@ -390,11 +360,12 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     const first = await putDaily(A, 'work', '2026-10-02', {
       bodyMarkdown: 'first',
     });
-    await ok(A, 'DELETE', `/api/notebook/notes/${first.id}`, {
+    await ok('DELETE', `/api/notebook/notes/${first.id}`, {
+      user: A,
       ifMatch: `"${first.version}"`,
     });
     expect(
-      await ok(A, 'GET', '/api/notebook/notes/daily/work/2026-10-02'),
+      await ok('GET', '/api/notebook/notes/daily/work/2026-10-02', { user: A }),
     ).toMatchObject({ exists: false });
 
     const second = await putDaily(A, 'work', '2026-10-02', {
@@ -402,15 +373,17 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     });
     expect(second.id).not.toBe(first.id);
     expect(
-      await ok(A, 'GET', '/api/notebook/notes/daily/work/2026-10-02'),
+      await ok('GET', '/api/notebook/notes/daily/work/2026-10-02', { user: A }),
     ).toMatchObject({ id: second.id, bodyMarkdown: 'second', version: 1 });
     expect(
-      (await call(A, 'GET', `/api/notebook/notes/${first.id}`)).status,
+      (await call('GET', `/api/notebook/notes/${first.id}`, { user: A }))
+        .status,
     ).toBe(404);
 
     const racers = await Promise.all(
       Array.from({ length: 6 }, () =>
-        call(A, 'PUT', '/api/notebook/notes/daily/personal/2026-10-02', {
+        call('PUT', '/api/notebook/notes/daily/personal/2026-10-02', {
+          user: A,
           body: { id: ulid(), bodyMarkdown: 'race' },
         }),
       ),
@@ -420,7 +393,8 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       racers.filter((r) => r.status === 409).map((r) => r.body.error),
     ).toEqual(Array(5).fill('daily_taken'));
 
-    const moveDaily = await call(A, 'PUT', `/api/notebook/notes/${second.id}`, {
+    const moveDaily = await call('PUT', `/api/notebook/notes/${second.id}`, {
+      user: A,
       body: { area: 'personal' },
       ifMatch: '"1"',
     });
@@ -428,7 +402,8 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     expect(moveDaily.body).toMatchObject({ fields: { area: 'immutable' } });
 
     const page = await createPage(A, { title: 'Moves' });
-    const moved = await ok(A, 'PUT', `/api/notebook/notes/${page.id}`, {
+    const moved = await ok('PUT', `/api/notebook/notes/${page.id}`, {
+      user: A,
       body: { area: 'personal' },
       ifMatch: '"1"',
     });
@@ -445,14 +420,16 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     const note = await createPage(A, { title: 'v1' });
     const path = `/api/notebook/notes/${note.id}`;
 
-    const v2 = await call(A, 'PUT', path, {
+    const v2 = await call('PUT', path, {
+      user: A,
       body: { title: 'v2' },
       ifMatch: '"1"',
     });
     expect(v2.status).toBe(200);
     expect(v2.etag).toBe('"2"');
 
-    const staleHeader = await call(A, 'PUT', path, {
+    const staleHeader = await call('PUT', path, {
+      user: A,
       body: { title: 'lost' },
       ifMatch: '"1"',
     });
@@ -462,32 +439,37 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       currentVersion: 2,
     });
 
-    const staleBody = await call(A, 'PUT', path, {
+    const staleBody = await call('PUT', path, {
+      user: A,
       body: { version: 1, title: 'lost' },
     });
     expect(staleBody.status).toBe(409);
     expect(staleBody.body).toMatchObject({ currentVersion: 2 });
 
-    expect((await call(A, 'PUT', path, { body: { title: 'x' } })).status).toBe(
-      400,
-    );
-    expect((await call(A, 'DELETE', path)).status).toBe(400);
     expect(
-      (await call(A, 'DELETE', path, { body: { version: 1 } })).status,
+      (await call('PUT', path, { user: A, body: { title: 'x' } })).status,
+    ).toBe(400);
+    expect((await call('DELETE', path, { user: A })).status).toBe(400);
+    expect(
+      (await call('DELETE', path, { user: A, body: { version: 1 } })).status,
     ).toBe(409);
-    expect((await call(A, 'GET', path)).body).toMatchObject({
+    expect((await call('GET', path, { user: A })).body).toMatchObject({
       title: 'v2',
       version: 2,
     });
 
-    const deleted = await call(A, 'DELETE', path, { body: { version: 2 } });
+    const deleted = await call('DELETE', path, {
+      user: A,
+      body: { version: 2 },
+    });
     expect(deleted.status).toBe(200);
-    expect((await call(A, 'GET', path)).status).toBe(404);
+    expect((await call('GET', path, { user: A })).status).toBe(404);
 
     const task = await createTask(A);
     expect(
       (
-        await call(A, 'DELETE', `/api/notebook/tasks/${task.id}`, {
+        await call('DELETE', `/api/notebook/tasks/${task.id}`, {
+          user: A,
           ifMatch: '*',
         })
       ).status,
@@ -501,17 +483,20 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
     const stale = new Date(
       Date.now() - (SYNC_TOMBSTONE_TTL_DAYS + 2) * 86_400_000,
     ).toISOString();
-    const gone = await call(A, 'GET', '/api/notebook/sync/changes', {
+    const gone = await call('GET', '/api/notebook/sync/changes', {
+      user: A,
       query: { since: stale },
     });
     expect(gone.status).toBe(410);
     expect(gone.body).toMatchObject({ error: 'resync_required' });
 
-    const first = await ok(A, 'GET', '/api/notebook/sync/changes', {
+    const first = await ok('GET', '/api/notebook/sync/changes', {
+      user: A,
       query: { limit: '1' },
     });
     expect(first.nextCursor).toBeTruthy();
-    const reused = await call(A, 'GET', '/api/notebook/sync/changes', {
+    const reused = await call('GET', '/api/notebook/sync/changes', {
+      user: A,
       query: {
         since: new Date(Date.now() + 60_000).toISOString(),
         cursor: first.nextCursor as string,

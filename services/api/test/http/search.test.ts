@@ -4,7 +4,7 @@ import {
   NOTEBOOK_SEARCH_MAX_LENGTH,
 } from '@gagnechris/shared';
 import { ulid } from 'ulid';
-import { notebookUser } from './support/claims.js';
+import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
 const USER = 'user-search-http';
@@ -25,32 +25,7 @@ type Results = { notes: Hit[]; tasks: Hit[] };
 type Entity = { id: string; version: number; [key: string]: unknown };
 
 const h = useApi('search-http');
-
-async function call(
-  method: string,
-  path: string,
-  opts: { body?: unknown; query?: Record<string, string>; user?: string } = {},
-) {
-  const res = await h.api.request(method, `/api${path}`, {
-    body: opts.body,
-    query: opts.query,
-    claims: notebookUser(opts.user ?? USER),
-  });
-  return { status: res.status, headers: res.headers, body: res.body };
-}
-
-async function ok(
-  method: string,
-  path: string,
-  opts?: Parameters<typeof call>[2],
-): Promise<Entity> {
-  const res = await call(method, path, opts);
-  expect(
-    res.status,
-    `${method} ${path}: ${JSON.stringify(res.body)}`,
-  ).toBeLessThan(300);
-  return res.body as Entity;
-}
+const { call, ok } = apiCalls(h, { user: USER, prefix: '/api' });
 
 const note = (over: Record<string, unknown>, user = USER) =>
   ok('POST', '/notebook/notes', {

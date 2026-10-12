@@ -24,6 +24,66 @@ const expectFullWidthTabBar = async (page: Page) => {
   for (const width of widths) expect(width).toBeGreaterThan(60);
 };
 
+test.describe('admin and Notebook routes at 390px', () => {
+  test.beforeEach(async ({ page, signIn }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn();
+  });
+
+  const sweep = async (page: Page, base: string, paths: string[]) => {
+    for (const path of paths) {
+      await test.step(path, async () => {
+        await page.goto(new URL(path, base).href);
+        await expect(page.locator('main').first()).toBeVisible();
+        // Measure the loaded screen, not a loading state.
+        await page.waitForLoadState('networkidle');
+        await expectNoOverflow(page);
+        await expectFullWidthTabBar(page);
+      });
+    }
+  };
+
+  test('every admin route fits and keeps a full-width tab bar', async ({
+    page,
+    apps,
+    seed,
+  }) => {
+    const post = await seed.post({ title: 'A draft post title for a phone' });
+    // Default names and slugs are long unbroken words, as real slugs can be.
+    const project = await seed.project();
+    await sweep(page, apps.admin, [
+      '/',
+      '/posts',
+      `/posts/${post.id}`,
+      '/projects',
+      `/projects/${project.id}`,
+      '/pages',
+      '/home',
+      '/resume',
+      '/settings/users',
+    ]);
+  });
+
+  test('every Notebook route fits and keeps a full-width tab bar', async ({
+    page,
+    apps,
+    seed,
+  }) => {
+    const note = await seed.note({ title: 'Phone note', bodyMarkdown: 'Hi' });
+    const task = await seed.task({ title: 'Phone task', noteId: note.id });
+    await sweep(page, apps.notebook, [
+      '/',
+      '/today',
+      '/upcoming',
+      '/notes',
+      `/notes/${note.id}`,
+      '/tasks',
+      `/tasks/${task.id}`,
+      '/settings/templates',
+    ]);
+  });
+});
+
 test.describe('admin phone layout at 390px', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
