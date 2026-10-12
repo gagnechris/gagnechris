@@ -342,6 +342,21 @@ export const NoteBodyEditor = ({
       },
     );
 
+  /** Puts the caret on a blank line right under the embed at `key`. */
+  const continueAfter = (key: string) => {
+    const all = latest.current.segments;
+    const next = all[all.findIndex((s) => s.key === key) + 1];
+    if (next?.kind !== 'text') return;
+    const caret = { start: 0, end: 0 };
+    if (next.lines.length === 0 || next.lines[0] === '') {
+      const moved = { key: next.key, selection: caret };
+      pendingSelection.current = moved;
+      setFocus(moved);
+    } else {
+      edit(next.key, `\n${segmentText(next)}`, caret);
+    }
+  };
+
   const lastText = segments[segments.length - 1]!.key;
 
   return (
@@ -365,6 +380,8 @@ export const NoteBodyEditor = ({
                   : undefined
               }
               onRemove={() => removeEmbed(segment.key, title)}
+              editable
+              onTitleSubmit={() => continueAfter(segment.key)}
             />
           );
         }

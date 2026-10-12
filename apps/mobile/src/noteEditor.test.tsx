@@ -1,5 +1,6 @@
 import { clearPendingFlushes, useTasksQuery } from '@gagnechris/app-core';
 import * as Haptics from 'expo-haptics';
+import { NOTEBOOK_TITLE_MAX_LENGTH } from '@gagnechris/shared';
 import { ActionSheetIOS, Alert, AppState, Share, Text } from 'react-native';
 import {
   act,
@@ -44,12 +45,47 @@ const OpenTaskCount = () => {
   return <Text>{`open tasks: ${count ?? '…'}`}</Text>;
 };
 
+const OpenTaskTitles = () => {
+  const open = useTasksQuery({ open: true });
+  const titles = open.data?.pages.flatMap((p) => p.items.map((t) => t.title));
+  return <Text>{`open: ${titles?.join(', ') ?? '…'}`}</Text>;
+};
+
+/** Native text views by toolbar id, so tests see which one gets the caret. */
+const textViews = new Map<
+  string,
+  {
+    focus: () => void;
+    setSelection: (start: number, end: number) => void;
+    isFocused: () => boolean;
+  }
+>();
+
 const renderNote = async () => {
+  textViews.clear();
   const renderer = await render(
     <Providers>
       <NoteScreen />
       <OpenTaskCount />
+      <OpenTaskTitles />
     </Providers>,
+    {
+      createNodeMock: (element) => {
+        if ((element.type as string) !== 'TextInput') return null;
+        // Called on every ref attach; one record per view keeps its calls.
+        const id = String(
+          (element.props as { inputAccessoryViewID?: string })
+            .inputAccessoryViewID,
+        );
+        const view = textViews.get(id) ?? {
+          focus: vi.fn(),
+          setSelection: vi.fn(),
+          isFocused: () => false,
+        };
+        textViews.set(id, view);
+        return view;
+      },
+    },
   );
   mounted = renderer;
   await settle(10);
@@ -381,7 +417,7 @@ describe('note editor', () => {
     expect(allText(renderer)).toContain('open tasks: 0');
   });
 
-  it('opens task detail from an embedded task title', async () => {
+  it('opens task detail from the open button on an embedded task', async () => {
     serve(
       [makeNote(NOTE, `{{task:${TASK}}}`)],
       [
@@ -392,9 +428,9 @@ describe('note editor', () => {
       ],
     );
     const renderer = await renderNote();
-    const title = byLabel(renderer, 'Ship it, @Mon, High priority');
-    expect(title.props.accessibilityRole).toBe('button');
-    act(() => title.props.onPress());
+    const open = byLabel(renderer, 'Open task Ship it');
+    expect(open.props.accessibilityRole).toBe('button');
+    act(() => open.props.onPress());
     expect(router.push).toHaveBeenCalledWith(`/tasks/${TASK}`);
   });
 
@@ -402,8 +438,114 @@ describe('note editor', () => {
     segments.current = ['(tabs)', 'notes', '[id]'];
     serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
     const renderer = await renderNote();
-    act(() => byLabel(renderer, 'Ship it').props.onPress());
+    act(() => byLabel(renderer, 'Open task Ship it').props.onPress());
     expect(router.push).toHaveBeenCalledWith(`/notes/task/${TASK}`);
+  });
+
+  it('renames an embedded task from its title, everywhere', async () => {
+    serve(
+      [makeNote(NOTE, `{{task:${TASK}}}`)],
+      [makeTask(TASK, 'Ship it', { startDate: '2026-10-02' })],
+    );
+    const renderer = await renderNote();
+    expect(allText(renderer)).toContain('open: Ship it');
+
+    const field = () => byLabel(renderer, 'Task title');
+    expect(field().props.value).toBe('Ship it');
+    expect(field().props.maxLength).toBe(NOTEBOOK_TITLE_MAX_LENGTH);
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText('Ship it today  '));
+    act(() => field().props.onBlur());
+    await settle(10);
+
+    expect(server.state.taskStore.get(TASK)!.title).toBe('Ship it today');
+    expect(field().props.value).toBe('Ship it today');
+    expect(byLabel(renderer, 'Open task Ship it today')).toBeTruthy();
+    await vi.waitFor(
+      () => expect(allText(renderer)).toContain('open: Ship it today'),
+      { timeout: 3_000 },
+    );
+    expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(`{{task:${TASK}}}`);
+  });
+
+  it('saves a task title while typing, after a pause', async () => {
+    serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
+    const renderer = await renderNote();
+    const field = () => byLabel(renderer, 'Task title');
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText('Ship it now'));
+    expect(server.state.taskStore.get(TASK)!.title).toBe('Ship it');
+    await vi.waitFor(
+      () => expect(server.state.taskStore.get(TASK)!.title).toBe('Ship it now'),
+      { timeout: 3_000 },
+    );
+    expect(field().props.value).toBe('Ship it now');
+  });
+
+  it('puts an emptied task title back instead of saving it', async () => {
+    serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
+    const renderer = await renderNote();
+    const field = () => byLabel(renderer, 'Task title');
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText('  '));
+    act(() => field().props.onBlur());
+    await settle(10);
+
+    expect(field().props.value).toBe('Ship it');
+    expect(server.state.taskStore.get(TASK)).toMatchObject({
+      title: 'Ship it',
+      deleted: false,
+    });
+  });
+
+  it('keeps a done task title editable and struck through', async () => {
+    serve(
+      [makeNote(NOTE, `{{task:${TASK}}}`)],
+      [makeTask(TASK, 'Ship it', { status: 'done' })],
+    );
+    const renderer = await renderNote();
+    const style = Object.assign(
+      {},
+      ...[byLabel(renderer, 'Task title').props.style].flat(2),
+    ) as { textDecorationLine?: string };
+    expect(style.textDecorationLine).toBe('line-through');
+  });
+
+  it('moves the caret onto a new line under the task on Return', async () => {
+    serve(
+      [makeNote(NOTE, `{{task:${TASK}}}\nmore`)],
+      [makeTask(TASK, 'Ship it')],
+    );
+    const renderer = await renderNote();
+    const after = textViews.get(
+      bodies(renderer).at(-1)!.props.inputAccessoryViewID,
+    )!;
+    act(() => byLabel(renderer, 'Task title').props.onSubmitEditing());
+    await settle(2);
+
+    expect(bodies(renderer).at(-1)!.props.value).toBe('\nmore');
+    expect(after.focus).toHaveBeenCalled();
+    expect(after.setSelection).toHaveBeenLastCalledWith(0, 0);
+    await vi.waitFor(
+      () =>
+        expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(
+          `{{task:${TASK}}}\n\nmore`,
+        ),
+      { timeout: 3_000 },
+    );
+  });
+
+  it('moves the caret to the empty line under the task on Return', async () => {
+    serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
+    const renderer = await renderNote();
+    const after = textViews.get(
+      bodies(renderer).at(-1)!.props.inputAccessoryViewID,
+    )!;
+    act(() => byLabel(renderer, 'Task title').props.onSubmitEditing());
+    await settle(2);
+    expect(after.focus).toHaveBeenCalled();
+    expect(after.setSelection).toHaveBeenLastCalledWith(0, 0);
+    expect(bodies(renderer).at(-1)!.props.value).toBe('');
   });
 
   it('saves straight away when the app goes to the background', async () => {
@@ -446,10 +588,14 @@ describe('note editor', () => {
     expect(byLabel(renderer, 'Complete Ship it').props.accessibilityRole).toBe(
       'checkbox',
     );
-    const title = byLabel(renderer, 'Ship it');
+    const title = byLabel(renderer, 'Task title');
+    expect(title.props.value).toBe('Ship it');
     expect(title.props.accessibilityActions).toEqual([
       { name: 'remove', label: 'Remove from note' },
     ]);
+    expect(byLabel(renderer, 'Open task Ship it').props.accessibilityRole).toBe(
+      'button',
+    );
   });
 
   it('removes an embed from the note, leaving the task', async () => {
@@ -458,7 +604,7 @@ describe('note editor', () => {
       [makeTask(TASK, 'Ship it')],
     );
     const renderer = await renderNote();
-    act(() => byLabel(renderer, 'Ship it').props.onLongPress());
+    act(() => byLabel(renderer, 'Open task Ship it').props.onLongPress());
     const [, pick] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions).mock
       .lastCall!;
     act(() => pick(0));

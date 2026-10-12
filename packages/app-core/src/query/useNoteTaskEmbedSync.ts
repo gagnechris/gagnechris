@@ -39,6 +39,8 @@ export type TaskEmbedState =
       /** Not saved yet, so it cannot be toggled. */
       pending?: boolean;
       onToggle: () => void;
+      /** Saves a new title; absent until the task is saved. */
+      onRename?: (title: string) => void;
     };
 
 export const EMBED_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
@@ -174,6 +176,28 @@ export function useNoteTaskEmbedSync({
     [patchTask, queryClient],
   );
 
+  // One rename at a time per task, each on the version the last one left.
+  const renames = useRef(new Map<string, Promise<void>>());
+  const rename = useCallback(
+    (id: string, title: string) => {
+      const prev = renames.current.get(id) ?? Promise.resolve();
+      const next = prev.then(async () => {
+        const current = queryClient.getQueryData<Task>(
+          queryKeys.tasks.detail(id),
+        );
+        if (!current || current.title === title) return;
+        setSyncError(null);
+        try {
+          await patchTask({ id, version: current.version, patch: { title } });
+        } catch (err) {
+          setSyncError(taskActionError('rename', current.title, err));
+        }
+      });
+      renames.current.set(id, next);
+    },
+    [patchTask, queryClient],
+  );
+
   const startCreate = useCallback(
     (id: string, draft: TaskLineDraft) => {
       chains.current.set(
@@ -245,6 +269,7 @@ export function useNoteTaskEmbedSync({
         schedule: taskScheduleLabel(task.startDate, today, task.someday),
         due: taskDue(task, today),
         onToggle: () => void toggle(task),
+        onRename: (title) => rename(id, title),
       };
     }
     if (
