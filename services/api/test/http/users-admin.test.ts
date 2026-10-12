@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  USER_EMAIL_MAX_LENGTH,
+  USER_NAME_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import type { ManagedUser } from '@gagnechris/shared';
@@ -103,10 +107,20 @@ describe('users and access', () => {
   it.each([
     [{}, { email: 'invalid_type', level: 'invalid_value' }],
     [
-      { email: 'not-an-email', name: 'x'.repeat(101), level: 'owner' },
+      {
+        email: 'not-an-email',
+        name: 'x'.repeat(USER_NAME_MAX_LENGTH + 1),
+        level: 'owner',
+      },
       { email: 'invalid_format', name: 'too_big', level: 'invalid_value' },
     ],
-    [{ email: `${'a'.repeat(250)}@x.io`, level: 'cms' }, { email: 'too_big' }],
+    [
+      {
+        email: `${'a'.repeat(USER_EMAIL_MAX_LENGTH - '@x.io'.length + 1)}@x.io`,
+        level: 'cms',
+      },
+      { email: 'too_big' },
+    ],
   ])('rejects the invite %j', async (body, fields) => {
     expect(await call('POST', '/admin/users', { body })).toEqual({
       status: 400,

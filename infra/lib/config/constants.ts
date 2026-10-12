@@ -1,22 +1,30 @@
 import {
+  API_METRICS,
   API_SERVICE_NAME,
   APEX_DOMAIN,
+  NOTEBOOK_GROUP,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
   RESTORE_TEST_METRICS,
   RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
   RESTORE_TEST_SERVICE_NAME,
+  SITE_ADMIN_GROUP,
+  USER_ADMIN_GROUP,
 } from '@gagnechris/shared';
 import ssmParams from './ssm-params.json' with { type: 'json' };
 
 export {
+  API_METRICS,
   API_SERVICE_NAME,
   APEX_DOMAIN,
+  NOTEBOOK_GROUP,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
   RESTORE_TEST_METRICS,
   RESTORE_TEST_SOURCE_COUNT_ATTRIBUTES,
   RESTORE_TEST_SERVICE_NAME,
+  SITE_ADMIN_GROUP,
+  USER_ADMIN_GROUP,
 };
 
 export const AUTH_DOMAIN = `auth.${APEX_DOMAIN}` as const;
@@ -33,10 +41,6 @@ export const DEV_NOTEBOOK_ORIGIN = 'http://localhost:5175' as const;
 export function siteOrigins(apexDomain: string = APEX_DOMAIN): string[] {
   return [`https://${apexDomain}`];
 }
-
-export const SITE_ADMIN_GROUP = 'site-admin' as const;
-export const NOTEBOOK_GROUP = 'notebook' as const;
-export const USER_ADMIN_GROUP = 'user-admin' as const;
 
 export const GITHUB_OWNER = 'gagnechris' as const;
 export const GITHUB_REPO = 'gagnechris' as const;

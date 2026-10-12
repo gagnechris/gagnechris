@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/notebook"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
@@ -55,9 +56,9 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 	if err != nil {
 		return nil, err
 	}
-	q, _ := v.String("q", true, true, api.MinLen(1), api.MaxLen(200))
+	q, _ := v.String("q", true, true, api.MinLen(1), api.MaxLen(contract.Data.Notebook.SearchMaxLength))
 	area, _ := v.Enum("area", false, notebook.Areas...)
-	limit, hasLimit := v.Int("limit", false, api.Positive, api.MaxInt(50))
+	limit, hasLimit := v.Int("limit", false, api.Positive, api.MaxInt(contract.Data.Notebook.SearchLimitMax))
 	if err := v.Err(); err != nil {
 		return nil, err
 	}

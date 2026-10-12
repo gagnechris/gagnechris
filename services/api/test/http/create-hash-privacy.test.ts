@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { NOTEBOOK_TEXT_MAX_BYTES } from '@gagnechris/shared';
+import {
+  NOTEBOOK_TEXT_MAX_BYTES,
+  NOTEBOOK_TITLE_MAX_LENGTH,
+} from '@gagnechris/shared';
 import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
@@ -157,7 +160,7 @@ describe('createHash privacy and size limits', () => {
       body: {
         id: TASK_ID,
         area: 'work',
-        title: 't'.repeat(301),
+        title: 't'.repeat(NOTEBOOK_TITLE_MAX_LENGTH + 1),
       },
     });
     expect(task.status).toBe(413);

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
-import type { Post } from '@gagnechris/shared';
+import {
+  MAX_SLUG_LENGTH,
+  POST_PROJECT_IDS_MAX,
+  POST_SEARCH_MAX_LENGTH,
+  type Post,
+} from '@gagnechris/shared';
 import { useApi } from './support/harness.js';
 import { siteAdminClient } from './support/site-admin.js';
 
@@ -178,9 +183,11 @@ describe('POST /api/admin/posts', () => {
     [
       'bad elements and sizes',
       {
-        slug: 's'.repeat(121),
+        slug: 's'.repeat(MAX_SLUG_LENGTH + 1),
         tags: ['ok', 3],
-        projectIds: Array.from({ length: 21 }, (_, i) => (i ? `p${i}` : '')),
+        projectIds: Array.from({ length: POST_PROJECT_IDS_MAX + 1 }, (_, i) =>
+          i ? `p${i}` : '',
+        ),
         seo: 'x',
       },
       {
@@ -629,7 +636,12 @@ describe('GET /api/admin/posts', () => {
 
   it.each([
     [
-      { status: 'nope', q: 'q'.repeat(201), cursor: '', limit: '0' },
+      {
+        status: 'nope',
+        q: 'q'.repeat(POST_SEARCH_MAX_LENGTH + 1),
+        cursor: '',
+        limit: '0',
+      },
       {
         status: 'invalid_value',
         q: 'too_big',

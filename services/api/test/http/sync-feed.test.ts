@@ -11,7 +11,7 @@ import {
   syncSk,
   ttlDaysFromNow,
 } from '@gagnechris/data';
-import { CLIENT_VERSION_HEADER } from '@gagnechris/shared';
+import { CLIENT_VERSION_HEADER, PAGE_LIMIT_MAX } from '@gagnechris/shared';
 import { apiCalls } from './support/call.js';
 import { useApi } from './support/harness.js';
 
@@ -255,7 +255,7 @@ describe('sync feed over HTTP (DynamoDB Local)', () => {
     const cases: [Record<string, string>, Record<string, string>][] = [
       [{ since: 'yesterday' }, { since: 'invalid_format' }],
       [{ limit: '0' }, { limit: 'too_small' }],
-      [{ limit: '101' }, { limit: 'too_big' }],
+      [{ limit: String(PAGE_LIMIT_MAX + 1) }, { limit: 'too_big' }],
     ];
     for (const [query, fields] of cases) {
       const res = await sync(query);

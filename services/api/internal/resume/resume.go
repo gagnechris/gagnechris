@@ -52,7 +52,7 @@ func readContent(v *api.Validator, key string, required bool) Content {
 	}
 	c := Content{}
 	optString(cv, c, "headline")
-	if n, ok := cv.Int("earlierRolesThrough", false, api.MinInt(1900), api.MaxInt(2100)); ok {
+	if n, ok := cv.Int("earlierRolesThrough", false, api.MinInt(contract.Data.Limits.ResumeYearMin), api.MaxInt(contract.Data.Limits.ResumeYearMax)); ok {
 		c["earlierRolesThrough"] = n
 	}
 	if s, ok := cv.String("summary", true, false); ok {
