@@ -35,6 +35,9 @@ export type TaskEmbedView =
 /** Returns focus to the surrounding editor: below the row, or onto its line. */
 export type TaskEmbedLeave = (below: boolean) => void;
 
+/** Deletes the row's line from the note, which deletes its task. */
+export type TaskEmbedDelete = () => void;
+
 const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   high: 'High',
   med: null,
@@ -45,10 +48,12 @@ function TaskEmbedTitle({
   title,
   onRename,
   onLeave,
+  onDelete,
 }: {
   title: string;
   onRename: (title: string) => void;
   onLeave?: TaskEmbedLeave;
+  onDelete?: TaskEmbedDelete;
 }) {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -111,6 +116,10 @@ function TaskEmbedTitle({
       edit(null);
       if (onLeave) onLeave(false);
       else e.currentTarget.blur();
+    } else if (e.key === 'Backspace' && onDelete && !e.currentTarget.value) {
+      e.preventDefault();
+      edit(null);
+      onDelete();
     }
   };
 
@@ -140,9 +149,11 @@ function TaskEmbedTitle({
 export function TaskEmbedRow({
   view,
   onLeave,
+  onDelete,
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
+  onDelete?: TaskEmbedDelete;
 }) {
   if (view.kind === 'loading') {
     return (
@@ -200,6 +211,7 @@ export function TaskEmbedRow({
           title={task.title}
           onRename={onRename}
           onLeave={onLeave}
+          onDelete={onDelete}
         />
       ) : (
         <span className="task-embed__title">{task.title}</span>

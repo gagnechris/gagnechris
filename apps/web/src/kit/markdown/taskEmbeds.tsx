@@ -45,6 +45,8 @@ type TaskEmbedHost = {
 type TaskEmbedEditorOptions = {
   host: TaskEmbedHost;
   onCreate: (create: TaskEmbedCreate) => void;
+  /** Embeds the user deleted, so their tasks can be deleted too. */
+  onRemove?: (ids: string[]) => void;
   newId?: () => string;
 };
 
@@ -230,6 +232,26 @@ class TaskEmbedWidget extends WidgetType {
   }
 }
 
+/**
+ * Embeds a user edit took out of the doc. A cut is a move in progress, and an
+ * undone conversion keeps its task for when the line is left again.
+ */
+function removedEmbeds(tr: Transaction): string[] {
+  if (!tr.docChanged || isProgrammatic(tr) || tr.isUserEvent('delete.cut')) {
+    return [];
+  }
+  let touched = false;
+  tr.changes.iterChangedRanges((fromA, toA) => {
+    if (tr.startState.sliceDoc(fromA, toA).includes('{{task:')) touched = true;
+  });
+  if (!touched) return [];
+  const after = new Set(findTaskEmbeds(tr.newDoc.toString()).map((e) => e.id));
+  const converted = tr.state.field(convertedField);
+  return [
+    ...new Set(findTaskEmbeds(tr.startState.doc.toString()).map((e) => e.id)),
+  ].filter((id) => !after.has(id) && converted.get(id)?.undoneAt == null);
+}
+
 const draftLine = Decoration.line({ class: 'cm-task-draft' });
 
 function buildWidgets(state: EditorState, host: TaskEmbedHost) {
@@ -287,6 +309,7 @@ const draftLines = ViewPlugin.fromClass(
 export function taskEmbedEditor({
   host,
   onCreate,
+  onRemove,
   newId = createUlid,
 }: TaskEmbedEditorOptions): Extension {
   const widgets = StateField.define<DecorationSet>({
@@ -309,6 +332,8 @@ export function taskEmbedEditor({
         for (const effect of tr.effects) {
           if (effect.is(createdEffect)) onCreate(effect.value);
         }
+        const removed = onRemove ? removedEmbeds(tr) : [];
+        if (removed.length > 0) onRemove?.(removed);
       }
     }),
     EditorView.domEventHandlers({
@@ -361,10 +386,37 @@ export function leaveTaskEmbed(
   }
 }
 
-const leaveFrom = (el: HTMLElement) => (below: boolean) => {
+/** Deletes the embed's line as a user edit; the caret ends the line above. */
+export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
+  const at = view.posAtDOM(widget);
+  view.focus();
+  const { doc } = view.state;
+  const line = doc.lineAt(at);
+  const [from, to] =
+    line.number > 1
+      ? [line.from - 1, line.to]
+      : [line.from, Math.min(line.to + 1, doc.length)];
+  view.dispatch({
+    changes: { from, to },
+    selection: { anchor: from },
+    scrollIntoView: true,
+    userEvent: 'delete',
+  });
+}
+
+const viewOf = (el: HTMLElement) => {
   const editor = el.closest<HTMLElement>('.cm-editor');
-  const view = editor && EditorView.findFromDOM(editor);
+  return editor ? EditorView.findFromDOM(editor) : null;
+};
+
+const leaveFrom = (el: HTMLElement) => (below: boolean) => {
+  const view = viewOf(el);
   if (view) leaveTaskEmbed(view, el, below);
+};
+
+const deleteFrom = (el: HTMLElement) => () => {
+  const view = viewOf(el);
+  if (view) deleteTaskEmbedLine(view, el);
 };
 
 /**
@@ -373,11 +425,17 @@ const leaveFrom = (el: HTMLElement) => (below: boolean) => {
  */
 export function useTaskEmbedEditor({
   onCreate,
+  onRemove,
   renderEmbed,
   newId,
 }: {
   onCreate: (create: TaskEmbedCreate) => void;
-  renderEmbed: (id: string, leave: (below: boolean) => void) => ReactNode;
+  onRemove?: (ids: string[]) => void;
+  renderEmbed: (
+    id: string,
+    leave: (below: boolean) => void,
+    remove: () => void,
+  ) => ReactNode;
   newId?: () => string;
 }) {
   // `seq` keys each mount, so a widget rebuilt for the same id remounts its row.
@@ -386,9 +444,11 @@ export function useTaskEmbedEditor({
     byEl: ReadonlyMap<HTMLElement, { id: string; key: number }>;
   }>(() => ({ seq: 0, byEl: new Map() }));
   const onCreateRef = useRef(onCreate);
+  const onRemoveRef = useRef(onRemove);
   useEffect(() => {
     onCreateRef.current = onCreate;
-  }, [onCreate]);
+    onRemoveRef.current = onRemove;
+  }, [onCreate, onRemove]);
   const host = useMemo<TaskEmbedHost>(
     () => ({
       attach: (el, id) =>
@@ -410,17 +470,22 @@ export function useTaskEmbedEditor({
   const create = useCallback((value: TaskEmbedCreate) => {
     onCreateRef.current(value);
   }, []);
+  const remove = useCallback((ids: string[]) => {
+    onRemoveRef.current?.(ids);
+  }, []);
 
   const extensions = useMemo(
-    () => [taskEmbedEditor({ host, onCreate: create, newId })],
-    [create, host, newId],
+    () => [
+      taskEmbedEditor({ host, onCreate: create, onRemove: remove, newId }),
+    ],
+    [create, remove, host, newId],
   );
 
   const portals = (
     <>
       {[...mounts.byEl].map(([el, { id, key }]) => (
         <Fragment key={key}>
-          {createPortal(renderEmbed(id, leaveFrom(el)), el)}
+          {createPortal(renderEmbed(id, leaveFrom(el), deleteFrom(el)), el)}
         </Fragment>
       ))}
     </>

@@ -3,6 +3,7 @@ import type { Extension } from '@codemirror/state';
 import { useTaskEmbedEditor } from '../kit/markdown/taskEmbeds';
 import {
   TaskEmbedRow,
+  type TaskEmbedDelete,
   type TaskEmbedLeave,
   type TaskEmbedView,
 } from '../kit/tasks/TaskEmbedRow';
@@ -14,6 +15,7 @@ export function useNoteTaskEmbeds({
   markdown,
   note,
   ensureNoteSaved,
+  removeEmbeds,
   retryDelaysMs,
 }: {
   markdown: string;
@@ -21,13 +23,16 @@ export function useNoteTaskEmbeds({
   note: EmbedNote | null;
   /** Called before retrying a create the API rejected for a missing note. */
   ensureNoteSaved?: () => Promise<unknown>;
+  /** Takes the lines of deleted tasks out of the note. */
+  removeEmbeds?: (ids: ReadonlySet<string>) => void;
   retryDelaysMs?: readonly number[];
 }) {
-  const { onCreate, stateOf, error } = useNoteTaskEmbedSync({
+  const { onCreate, onRemoved, stateOf, error } = useNoteTaskEmbedSync({
     markdown,
     note,
     today: useLocalToday(),
     ensureNoteSaved,
+    removeEmbeds,
     retryDelaysMs,
   });
 
@@ -38,11 +43,14 @@ export function useNoteTaskEmbeds({
     return saved ? { ...view, to: `/tasks/${saved.id}` } : view;
   };
 
-  const renderEmbed = (id: string, leave?: TaskEmbedLeave) => (
-    <TaskEmbedRow view={viewOf(id)} onLeave={leave} />
-  );
+  const renderEmbed = (
+    id: string,
+    leave?: TaskEmbedLeave,
+    remove?: TaskEmbedDelete,
+  ) => <TaskEmbedRow view={viewOf(id)} onLeave={leave} onDelete={remove} />;
   const { extensions, portals } = useTaskEmbedEditor({
     onCreate,
+    onRemove: onRemoved,
     renderEmbed,
   });
 

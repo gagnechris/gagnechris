@@ -8,12 +8,14 @@ import {
 } from '@gagnechris/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLatest } from '../useLatest.js';
 import { ApiError, type NotebookArea, type Task } from './api.js';
 import { queryKeys } from './keys.js';
 import { taskActionError } from './taskActionError.js';
 import { taskRequestFromDraft } from './taskRequest.js';
 import {
   useCreateTaskMutation,
+  useDeleteTaskMutation,
   usePatchTaskMutation,
   useTasksByIds,
 } from './tasks.js';
@@ -45,6 +47,9 @@ export type TaskEmbedState =
 
 export const EMBED_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000];
 
+/** How long a removed line can come back (undo, paste) before its task is deleted. */
+export const EMBED_DELETE_GRACE_MS = 3_000;
+
 /** The note's first save has not landed yet; any other 400 is final. */
 const isNoteNotSavedYet = (error: unknown) =>
   error instanceof ApiError &&
@@ -59,6 +64,12 @@ const isRetryable = (error: unknown) =>
   error.status === 429 ||
   error.status >= 500;
 
+/** Already gone: deleted elsewhere, or never existed. */
+const isGone = (error: unknown) =>
+  error instanceof ApiError &&
+  (error.status === 404 ||
+    (error.current as { deleted?: boolean } | undefined)?.deleted === true);
+
 const wait = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
@@ -68,15 +79,18 @@ type Pending = { draft: TaskLineDraft; failed: boolean };
 
 /**
  * Creates the task behind each converted line (retrying until the API
- * answers), keeps it in step with later edits of an undone conversion, and
- * reports what each embed should show.
+ * answers), keeps it in step with later edits of an undone conversion,
+ * deletes the task when its line is deleted, and reports what each embed
+ * should show.
  */
 export function useNoteTaskEmbedSync({
   markdown,
   note,
   today,
   ensureNoteSaved,
+  removeEmbeds,
   retryDelaysMs = EMBED_RETRY_DELAYS_MS,
+  deleteGraceMs = EMBED_DELETE_GRACE_MS,
 }: {
   markdown: string;
   /** Null turns embeds off (task descriptions). */
@@ -84,11 +98,15 @@ export function useNoteTaskEmbedSync({
   today: string;
   /** Called before retrying a create the API rejected for a missing note. */
   ensureNoteSaved?: () => Promise<unknown>;
+  /** Takes the lines of deleted tasks out of the note. */
+  removeEmbeds?: (ids: ReadonlySet<string>) => void;
   retryDelaysMs?: readonly number[];
+  deleteGraceMs?: number;
 }) {
   const queryClient = useQueryClient();
   const { mutateAsync: createTask } = useCreateTaskMutation();
   const { mutateAsync: patchTask } = usePatchTaskMutation();
+  const { mutateAsync: deleteTask } = useDeleteTaskMutation();
   const { toggle, error: toggleError } = useTaskToggle();
   const [syncError, setSyncError] = useState<string | null>(null);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -242,6 +260,61 @@ export function useNoteTaskEmbedSync({
     () => (note ? taskEmbedIds(markdown) : []),
     [markdown, note],
   );
+  const idsRef = useLatest(ids);
+
+  const removeTask = useCallback(
+    async (id: string) => {
+      const created = await (chains.current.get(id) ?? Promise.resolve(null));
+      await renames.current.get(id);
+      if (idsRef.current.includes(id)) return;
+      const task =
+        queryClient.getQueryData<Task>(queryKeys.tasks.detail(id)) ?? created;
+      if (!task || task.deleted) return;
+      setSyncError(null);
+      try {
+        await deleteTask({ id, version: task.version });
+      } catch (err) {
+        if (!isGone(err)) {
+          setSyncError(taskActionError('delete', task.title, err));
+        }
+      }
+    },
+    [deleteTask, idsRef, queryClient],
+  );
+
+  // Deletes wait out the grace period, and run at once if the note closes.
+  const deletes = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const onRemoved = useCallback(
+    (removed: readonly string[]) => {
+      for (const id of removed) {
+        clearTimeout(deletes.current.get(id));
+        deletes.current.set(
+          id,
+          setTimeout(() => {
+            deletes.current.delete(id);
+            void removeTask(id);
+          }, deleteGraceMs),
+        );
+      }
+    },
+    [deleteGraceMs, removeTask],
+  );
+  useEffect(() => {
+    for (const id of ids) {
+      clearTimeout(deletes.current.get(id));
+      deletes.current.delete(id);
+    }
+  }, [ids]);
+  useEffect(() => {
+    const pendingDeletes = deletes.current;
+    return () => {
+      for (const [id, timer] of pendingDeletes) {
+        clearTimeout(timer);
+        void removeTask(id);
+      }
+      pendingDeletes.clear();
+    };
+  }, [removeTask]);
   const skip = useMemo(() => new Set(pending.keys()), [pending]);
   const results = useTasksByIds(ids, { skip });
   const byId = new Map(ids.map((id, i) => [id, results[i]!]));
@@ -289,5 +362,27 @@ export function useNoteTaskEmbedSync({
     return { kind: 'loading' };
   };
 
-  return { onCreate, stateOf, error: toggleError ?? renameError ?? syncError };
+  const goneKey = ids
+    .filter((id) => {
+      if (pending.has(id)) return false;
+      const result = byId.get(id);
+      return (
+        result?.data?.deleted === true ||
+        (!result?.data &&
+          result?.error instanceof ApiError &&
+          result.error.status === 404)
+      );
+    })
+    .join(',');
+  const removeEmbedsRef = useLatest(removeEmbeds);
+  useEffect(() => {
+    if (goneKey) removeEmbedsRef.current?.(new Set(goneKey.split(',')));
+  }, [goneKey, removeEmbedsRef]);
+
+  return {
+    onCreate,
+    onRemoved,
+    stateOf,
+    error: toggleError ?? renameError ?? syncError,
+  };
 }

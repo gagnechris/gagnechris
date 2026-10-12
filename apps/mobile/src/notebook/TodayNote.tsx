@@ -12,11 +12,12 @@ import {
   NOTEBOOK_AREA_LABELS,
   noteDraftFromNote,
   notePayloadFromDraft,
+  removeTaskEmbedLines,
   taskEmbedToken,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, type RefObject } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { nativeRetrySignals } from '../net';
 import { color, font } from '../theme';
@@ -112,10 +113,21 @@ const DailyNoteEditor = ({
     () => (entity ? { id: entity.id, area: entity.area } : null),
     [entity],
   );
+  const removeDeletedEmbeds = useCallback(
+    (ids: ReadonlySet<string>) =>
+      updateDraft((prev) => {
+        const bodyMarkdown = removeTaskEmbedLines(prev.bodyMarkdown, ids);
+        return bodyMarkdown === prev.bodyMarkdown
+          ? prev
+          : { ...prev, bodyMarkdown };
+      }),
+    [updateDraft],
+  );
   const embeds = useNoteTaskEmbedSync({
     markdown: body,
     note: embedNote,
     today,
+    removeEmbeds: removeDeletedEmbeds,
     ensureNoteSaved: save,
   });
 

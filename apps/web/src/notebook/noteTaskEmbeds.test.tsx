@@ -24,7 +24,11 @@ import {
   PAST_AUTOSAVE_MS,
   QueryClientTestProvider,
 } from '../test-utils';
-import { EMBED_RETRY_DELAYS_MS } from '@gagnechris/app-core';
+import {
+  EMBED_DELETE_GRACE_MS,
+  EMBED_RETRY_DELAYS_MS,
+} from '@gagnechris/app-core';
+import { useState } from 'react';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
@@ -40,6 +44,7 @@ const api = vi.hoisted(() => ({
   puts: [] as string[],
   taskPosts: [] as Record<string, unknown>[],
   taskPuts: [] as Record<string, unknown>[],
+  taskDeletes: [] as string[],
   /** Every task read: `GET <id>` or `BATCH <ids>`. */
   taskReads: [] as string[],
   /** Next task POST is written, then the response is lost. */
@@ -202,6 +207,20 @@ vi.mock('../workspace/api/client', () => ({
         }
         return fail(404, 'not_found');
       },
+      DELETE: async (path: string, init?: Init) => {
+        const body = init?.body ?? {};
+        const p = init?.params?.path ?? {};
+        if (path === '/api/notebook/tasks/{id}') {
+          api.taskDeletes.push(p.id!);
+          const prev = api.tasks.get(p.id!);
+          if (!prev || prev.deleted) return fail(404, 'not_found');
+          if (body.version !== prev.version) return fail(409, 'conflict');
+          const next = { ...prev, deleted: true, version: prev.version + 1 };
+          api.tasks.set(next.id, next);
+          return ok(next);
+        }
+        return fail(404, 'not_found');
+      },
     }),
 }));
 
@@ -295,6 +314,7 @@ beforeEach(() => {
   api.puts = [];
   api.taskPosts = [];
   api.taskPuts = [];
+  api.taskDeletes = [];
   api.taskReads = [];
   api.dropNextTaskResponse = false;
   localStorage.clear();
@@ -401,6 +421,7 @@ describe('writing [ ] text in a daily note', () => {
     expect([...api.tasks.keys()]).toEqual([id]);
     expect(new Set(api.taskPosts.map((b) => b.id))).toEqual(new Set([id]));
     expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n`);
+    expect(api.taskDeletes).toEqual([]);
   }, 15_000);
 
   test('opening a note that embeds three tasks reads them in one request', async () => {
@@ -432,6 +453,11 @@ describe('writing [ ] text in a daily note', () => {
       deleted: false,
     };
     const { container } = renderToday();
+    // The deleted task's line leaves the note, and the note saves without it.
+    await waitFor(
+      () => expect(last(api.puts)).toBe(ids.map(tokenLine).join('\n')),
+      { timeout: 4000 },
+    );
     for (const n of [1, 2, 3]) {
       expect(
         await within(container).findByRole('checkbox', {
@@ -439,8 +465,8 @@ describe('writing [ ] text in a daily note', () => {
         }),
       ).toBeInTheDocument();
     }
-    expect(await within(container).findByText('Deleted task')).toBeVisible();
-    expect(api.taskReads).toEqual([`BATCH ${[...ids, gone].sort().join(',')}`]);
+    expect(within(container).queryByText('Deleted task')).toBeNull();
+    expect(api.taskReads[0]).toBe(`BATCH ${[...ids, gone].sort().join(',')}`);
   });
 
   test('waits for the first save of a new day before linking the task', async () => {
@@ -693,13 +719,140 @@ describe('one task embedded in two notes', () => {
     }
     expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam back');
   });
+});
 
-  test('a deleted task renders as a muted row, not the token', async () => {
-    renderTwoNotes();
-    await waitFor(() =>
-      expect(within(noteA()).getAllByText('Deleted task')).toHaveLength(1),
+describe('deleting an embedded task', () => {
+  let body = '';
+  function renderNote(initial: string) {
+    body = initial;
+    const Note = () => {
+      const [value, setValue] = useState(initial);
+      return (
+        <NotebookMarkdownBody
+          note={{ id: NOTE_A, area: 'work' }}
+          value={value}
+          onChange={(next) => {
+            body = next;
+            setValue(next);
+          }}
+        />
+      );
+    };
+    const router = createMemoryRouter([{ path: '/', element: <Note /> }]);
+    return render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
     );
-    expect(document.body.textContent).not.toContain('{{task:');
+  }
+
+  function deleteEmbedLine(view: EditorView, userEvent = 'delete') {
+    const at = view.state.doc.toString().indexOf(tokenLine(TASK_ID));
+    const line = view.state.doc.lineAt(at);
+    act(() => {
+      view.dispatch({
+        changes: { from: line.from - 1, to: line.to },
+        userEvent,
+      });
+    });
+  }
+
+  const tick = (ms: number) =>
+    act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  // A delete would start by now; its request settles on timers too.
+  const deletedAfterGrace = async () => {
+    await tick(EMBED_DELETE_GRACE_MS + 10);
+    for (let i = 0; i < 10; i += 1) await tick(20);
+  };
+
+  test('deleting its line deletes the task once the line stays gone', async () => {
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view);
+    expect(body).toBe('Standup');
+    await new Promise((resolve) =>
+      setTimeout(resolve, EMBED_DELETE_GRACE_MS / 2),
+    );
+    expect(api.taskDeletes).toEqual([]);
+
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]), {
+      timeout: EMBED_DELETE_GRACE_MS * 2,
+    });
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(true);
+  }, 15_000);
+
+  test('undo brings the line back and keeps the task', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view);
+    act(() => {
+      undo(view);
+    });
+    expect(body).toBe(`Standup\n${tokenLine(TASK_ID)}`);
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('cutting the line keeps the task, since it is being moved', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask();
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view, 'delete.cut');
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('closing the note right after deleting the line deletes the task at once', async () => {
+    seedTask();
+    const { container, unmount } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    deleteEmbedLine(await editorView(container));
+
+    unmount();
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]));
+  });
+
+  test('Backspace in an emptied title deletes the line and the task', async () => {
+    seedTask();
+    const { container, unmount } = renderNote(
+      `Standup\n${tokenLine(TASK_ID)}\nnotes`,
+    );
+    const user = userEvent.setup();
+    const field = await within(container).findByRole('textbox', {
+      name: 'Task title',
+    });
+
+    await user.clear(field);
+    expect(body).toContain(tokenLine(TASK_ID));
+    await user.keyboard('{Backspace}');
+    expect(body).toBe('Standup\nnotes');
+    expect(api.taskPuts).toEqual([]);
+
+    unmount();
+    await waitFor(() => expect(api.taskDeletes).toEqual([TASK_ID]));
+  });
+
+  test('the line of a task deleted elsewhere leaves the note', async () => {
+    seedTask({ deleted: true });
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}\nnotes`);
+
+    await waitFor(() => expect(body).toBe('Standup\nnotes'));
+    expect(within(container).queryByText('Deleted task')).toBeNull();
+    expect(api.taskDeletes).toEqual([]);
   });
 });
 
