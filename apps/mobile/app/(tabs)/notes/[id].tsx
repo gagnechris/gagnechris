@@ -12,6 +12,7 @@ import {
   notePayloadFromDraft,
   noteTitle,
   parseTagsText,
+  removeTaskEmbedLines,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
@@ -93,10 +94,21 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
     () => (entity ? { id: entity.id, area: entity.area } : null),
     [entity],
   );
+  const removeDeletedEmbeds = useCallback(
+    (ids: ReadonlySet<string>) =>
+      updateDraft((prev) => {
+        const bodyMarkdown = removeTaskEmbedLines(prev.bodyMarkdown, ids);
+        return bodyMarkdown === prev.bodyMarkdown
+          ? prev
+          : { ...prev, bodyMarkdown };
+      }),
+    [updateDraft],
+  );
   const embeds = useNoteTaskEmbedSync({
     markdown: draft.bodyMarkdown,
     note: embedNote,
     today,
+    removeEmbeds: removeDeletedEmbeds,
   });
   const { openTask } = routes;
 

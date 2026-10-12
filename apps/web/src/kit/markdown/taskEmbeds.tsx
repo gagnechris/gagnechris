@@ -1,14 +1,17 @@
 import {
   EditorState,
+  Prec,
   StateEffect,
   StateField,
   Transaction,
   type Extension,
+  type Line,
   type Range,
 } from '@codemirror/state';
 import {
   Decoration,
   EditorView,
+  keymap,
   ViewPlugin,
   WidgetType,
   type DecorationSet,
@@ -18,6 +21,7 @@ import {
   createUlid,
   fenceLineKind,
   findTaskEmbeds,
+  parseTaskEmbedLine,
   parseTaskLine,
   scanFences,
   taskEmbedToken,
@@ -45,11 +49,19 @@ type TaskEmbedHost = {
 type TaskEmbedEditorOptions = {
   host: TaskEmbedHost;
   onCreate: (create: TaskEmbedCreate) => void;
+  /** Embeds the user deleted, so their tasks can be deleted too. */
+  onRemove?: (ids: string[]) => void;
   newId?: () => string;
 };
 
 const createdEffect = StateEffect.define<TaskEmbedCreate>();
 const flushEffect = StateEffect.define<null>();
+/** Text typed beside an embed, for its title field. */
+const typedEffect = StateEffect.define<{
+  at: number;
+  text: string;
+  atStart: boolean;
+}>();
 
 const isProgrammatic = (tr: Transaction) =>
   tr.annotation(Transaction.userEvent) === undefined;
@@ -230,6 +242,26 @@ class TaskEmbedWidget extends WidgetType {
   }
 }
 
+/**
+ * Embeds a user edit took out of the doc. A cut is a move in progress, and an
+ * undone conversion keeps its task for when the line is left again.
+ */
+function removedEmbeds(tr: Transaction): string[] {
+  if (!tr.docChanged || isProgrammatic(tr) || tr.isUserEvent('delete.cut')) {
+    return [];
+  }
+  let touched = false;
+  tr.changes.iterChangedRanges((fromA, toA) => {
+    if (tr.startState.sliceDoc(fromA, toA).includes('{{task:')) touched = true;
+  });
+  if (!touched) return [];
+  const after = new Set(findTaskEmbeds(tr.newDoc.toString()).map((e) => e.id));
+  const converted = tr.state.field(convertedField);
+  return [
+    ...new Set(findTaskEmbeds(tr.startState.doc.toString()).map((e) => e.id)),
+  ].filter((id) => !after.has(id) && converted.get(id)?.undoneAt == null);
+}
+
 const draftLine = Decoration.line({ class: 'cm-task-draft' });
 
 function buildWidgets(state: EditorState, host: TaskEmbedHost) {
@@ -284,9 +316,158 @@ const draftLines = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
+/** The embed widget's range on `line`, if the line is an embed. */
+function embedOn(widgets: DecorationSet, line: Line) {
+  let range: { from: number; to: number } | null = null;
+  widgets.between(line.from, line.to, (from, to) => {
+    range = { from, to };
+    return false;
+  });
+  return range as { from: number; to: number } | null;
+}
+
+const setTextareaValue = Object.getOwnPropertyDescriptor(
+  HTMLTextAreaElement.prototype,
+  'value',
+)?.set;
+
+/**
+ * Puts the caret in the title field of the embed widget at `at`, at its start
+ * or end, inserting `text` there as if typed. False when the row has no field.
+ */
+function focusEmbedTitle(
+  view: EditorView,
+  at: number,
+  atStart: boolean,
+  text = '',
+): boolean {
+  const widget = [
+    ...view.contentDOM.querySelectorAll<HTMLElement>('.cm-task-embed'),
+  ].find((el) => view.posAtDOM(el) === at);
+  const field = widget?.querySelector('textarea');
+  if (!field) return false;
+  field.focus();
+  let caret = atStart ? 0 : field.value.length;
+  if (text && setTextareaValue) {
+    const { value } = field;
+    setTextareaValue.call(
+      field,
+      value.slice(0, caret) + text + value.slice(caret),
+    );
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    caret += text.length;
+  }
+  field.setSelectionRange(caret, caret);
+  return true;
+}
+
+// Focus moves after the update, since the editor's blur handler dispatches.
+const focusEmbedTitleSoon = (
+  view: EditorView,
+  at: number,
+  atStart: boolean,
+  text?: string,
+) => {
+  setTimeout(() => {
+    if (view.dom.isConnected) focusEmbedTitle(view, at, atStart, text);
+  }, 0);
+};
+
+/**
+ * Text typed on an embed's line would break its token, so it goes to the
+ * title field instead; a pasted block lands on its own lines.
+ */
+function guardEmbedLines(widgets: StateField<DecorationSet>) {
+  return EditorState.transactionFilter.of((tr) => {
+    if (!tr.docChanged || !tr.isUserEvent('input')) return tr;
+    const edits: { from: number; to: number; text: string }[] = [];
+    tr.changes.iterChanges((from, to, _fromB, _toB, inserted) => {
+      edits.push({ from, to, text: inserted.toString() });
+    });
+    const edit = edits.length === 1 ? edits[0]! : null;
+    if (!edit || edit.from !== edit.to) return tr;
+    const line = tr.startState.doc.lineAt(edit.from);
+    const embed = embedOn(tr.startState.field(widgets), line);
+    if (!embed) return tr;
+    const atStart = edit.from <= embed.from;
+    if (!edit.text.includes('\n')) {
+      return {
+        effects: typedEffect.of({ at: embed.from, text: edit.text, atStart }),
+      };
+    }
+    if (atStart ? edit.text.endsWith('\n') : edit.text.startsWith('\n')) {
+      return tr;
+    }
+    const insert = atStart ? `${edit.text}\n` : `\n${edit.text}`;
+    const from = atStart ? line.from : line.to;
+    return {
+      changes: { from, insert },
+      selection: { anchor: from + insert.length - (atStart ? 1 : 0) },
+      userEvent: tr.annotation(Transaction.userEvent),
+    };
+  });
+}
+
+/**
+ * Backspace at the start of the line under an embed, or Delete at the end of
+ * the line above one, would join text onto its token: an empty line goes,
+ * and the caret moves into the title.
+ */
+function embedEdgeKeys(widgets: StateField<DecorationSet>) {
+  const neighbour = (view: EditorView, dir: -1 | 1) => {
+    const { state } = view;
+    const sel = state.selection.main;
+    if (!sel.empty) return null;
+    const line = state.doc.lineAt(sel.head);
+    if (sel.head !== (dir < 0 ? line.from : line.to)) return null;
+    const n = line.number + dir;
+    if (n < 1 || n > state.doc.lines) return null;
+    if (embedOn(state.field(widgets), line)) return null;
+    const embed = embedOn(state.field(widgets), state.doc.line(n));
+    return embed ? { line, embed } : null;
+  };
+  return Prec.high(
+    keymap.of([
+      {
+        key: 'Backspace',
+        run: (view) => {
+          const hit = neighbour(view, -1);
+          if (!hit) return false;
+          if (hit.line.length === 0) {
+            view.dispatch({
+              changes: { from: hit.line.from - 1, to: hit.line.from },
+              userEvent: 'delete.backward',
+            });
+          }
+          focusEmbedTitleSoon(view, hit.embed.from, false);
+          return true;
+        },
+      },
+      {
+        key: 'Delete',
+        run: (view) => {
+          const hit = neighbour(view, 1);
+          if (!hit) return false;
+          const at =
+            hit.line.length === 0 ? hit.embed.from - 1 : hit.embed.from;
+          if (hit.line.length === 0) {
+            view.dispatch({
+              changes: { from: hit.line.from, to: hit.line.to + 1 },
+              userEvent: 'delete.forward',
+            });
+          }
+          focusEmbedTitleSoon(view, at, true);
+          return true;
+        },
+      },
+    ]),
+  );
+}
+
 export function taskEmbedEditor({
   host,
   onCreate,
+  onRemove,
   newId = createUlid,
 }: TaskEmbedEditorOptions): Extension {
   const widgets = StateField.define<DecorationSet>({
@@ -303,11 +484,38 @@ export function taskEmbedEditor({
     convertedField,
     convertLeftLine(newId),
     widgets,
+    guardEmbedLines(widgets),
+    embedEdgeKeys(widgets),
     draftLines,
     EditorView.updateListener.of((update) => {
       for (const tr of update.transactions) {
         for (const effect of tr.effects) {
           if (effect.is(createdEffect)) onCreate(effect.value);
+          if (effect.is(typedEffect)) {
+            const { at, atStart, text } = effect.value;
+            focusEmbedTitleSoon(update.view, at, atStart, text);
+          }
+        }
+        const removed = onRemove ? removedEmbeds(tr) : [];
+        if (removed.length > 0) onRemove?.(removed);
+        // Arrow keys onto an embed's line go into its title.
+        const sel = tr.selection?.main;
+        if (
+          sel?.empty &&
+          tr.isUserEvent('select') &&
+          !tr.isUserEvent('select.pointer')
+        ) {
+          const embed = embedOn(
+            tr.state.field(widgets),
+            tr.state.doc.lineAt(sel.head),
+          );
+          if (embed) {
+            focusEmbedTitleSoon(
+              update.view,
+              embed.from,
+              sel.head <= embed.from,
+            );
+          }
         }
       }
     }),
@@ -361,10 +569,82 @@ export function leaveTaskEmbed(
   }
 }
 
-const leaveFrom = (el: HTMLElement) => (below: boolean) => {
+/**
+ * Arrow keys out of an embed's title: into the next embed's title, or onto the
+ * end of the line above / the start of the line below (adding one at the end
+ * of the note).
+ */
+export function moveFromTaskEmbed(
+  view: EditorView,
+  widget: HTMLElement,
+  dir: 'up' | 'down',
+) {
+  const { doc } = view.state;
+  const line = doc.lineAt(view.posAtDOM(widget));
+  const n = line.number + (dir === 'up' ? -1 : 1);
+  if (n < 1) return;
+  if (n > doc.lines) {
+    leaveTaskEmbed(view, widget, true);
+    return;
+  }
+  const target = doc.line(n);
+  const embed = parseTaskEmbedLine(target.text);
+  if (
+    embed &&
+    focusEmbedTitle(view, target.from + embed.indent.length, dir === 'down')
+  ) {
+    return;
+  }
+  view.focus();
+  view.dispatch({
+    selection: { anchor: dir === 'up' ? target.to : target.from },
+    scrollIntoView: true,
+  });
+}
+
+/** Deletes the embed's line as a user edit; the caret ends the line above. */
+export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
+  const at = view.posAtDOM(widget);
+  view.focus();
+  const { doc } = view.state;
+  const line = doc.lineAt(at);
+  const [from, to] =
+    line.number > 1
+      ? [line.from - 1, line.to]
+      : [line.from, Math.min(line.to + 1, doc.length)];
+  view.dispatch({
+    changes: { from, to },
+    selection: { anchor: from },
+    scrollIntoView: true,
+    userEvent: 'delete',
+  });
+}
+
+const viewOf = (el: HTMLElement) => {
   const editor = el.closest<HTMLElement>('.cm-editor');
-  const view = editor && EditorView.findFromDOM(editor);
+  return editor ? EditorView.findFromDOM(editor) : null;
+};
+
+const leaveFrom = (el: HTMLElement) => (below: boolean) => {
+  const view = viewOf(el);
   if (view) leaveTaskEmbed(view, el, below);
+};
+
+const deleteFrom = (el: HTMLElement) => () => {
+  const view = viewOf(el);
+  if (view) deleteTaskEmbedLine(view, el);
+};
+
+const moveFrom = (el: HTMLElement) => (dir: 'up' | 'down') => {
+  const view = viewOf(el);
+  if (view) moveFromTaskEmbed(view, el, dir);
+};
+
+/** What an embed row's title field does to the note around it. */
+export type TaskEmbedControls = {
+  leave: (below: boolean) => void;
+  remove: () => void;
+  move: (dir: 'up' | 'down') => void;
 };
 
 /**
@@ -373,11 +653,13 @@ const leaveFrom = (el: HTMLElement) => (below: boolean) => {
  */
 export function useTaskEmbedEditor({
   onCreate,
+  onRemove,
   renderEmbed,
   newId,
 }: {
   onCreate: (create: TaskEmbedCreate) => void;
-  renderEmbed: (id: string, leave: (below: boolean) => void) => ReactNode;
+  onRemove?: (ids: string[]) => void;
+  renderEmbed: (id: string, controls: TaskEmbedControls) => ReactNode;
   newId?: () => string;
 }) {
   // `seq` keys each mount, so a widget rebuilt for the same id remounts its row.
@@ -386,9 +668,11 @@ export function useTaskEmbedEditor({
     byEl: ReadonlyMap<HTMLElement, { id: string; key: number }>;
   }>(() => ({ seq: 0, byEl: new Map() }));
   const onCreateRef = useRef(onCreate);
+  const onRemoveRef = useRef(onRemove);
   useEffect(() => {
     onCreateRef.current = onCreate;
-  }, [onCreate]);
+    onRemoveRef.current = onRemove;
+  }, [onCreate, onRemove]);
   const host = useMemo<TaskEmbedHost>(
     () => ({
       attach: (el, id) =>
@@ -410,17 +694,29 @@ export function useTaskEmbedEditor({
   const create = useCallback((value: TaskEmbedCreate) => {
     onCreateRef.current(value);
   }, []);
+  const remove = useCallback((ids: string[]) => {
+    onRemoveRef.current?.(ids);
+  }, []);
 
   const extensions = useMemo(
-    () => [taskEmbedEditor({ host, onCreate: create, newId })],
-    [create, host, newId],
+    () => [
+      taskEmbedEditor({ host, onCreate: create, onRemove: remove, newId }),
+    ],
+    [create, remove, host, newId],
   );
 
   const portals = (
     <>
       {[...mounts.byEl].map(([el, { id, key }]) => (
         <Fragment key={key}>
-          {createPortal(renderEmbed(id, leaveFrom(el)), el)}
+          {createPortal(
+            renderEmbed(id, {
+              leave: leaveFrom(el),
+              remove: deleteFrom(el),
+              move: moveFrom(el),
+            }),
+            el,
+          )}
         </Fragment>
       ))}
     </>

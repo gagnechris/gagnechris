@@ -8,8 +8,8 @@ import {
   type RefObject,
 } from 'react';
 import { EditorView } from '@codemirror/view';
-import type { EmbedNote } from '@gagnechris/app-core';
-import { findTaskEmbeds } from '@gagnechris/shared';
+import { useLatest, type EmbedNote } from '@gagnechris/app-core';
+import { findTaskEmbeds, removeTaskEmbedLines } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 // Static: only lazy routes render this body, so CodeMirror loads with the
 // route chunk instead of after it behind Suspense's reveal delay.
@@ -76,10 +76,19 @@ export function NotebookMarkdownBody({
   const getView = useCallback(() => editorRef.current?.view(), []);
   const phone = useMediaQuery(PHONE_QUERY);
   const [focused, setFocused] = useState(false);
+  const valueRef = useLatest(value);
+  const removeEmbeds = useCallback(
+    (ids: ReadonlySet<string>) => {
+      const next = removeTaskEmbedLines(valueRef.current, ids);
+      if (next !== valueRef.current) onChange(next);
+    },
+    [onChange, valueRef],
+  );
   const embeds = useNoteTaskEmbeds({
     markdown: value,
     note: note ?? null,
     ensureNoteSaved,
+    removeEmbeds,
   });
   const dateMenu = useTaskDateMenuEditor({
     today: useLocalToday(),

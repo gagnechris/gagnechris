@@ -22,8 +22,10 @@ const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
 type Props = {
   state: TaskEmbedState;
   onOpen?: () => void;
-  /** Long press and the VoiceOver action; takes the line out of the note. */
+  /** Long press and the VoiceOver action; asks before deleting the task. */
   onRemove?: () => void;
+  /** Backspace in an emptied title: deletes the line and its task. */
+  onDelete?: () => void;
   /** The title is a text field when the task can be renamed. */
   editable?: boolean;
   /** Return in the title. */
@@ -47,6 +49,7 @@ type TitleProps = {
   closed: boolean;
   onRename: (title: string) => void;
   onSubmit?: () => void;
+  onDelete?: () => void;
   inputRef: RefObject<TextInput | null>;
   a11yActions: object;
 };
@@ -71,6 +74,7 @@ const TitleField = ({
   closed,
   onRename,
   onSubmit,
+  onDelete,
   inputRef,
   a11yActions,
 }: TitleProps) => {
@@ -109,6 +113,12 @@ const TitleField = ({
         setDraft(null);
       }}
       onSubmitEditing={onSubmit}
+      onKeyPress={(e) => {
+        if (e.nativeEvent.key !== 'Backspace' || !onDelete) return;
+        if ((draft ?? title) !== '') return;
+        pending.current.text = null;
+        onDelete();
+      }}
       maxLength={NOTEBOOK_TITLE_MAX_LENGTH}
       // Wraps like the read-only title; Return ends editing instead of
       // adding a line break.
@@ -124,13 +134,14 @@ export const TaskEmbedRow = ({
   state,
   onOpen,
   onRemove,
+  onDelete,
   editable,
   onTitleSubmit,
 }: Props) => {
   const titleInput = useRef<TextInput>(null);
   const a11yActions = onRemove
     ? {
-        accessibilityActions: [{ name: 'remove', label: 'Remove from note' }],
+        accessibilityActions: [{ name: 'remove', label: 'Delete task' }],
         onAccessibilityAction: () => onRemove(),
       }
     : {};
@@ -235,6 +246,7 @@ export const TaskEmbedRow = ({
             closed={done || dropped}
             onRename={state.onRename}
             onSubmit={onTitleSubmit}
+            onDelete={onDelete}
             inputRef={titleInput}
             a11yActions={a11yActions}
           />

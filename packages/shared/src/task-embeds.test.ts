@@ -4,6 +4,7 @@ import { UlidSchema } from './schemas.js';
 import {
   findTaskEmbeds,
   parseTaskEmbedLine,
+  removeTaskEmbedLines,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
   taskEmbedIds,
@@ -72,6 +73,22 @@ describe('task embeds', () => {
   it('passes through the shared markdown sanitizer intact', () => {
     const html = renderMarkdownToHtml(`before\n\n${taskEmbedToken(A)}\n`);
     expect(html).toContain(`<p>${taskEmbedToken(A)}</p>`);
+  });
+});
+
+describe('removeTaskEmbedLines', () => {
+  it('drops the named embeds and keeps every other line', () => {
+    const md = `Plan\n${taskEmbedToken(A)}\n  ${taskEmbedToken(B)}\nend`;
+    expect(removeTaskEmbedLines(md, new Set([A]))).toBe(
+      `Plan\n  ${taskEmbedToken(B)}\nend`,
+    );
+  });
+
+  it('leaves a token inside a code fence alone', () => {
+    const md = `\`\`\`\n${taskEmbedToken(A)}\n\`\`\`\n${taskEmbedToken(A)}`;
+    expect(removeTaskEmbedLines(md, new Set([A]))).toBe(
+      `\`\`\`\n${taskEmbedToken(A)}\n\`\`\``,
+    );
   });
 });
 
