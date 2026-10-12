@@ -27,10 +27,6 @@ func SlugPk(slug string) string { return "SLUG#" + slug }
 
 func SlugPostSk() string { return skPost }
 
-func TagPk(tag string) string { return "TAG#" + tag }
-
-func TagSk(publishedAt, postID string) string { return "TS#" + publishedAt + "#POST#" + postID }
-
 func StatusGSI1Pk(status string) string { return "STATUS#" + status }
 
 func StatusGSI1Sk(sortTS, postID string) string { return "TS#" + sortTS + "#POST#" + postID }

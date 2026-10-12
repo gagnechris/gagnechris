@@ -86,7 +86,7 @@ The publisher Lambda uses the `NodeLambda` CDK construct (arm64, esbuild bundlin
 The Go API's stores share one layering:
 
 - `versioned` (`services/api/internal/notebook/versioned.go`) — the owner-scoped optimistic-concurrency store for Notebook notes and tasks: consistent read-modify-write (`mutate` / `softDelete`, `VersionMatchCondition`), idempotent client-ULID create with create claims and a `createHash`, sync stamping (`entityType` / `syncPk` / `syncSk`), list GSI keys stripped from tombstones, and an optional unique claim (the daily-note claim). Rows of another owner read as missing.
-- `store.PublishableStore` (`services/api/internal/store/publishable.go`) — draft `META` + optional `PUBLISHED` snapshot for posts and projects; `store.Singleton` covers Home and Resume. Create, update, soft delete, publish, unpublish, discard, slug claims (`SlugClaims`, with rename redirects), list flags and `hasUnpublishedChanges` live here once. Posts add tag-index rows through `ExtraItems`.
+- `store.PublishableStore` (`services/api/internal/store/publishable.go`) — draft `META` + optional `PUBLISHED` snapshot for posts and projects; `store.Singleton` covers Home and Resume. Create, update, soft delete, publish, unpublish, discard, slug claims (`SlugClaims`, with rename redirects), list flags and `hasUnpublishedChanges` live here once.
 - `store.QueryPage` and `store.WalkPartitions` (`services/api/internal/store/query.go`) page every list with opaque cursors and a response byte budget.
 
 Mutating admin endpoints accept the client's expected `version`; 409 responses include `currentVersion` and `current`.
