@@ -4,7 +4,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 let docClient: DynamoDBDocumentClient | undefined;
 
 /** SDK owns throttle retries; callers only classify conflicts. */
-export const DYNAMO_MAX_ATTEMPTS = 3;
+const DYNAMO_MAX_ATTEMPTS = 3;
 
 export function getDocClient(): DynamoDBDocumentClient {
   if (!docClient) {
@@ -16,16 +16,4 @@ export function getDocClient(): DynamoDBDocumentClient {
     );
   }
   return docClient;
-}
-
-export function setDocClient(client: DynamoDBDocumentClient | undefined): void {
-  docClient = client;
-}
-
-export function requireTableName(): string {
-  const name = process.env.DATA_TABLE_NAME?.trim();
-  if (!name) {
-    throw new Error('DATA_TABLE_NAME is not set');
-  }
-  return name;
 }

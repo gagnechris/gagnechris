@@ -55,7 +55,7 @@ apps/mobile/           Expo iOS app (Notebook and Admin); own lockfile, not a ro
 services/api/          Go API (cmd/api, internal/), the restore-test validator, the black-box HTTP suite (test/)
 services/publisher/    DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 packages/shared/       Domain schemas/types; `/render`, `/openapi` and other subpaths
-packages/data/         DynamoDB keys, item schemas and builders, write helpers
+packages/data/         DynamoDB keys, item schemas and builders for the publisher, ops, infra and tests
 packages/api-client/   OpenAPI types and `createApiClient`
 packages/app-core/     UI-free hooks shared by the web apps and the iOS app
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site
