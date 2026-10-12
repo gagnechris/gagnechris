@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "Shared DynamoDB keys, item schemas, mappers, and DocumentClient for the publisher, ops tools and tests.",
+  "description": "DynamoDB keys, item schemas, mappers, table definition and DocumentClient. The Go API writes every row; this package serves the publisher, ops tools, infra, Go contract generation and tests.",
   "exports": {
     ".": {
       "types": "./src/index.ts",
