@@ -21,7 +21,7 @@ flowchart LR
   API --> SES[SES<br/>contact / notify]
 ```
 
-Public HTML (home, resume, blog posts), `posts.json`, `sitemap.xml`, `rss.xml`, and `resume.pdf` are written by the **publisher** on publish — not by the Vite web build.
+Public HTML (home, resume, blog posts), `posts.json`, the iOS app's JSON, `sitemap.xml`, `rss.xml`, and `resume.pdf` are written by the **publisher** on publish — not by the Vite web build.
 
 ## Quickstart (local admin)
 

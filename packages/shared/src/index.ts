@@ -85,7 +85,10 @@ export {
 } from './resume-dates.js';
 export {
   normalizeResumeText,
+  RESUME_DOWNLOAD_FILENAME,
+  RESUME_PAGE_TITLE,
   RESUME_SECTION_LABELS,
+  RESUME_UNAVAILABLE_TEXT,
   resumeView,
   type ResumeEducationLine,
   type ResumeRoleView,
@@ -106,6 +109,10 @@ export {
 export {
   comparePostsNewestFirst,
   groupPostsByYear,
+  HOME_ALL_POSTS_LABEL,
+  HOME_RECENT_POSTS_HEADING,
+  selectHomeRecentPosts,
+  type HomeRecentPost,
   POSTS_INDEX_EMPTY_TEXT,
   POSTS_INDEX_INTRO,
   POSTS_RSS_LINK,
@@ -307,3 +314,20 @@ export {
 } from './projects.js';
 export * from './users.js';
 export { postMatchesQuery } from './post-search.js';
+export {
+  SITE_HOME_JSON_KEY,
+  SITE_HOME_JSON_PATH,
+  SITE_POSTS_JSON_PATH,
+  SITE_RESUME_JSON_KEY,
+  SITE_RESUME_JSON_PATH,
+  siteHomeJson,
+  sitePostJson,
+  sitePostJsonKey,
+  sitePostJsonPath,
+  siteResumeJson,
+  type SiteHomeJson,
+  type SitePostJson,
+  type SitePostListItem,
+  type SitePostsJson,
+  type SiteResumeJson,
+} from './site-feed.js';

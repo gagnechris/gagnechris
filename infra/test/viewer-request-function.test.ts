@@ -630,6 +630,9 @@ describe('viewer-request CloudFront Function', () => {
   it('passes files that are not pages through, under a prefix too', async () => {
     for (const [uri, expected] of [
       ['/posts/posts.json', '/blog/posts.json'],
+      ['/posts/hello/index.json', '/blog/hello/index.json'],
+      ['/home/index.json', '/home/index.json'],
+      ['/resume/index.json', '/resume/index.json'],
       ['/resume/photo.png', '/resume/photo.png'],
       ['/rss.xml', '/rss.xml'],
       ['/robots.txt', '/robots.txt'],

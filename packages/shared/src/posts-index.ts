@@ -1,4 +1,5 @@
 import { formatPostShortDate, postDateAttribute } from './post-date.js';
+import type { Post } from './schemas.js';
 
 export const POSTS_INDEX_INTRO =
   'Ideas, lessons and experiments from software engineering, leadership and AI.';
@@ -104,3 +105,28 @@ export const postsIndexView = (
       dateTime: postDateAttribute(post.publishedAt),
     })),
   }));
+
+export const HOME_RECENT_POSTS_LIMIT = 3;
+export const HOME_RECENT_POSTS_HEADING = 'Recent posts';
+export const HOME_RECENT_POSTS_HEADING_ID = 'home-recent-posts';
+export const HOME_ALL_POSTS_LABEL = 'All posts';
+
+export type HomeRecentPost = Pick<
+  Post,
+  'id' | 'slug' | 'title' | 'excerpt' | 'publishedAt'
+>;
+
+/** Same order as `posts.json`, so the publisher and the SPA pick the same posts. */
+export const selectHomeRecentPosts = (
+  posts: readonly (HomeRecentPost & Pick<Post, 'updatedAt'>)[],
+): HomeRecentPost[] =>
+  [...posts]
+    .sort(comparePostsNewestFirst)
+    .slice(0, HOME_RECENT_POSTS_LIMIT)
+    .map(({ id, slug, title, excerpt, publishedAt }) => ({
+      id,
+      slug,
+      title,
+      excerpt,
+      publishedAt,
+    }));

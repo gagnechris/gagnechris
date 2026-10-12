@@ -15,7 +15,6 @@ describe('root gate', () => {
       notebook: true,
       admin: true,
       noAccess: false,
-      signIn: false,
     });
     expect(rootGuards('signedIn', ['admin'])).toMatchObject({
       notebook: false,
@@ -29,7 +28,6 @@ describe('root gate', () => {
       notebook: true,
       admin: true,
       noAccess: true,
-      signIn: false,
     });
   });
 
@@ -38,18 +36,17 @@ describe('root gate', () => {
       notebook: false,
       admin: false,
       noAccess: true,
-      signIn: false,
     });
   });
 
-  it('shows sign-in when signed out, and nothing while restoring', () => {
-    expect(rootGuards('signedOut', []).signIn).toBe(true);
-    expect(Object.values(rootGuards('restoring', ['notebook']))).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ]);
+  it('opens no signed-in screen when signed out or restoring', () => {
+    for (const status of ['signedOut', 'restoring'] as const) {
+      expect(Object.values(rootGuards(status, ['notebook']))).toEqual([
+        false,
+        false,
+        false,
+      ]);
+    }
   });
 
   it('builds avatar initials from the name, else the email', () => {

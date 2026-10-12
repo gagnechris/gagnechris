@@ -1,13 +1,16 @@
 import { tokens } from '@gagnechris/tokens';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { authMode } from '../src/config';
-import { useSession } from '../src/session';
-import { color, font } from '../src/theme';
-import { Button } from '../src/ui/Button';
-import { Icon } from '../src/ui/Icon';
+import { authMode } from '../../../src/config';
+import { useSession } from '../../../src/session';
+import { color, font } from '../../../src/theme';
+import { Button } from '../../../src/ui/Button';
+import { Icon } from '../../../src/ui/Icon';
+import { Screen } from '../../../src/ui/Screen';
+import { YourApps } from '../../../src/ui/YourApps';
 
-const SignInScreen = () => {
+const SignIn = () => {
   const { signIn, expired } = useSession();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -33,12 +36,12 @@ const SignInScreen = () => {
         <Icon name="book.closed" size={28} color={color.surface} />
       </View>
       <Text style={styles.title} accessibilityRole="header">
-        Notebook
+        Sign in
       </Text>
       <Text style={styles.body}>
         {expired
           ? 'Your session ended. Sign in again to keep going.'
-          : 'Sign in to see your notes and tasks.'}
+          : 'Sign in to open your Notebook and Admin.'}
       </Text>
       {failed ? (
         <Text style={styles.error} accessibilityRole="alert">
@@ -56,7 +59,27 @@ const SignInScreen = () => {
   );
 };
 
-export default SignInScreen;
+/** Signed out, sign-in; signed in, the apps to switch to. */
+const AccountScreen = () => {
+  const { status } = useSession();
+  const router = useRouter();
+  const previous = useRef(status);
+  // A sign-in from this tab opens the user's space, as launch does.
+  useEffect(() => {
+    if (previous.current === 'signedOut' && status === 'signedIn') {
+      router.replace('/');
+    }
+    previous.current = status;
+  }, [router, status]);
+  if (status !== 'signedIn') return <SignIn />;
+  return (
+    <Screen>
+      <YourApps current="site" />
+    </Screen>
+  );
+};
+
+export default AccountScreen;
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: color.background },

@@ -1,6 +1,9 @@
 import {
   DEFAULT_HOME,
   selectHomeProjects,
+  SITE_HOME_JSON_KEY,
+  SITE_HOME_JSON_PATH,
+  siteHomeJson,
   type Home,
 } from '@gagnechris/shared';
 import { selectHomeRecentPosts } from '@gagnechris/shared/render';
@@ -23,10 +26,10 @@ import type {
   PublishTargetContext,
 } from '../types.js';
 
-const homePageArtifact = (
+const homePageArtifacts = (
   ctx: PublishTargetContext,
   home: Home,
-): PublishArtifact =>
+): PublishArtifact[] => [
   htmlArtifact(
     'index.html',
     renderHomePage(
@@ -35,12 +38,14 @@ const homePageArtifact = (
       selectHomeRecentPosts(ctx.feedPosts),
       selectHomeProjects(ctx.projects.projects),
     ),
-  );
+  ),
+  jsonArtifact(SITE_HOME_JSON_KEY, siteHomeJson(home)),
+];
 
 // Unchanged bytes are skipped by storage.put, and the orchestrator only
 // invalidates for targets that wrote, so post and project edits that don't
 // change what Home lists leave `/` alone.
-const INVALIDATION_PATHS = ['/', '/index.html'];
+const INVALIDATION_PATHS = ['/', '/index.html', SITE_HOME_JSON_PATH];
 
 const rendersHome = (scope: RebuildScope): boolean =>
   scope.home ||
@@ -68,7 +73,7 @@ const target: PublishTarget = {
       const home = lookup.entity;
       return {
         artifacts: [
-          homePageArtifact(ctx, home),
+          ...homePageArtifacts(ctx, home),
           jsonArtifact(HOME_LAST_PUBLISHED_KEY, homeToSnapshot(home)),
         ],
         invalidationPaths: INVALIDATION_PATHS,
@@ -78,7 +83,7 @@ const target: PublishTarget = {
     const snapshot = await readHomePublishSnapshot(ctx.storage);
     if (snapshot) {
       return {
-        artifacts: [homePageArtifact(ctx, snapshotToHome(snapshot))],
+        artifacts: homePageArtifacts(ctx, snapshotToHome(snapshot)),
         invalidationPaths: INVALIDATION_PATHS,
         homeRestoredFromSnapshot: true,
       };
@@ -88,7 +93,7 @@ const target: PublishTarget = {
     // falls back to anyway, so Recent posts still reach `/`.
     if (lookup.status === 'corrupt') return {};
     return {
-      artifacts: [homePageArtifact(ctx, DEFAULT_HOME)],
+      artifacts: homePageArtifacts(ctx, DEFAULT_HOME),
       invalidationPaths: INVALIDATION_PATHS,
     };
   },

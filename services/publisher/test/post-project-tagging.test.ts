@@ -162,6 +162,7 @@ describe('post to project tagging', () => {
     expect(buildLog('posts')).not.toContain('/posts/hello');
     expect(site.puts.sort()).toEqual([
       'blog/hello/index.html',
+      'blog/hello/index.json',
       'projects/notebook/index.html',
     ]);
   });

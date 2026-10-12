@@ -162,13 +162,21 @@ describe('rebuildPublishedSite selective scope', () => {
 
     const result = await rebuildPublishedSite({ scope, storage });
 
-    expect(storage.puts).toEqual(['index.html', 'home/last-published.json']);
+    expect(storage.puts).toEqual([
+      'index.html',
+      'home/index.json',
+      'home/last-published.json',
+    ]);
     expect(storage.deletes).toEqual([]);
     expect(result.homePublished).toBe(true);
     expect(result.homeRestoredFromSnapshot).toBe(false);
     expect(result.resumePublished).toBe(false);
     expect(result.resumeUnpublished).toBe(false);
-    expect(result.invalidated.sort()).toEqual(['/', '/index.html']);
+    expect(result.invalidated.sort()).toEqual([
+      '/',
+      '/home/index.json',
+      '/index.html',
+    ]);
     expect(renderResumePdf).not.toHaveBeenCalled();
     expect(kvsSyncCount(syncViewerRequestKeys, 'blog')).toBe(0);
   });
@@ -239,7 +247,7 @@ describe('rebuildPublishedSite selective scope', () => {
       ]),
     );
     expect(storage.puts.some((k) => k === 'resume/index.html')).toBe(false);
-    expect(result.invalidated.length).toBeLessThanOrEqual(5);
+    expect(result.invalidated.length).toBeLessThanOrEqual(6);
     expect(result.invalidated).toEqual(
       expect.arrayContaining(['/blog*', '/sitemap.xml', '/rss.xml']),
     );

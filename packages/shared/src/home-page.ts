@@ -1,8 +1,6 @@
 import { textExcerpt } from './excerpt.js';
 import { escapeHtml } from './html.js';
-import { comparePostsNewestFirst } from './posts-index.js';
 import { PROJECTS_PATH } from './projects.js';
-import type { Post } from './schemas.js';
 import {
   SITE_AUTHOR_NAME,
   SITE_GITHUB_URL,
@@ -46,30 +44,14 @@ export const HOME_LINKS_SENTENCE: readonly HomeLinksSegment[] = [
   '.',
 ];
 
-export const HOME_RECENT_POSTS_LIMIT = 3;
-export const HOME_RECENT_POSTS_HEADING = 'Recent posts';
-export const HOME_RECENT_POSTS_HEADING_ID = 'home-recent-posts';
-export const HOME_ALL_POSTS_LABEL = 'All posts';
-
-export type HomeRecentPost = Pick<
-  Post,
-  'id' | 'slug' | 'title' | 'excerpt' | 'publishedAt'
->;
-
-/** Same order as `posts.json`, so the publisher and the SPA pick the same posts. */
-export const selectHomeRecentPosts = (
-  posts: readonly (HomeRecentPost & Pick<Post, 'updatedAt'>)[],
-): HomeRecentPost[] =>
-  [...posts]
-    .sort(comparePostsNewestFirst)
-    .slice(0, HOME_RECENT_POSTS_LIMIT)
-    .map(({ id, slug, title, excerpt, publishedAt }) => ({
-      id,
-      slug,
-      title,
-      excerpt,
-      publishedAt,
-    }));
+export {
+  HOME_ALL_POSTS_LABEL,
+  HOME_RECENT_POSTS_HEADING,
+  HOME_RECENT_POSTS_HEADING_ID,
+  HOME_RECENT_POSTS_LIMIT,
+  selectHomeRecentPosts,
+  type HomeRecentPost,
+} from './posts-index.js';
 
 export const homePostHref = (slug: string): string => `/posts/${slug}`;
 

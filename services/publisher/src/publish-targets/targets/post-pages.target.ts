@@ -1,7 +1,11 @@
-import { postProjectLinks } from '@gagnechris/shared';
+import {
+  postProjectLinks,
+  sitePostJson,
+  sitePostJsonKey,
+} from '@gagnechris/shared';
 import { renderPostPage } from '../../render.js';
 import { postPageKey } from '../../storage.js';
-import { htmlArtifact } from '../artifacts.js';
+import { htmlArtifact, jsonArtifact } from '../artifacts.js';
 import type { PublishTarget } from '../types.js';
 
 const target: PublishTarget = {
@@ -25,16 +29,16 @@ const target: PublishTarget = {
         );
 
     return {
-      artifacts: postsToRender.map((post) =>
-        htmlArtifact(
-          postPageKey(post.slug),
-          renderPostPage(
-            shell,
-            post,
-            postProjectLinks(post.projectIds, projects.projects),
+      artifacts: postsToRender.flatMap((post) => {
+        const partOf = postProjectLinks(post.projectIds, projects.projects);
+        return [
+          htmlArtifact(
+            postPageKey(post.slug),
+            renderPostPage(shell, post, partOf),
           ),
-        ),
-      ),
+          jsonArtifact(sitePostJsonKey(post.slug), sitePostJson(post, partOf)),
+        ];
+      }),
       invalidationPaths: postsToRender.length > 0 ? ['/blog*'] : [],
     };
   },
