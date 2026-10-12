@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -133,6 +135,21 @@ describe('MarkdownEditor scroll', () => {
     expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
     scroller.scrollTop = 250;
     expect(scroller.scrollTop).toBe(250);
+  });
+});
+
+describe('MarkdownEditor focus style', () => {
+  // jsdom applies neither CodeMirror's base theme nor :focus-within, so this
+  // pins the rules; e2e/tests/editor-presentation.spec.ts checks the browser.
+  const css = readFileSync(path.join(__dirname, 'markdown.css'), 'utf8');
+
+  test('drops CodeMirror’s dotted outline and rings the frame instead', () => {
+    expect(css).toMatch(
+      /\.markdown-editor \.cm-editor\.cm-focused\s*\{[^}]*outline:\s*none/,
+    );
+    expect(css).toMatch(
+      /\.markdown-editor:focus-within\s*\{[^}]*border-color:\s*var\(--primary-500\)[^}]*box-shadow:[^;]*var\(--primary-500\)/,
+    );
   });
 });
 

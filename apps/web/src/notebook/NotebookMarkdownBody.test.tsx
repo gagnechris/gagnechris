@@ -3,7 +3,8 @@ import { EditorView } from '@codemirror/view';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { PHONE_QUERY } from '../kit/useMediaQuery';
 import { QueryClientTestProvider } from '../test-utils';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 
@@ -138,5 +139,39 @@ describe('NotebookMarkdownBody', () => {
       'true',
     );
     expect(again.container.querySelector('.cm-live')).toBeNull();
+  });
+
+  test('the phone task hint shows its syntax as code, not markdown', async () => {
+    const matchMedia = vi.mocked(window.matchMedia);
+    const notPhone = matchMedia.getMockImplementation();
+    matchMedia.mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === PHONE_QUERY,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    try {
+      render(
+        <QueryClientTestProvider>
+          <MemoryRouter>
+            <NotebookMarkdownBody
+              note={{ id: 'note-1', area: 'work' }}
+              value=""
+              onChange={() => {}}
+            />
+          </MemoryRouter>
+        </QueryClientTestProvider>,
+      );
+      const hint = await screen.findByText(/adds a task/);
+      expect(hint.textContent).not.toContain('`');
+      expect(
+        [...hint.querySelectorAll('code')].map((c) => c.textContent),
+      ).toEqual(['[ ] text', '@']);
+    } finally {
+      if (notPhone) matchMedia.mockImplementation(notPhone);
+    }
   });
 });
