@@ -122,7 +122,6 @@ test('Discard changes brings back the published post', async ({
   prefix,
   request,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   const post = await seed.publishedPost({ title: `${prefix} Published` });
   await signIn();
   await openPost(page, apps.admin, post.id, post.title);
@@ -130,6 +129,10 @@ test('Discard changes brings back the published post', async ({
   await titleInput(page).fill(`${prefix} Draft`);
   await saved(page);
   await page.getByRole('button', { name: 'Discard changes' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Discard' })
+    .click();
   await expect(titleInput(page)).toHaveValue(`${prefix} Published`);
   await expect(
     page.getByRole('button', { name: 'Discard changes' }),
@@ -150,13 +153,16 @@ test('Unpublish takes the post off the site; Delete removes it', async ({
   seed,
   request,
 }) => {
-  page.on('dialog', (dialog) => void dialog.accept());
   const post = await seed.publishedPost();
   expect((await publicPage(request, post.slug)).status).toBe(200);
   await signIn();
   await openPost(page, apps.admin, post.id, post.title);
 
   await page.getByRole('button', { name: 'Unpublish' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Unpublish' })
+    .click();
   await expect(
     page.getByRole('button', { name: 'Publish', exact: true }),
   ).toBeVisible();
@@ -165,6 +171,10 @@ test('Unpublish takes the post off the site; Delete removes it', async ({
     .toBe(404);
 
   await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await expect(page).toHaveURL(`${apps.admin}/`);
   await expect(page.getByRole('heading', { name: 'Posts' })).toBeVisible();
   await expect(page.getByRole('link', { name: post.title })).toHaveCount(0);
@@ -264,11 +274,6 @@ test.describe('leaving with unsaved changes', () => {
     seed,
     prefix,
   }) => {
-    const dialogs: string[] = [];
-    page.on('dialog', (dialog) => {
-      dialogs.push(dialog.message());
-      void dialog.dismiss();
-    });
     const post = await seed.post();
     await signIn();
     await openPost(page, apps.admin, post.id, post.title);
@@ -282,7 +287,7 @@ test.describe('leaving with unsaved changes', () => {
     expect((await stored(seed, post.id))?.title).toBe(
       `${prefix} Typed then left`,
     );
-    expect(dialogs).toEqual([]);
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
   });
 
   test('asks when the save fails, and staying keeps the edit', async ({
@@ -298,12 +303,6 @@ test.describe('leaving with unsaved changes', () => {
         ? route.fulfill({ status: 500, body: '{}' })
         : route.continue(),
     );
-    const dialog = new Promise<string>((resolve) =>
-      page.once('dialog', (d) => {
-        resolve(d.message());
-        void d.dismiss();
-      }),
-    );
     await signIn();
     await openPost(page, apps.admin, post.id, post.title);
 
@@ -312,9 +311,10 @@ test.describe('leaving with unsaved changes', () => {
       .getByRole('navigation')
       .getByRole('link', { name: 'Projects' })
       .click();
-    expect(await dialog).toBe(
-      'Your changes could not be saved. Leave without saving?',
-    );
+    const dialog = page.getByRole('alertdialog', {
+      name: 'Your changes could not be saved. Leave without saving?',
+    });
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(page).toHaveURL(new RegExp(`/posts/${post.id}$`));
     await expect(titleInput(page)).toHaveValue(`${prefix} Unsaved`);
     expect((await stored(seed, post.id))?.title).toBe(post.title);
