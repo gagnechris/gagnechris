@@ -246,6 +246,16 @@ export {
   scanFences,
   type FenceBlock,
 } from './markdown-fences.js';
+export {
+  liveMarkdownLine,
+  liveMarkdownLines,
+  MARKDOWN_IMAGE,
+  standaloneMarkdownImage,
+  type LiveImage,
+  type LiveLine,
+  type LiveLineStyle,
+  type LiveMark,
+} from './markdown-live-preview.js';
 export { markdownPlainText } from './markdown-text.js';
 export {
   isSafeLinkHref,

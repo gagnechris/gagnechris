@@ -11,7 +11,10 @@ export type ToolbarAction =
   | 'list'
   | 'checklist'
   | 'dateToken'
-  | 'link';
+  | 'link'
+  | 'bold'
+  | 'italic'
+  | 'code';
 
 const lineStart = (text: string, offset: number) =>
   text.lastIndexOf('\n', offset - 1) + 1;
@@ -60,7 +63,48 @@ const insertWord = (
   };
 };
 
-/** What each Notes keyboard toolbar button does to the focused text. */
+/** Wraps the selection in `marker`, or unwraps it when it is wrapped. */
+const toggleWrap = (
+  text: string,
+  { start, end }: Selection,
+  marker: string,
+): TextEdit => {
+  const n = marker.length;
+  if (
+    start >= n &&
+    text.slice(start - n, start) === marker &&
+    text.slice(end, end + n) === marker
+  ) {
+    return {
+      text:
+        text.slice(0, start - n) + text.slice(start, end) + text.slice(end + n),
+      selection: { start: start - n, end: end - n },
+    };
+  }
+  return {
+    text:
+      text.slice(0, start) +
+      marker +
+      text.slice(start, end) +
+      marker +
+      text.slice(end),
+    selection: { start: start + n, end: end + n },
+  };
+};
+
+/** The selection as a fenced block on lines of its own. */
+const fence = (text: string, { start, end }: Selection): TextEdit => {
+  const before = start > 0 && text[start - 1] !== '\n' ? '\n' : '';
+  const after = end < text.length && text[end] !== '\n' ? '\n' : '';
+  const body = text.slice(start, end);
+  const bodyStart = start + before.length + 4;
+  return {
+    text: `${text.slice(0, start)}${before}\`\`\`\n${body}\n\`\`\`${after}${text.slice(end)}`,
+    selection: { start: bodyStart, end: bodyStart + body.length },
+  };
+};
+
+/** What each keyboard toolbar button does to the focused text. */
 export function applyToolbarAction(
   text: string,
   selection: Selection,
@@ -86,6 +130,14 @@ export function applyToolbarAction(
       return insertWord(text, selection, '@');
     case 'priority':
       return insertWord(text, selection, '!');
+    case 'bold':
+      return toggleWrap(text, selection, '**');
+    case 'italic':
+      return toggleWrap(text, selection, '_');
+    case 'code':
+      return text.slice(selection.start, selection.end).includes('\n')
+        ? fence(text, selection)
+        : toggleWrap(text, selection, '`');
     case 'link': {
       const { start, end } = selection;
       const label = text.slice(start, end);

@@ -49,3 +49,21 @@ describe('Notes keyboard toolbar', () => {
     expect(run('Call «Sam»', 'task')).toBe('[ ] Call «Sam»');
   });
 });
+
+describe('Posts keyboard toolbar', () => {
+  it('Bold and Italic wrap the selection, or put the caret between markers', () => {
+    expect(run('a «word» b', 'bold')).toBe('a **«word»** b');
+    expect(run('a | b', 'italic')).toBe('a _|_ b');
+  });
+
+  it('Bold and Italic unwrap a wrapped selection', () => {
+    expect(run('a **«word»** b', 'bold')).toBe('a «word» b');
+    expect(run('_«x»_', 'italic')).toBe('«x»');
+    expect(run('«x»', 'bold')).toBe('**«x»**');
+  });
+
+  it('Code wraps a span, or fences a selection across lines', () => {
+    expect(run('run «npm test» now', 'code')).toBe('run `«npm test»` now');
+    expect(run('a «b\nc» d', 'code')).toBe('a \n```\n«b\nc»\n```\n d');
+  });
+});

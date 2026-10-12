@@ -12,6 +12,13 @@ export const font = {
   bold: { fontFamily: 'Inter-Bold', fontWeight: '700' },
 } as const;
 
+/** The Newsreader faces of the public reading style, for post editing. */
+export const readingFont = {
+  regular: { fontFamily: 'Newsreader-Regular', fontWeight: '400' },
+  medium: { fontFamily: 'Newsreader-Medium', fontWeight: '500' },
+  italic: { fontFamily: 'Newsreader-Italic', fontWeight: '400' },
+} as const;
+
 export const color = {
   background: tokens.neutral[50],
   surface: '#ffffff',

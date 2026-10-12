@@ -36,7 +36,7 @@ import {
   useIsOnline,
 } from '../../../src/net';
 import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
-import { color, font } from '../../../src/theme';
+import { color, font, readingFont } from '../../../src/theme';
 
 const confirm = publishableConfirm(
   'post',
@@ -175,6 +175,8 @@ const PostScreen = () => {
               onChange={setBody}
               addPhoto={addPhoto}
               uploading={uploading}
+              onPreview={() => setPreview(true)}
+              siteOrigin={PUBLIC_SITE_ORIGIN}
               autoFocus={!entity.bodyMarkdown}
             />
           )}
@@ -210,8 +212,9 @@ const styles = StyleSheet.create({
     gap: tokens.space[2],
   },
   title: {
-    ...font.bold,
-    fontSize: tokens.text['2xl'],
+    ...readingFont.medium,
+    fontSize: 32,
+    lineHeight: 40,
     color: color.ink,
     paddingVertical: tokens.space[2],
   },

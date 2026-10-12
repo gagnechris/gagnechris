@@ -193,6 +193,8 @@ const ProjectScreen = () => {
               onChange={setBody}
               addPhoto={addPhoto}
               uploading={uploading}
+              onPreview={() => setPreview(true)}
+              siteOrigin={PUBLIC_SITE_ORIGIN}
             />
           )}
           <ProjectDetailsSheet

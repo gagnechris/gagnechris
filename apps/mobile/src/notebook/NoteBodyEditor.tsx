@@ -20,12 +20,15 @@ import {
   ActionSheetIOS,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type NativeSyntheticEvent,
   type TextInputSelectionChangeEventData,
 } from 'react-native';
 import { color, font } from '../theme';
+import {
+  LiveMarkdownInput,
+  type LiveMarkdownHandle,
+} from '../ui/LiveMarkdownInput';
 import { TaskEmbedRow } from '../ui/TaskEmbedRow';
 import { createUlid } from '../ulid';
 import { NOTE_TOOLBAR_ID, NoteKeyboardToolbar } from './NoteKeyboardToolbar';
@@ -79,8 +82,8 @@ const segmentAtLine = (segments: readonly NoteSegment[], line: number) =>
 type DateQuery = NonNullable<ReturnType<typeof openTaskDateQuery>>;
 
 /**
- * The note body: plain markdown in native text views, with embedded tasks
- * as rows. A `[ ] …` line becomes a task when the caret leaves it.
+ * The note body: plain markdown in live-preview text views, with embedded
+ * tasks as rows. A `[ ] …` line becomes a task when the caret leaves it.
  */
 export const NoteBodyEditor = ({
   markdown,
@@ -93,7 +96,7 @@ export const NoteBodyEditor = ({
 }: Props) => {
   const { onCreate, stateOf, error } = embeds;
   const segments = useMemo(() => noteSegments(markdown), [markdown]);
-  const inputs = useRef(new Map<string, TextInput>());
+  const inputs = useRef(new Map<string, LiveMarkdownHandle>());
   const [focus, setFocus] = useState<Focus | null>(null);
   const [picking, setPicking] = useState<{
     key: string;
@@ -395,13 +398,13 @@ export const NoteBodyEditor = ({
         const toolbarId = `${NOTE_TOOLBAR_ID}-${segment.key}`;
         return (
           <Fragment key={segment.key}>
-            <TextInput
+            <LiveMarkdownInput
               ref={(input) => {
                 if (input) inputs.current.set(segment.key, input);
                 else inputs.current.delete(segment.key);
               }}
+              variant="note"
               style={[
-                styles.text,
                 empty && styles.gap,
                 collapsed && styles.collapsed,
                 collapsed && index > 0 && styles.collapsedBelowRow,
@@ -412,7 +415,6 @@ export const NoteBodyEditor = ({
                   ? 'Write in markdown…'
                   : undefined
               }
-              placeholderTextColor={color.muted}
               value={segmentText(segment)}
               onChangeText={(text) => onChangeText(segment.key, text)}
               onSelectionChange={(event) =>
@@ -420,9 +422,6 @@ export const NoteBodyEditor = ({
               }
               onBlur={() => onBlur(segment.key)}
               inputAccessoryViewID={toolbarId}
-              multiline
-              scrollEnabled={false}
-              textAlignVertical="top"
               autoFocus={autoFocus && segment.key === lastText}
             />
             <NoteKeyboardToolbar
@@ -465,12 +464,6 @@ const STRIP = tokens.space[1];
 const STRIP_OVERLAP = tokens.space[2];
 
 const styles = StyleSheet.create({
-  text: {
-    ...font.regular,
-    fontSize: tokens.text.body,
-    lineHeight: 24,
-    color: color.ink,
-  },
   gap: { minHeight: 24 },
   // The strip reaches into the padding of the task rows around it and sits
   // above them, so it is easy to tap without spreading the rows apart.

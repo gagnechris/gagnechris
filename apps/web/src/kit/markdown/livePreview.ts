@@ -9,18 +9,13 @@ import {
 } from '@codemirror/view';
 import {
   fenceLineKind,
+  liveMarkdownLine,
   parseTaskEmbedLine,
   scanFences,
   type FenceBlock,
+  type LiveLineStyle,
+  type LiveMark,
 } from '@gagnechris/shared';
-
-const HEADING = /^(#{1,6})([ \t]+)/;
-const QUOTE = /^([ \t]{0,3}>[ \t]?)/;
-const BULLET = /^([ \t]*)([-*+])([ \t]+)(?!\[[ xX]\])/;
-const CODE_SPAN = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
-const LINK = /(?<!!)\[([^\]\n]+)\]\(([^)\s]+)(?:[ \t]+"[^"\n]*")?\)/g;
-const STRONG = /(\*\*|__)(?=\S)([^\n]*?\S)\1/g;
-const EMPHASIS = /(?<![*_\w])([*_])(?=[^\s*_])([^\n*_]*?[^\s*_])\1(?![*_\w])/g;
 
 const hide = Decoration.replace({});
 const lineClass = (cls: string) => Decoration.line({ class: cls });
@@ -59,60 +54,35 @@ function activeLines(state: EditorState): Set<number> {
   return lines;
 }
 
-type Span = { from: number; to: number };
+const lineDecorations: Record<LiveLineStyle, Decoration> = {
+  h1: headingLines[0]!,
+  h2: headingLines[1]!,
+  h3: headingLines[2]!,
+  h4: headingLines[3]!,
+  h5: headingLines[4]!,
+  h6: headingLines[5]!,
+  quote: quoteLine,
+  fence: fenceLine,
+  code: codeLine,
+};
 
-const overlaps = (taken: Span[], from: number, to: number) =>
-  taken.some((s) => from < s.to && to > s.from);
-
-function inlineDecorations(
-  text: string,
-  offset: number,
-  out: Range<Decoration>[],
-) {
-  const taken: Span[] = [];
-  for (const m of text.matchAll(CODE_SPAN)) {
-    const from = m.index;
-    const to = from + m[0].length;
-    const tick = m[1]!.length;
-    taken.push({ from, to });
-    out.push(hide.range(offset + from, offset + from + tick));
-    out.push(codeMark.range(offset + from + tick, offset + to - tick));
-    out.push(hide.range(offset + to - tick, offset + to));
-  }
-  for (const m of text.matchAll(LINK)) {
-    const from = m.index;
-    const to = from + m[0].length;
-    if (overlaps(taken, from, to)) continue;
-    taken.push({ from, to });
-    const labelEnd = from + 1 + m[1]!.length;
-    out.push(hide.range(offset + from, offset + from + 1));
-    out.push(
-      Decoration.mark({
+function markDecoration(mark: LiveMark): Decoration {
+  switch (mark.kind) {
+    case 'hide':
+      return hide;
+    case 'bullet':
+      return bullet;
+    case 'strong':
+      return strongMark;
+    case 'em':
+      return emphasisMark;
+    case 'code':
+      return codeMark;
+    case 'link':
+      return Decoration.mark({
         class: 'cm-md-link',
-        attributes: { title: m[2]! },
-      }).range(offset + from + 1, offset + labelEnd),
-    );
-    out.push(hide.range(offset + labelEnd, offset + to));
-  }
-  for (const [pattern, mark] of [
-    [STRONG, strongMark],
-    [EMPHASIS, emphasisMark],
-  ] as const) {
-    for (const m of text.matchAll(pattern)) {
-      const from = m.index;
-      const to = from + m[0].length;
-      const marker = m[1]!.length;
-      if (
-        overlaps(taken, from, from + marker) ||
-        overlaps(taken, to - marker, to)
-      ) {
-        continue;
-      }
-      taken.push({ from, to: from + marker }, { from: to - marker, to });
-      out.push(hide.range(offset + from, offset + from + marker));
-      out.push(mark.range(offset + from + marker, offset + to - marker));
-      out.push(hide.range(offset + to - marker, offset + to));
-    }
+        attributes: { title: mark.href ?? '' },
+      });
   }
 }
 
@@ -148,36 +118,20 @@ function decorateLine(
   fences: readonly FenceBlock[],
   out: Range<Decoration>[],
 ) {
-  const text = line.text;
   const fenced = fenceLineKind(fences, n - 1);
   if (fenced) {
-    out.push((fenced === 'fence' ? fenceLine : codeLine).range(line.from));
+    out.push(lineDecorations[fenced].range(line.from));
     return;
   }
-  if (parseTaskEmbedLine(text)) return;
+  if (parseTaskEmbedLine(line.text)) return;
 
-  const isActive = active.has(n);
-  let bodyStart = 0;
-  const heading = HEADING.exec(text);
-  if (heading) {
-    out.push(headingLines[heading[1]!.length - 1]!.range(line.from));
-    bodyStart = heading[0].length;
-    if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
-  } else {
-    const quote = QUOTE.exec(text);
-    if (quote) {
-      out.push(quoteLine.range(line.from));
-      bodyStart = quote[0].length;
-      if (!isActive) out.push(hide.range(line.from, line.from + bodyStart));
-    }
-    const item = BULLET.exec(text.slice(bodyStart));
-    if (item && !isActive) {
-      const at = line.from + bodyStart + item[1]!.length;
-      out.push(bullet.range(at, at + 1));
-    }
-  }
-  if (!isActive) {
-    inlineDecorations(text.slice(bodyStart), line.from + bodyStart, out);
+  const { style, marks } = liveMarkdownLine(line.text);
+  if (style) out.push(lineDecorations[style].range(line.from));
+  if (active.has(n)) return;
+  for (const mark of marks) {
+    out.push(
+      markDecoration(mark).range(line.from + mark.from, line.from + mark.to),
+    );
   }
 }
 
