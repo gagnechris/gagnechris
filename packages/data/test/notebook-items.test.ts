@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDailyNoteClaimItem,
   buildNoteMetaItem,
+  DailyNoteClaimItemSchema,
   buildTaskMetaItem,
   metaToNote,
   metaToTask,
   noteContentEqual,
-  parseDailyNoteClaimItem,
   parseNoteMetaItem,
   parseTaskMetaItem,
   taskContentEqual,
@@ -98,7 +98,7 @@ describe('Notebook Dynamo items', () => {
       '2026-10-02',
       dailyNote.id,
     );
-    expect(parseDailyNoteClaimItem(claim)).toEqual({
+    expect(DailyNoteClaimItemSchema.parse(claim)).toEqual({
       pk: 'USER#sub-1#DAILY#work#2026-10-02',
       sk: 'NOTE',
       entityType: 'dailyNoteClaim',

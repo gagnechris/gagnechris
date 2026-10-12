@@ -1,4 +1,7 @@
-/** Duck-typed so `@gagnechris/shared` stays free of the AWS SDK (web imports this package). */
+/**
+ * The Go API (`services/api`) does every API read and write. These helpers
+ * serve the publisher's BatchGet reads and the ops tools' conditional writes.
+ */
 
 export type BatchGetTableRequest = {
   Keys: Array<Record<string, unknown>>;
@@ -23,7 +26,7 @@ export type BatchGetDocClientSend = (
   UnprocessedKeys?: unknown;
 }>;
 
-export const BATCH_GET_MAX_ATTEMPTS = 5;
+const BATCH_GET_MAX_ATTEMPTS = 5;
 
 function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -114,7 +117,7 @@ export async function batchGetAllWithDocClient(
 
 export type DynamoWriteErrorKind = 'conflict' | 'throttling' | 'other';
 
-export function dynamoErrorName(error: unknown): string | undefined {
+function dynamoErrorName(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
   const name = (error as { name?: unknown }).name;
   if (typeof name === 'string') return name;
@@ -125,7 +128,7 @@ export function dynamoErrorName(error: unknown): string | undefined {
 }
 
 /** Per-item cancellation codes, positional so they line up with `TransactItems`. */
-export function transactionCancellationCodes(
+function transactionCancellationCodes(
   error: unknown,
 ): Array<string | undefined> {
   if (typeof error !== 'object' || error === null) return [];

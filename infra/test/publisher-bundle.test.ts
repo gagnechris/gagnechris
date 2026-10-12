@@ -1,10 +1,8 @@
 import { join } from 'node:path';
 import { buildSync } from 'esbuild';
 import { describe, expect, it } from 'vitest';
-import {
-  DEFAULT_EXTERNAL_MODULES,
-  REPO_ROOT,
-} from '../lib/constructs/node-lambda.js';
+import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
+import { DEFAULT_EXTERNAL_MODULES } from '../lib/constructs/node-lambda.js';
 import { PUBLISHER_BUNDLE_DEFINE } from '../lib/stacks/publisher-stack.js';
 
 describe('publisher Lambda bundle', () => {

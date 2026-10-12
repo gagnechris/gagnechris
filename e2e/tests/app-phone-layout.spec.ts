@@ -7,9 +7,6 @@ const WIDTHS = [375, 197];
 /** Overflow, small controls and small fields on the page as rendered. */
 const measure = (page: Page) =>
   page.evaluate(() => {
-    // Editor previews render the public page as it ships; its own checks cover it.
-    const inPreview = (el: Element) =>
-      el.closest('.admin-home-preview, .admin-resume-preview') !== null;
     const visible = (el: Element) => {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
@@ -17,8 +14,7 @@ const measure = (page: Page) =>
         r.width > 0 &&
         r.height > 0 &&
         cs.visibility !== 'hidden' &&
-        el.checkVisibility() &&
-        !inPreview(el)
+        el.checkVisibility()
       );
     };
     const name = (el: Element) =>

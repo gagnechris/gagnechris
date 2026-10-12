@@ -17,10 +17,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
-const (
-	noteChangeType = "note"
-	pageSize       = 50
-)
+const noteChangeType = "note"
 
 func noteKey(userID, id string) data.Item {
 	return data.Key(keys.NotePk(userID, id), keys.NoteMetaSk())

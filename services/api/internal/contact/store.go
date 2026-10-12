@@ -2,19 +2,16 @@ package contact
 
 import (
 	"context"
-	"errors"
-	"strconv"
 	"time"
 	"unicode/utf16"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/oklog/ulid/v2"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
@@ -27,30 +24,22 @@ type store struct {
 // tryIncrement adds one to a counter row unless it is already at max.
 func (s store) tryIncrement(ctx context.Context, pk, sk string, maxCount int, ttl int64) (bool, error) {
 	_, err := s.table.DB.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-		TableName: aws.String(s.table.Name),
-		Key: map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: pk},
-			"sk": &types.AttributeValueMemberS{Value: sk},
-		},
+		TableName:                aws.String(s.table.Name),
+		Key:                      data.Key(pk, sk),
 		UpdateExpression:         aws.String("ADD #count :one SET #ttl = if_not_exists(#ttl, :ttl), entityType = if_not_exists(entityType, :etype)"),
 		ConditionExpression:      aws.String("attribute_not_exists(#count) OR #count < :max"),
 		ExpressionAttributeNames: map[string]string{"#count": "count", "#ttl": "ttl"},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":one":   &types.AttributeValueMemberN{Value: "1"},
-			":max":   number(int64(maxCount)),
-			":ttl":   number(ttl),
-			":etype": &types.AttributeValueMemberS{Value: "rateLimit"},
+		ExpressionAttributeValues: data.Item{
+			":one":   data.N(1),
+			":max":   data.N(int64(maxCount)),
+			":ttl":   data.N(ttl),
+			":etype": data.S("rateLimit"),
 		},
 	})
-	var failed *types.ConditionalCheckFailedException
-	if errors.As(err, &failed) {
+	if err != nil && data.ClassifyWriteError(err) == data.WriteConflict {
 		return false, nil
 	}
 	return err == nil, err
-}
-
-func number(n int64) types.AttributeValue {
-	return &types.AttributeValueMemberN{Value: strconv.FormatInt(n, 10)}
 }
 
 const errContactIPLimit = "Too many contact submissions from this address. Try again later."
@@ -83,40 +72,19 @@ func (s store) claimResumeNotifyIP(ctx context.Context, ip string) (bool, error)
 	return s.tryIncrement(ctx, keys.RateResumeIPPk(ip), keys.RateDaySk(at), 1, keys.TTLEndOfUTCDay(at))
 }
 
-type messageItem struct {
-	PK          string `dynamodbav:"pk"`
-	SK          string `dynamodbav:"sk"`
-	EntityType  string `dynamodbav:"entityType"`
-	ContactID   string `dynamodbav:"contactId"`
-	Name        string `dynamodbav:"name"`
-	Email       string `dynamodbav:"email"`
-	Message     string `dynamodbav:"message"`
-	SourceIP    string `dynamodbav:"sourceIp"`
-	CreatedAt   string `dynamodbav:"createdAt"`
-	EmailStatus string `dynamodbav:"emailStatus"`
-}
-
-const isoMillis = "2006-01-02T15:04:05.000Z"
-
 func (s store) save(ctx context.Context, name, email, message, sourceIP string) (string, error) {
 	now := s.now()
 	id := ulid.MustNew(ulid.Timestamp(now), ulid.DefaultEntropy()).String()
-	item, err := attributevalue.MarshalMap(messageItem{
-		PK:          keys.ContactPk(id),
-		SK:          keys.ContactMsgSk(),
-		EntityType:  "contact",
-		ContactID:   id,
-		Name:        name,
-		Email:       email,
-		Message:     message,
-		SourceIP:    sourceIP,
-		CreatedAt:   now.UTC().Format(isoMillis),
-		EmailStatus: "pending",
-	})
-	if err != nil {
-		return "", err
-	}
-	_, err = s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{
+	item := data.Key(keys.ContactPk(id), keys.ContactMsgSk())
+	item["entityType"] = data.S("contact")
+	item["contactId"] = data.S(id)
+	item["name"] = data.S(name)
+	item["email"] = data.S(email)
+	item["message"] = data.S(message)
+	item["sourceIp"] = data.S(sourceIP)
+	item["createdAt"] = data.S(jstime.ISO(now))
+	item["emailStatus"] = data.S("pending")
+	_, err := s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName:           aws.String(s.table.Name),
 		Item:                item,
 		ConditionExpression: aws.String("attribute_not_exists(pk)"),
@@ -128,19 +96,14 @@ const maxEmailErrorUnits = 500
 
 func (s store) updateEmailStatus(ctx context.Context, contactID, status, emailError string) error {
 	in := &dynamodb.UpdateItemInput{
-		TableName: aws.String(s.table.Name),
-		Key: map[string]types.AttributeValue{
-			"pk": &types.AttributeValueMemberS{Value: keys.ContactPk(contactID)},
-			"sk": &types.AttributeValueMemberS{Value: keys.ContactMsgSk()},
-		},
-		UpdateExpression: aws.String("SET emailStatus = :status REMOVE emailError"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":status": &types.AttributeValueMemberS{Value: status},
-		},
+		TableName:                 aws.String(s.table.Name),
+		Key:                       data.Key(keys.ContactPk(contactID), keys.ContactMsgSk()),
+		UpdateExpression:          aws.String("SET emailStatus = :status REMOVE emailError"),
+		ExpressionAttributeValues: data.Item{":status": data.S(status)},
 	}
 	if emailError != "" {
 		in.UpdateExpression = aws.String("SET emailStatus = :status, emailError = :err")
-		in.ExpressionAttributeValues[":err"] = &types.AttributeValueMemberS{Value: truncateUnits(emailError, maxEmailErrorUnits)}
+		in.ExpressionAttributeValues[":err"] = data.S(truncateUnits(emailError, maxEmailErrorUnits))
 	}
 	_, err := s.table.DB.UpdateItem(ctx, in)
 	return err

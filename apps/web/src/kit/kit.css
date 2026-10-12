@@ -323,6 +323,15 @@ th.kit-table__date {
   color: var(--neutral-500);
 }
 
+.kit-hint code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--neutral-700);
+  background: var(--neutral-100);
+  padding: 0.1em 0.35em;
+  border-radius: var(--radius-sm);
+}
+
 .kit-visually-hidden {
   position: absolute;
   width: 1px;

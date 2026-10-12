@@ -197,7 +197,8 @@ export function NotebookMarkdownBody({
       ) : null}
       {phone && withTasks ? (
         <p className="kit-hint">
-          `[ ] text` then Enter adds a task, `@` picks its day
+          <code>[ ] text</code> then Enter adds a task, <code>@</code> picks its
+          day
         </p>
       ) : null}
     </>

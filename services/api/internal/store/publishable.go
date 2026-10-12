@@ -11,6 +11,7 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 )
 
@@ -76,10 +77,7 @@ func NewPublishableStore[T any](cfg PublishableConfig[T], table *data.Table, now
 	return &PublishableStore[T]{cfg: cfg, table: table, now: now}
 }
 
-// ISOTime is Date.toISOString.
-func ISOTime(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000Z") }
-
-func (s *PublishableStore[T]) nowISO() string { return ISOTime(s.now()) }
+func (s *PublishableStore[T]) nowISO() string { return jstime.ISO(s.now()) }
 
 func (s *PublishableStore[T]) Table() *data.Table { return s.table }
 

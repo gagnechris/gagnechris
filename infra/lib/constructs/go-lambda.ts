@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { AssetHashType, DockerImage } from 'aws-cdk-lib';
+import { AssetHashType, DockerImage, type ILocalBundling } from 'aws-cdk-lib';
 import type { Alarm } from 'aws-cdk-lib/aws-cloudwatch';
 import {
   Architecture,
@@ -11,14 +11,10 @@ import {
   Tracing,
   type FunctionProps,
 } from 'aws-cdk-lib/aws-lambda';
-import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import type { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import type { Construct } from 'constructs';
-import { POWERTOOLS_METRICS_NAMESPACE } from '../config/constants.js';
-import {
-  addLambdaGuardrails,
-  type LambdaGuardrailProps,
-} from './lambda-guardrails.js';
-import { REPO_ROOT } from './node-lambda.js';
+import { lambdaBase, REPO_ROOT } from './lambda-common.js';
+import type { LambdaGuardrailProps } from './lambda-guardrails.js';
 
 export const GO_MODULE_ROOT = join(REPO_ROOT, 'services/api');
 
@@ -70,16 +66,23 @@ export class GoLambda extends LambdaFunction {
       alarmNamePrefix,
       iam5NagReason,
       iam5NagAppliesTo,
-      logRetention = RetentionDays.TWO_WEEKS,
-      enableDurationAlarm = false,
+      logRetention,
+      enableDurationAlarm,
       environment,
       timeout,
       ...rest
     } = props;
 
-    const baseId = id.replace(/Function$/, '');
-    const logGroup = new LogGroup(scope, `${baseId}LogGroup`, {
-      retention: logRetention,
+    const base = lambdaBase(scope, id, {
+      powertoolsServiceName,
+      alertsTopic,
+      alarmNamePrefix,
+      iam5NagReason,
+      iam5NagAppliesTo,
+      logRetention,
+      enableDurationAlarm,
+      timeout,
+      environment,
     });
 
     super(scope, id, {
@@ -87,26 +90,14 @@ export class GoLambda extends LambdaFunction {
       architecture: Architecture.ARM_64,
       handler: 'bootstrap',
       tracing: Tracing.ACTIVE,
-      logGroup,
+      logGroup: base.logGroup,
       timeout,
       code: goCode(moduleRoot, cmd),
-      environment: {
-        POWERTOOLS_SERVICE_NAME: powertoolsServiceName,
-        POWERTOOLS_METRICS_NAMESPACE,
-        ...environment,
-      },
+      environment: base.environment,
       ...rest,
     });
 
-    const alarms = addLambdaGuardrails(scope, id, this, {
-      powertoolsServiceName,
-      alertsTopic,
-      alarmNamePrefix,
-      iam5NagReason,
-      iam5NagAppliesTo,
-      enableDurationAlarm,
-      timeout,
-    });
+    const alarms = base.addGuardrails(this);
     this.errorsAlarm = alarms.errorsAlarm;
     this.throttlesAlarm = alarms.throttlesAlarm;
     this.durationAlarm = alarms.durationAlarm;
@@ -117,25 +108,52 @@ function goCode(moduleRoot: string, cmd: string): Code {
   return Code.fromAsset(moduleRoot, {
     assetHashType: AssetHashType.OUTPUT,
     bundling: {
-      // Used only when no local Go toolchain is on PATH.
+      // Used when no local Go can build with the go.mod version.
       image: DockerImage.fromRegistry(
         `public.ecr.aws/docker/library/golang:${goVersion(moduleRoot)}`,
       ),
       environment: GO_BUILD_ENV,
       command: ['go', ...goBuildArgs(cmd, '/asset-output/bootstrap')],
-      local: {
-        tryBundle(outputDir) {
-          if (spawnSync('go', ['version']).status !== 0) return false;
-          execFileSync('go', goBuildArgs(cmd, join(outputDir, 'bootstrap')), {
-            cwd: moduleRoot,
-            env: { ...process.env, ...GO_BUILD_ENV },
-            stdio: ['ignore', 'pipe', 'inherit'],
-          });
-          return true;
-        },
-      },
+      local: localGoBundling(moduleRoot, cmd),
     },
   });
+}
+
+/**
+ * Builds with the local `go` only when it runs exactly the go.mod version, so a
+ * laptop's newer patch release can't produce a different binary (and asset
+ * hash) than CI and the Docker image.
+ */
+export function localGoBundling(
+  moduleRoot: string,
+  cmd: string,
+): ILocalBundling {
+  return {
+    tryBundle(outputDir) {
+      const env = {
+        ...process.env,
+        ...GO_BUILD_ENV,
+        GOTOOLCHAIN: `go${goVersion(moduleRoot)}`,
+      };
+      const version = spawnSync('go', ['env', 'GOVERSION'], {
+        cwd: moduleRoot,
+        env,
+        encoding: 'utf8',
+      });
+      if (
+        version.status !== 0 ||
+        version.stdout.trim() !== `go${goVersion(moduleRoot)}`
+      ) {
+        return false;
+      }
+      execFileSync('go', goBuildArgs(cmd, join(outputDir, 'bootstrap')), {
+        cwd: moduleRoot,
+        env,
+        stdio: ['ignore', 'pipe', 'inherit'],
+      });
+      return true;
+    },
+  };
 }
 
 export function goVersion(moduleRoot: string): string {

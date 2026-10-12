@@ -10,7 +10,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `services/api` — the Go API and the Go module for every Go Lambda: `cmd/<name>` per function (`api`: the HTTP API, every route; `restore-test`: AWS Backup restore-test validator, plus the daily leftover restore-table and backup-freshness check), shared code under `internal/` (`api` router, auth and errors; `store` cursors and versioned/publishable writes; one package per route group); `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `tools` pins golangci-lint and oapi-codegen; `test` is the black-box HTTP suite (`@gagnechris/api-tests` workspace, `test/http`)
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher
-- `packages/data` — DynamoDB keys, item schemas and builders, DocumentClient, and Dynamo write helpers for the publisher, ops tools and tests
+- `packages/data` — DynamoDB keys, item schemas and builders, table definition and DocumentClient. The Go API writes every row; this package serves the publisher, ops tools, infra, contract generation (`scripts/generate-go-contract.ts`) and tests, and exports only what they import (`packages/data/test/exports-used.test.ts`)
 - `packages/ops` — operator tools on the data table: note and task copy-back from a restore and row migrations; the CLIs are root `scripts/restore-copy-back.ts` and `scripts/migrate-*.ts`
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free hooks shared by the admin and Notebook web apps and the iOS app (autosave, versioned entity editor, TanStack Query resources)
