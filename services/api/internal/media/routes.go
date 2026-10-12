@@ -23,14 +23,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 )
 
-const (
-	uploadTTL = 15 * time.Minute
-	// maxBytes is enforced by the signed Content-Length.
-	maxBytes = 10 * 1024 * 1024
-)
+const uploadTTL = 15 * time.Minute
+
+var limits = contract.Data.Limits
 
 var extByType = map[string]string{
 	"image/jpeg": "jpg",
@@ -38,8 +37,6 @@ var extByType = map[string]string{
 	"image/webp": "webp",
 	"image/gif":  "gif",
 }
-
-var contentTypes = []string{"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 type Config struct {
 	// Bucket is the site bucket, or with Filesystem the local site root.
@@ -105,10 +102,10 @@ func (h handlers) uploadURL(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	contentType, _ := v.Enum("contentType", true, contentTypes...)
-	contentLength, _ := v.Int("contentLength", true, api.Positive, api.MaxInt(maxBytes))
+	contentType, _ := v.Enum("contentType", true, limits.MediaContentTypes...)
+	contentLength, _ := v.Int("contentLength", true, api.Positive, api.MaxInt(limits.MediaMaxBytes))
 	var filename *string
-	if s, ok := v.String("filename", false, false, api.MinLen(1), api.MaxLen(200)); ok {
+	if s, ok := v.String("filename", false, false, api.MinLen(1), api.MaxLen(limits.MediaFilenameMaxLength)); ok {
 		filename = &s
 	}
 	if err := v.Err(); err != nil {

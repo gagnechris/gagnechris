@@ -110,7 +110,7 @@ func (r *repo) queryStatus(ctx context.Context, status string, onCorrupt func(*a
 	for {
 		page, flags, err := store.QueryListPage(ctx, r.PublishableStore, store.PageQuery{
 			Input: dynamodb.QueryInput{
-				IndexName:                 aws.String("gsi1"),
+				IndexName:                 aws.String(keys.GSI1),
 				KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 				ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 			},

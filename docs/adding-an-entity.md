@@ -41,7 +41,7 @@ The contract is defined in TypeScript (wire schemas, keys, stored rows) and the 
 
 ## 1. Wire schemas — `packages/shared/src/schemas.ts`
 
-Add the entity, list response, create / update / list-query schemas, and a sync change variant. Add the variant to `SyncChangeSchema`; `SYNC_CHANGE_TYPES` is derived from it.
+Add the entity, list response, create / update / list-query schemas, and a sync change variant. Add the variant to `SyncChangeSchema`; `SYNC_CHANGE_TYPES` is derived from it. A new size limit is a named constant used in the schema (not an inline `.max(n)`), exported to Go through the contract's `limits` or `notebook` section (step 5), and read from `contract.Data` in the Go validator; the HTTP suite builds its over-limit inputs from the same constant.
 
 ```ts
 export const BookmarkSchema = z.object({
@@ -225,7 +225,7 @@ These builders define the stored row. The Go API writes the same rows (step 7), 
 - **`KEYS`**: one entry per key builder, with braced placeholders that Go fills with the same values: `'bookmarkPk({userId},{bookmarkId})': bookmarkPk('{userId}', '{bookmarkId}')`, plus `bookmarksGsi1Pk({userId})` and `bookmarkGsi1Sk({updatedAt},{bookmarkId})`.
 - **`ITEM_SCHEMAS`** (in `packages/data/src/items.ts`): `bookmark: BookmarkMetaItemSchema`. It is typed by `RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES`, so typecheck fails until it has an entry for each type step 12 adds. The generator and the HTTP suite's row check both read it.
 - **`SAMPLES`**: a `bookmark` row from `buildBookmarkMetaItem`. The generator refuses a sample that does not parse with its item schema, and the restore-test validator's tests check every sample. List the sample in `Builders` in `services/api/internal/contract/samplerows` (here `"bookmark": "notebook"`) and extend the rebuild in `services/api/internal/notebook/samples_test.go` to parse it and rebuild it with `bookmarkItem`, which must give back the sample exactly; `TestEverySampleHasABuilderOrASkipReason` fails until the sample is in `Builders` or, with a reason, in `Skipped`.
-- **`API_SAMPLES`**: a `bookmark` body (`BookmarkSchema`) and a `syncBookmark` change (`SyncChangeSchema`). Add both to the round trips in `services/api/internal/apitypes/apitypes_test.go`, which prove the generated Go types carry every field.
+- **`API_SAMPLES`**: a `bookmark` body (`BookmarkSchema`) and a `syncBookmark` change (`SyncChangeSchema`). Add both to the round trips in `services/api/internal/apitypes/apitypes_test.go`, which prove the generated Go types carry every field. The Go handlers' own response structs are held to the generated types by `responses_test.go` in their package (`apitypestest.Conforms`, which rejects a field the generated type lacks or a required one the struct leaves out): add `Bookmark`, its list response and its sync changes to `services/api/internal/notebook/responses_test.go`.
 
 Run `npm run go:generate` (or `npm run openapi`); `npm run go:generate:check` fails while `contract.json` or `apitypes.gen.go` is stale.
 

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { buildDailyNoteClaimItem, keys } from '@gagnechris/data';
-import { DEFAULT_DAILY_TEMPLATES, fillDailyTemplate } from '@gagnechris/shared';
+import {
+  DEFAULT_DAILY_TEMPLATES,
+  NOTEBOOK_BATCH_MAX_IDS,
+  NOTEBOOK_TAG_MAX_LENGTH,
+  NOTEBOOK_TITLE_MAX_LENGTH,
+  fillDailyTemplate,
+} from '@gagnechris/shared';
 import { notebookUser } from './support/claims.js';
 import { useApi } from './support/harness.js';
 
@@ -160,7 +166,9 @@ describe('notes parity over HTTP (DynamoDB Local)', () => {
       body: badBody({ ids: 'too_small' }),
     });
     expect(
-      await batch(Array.from({ length: 101 }, () => PAGE_ID)),
+      await batch(
+        Array.from({ length: NOTEBOOK_BATCH_MAX_IDS + 1 }, () => PAGE_ID),
+      ),
     ).toMatchObject({ status: 400, body: badBody({ ids: 'too_big' }) });
     expect(await batch(['nope'])).toMatchObject({
       status: 400,
@@ -416,17 +424,17 @@ describe('notes parity over HTTP (DynamoDB Local)', () => {
       id: PAGE_ID,
       area: 'work',
       type: 'page',
-      title: 't'.repeat(301),
+      title: 't'.repeat(NOTEBOOK_TITLE_MAX_LENGTH + 1),
     });
     expect(longTitle.status).toBe(413);
     expect(longTitle.body).toEqual({
       error: 'payload_too_large',
-      message: 'Too big: expected string to have <=300 characters',
+      message: `Too big: expected string to have <=${NOTEBOOK_TITLE_MAX_LENGTH} characters`,
       fields: { title: 'too_big' },
     });
 
-    const emojiTitle = '😀'.repeat(300);
-    const emojiTag = '😀'.repeat(50);
+    const emojiTitle = '😀'.repeat(NOTEBOOK_TITLE_MAX_LENGTH);
+    const emojiTag = '😀'.repeat(NOTEBOOK_TAG_MAX_LENGTH);
     expect(
       await post({
         id: PAGE_ID,

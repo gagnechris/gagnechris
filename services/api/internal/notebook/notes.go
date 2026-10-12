@@ -255,7 +255,7 @@ func prefixRange(prefix string) *skRange { return &skRange{prefix, prefix + "\uf
 func gsi1Page[T any](ctx context.Context, table *data.Table, pk string, rng *skRange, cursor string, limit, byteBudget int,
 	parse func(data.Item) (T, error), deleted func(T) bool, keep func(T) bool, onCorrupt func(*api.DataIntegrityError)) (store.Page[T], error) {
 	in := dynamodb.QueryInput{
-		IndexName:                 aws.String(gsi1),
+		IndexName:                 aws.String(keys.GSI1),
 		KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 		ScanIndexForward:          aws.Bool(true),

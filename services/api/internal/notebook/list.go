@@ -15,8 +15,6 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
-const gsi1 = "gsi1"
-
 type Reader struct {
 	Table     *data.Table
 	OnCorrupt func(*api.DataIntegrityError)
@@ -32,7 +30,7 @@ func areasOf(area string) []string {
 func queryPartition[T any](ctx context.Context, rd Reader, pk, cursor string, remaining, remainingBytes int, parse func(data.Item) (T, error), deleted func(T) bool) (store.Page[T], error) {
 	return store.QueryPage(ctx, rd.Table, store.PageQuery{
 		Input: dynamodb.QueryInput{
-			IndexName:                 aws.String(gsi1),
+			IndexName:                 aws.String(keys.GSI1),
 			KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 			ScanIndexForward:          aws.Bool(true),

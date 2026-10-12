@@ -215,7 +215,7 @@ func batchIDs(r *api.Request) ([]string, error) {
 }
 
 func pageLimit(v *api.Validator) int {
-	if n, ok := v.CoercedInt("limit", api.Positive, api.MaxInt(100)); ok {
+	if n, ok := v.CoercedInt("limit", api.Positive, api.MaxInt(contract.Data.Limits.PageLimitMax)); ok {
 		return int(n)
 	}
 	return 0

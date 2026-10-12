@@ -30,14 +30,34 @@ type RestoreTest struct {
 	SourceCountAttributes    []string           `json:"sourceCountAttributes"`
 }
 
+type APIMetrics struct {
+	HandlerError                   string `json:"handlerError"`
+	DataIntegrityError             string `json:"dataIntegrityError"`
+	WriteConflict                  string `json:"writeConflict"`
+	SyncAdapterMissing             string `json:"syncAdapterMissing"`
+	SyncCorruptRow                 string `json:"syncCorruptRow"`
+	ContactEmailFailed             string `json:"contactEmailFailed"`
+	ContactEmailStatusUpdateFailed string `json:"contactEmailStatusUpdateFailed"`
+	SESCapReached                  string `json:"sesCapReached"`
+	NotFound                       string `json:"notFound"`
+	MethodNotAllowed               string `json:"methodNotAllowed"`
+}
+
 type API struct {
-	ServiceName             string `json:"serviceName"`
-	MetricsNamespace        string `json:"metricsNamespace"`
-	ApexDomain              string `json:"apexDomain"`
-	ContactPerIPPerHour     int    `json:"contactPerIpPerHour"`
-	SESGlobalDailyCap       int    `json:"sesGlobalDailyCap"`
-	ResumeNotifySESDailyCap int    `json:"resumeNotifySesDailyCap"`
-	MinContactSubmitMs      int64  `json:"minContactSubmitMs"`
+	ServiceName             string     `json:"serviceName"`
+	MetricsNamespace        string     `json:"metricsNamespace"`
+	ApexDomain              string     `json:"apexDomain"`
+	ContactPerIPPerHour     int        `json:"contactPerIpPerHour"`
+	SESGlobalDailyCap       int        `json:"sesGlobalDailyCap"`
+	ResumeNotifySESDailyCap int        `json:"resumeNotifySesDailyCap"`
+	MinContactSubmitMs      int64      `json:"minContactSubmitMs"`
+	Metrics                 APIMetrics `json:"metrics"`
+}
+
+type GSINames struct {
+	GSI1 string `json:"gsi1"`
+	GSI2 string `json:"gsi2"`
+	GSI3 string `json:"gsi3"`
 }
 
 type Limits struct {
@@ -54,6 +74,23 @@ type Limits struct {
 	ProjectLinkLabelMaxLength int      `json:"projectLinkLabelMaxLength"`
 	ProjectOrderMax           int64    `json:"projectOrderMax"`
 	ProjectDemoIDs            []string `json:"projectDemoIds"`
+	PageLimitMax              int64    `json:"pageLimitMax"`
+	PostProjectIDsMax         int      `json:"postProjectIdsMax"`
+	PostSearchMaxLength       int      `json:"postSearchMaxLength"`
+	PostsPageSize             int      `json:"postsPageSize"`
+	MediaMaxBytes             int64    `json:"mediaMaxBytes"`
+	MediaContentTypes         []string `json:"mediaContentTypes"`
+	MediaFilenameMaxLength    int      `json:"mediaFilenameMaxLength"`
+	ContactNameMaxLength      int      `json:"contactNameMaxLength"`
+	ContactEmailMaxLength     int      `json:"contactEmailMaxLength"`
+	ContactMessageMaxLength   int      `json:"contactMessageMaxLength"`
+	ContactHoneypotMaxLength  int      `json:"contactHoneypotMaxLength"`
+	ResumeReferrerMaxLength   int      `json:"resumeReferrerMaxLength"`
+	ResumeYearMin             int64    `json:"resumeYearMin"`
+	ResumeYearMax             int64    `json:"resumeYearMax"`
+	ManagedUserIDMaxLength    int      `json:"managedUserIdMaxLength"`
+	UserEmailMaxLength        int      `json:"userEmailMaxLength"`
+	UserNameMaxLength         int      `json:"userNameMaxLength"`
 }
 
 type Defaults struct {
@@ -61,12 +98,28 @@ type Defaults struct {
 	Resume json.RawMessage `json:"resume"`
 }
 
+type Groups struct {
+	SiteAdmin string `json:"siteAdmin"`
+	Notebook  string `json:"notebook"`
+	UserAdmin string `json:"userAdmin"`
+}
+
+type LevelCase struct {
+	Groups []string `json:"groups"`
+	Level  *string  `json:"level"`
+}
+
 type Users struct {
 	// AccessGroups is ordered: Full Admin is all of them.
-	AccessGroups      []string            `json:"accessGroups"`
+	AccessGroups []string `json:"accessGroups"`
+	Groups       Groups   `json:"groups"`
+	// AccessLevels is ordered from the most access to the least.
+	AccessLevels      []string            `json:"accessLevels"`
 	AccessLevelGroups map[string][]string `json:"accessLevelGroups"`
-	ReauthSeconds     int64               `json:"reauthSeconds"`
-	ReauthRequired    string              `json:"reauthRequired"`
+	// LevelCases are group sets with accessLevelFromGroups' answer.
+	LevelCases     []LevelCase `json:"levelCases"`
+	ReauthSeconds  int64       `json:"reauthSeconds"`
+	ReauthRequired string      `json:"reauthRequired"`
 }
 
 type Notebook struct {
@@ -76,6 +129,8 @@ type Notebook struct {
 	TagsMax                  int               `json:"tagsMax"`
 	BatchMaxIDs              int               `json:"batchMaxIds"`
 	PageSize                 int               `json:"pageSize"`
+	SearchMaxLength          int               `json:"searchMaxLength"`
+	SearchLimitMax           int64             `json:"searchLimitMax"`
 	DailyTemplates           map[string]string `json:"dailyTemplates"`
 	DailyTemplateMaxBytes    int               `json:"dailyTemplateMaxBytes"`
 	DailyTemplateTaskMessage string            `json:"dailyTemplateTaskMessage"`
@@ -95,6 +150,7 @@ type Sync struct {
 type Contract struct {
 	API         API         `json:"api"`
 	RestoreTest RestoreTest `json:"restoreTest"`
+	GSINames    GSINames    `json:"gsiNames"`
 	// Keys maps a TypeScript key builder call with {placeholder} arguments to
 	// the key it returns.
 	Keys        map[string]string          `json:"keys"`

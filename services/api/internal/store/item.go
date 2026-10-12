@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 )
@@ -211,7 +212,7 @@ func LogCorrupt(log *slog.Logger, metrics *observability.Metrics) func(*api.Data
 			attrs = append(attrs, "causeMessage", e.Cause.Error())
 		}
 		log.Warn("Skipping corrupt stored item", attrs...)
-		metrics.Add("DataIntegrityError", observability.Count, 1)
+		metrics.Add(contract.Data.API.Metrics.DataIntegrityError, observability.Count, 1)
 	}
 }
 

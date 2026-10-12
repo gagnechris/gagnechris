@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	gsi3 = "gsi3"
 	// boundSince binds a cursor to the query's since lower bound; it is
 	// stripped before the key goes to DynamoDB.
 	boundSince = "boundSince"
@@ -149,7 +148,7 @@ rounds:
 	for round := 1; ; round++ {
 		in := &dynamodb.QueryInput{
 			TableName:                 aws.String(table.Name),
-			IndexName:                 aws.String(gsi3),
+			IndexName:                 aws.String(keys.GSI3),
 			KeyConditionExpression:    aws.String("syncPk = :pk"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
 			ExclusiveStartKey:         start,
@@ -241,7 +240,7 @@ func logSyncCorrupt(r *api.Request) func(*api.DataIntegrityError) {
 			attrs = append(attrs, "causeMessage", e.Cause.Error())
 		}
 		r.Log.Warn("Skipping corrupt stored item", attrs...)
-		r.Metrics.Add("SyncCorruptRow", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.SyncCorruptRow, observability.Count, 1)
 	}
 }
 

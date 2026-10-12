@@ -4,6 +4,7 @@ import { keys } from '@gagnechris/data';
 import {
   DEFAULT_HOME,
   DEFAULT_RESUME,
+  RESUME_YEAR_MIN,
   type Home,
   type Resume,
 } from '@gagnechris/shared';
@@ -307,7 +308,7 @@ describe('/api/admin/resume', () => {
         pdfPath: '',
         content: {
           ...content,
-          earlierRolesThrough: 1899,
+          earlierRolesThrough: RESUME_YEAR_MIN - 1,
           competencies: [1],
           experience: [
             'x',

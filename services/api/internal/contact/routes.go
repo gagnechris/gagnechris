@@ -78,7 +78,10 @@ func (h handlers) send(ctx context.Context, m Mail) error {
 	return h.mail.Send(ctx, m)
 }
 
-var okBody = map[string]bool{"ok": true}
+var (
+	okBody = map[string]bool{"ok": true}
+	limits = contract.Data.Limits
+)
 
 func sourceIP(r *api.Request) string {
 	if ip := api.TrimJS(r.SourceIP); ip != "" {
@@ -100,12 +103,12 @@ func parseContactForm(body []byte) (contactForm, error) {
 		return contactForm{}, err
 	}
 	var f contactForm
-	f.name, _ = v.String("name", true, true, api.MinLen(1), api.MaxLen(200))
-	f.email, _ = v.String("email", true, true, api.Email, api.MaxLen(320))
-	f.message, _ = v.String("message", true, true, api.MinLen(1), api.MaxLen(10_000))
+	f.name, _ = v.String("name", true, true, api.MinLen(1), api.MaxLen(limits.ContactNameMaxLength))
+	f.email, _ = v.String("email", true, true, api.Email, api.MaxLen(limits.ContactEmailMaxLength))
+	f.message, _ = v.String("message", true, true, api.MinLen(1), api.MaxLen(limits.ContactMessageMaxLength))
 	// Honeypots: `website` is still accepted so old bots keep tripping it.
-	hp, _ := v.String("hp_field", false, false, api.MaxLen(200))
-	website, _ := v.String("website", false, false, api.MaxLen(200))
+	hp, _ := v.String("hp_field", false, false, api.MaxLen(limits.ContactHoneypotMaxLength))
+	website, _ := v.String("website", false, false, api.MaxLen(limits.ContactHoneypotMaxLength))
 	f.honeypot = api.TrimJS(hp) != "" || api.TrimJS(website) != ""
 	if n, ok := v.Int("elapsedMs", false, api.NonNegative); ok {
 		f.elapsedMs = &n
@@ -157,7 +160,7 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 		return nil, err
 	} else if !ok {
 		r.Log.Warn("Daily email cap reached; contact message saved but not mailed", "contactId", contactID)
-		r.Metrics.Add("SesCapReached", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.SESCapReached, observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", errSESDailyLimit)
 		return nil, &api.RateLimitedError{Message: errSESDailyLimit}
 	}
@@ -175,7 +178,7 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 	})
 	if err != nil {
 		r.Log.Error("Contact email failed", "contactId", contactID, "errMessage", err.Error())
-		r.Metrics.Add("ContactEmailFailed", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.ContactEmailFailed, observability.Count, 1)
 		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", err.Error())
 		return api.JSON(http.StatusBadGateway, map[string]string{
 			"error":   "email_failed",
@@ -192,7 +195,7 @@ func (h handlers) tryUpdateEmailStatus(ctx context.Context, r *api.Request, cont
 	if err := h.store.updateEmailStatus(ctx, contactID, status, emailError); err != nil {
 		r.Log.Warn("Contact emailStatus update failed",
 			"contactId", contactID, "status", status, "errMessage", err.Error())
-		r.Metrics.Add("ContactEmailStatusUpdateFailed", observability.Count, 1)
+		r.Metrics.Add(contract.Data.API.Metrics.ContactEmailStatusUpdateFailed, observability.Count, 1)
 	}
 }
 
@@ -201,7 +204,7 @@ func (h handlers) resumeDownload(ctx context.Context, r *api.Request) (*api.Resp
 	if err != nil {
 		return nil, err
 	}
-	referrer, _ := v.String("referrer", false, false, api.MaxLen(500))
+	referrer, _ := v.String("referrer", false, false, api.MaxLen(limits.ResumeReferrerMaxLength))
 	if err := v.Err(); err != nil {
 		return nil, err
 	}
