@@ -11,7 +11,7 @@ const expectPublicLink = async (link: Locator, path: string) => {
 };
 
 const expectPreviewImagesFromSite = async (page: Page) => {
-  const images = page.locator('.admin-editor-split__preview img');
+  const images = page.frameLocator('.admin-page-preview').locator('img');
   await expect(images.first()).toBeVisible();
   for (const image of await images.all()) {
     const src = await image.getAttribute('src');
