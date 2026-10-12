@@ -13,6 +13,7 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
@@ -229,7 +230,7 @@ func (r *repo) create(ctx context.Context, in createInput) (Post, error) {
 		Seo:          in.seo,
 		Publishable: store.Publishable{
 			Status:    store.StatusDraft,
-			UpdatedAt: store.ISOTime(r.now()),
+			UpdatedAt: jstime.ISO(r.now()),
 			Version:   1,
 		},
 	})

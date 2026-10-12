@@ -71,19 +71,20 @@ func (r Route) metricName() string {
 var nonAlphanumeric = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
 type Router struct {
-	routes []Route
+	routes  []Route
+	clients ClientIDs
 }
 
 // NewRouter panics on a route whose auth doesn't match the API Gateway
 // prefix it lives under: a public route under /admin would get no claims,
 // and a protected one elsewhere would trust whatever claims it is sent.
-func NewRouter(routes []Route) *Router {
+func NewRouter(routes []Route, clients ClientIDs) *Router {
 	for _, r := range routes {
 		if want := RequiredAuth(r.Pattern); r.Auth != want {
 			panic("api: " + r.Method + " " + r.Pattern + " must declare auth " + string(want))
 		}
 	}
-	return &Router{routes: routes}
+	return &Router{routes: routes, clients: clients}
 }
 
 var errMalformedPath = BadRequest("Malformed path encoding", nil)
@@ -258,7 +259,7 @@ func (rt *Router) dispatchMatched(ctx context.Context, req *Request, rawPath str
 	public = m.route.Auth == Public
 	req.Metrics.Add(m.route.metricName(), observability.Count, 1)
 	if m.route.Auth != Public {
-		if denied := authorize(m.route.Auth, req.Claims); denied != nil {
+		if denied := authorize(m.route.Auth, rt.clients, req.Claims); denied != nil {
 			return denied, false, nil
 		}
 	} else {

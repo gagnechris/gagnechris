@@ -393,7 +393,8 @@ func (v *Validator) ObjectArray(key string, required bool, maxItems int, elem fu
 	return true
 }
 
-var ulidPattern = regexp.MustCompile(`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+// ULIDPattern is UlidSchema's pattern, for an already uppercased string.
+var ULIDPattern = regexp.MustCompile(`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 
 // ULID reads UlidSchema: a string is uppercased before the pattern check,
 // and the value returned is the uppercased one.
@@ -415,7 +416,7 @@ func (v *Validator) checkULID(key string, raw json.RawMessage) (string, bool) {
 		return "", false
 	}
 	s = strings.ToUpper(s)
-	if !ulidPattern.MatchString(s) {
+	if !ULIDPattern.MatchString(s) {
 		v.fail(key, CodeInvalidFormat)
 		return s, false
 	}

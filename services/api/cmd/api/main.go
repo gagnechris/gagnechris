@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -34,7 +33,10 @@ import (
 var processStart = time.Now()
 
 func main() {
-	inLambda := os.Getenv("AWS_LAMBDA_RUNTIME_API") != ""
+	conf, err := loadConfig(os.Getenv)
+	if err != nil {
+		log.Fatal(err)
+	}
 	cfg, err := data.LoadAWS(context.Background())
 	if err != nil {
 		log.Fatal(err)
@@ -48,64 +50,45 @@ func main() {
 
 	// Mail leaves only from Lambda; anywhere else it goes to the outbox.
 	var mailer contact.Mailer = contact.SESMailer{Client: sesv2.NewFromConfig(cfg)}
-	if !inLambda {
-		contact.UseLocalAddresses()
-		mailer = &contact.Outbox{File: os.Getenv("LOCAL_OUTBOX_FILE"), Log: logger}
+	if !conf.inLambda {
+		mailer = &contact.Outbox{File: conf.outboxFile, Log: logger}
 	}
 
 	app := api.NewApp(
-		api.NewRouter(allRoutes(table, mailer, cfg)),
+		api.NewRouter(allRoutes(conf, table, mailer, cfg), conf.clients),
 		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
 	)
-	if inLambda {
+	if conf.inLambda {
 		lambda.Start(app.HandleLambda)
 		return
 	}
-	log.Fatal(serveHTTP(app, logger))
+	log.Fatal(serveHTTP(app, conf, logger))
 }
 
-func allRoutes(table *data.Table, mailer contact.Mailer, cfg aws.Config) []api.Route {
+func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Config) []api.Route {
+	userDeps := users.Deps{Table: table, AWS: cfg, UserPoolID: conf.userPoolID}
+	if conf.memoryUsers {
+		userDeps.Directory = users.LocalDirectory(time.Now)
+	}
 	routes := api.Routes(table)
-	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer})...)
+	routes = append(routes, contact.Routes(contact.Deps{Table: table, Mail: mailer, Config: conf.contact})...)
 	routes = append(routes, posts.Routes(table, nil)...)
 	routes = append(routes, projects.Routes(table, nil)...)
 	routes = append(routes, home.Routes(table, nil)...)
 	routes = append(routes, resume.Routes(table, nil)...)
 	routes = append(routes, search.Routes(table, nil)...)
 	routes = append(routes, notebook.Routes(table, nil)...)
-	routes = append(routes, users.Routes(users.Deps{Table: table, AWS: cfg})...)
-	return append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), nil)...)
+	routes = append(routes, users.Routes(userDeps)...)
+	return append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), conf.media, nil)...)
 }
 
-// serveHTTP reads API_CLAIMS_MODE (test or local).
-func serveHTTP(app *api.App, logger *slog.Logger) error {
-	table := os.Getenv("DATA_TABLE_NAME")
-	if table == "gagnechris-prod" {
-		log.Fatal("Refusing to serve gagnechris-prod over local HTTP")
-	}
-	mode := api.ClaimsMode(os.Getenv("API_CLAIMS_MODE"))
-	switch mode {
-	case api.ClaimsNone:
-	case api.ClaimsTest:
-		// Test claims are whatever the caller sends.
-		if !strings.HasPrefix(table, "gagnechris-it-") {
-			log.Fatal("The test API only serves gagnechris-it-* tables")
-		}
-	case api.ClaimsLocal:
-		api.ApplyLocalAuthEnv()
-	default:
-		log.Fatalf("API_CLAIMS_MODE %q is not test or local", mode)
-	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8787"
-	}
-	logger.Debug("serving", "port", port, "claims", string(mode))
+func serveHTTP(app *api.App, conf config, logger *slog.Logger) error {
+	logger.Debug("serving", "port", conf.port, "claims", string(conf.claimsMode))
 	server := &http.Server{
-		Addr:              "127.0.0.1:" + port,
-		Handler:           app.HTTPHandler(mode),
+		Addr:              "127.0.0.1:" + conf.port,
+		Handler:           app.HTTPHandler(conf.claimsMode),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	return server.ListenAndServe()

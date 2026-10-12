@@ -10,9 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/google/uuid"
-
-	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
 type DirectoryUser struct {
@@ -120,7 +119,7 @@ func (d *MemoryDirectory) FindByEmail(_ context.Context, email string) (*Directo
 func (d *MemoryDirectory) InviteUser(_ context.Context, email string, name *string) (DirectoryUser, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	created := store.ISOTime(d.now())
+	created := jstime.ISO(d.now())
 	u := DirectoryUser{
 		ID:        uuid.NewString(),
 		Email:     email,
