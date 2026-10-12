@@ -11,6 +11,7 @@ import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Construct } from 'constructs';
 import {
@@ -44,6 +45,21 @@ export const PUBLISHER_GSI1_LEADING_KEYS = [
   statusGsi1Pk('published'),
   projectStatusGsi1Pk('published'),
 ];
+
+/**
+ * The `aws s3 sync --exclude` patterns of every key a publisher target
+ * writes or deletes; `npm run publish-surface:check` keeps the file in step
+ * with the targets' `s3Outputs`.
+ */
+export function publisherOwnedS3Patterns(): string[] {
+  return readFileSync(
+    join(REPO_ROOT, 'scripts/publisher-owned-paths.generated.txt'),
+    'utf8',
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'));
+}
 
 /** For an index, `dynamodb:LeadingKeys` is the index partition key. */
 export function publisherTableReadStatements(
@@ -134,11 +150,9 @@ export class PublisherStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-publisher`,
       iam5NagReason:
-        'Publisher reads/writes site objects under the bucket, stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern. DynamoDB access is read-only and scoped by dynamodb:LeadingKeys.',
+        'Publisher reads site objects, writes and deletes only its own key prefixes, stream ListStreams *, and uses X-Ray tracing wildcards required by the managed tracing pattern. DynamoDB access is read-only and scoped by dynamodb:LeadingKeys.',
       iam5NagAppliesTo: [
         'Resource::*',
-        'Action::s3:Abort*',
-        'Action::s3:DeleteObject*',
         'Action::s3:GetBucket*',
         'Action::s3:GetObject*',
         'Action::s3:List*',
@@ -186,7 +200,18 @@ export class PublisherStack extends Stack {
       this.publisherFunction.addToRolePolicy(statement);
     }
     dataTable.grantStreamRead(this.publisherFunction);
-    siteBucket.grantReadWrite(this.publisherFunction);
+    siteBucket.grantRead(this.publisherFunction);
+    // The bucket also holds uploaded media (no other copy) and the web
+    // deploy's assets and shell, so writes stay on the targets' own keys.
+    this.publisherFunction.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'PublisherWriteOwnedKeys',
+        actions: ['s3:PutObject', 's3:DeleteObject'],
+        resources: publisherOwnedS3Patterns().map((pattern) =>
+          siteBucket.arnForObjects(pattern),
+        ),
+      }),
+    );
 
     this.publisherFunction.addToRolePolicy(
       new PolicyStatement({
