@@ -279,7 +279,7 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
               embeds={embeds}
               today={today}
               onOpenTask={openTask}
-              noteId={id}
+              note={entity}
               autoFocus={note.type === 'page' && !note.bodyMarkdown}
             />
           )}

@@ -22,8 +22,10 @@ const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
 type Props = {
   state: TaskEmbedState;
   onOpen?: () => void;
-  /** Long press and the VoiceOver action; asks before deleting the task. */
+  /** The VoiceOver Delete action, and long press without `onMenu`; asks first. */
   onRemove?: () => void;
+  /** Long press and a VoiceOver action: the task's Move to, Indent… menu. */
+  onMenu?: () => void;
   /** Backspace in an emptied title: deletes the line and its task. */
   onDelete?: () => void;
   /** The title is a text field when the task can be renamed. */
@@ -55,6 +57,7 @@ type TitleProps = {
   onDelete?: () => void;
   inputRef: RefObject<TextInput | null>;
   a11yActions: object;
+  onEditing: (editing: boolean) => void;
 };
 
 type PendingTitle = {
@@ -80,6 +83,7 @@ const TitleField = ({
   onDelete,
   inputRef,
   a11yActions,
+  onEditing,
 }: TitleProps) => {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -110,10 +114,14 @@ const TitleField = ({
       accessibilityLabel="Task title"
       value={draft ?? title}
       onChangeText={onChangeText}
-      onFocus={() => setDraft(title)}
+      onFocus={() => {
+        setDraft(title);
+        onEditing(true);
+      }}
       onBlur={() => {
         savePending(pending.current);
         setDraft(null);
+        onEditing(false);
       }}
       onSubmitEditing={onSubmit}
       onKeyPress={(e) => {
@@ -137,6 +145,7 @@ export const TaskEmbedRow = ({
   state,
   onOpen,
   onRemove,
+  onMenu,
   onDelete,
   editable,
   onTitleSubmit,
@@ -144,15 +153,23 @@ export const TaskEmbedRow = ({
   detailsOpen = false,
 }: Props) => {
   const titleInput = useRef<TextInput>(null);
-  const a11yActions = onRemove
+  // A long press in a title being edited is the text loupe, not the menu.
+  const [editingTitle, setEditingTitle] = useState(false);
+  const onLongPress = onMenu ?? onRemove;
+  const actions = [
+    ...(onMenu ? [{ name: 'menu', label: 'Task actions' }] : []),
+    ...(onRemove ? [{ name: 'remove', label: 'Delete task' }] : []),
+  ];
+  const a11yActions = actions.length
     ? {
-        accessibilityActions: [{ name: 'remove', label: 'Delete task' }],
-        onAccessibilityAction: () => onRemove(),
+        accessibilityActions: actions,
+        onAccessibilityAction: (event: {
+          nativeEvent: { actionName: string };
+        }) =>
+          event.nativeEvent.actionName === 'menu' ? onMenu?.() : onRemove?.(),
       }
     : {};
-  const removeActions = onRemove
-    ? { ...a11yActions, onLongPress: onRemove }
-    : {};
+  const removeActions = onLongPress ? { ...a11yActions, onLongPress } : {};
 
   if (state.kind !== 'task') {
     const text =
@@ -244,9 +261,10 @@ export const TaskEmbedRow = ({
           style={styles.titleButton}
           accessible={false}
           onPress={() => titleInput.current?.focus()}
-          onLongPress={onRemove}
+          onLongPress={editingTitle ? undefined : onLongPress}
         >
           <TitleField
+            onEditing={setEditingTitle}
             title={task.title}
             closed={done || dropped}
             onRename={state.onRename}
@@ -270,7 +288,7 @@ export const TaskEmbedRow = ({
             accessibilityRole="button"
             accessibilityLabel={`Open task ${task.title}`}
             onPress={onOpen}
-            onLongPress={onRemove}
+            onLongPress={onLongPress}
             style={onToggleDetails ? styles.openBeside : styles.open}
           >
             <Icon
@@ -286,7 +304,7 @@ export const TaskEmbedRow = ({
             accessibilityLabel={`Details for ${task.title}`}
             accessibilityState={{ expanded: detailsOpen }}
             onPress={onToggleDetails}
-            onLongPress={onRemove}
+            onLongPress={onLongPress}
             style={styles.open}
           >
             <Icon
@@ -309,7 +327,7 @@ export const TaskEmbedRow = ({
         accessibilityLabel={[task.title, ...pills].join(', ')}
         accessibilityHint={onOpen ? 'Opens the task' : undefined}
         onPress={onOpen}
-        disabled={!onOpen && !onRemove}
+        disabled={!onOpen && !onLongPress}
         {...removeActions}
       >
         <Text style={[styles.title, (done || dropped) && styles.closed]}>
