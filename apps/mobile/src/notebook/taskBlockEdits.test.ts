@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   indentTaskBlock,
+  moveTaskBlock,
   moveTaskBlockToSection,
   removeTaskBlock,
   taskBlockLines,
@@ -76,5 +77,18 @@ describe('task block edits', () => {
     const note = [A, `  ${B}`, '    why', 'after'].join('\n');
     expect(taskBlockLines(note, B_ID)).toBe([B, '  why'].join('\n'));
     expect(removeTaskBlock(note, B_ID)).toBe([A, 'after'].join('\n'));
+  });
+
+  it('moves a task with its lines before or after another task', () => {
+    const C = '{{task:01HTASKCCCCCCCCCCCCCCCCCCC}}';
+    const C_ID = '01HTASKCCCCCCCCCCCCCCCCCCC';
+    const note = [A, '  why', 'text', B, C, '  how'].join('\n');
+    expect(moveTaskBlock(note, A_ID, { after: C_ID })).toBe(
+      ['text', B, C, '  how', A, '  why'].join('\n'),
+    );
+    expect(moveTaskBlock(note, C_ID, { before: B_ID })).toBe(
+      [A, '  why', 'text', C, '  how', B].join('\n'),
+    );
+    expect(moveTaskBlock(note, B_ID, { before: C_ID })).toBeNull();
   });
 });

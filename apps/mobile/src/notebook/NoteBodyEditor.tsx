@@ -19,6 +19,7 @@ import {
 } from 'react';
 import {
   ActionSheetIOS,
+  Animated,
   StyleSheet,
   Text,
   View,
@@ -30,6 +31,7 @@ import {
   LiveMarkdownInput,
   type LiveMarkdownHandle,
 } from '../ui/LiveMarkdownInput';
+import { DragGrip, GRIP_INSET } from '../ui/DragGrip';
 import { TaskEmbedRow } from '../ui/TaskEmbedRow';
 import { TaskParentLabel } from '../ui/TaskParentLabel';
 import { createUlid } from '../ulid';
@@ -50,6 +52,7 @@ import { PickDateModal } from './PickDateModal';
 import { TaskDetailsPanel } from './TaskDetailsPanel';
 import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
 import { useNoteSubtasks } from './useNoteSubtasks';
+import { useRowDrag } from './useRowDrag';
 import { useTaskRowMenu, type MenuNote } from './useTaskRowMenu';
 import {
   applyToolbarAction,
@@ -379,6 +382,12 @@ export const NoteBodyEditor = ({
     );
 
   const subtasks = useNoteSubtasks(markdown, stateOf);
+  const rowDrag = useRowDrag({
+    markdown: () => latest.current.markdown,
+    segments,
+    visible: (segment) => !subtasks.hidden(segment),
+    onChange,
+  });
   const menu = useTaskRowMenu({
     note,
     today,
@@ -435,14 +444,18 @@ export const NoteBodyEditor = ({
             saved && !open && peeking ? firstLine(saved.description) : null;
           const parent = subtasks.parentLabelOf(segment.id);
           const depth = subtasks.depthOf(segment.id);
+          const dragging = rowDrag.drag?.key === segment.key;
           return (
-            <View
+            <Animated.View
               key={segment.key}
-              style={
-                depth > 0
-                  ? [styles.nested, { marginLeft: depth * NEST }]
-                  : undefined
-              }
+              onLayout={rowDrag.onLayout(segment.key)}
+              style={[
+                depth > 0 && [styles.nested, { marginLeft: depth * NEST }],
+                dragging && [
+                  styles.dragging,
+                  { transform: [{ translateY: rowDrag.dy }] },
+                ],
+              ]}
             >
               {parent ? (
                 <View style={styles.parentLabel}>
@@ -464,6 +477,11 @@ export const NoteBodyEditor = ({
                 }
                 detailsOpen={open}
                 subtasks={subtasks.subtasksOf(segment.id)}
+                grip={
+                  saved ? (
+                    <DragGrip {...rowDrag.handlers(segment.key, segment.id)} />
+                  ) : undefined
+                }
               />
               {saved && open ? (
                 <TaskDetailsPanel task={saved} today={today} />
@@ -473,7 +491,7 @@ export const NoteBodyEditor = ({
                   {peek}
                 </Text>
               ) : null}
-            </View>
+            </Animated.View>
           );
         }
         const empty = segment.lines.length === 0;
@@ -524,6 +542,18 @@ export const NoteBodyEditor = ({
           </Fragment>
         );
       })}
+      {rowDrag.drag?.lineY != null ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.dropLine,
+            {
+              top: rowDrag.drag.lineY - 1,
+              left: rowDrag.drag.level === 'in' ? NEST + MIN_TARGET / 2 : 0,
+            },
+          ]}
+        />
+      ) : null}
       {menu.datePicker}
       <PickDateModal
         key={picking ? 'picking' : 'closed'}
@@ -578,15 +608,33 @@ const styles = StyleSheet.create({
     borderLeftColor: color.border,
     paddingLeft: tokens.space[2],
   },
-  parentLabel: { marginLeft: MIN_TARGET - tokens.space[2], marginBottom: -6 },
+  dragging: {
+    zIndex: 10,
+    backgroundColor: color.surface,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  dropLine: {
+    position: 'absolute',
+    right: 0,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: color.accent,
+  },
+  parentLabel: {
+    marginLeft: GRIP_INSET + MIN_TARGET,
+    marginBottom: -6,
+  },
   peek: {
     ...font.regular,
     fontSize: tokens.text.caption,
     color: color.muted,
     marginTop: -tokens.space[2],
     marginBottom: tokens.space[1],
-    // Lines up with the title, past the checkbox and the row's gap.
-    marginLeft: MIN_TARGET,
+    // Lines up with the title, past the grip, the checkbox and the row's gaps.
+    marginLeft: GRIP_INSET + MIN_TARGET,
   },
   error: {
     ...font.medium,

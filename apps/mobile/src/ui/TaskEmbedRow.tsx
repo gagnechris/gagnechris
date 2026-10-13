@@ -6,7 +6,13 @@ import {
 import { NOTEBOOK_TITLE_MAX_LENGTH } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import type { Subtasks } from '../notebook/useNoteSubtasks';
@@ -33,6 +39,8 @@ type Props = {
   editable?: boolean;
   /** Return in the title. */
   onTitleSubmit?: () => void;
+  /** The drag grip, before the checkbox. */
+  grip?: ReactNode;
   /** On a parent: its subtask count, which folds the lines under it. */
   subtasks?: Subtasks;
   /** With it, a chevron opens and closes the task's details under the row. */
@@ -155,6 +163,7 @@ export const TaskEmbedRow = ({
   onToggleDetails,
   detailsOpen = false,
   subtasks,
+  grip,
 }: Props) => {
   const titleInput = useRef<TextInput>(null);
   // A long press in a title being edited is the text loupe, not the menu.
@@ -267,6 +276,7 @@ export const TaskEmbedRow = ({
   if (editable && state.onRename) {
     return (
       <View style={styles.row}>
+        {grip}
         {checkbox}
         <Pressable
           style={styles.titleButton}

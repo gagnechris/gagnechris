@@ -141,3 +141,28 @@ export function removeTaskBlock(markdown: string, taskId: string): string {
   const { first, last } = blockAt(lines, line);
   return [...lines.slice(0, first), ...lines.slice(last + 1)].join('\n');
 }
+
+/**
+ * Moves the task's block to just before the line of `before`, or just after
+ * the block of `after`. Null when it would not move.
+ */
+export function moveTaskBlock(
+  markdown: string,
+  taskId: string,
+  target: { before: string } | { after: string },
+): string | null {
+  const lines = markdown.split('\n');
+  const line = embedLine(markdown, taskId);
+  const other = embedLine(
+    markdown,
+    'before' in target ? target.before : target.after,
+  );
+  if (line === null || other === null) return null;
+  const block = blockAt(lines, line);
+  const at = 'before' in target ? other : blockAt(lines, other).last + 1;
+  if (at >= block.first && at <= block.last + 1) return null;
+  const rows = lines.slice(block.first, block.last + 1);
+  const rest = [...lines.slice(0, block.first), ...lines.slice(block.last + 1)];
+  const to = at > block.last ? at - rows.length : at;
+  return [...rest.slice(0, to), ...rows, ...rest.slice(to)].join('\n');
+}

@@ -22,6 +22,7 @@ import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from '../ui/Icon';
 import { ConflictPanel } from './ConflictPanel';
 import { useSaveOnBackground } from './useSaveOnBackground';
+import { useDragScrollView } from '../ui/DragScroll';
 
 /** The parts of app-core's `useVersionedDocEditor` result the chrome reads. */
 export type DetailEditorState<TEntity> = {
@@ -163,6 +164,7 @@ export const DetailEditorShell = <TEntity,>({
     onReload,
     openPath,
   });
+  const drag = useDragScrollView();
 
   if (editor.loadError) {
     // A note or task deleted elsewhere no longer loads; its conflict still shows.
@@ -180,6 +182,7 @@ export const DetailEditorShell = <TEntity,>({
   const ready = Boolean(entity);
   const scroll = (
     <ScrollView
+      {...drag.props}
       style={[styles.scroll, !footer && { backgroundColor }]}
       contentContainerStyle={contentStyle}
       contentInsetAdjustmentBehavior="automatic"
@@ -222,7 +225,7 @@ export const DetailEditorShell = <TEntity,>({
         dirty={editor.dirty}
       />
       {entity ? (
-        children(entity)
+        <drag.Provider value={drag.value}>{children(entity)}</drag.Provider>
       ) : (
         <Text style={styles.status}>{loadingText}</Text>
       )}
