@@ -106,7 +106,7 @@ export const NoteBodyEditor = ({
   // Where the caret was, by line of the whole note, and that line's text.
   const caretLine = useRef<{ line: number; text: string } | null>(null);
   const pendingSelection = useRef<Focus | null>(null);
-  // Typing reports the new text before the new caret; until the caret
+  // A TextInput reports the new text before the new caret; until the caret
   // arrives, the old offset points into the wrong line.
   const caretStale = useRef(false);
   // iOS ignores a new value while keystrokes are in flight and reports
@@ -261,7 +261,7 @@ export const NoteBodyEditor = ({
     }
   };
 
-  const onChangeText = (key: string, typed: string) => {
+  const onChangeText = (key: string, typed: string, caret?: Selection) => {
     const segment = textSegment(latest.current.segments, key);
     if (!segment) return edit(key, typed);
     const before = segmentText(segment);
@@ -274,6 +274,18 @@ export const NoteBodyEditor = ({
       text = rebased.text;
     }
     edit(key, text);
+    if (caret) {
+      // Rebasing only drops lines from the start of what the view holds.
+      const shift = typed.length - text.length;
+      caretStale.current = false;
+      setFocus({
+        key,
+        selection: {
+          start: Math.max(0, caret.start - shift),
+          end: Math.max(0, caret.end - shift),
+        },
+      });
+    }
     const lines = text.split('\n');
     for (const line of endedLines(before, text)) {
       queued.current.set(segment.start + line, lines[line]!);
@@ -423,7 +435,9 @@ export const NoteBodyEditor = ({
                   : undefined
               }
               value={segmentText(segment)}
-              onChangeText={(text) => onChangeText(segment.key, text)}
+              onChangeText={(text, caret) =>
+                onChangeText(segment.key, text, caret)
+              }
               onSelectionChange={(event) =>
                 onSelectionChange(segment.key, event)
               }
@@ -434,6 +448,7 @@ export const NoteBodyEditor = ({
             <NoteKeyboardToolbar
               nativeID={toolbarId}
               onAction={onAction}
+              onHideKeyboard={() => inputs.current.get(segment.key)?.blur()}
               dateMenu={focus?.key === segment.key ? dateMenu : null}
               onPickDate={onPickDate}
             />

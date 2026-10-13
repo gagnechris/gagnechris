@@ -39,6 +39,8 @@ type Props<A extends string> = {
   onPickDate?: (item: TaskDateMenuItem) => void;
   buttons?: readonly ToolbarButton<A>[];
   nativeID?: string;
+  /** `Keyboard.dismiss` only reaches a TextInput, not the live-preview view. */
+  onHideKeyboard?: () => void;
 };
 
 /** Sits on the keyboard: the date chips while typing `@`, then the buttons. */
@@ -48,6 +50,7 @@ export const NoteKeyboardToolbar = <A extends string = ToolbarAction>({
   onPickDate,
   buttons = NOTE_BUTTONS as unknown as readonly ToolbarButton<A>[],
   nativeID = NOTE_TOOLBAR_ID,
+  onHideKeyboard = Keyboard.dismiss,
 }: Props<A>) => (
   <InputAccessoryView nativeID={nativeID}>
     <View style={styles.bar}>
@@ -110,7 +113,7 @@ export const NoteKeyboardToolbar = <A extends string = ToolbarAction>({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Hide keyboard"
-          onPress={() => Keyboard.dismiss()}
+          onPress={() => onHideKeyboard()}
           style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
           <Icon

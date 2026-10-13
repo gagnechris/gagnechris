@@ -129,6 +129,7 @@ export const MarkdownBodyField = ({
         nativeID={TOOLBAR_ID}
         buttons={BUTTONS}
         onAction={onAction}
+        onHideKeyboard={() => input.current?.blur()}
       />
     </>
   );
