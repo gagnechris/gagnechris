@@ -4,7 +4,9 @@ import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
+import { isOpenStatus, useTaskParent } from '../notebook/taskParents';
 import { Icon } from './Icon';
+import { TaskParentLabel } from './TaskParentLabel';
 
 const CHIP_HEIGHT = 20;
 // Grows the caption-sized note link to a 44pt target without moving the text.
@@ -16,7 +18,7 @@ const CHIP_SLOP = {
 };
 
 type Props = {
-  task: Pick<Task, 'id' | 'title' | 'status'>;
+  task: Pick<Task, 'id' | 'title' | 'status'> & Partial<Pick<Task, 'parentId'>>;
   /** Under the title: where it came from, or the day it starts. */
   detail?: string;
   due?: TaskDue | null;
@@ -46,6 +48,7 @@ export const TaskRow = ({
   moreLabel = 'Snooze or drop',
   onDoToday,
 }: Props) => {
+  const parent = useTaskParent(task.parentId);
   const priorityText =
     priority === 'high' ? 'High' : priority === 'low' ? 'Low' : null;
   const done = task.status === 'done';
@@ -110,6 +113,12 @@ export const TaskRow = ({
         onPress={onOpen}
         onLongPress={onMore}
       >
+        {parent ? (
+          <TaskParentLabel
+            title={parent.title}
+            finished={!isOpenStatus(parent.status)}
+          />
+        ) : null}
         <Text style={[styles.title, closed && styles.done]}>{task.title}</Text>
         {detail || due || priorityText ? (
           <View style={styles.meta}>

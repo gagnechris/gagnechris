@@ -9,6 +9,7 @@ import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
+import type { Subtasks } from '../notebook/useNoteSubtasks';
 import { Icon } from './Icon';
 
 const TITLE_LINE = 24;
@@ -32,6 +33,8 @@ type Props = {
   editable?: boolean;
   /** Return in the title. */
   onTitleSubmit?: () => void;
+  /** On a parent: its subtask count, which folds the lines under it. */
+  subtasks?: Subtasks;
   /** With it, a chevron opens and closes the task's details under the row. */
   onToggleDetails?: () => void;
   detailsOpen?: boolean;
@@ -151,6 +154,7 @@ export const TaskEmbedRow = ({
   onTitleSubmit,
   onToggleDetails,
   detailsOpen = false,
+  subtasks,
 }: Props) => {
   const titleInput = useRef<TextInput>(null);
   // A long press in a title being edited is the text loupe, not the menu.
@@ -212,7 +216,13 @@ export const TaskEmbedRow = ({
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onToggle();
   };
+  const allDone =
+    subtasks !== undefined &&
+    subtasks.done === subtasks.total &&
+    !done &&
+    !dropped;
   const pills = [
+    allDone ? 'All done' : null,
     dropped ? 'Dropped' : null,
     schedule,
     due?.text,
@@ -220,6 +230,7 @@ export const TaskEmbedRow = ({
   ].filter(Boolean);
   const pillViews = (
     <>
+      {allDone ? <Pill text="All done" tone="accent" /> : null}
       {dropped ? <Pill text="Dropped" /> : null}
       {schedule ? <Pill text={schedule} tone="accent" /> : null}
       {due ? (
@@ -283,6 +294,48 @@ export const TaskEmbedRow = ({
             </View>
           ) : null}
         </Pressable>
+        {subtasks ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${subtasks.done} of ${subtasks.total} subtasks done`}
+            accessibilityHint={
+              subtasks.folded ? 'Shows the subtasks' : 'Hides the subtasks'
+            }
+            accessibilityState={{ expanded: !subtasks.folded }}
+            onPress={() => {
+              // A subtask being edited is about to hide; the keyboard stays with the parent.
+              if (
+                !subtasks.folded &&
+                TextInput.State?.currentlyFocusedInput?.()
+              ) {
+                titleInput.current?.focus();
+              }
+              subtasks.onToggleFold();
+            }}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={styles.progress}
+          >
+            <Icon
+              name={
+                subtasks.done === subtasks.total
+                  ? 'checkmark.circle.fill'
+                  : subtasks.done > 0
+                    ? 'circle.lefthalf.filled'
+                    : 'circle'
+              }
+              size={14}
+              color={color.accent}
+            />
+            <Text style={styles.progressText}>
+              {`${subtasks.done} of ${subtasks.total}`}
+            </Text>
+            <Icon
+              name={subtasks.folded ? 'chevron.right' : 'chevron.down'}
+              size={10}
+              color={color.muted}
+            />
+          </Pressable>
+        ) : null}
         {onOpen ? (
           <Pressable
             accessibilityRole="button"
@@ -404,6 +457,17 @@ const styles = StyleSheet.create({
     height: MIN_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  progress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: MIN_TARGET - tokens.space[4],
+  },
+  progressText: {
+    ...font.medium,
+    fontSize: tokens.text.caption,
+    color: color.inkSoft,
   },
   retry: { minHeight: MIN_TARGET, justifyContent: 'center' },
   retryText: {

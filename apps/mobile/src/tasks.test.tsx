@@ -246,6 +246,20 @@ describe('All tasks', () => {
     expect(has(renderer.root, 'Reopen Old idea')).toBe(1);
   });
 
+  it('shows a subtask’s parent above its title, muted once the parent is done', async () => {
+    serve(
+      [],
+      [
+        makeTask(A, 'Trip', { status: 'done' }),
+        makeTask(B, 'Book hotel', { parentId: A }),
+      ],
+    );
+    const renderer = await launch(TasksScreen);
+    await settle(10);
+    const label = byLabel(renderer, 'Subtask of Trip, finished');
+    expect(label.props.children).toBe('Trip');
+  });
+
   it('shows a deadline without a start date, and the priority', async () => {
     serve(
       [],
