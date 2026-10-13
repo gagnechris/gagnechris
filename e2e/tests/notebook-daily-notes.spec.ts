@@ -92,7 +92,8 @@ test('a daily note opened by id is deleted on Today and can be started again', a
   await expect(page).toHaveURL(/\/today\?date=2026-10-02&area=work/);
   const editor = page.getByRole('textbox', { name: 'Note body' });
   await expect(editor).toContainText('Old notes');
-  await page.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('button', { name: 'Note options' }).click();
+  await page.getByRole('button', { name: 'Delete note' }).click();
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete' })

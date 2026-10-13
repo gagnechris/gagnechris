@@ -208,7 +208,10 @@ describe('NotebookNotePage', () => {
     const router = renderPage();
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Note options' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Delete note' }));
     expect(confirm).toHaveBeenCalledWith(
       'Delete this page? It will disappear from your list.',
       'Delete',

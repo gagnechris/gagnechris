@@ -245,7 +245,13 @@ export const useReopenTaskMutation = () => {
 export type TaskPatch = Partial<
   Pick<
     Task,
-    'status' | 'startDate' | 'someday' | 'title' | 'priority' | 'dueDate'
+    | 'status'
+    | 'startDate'
+    | 'someday'
+    | 'title'
+    | 'priority'
+    | 'dueDate'
+    | 'tags'
   >
 >;
 
@@ -262,6 +268,7 @@ export const applyTaskPatch = (task: Task, patch: TaskPatch): Task => {
     ...task,
     title: patch.title ?? task.title,
     priority: patch.priority ?? task.priority,
+    tags: patch.tags ?? task.tags,
     dueDate: patch.dueDate !== undefined ? patch.dueDate : task.dueDate,
     status,
     someday,

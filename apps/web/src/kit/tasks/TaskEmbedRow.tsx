@@ -1,9 +1,11 @@
 import {
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -41,6 +43,19 @@ export type TaskEmbedDelete = () => void;
 /** Arrow keys out of the title, to the line or row above or below. */
 export type TaskEmbedMove = (dir: 'up' | 'down') => void;
 
+export type TaskEmbedDetails = {
+  open: boolean;
+  onToggle: () => void;
+  hasDescription: boolean;
+  /** The description's first line, shown under the closed row. */
+  peek: string | null;
+  /** Rendered under the row while open. */
+  panel: ReactNode;
+};
+
+const isToggleKey = (e: KeyboardEvent) =>
+  e.key === '.' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
+
 const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   high: 'High',
   med: null,
@@ -53,12 +68,14 @@ function TaskEmbedTitle({
   onLeave,
   onDelete,
   onMove,
+  onToggleDetails,
 }: {
   title: string;
   onRename: (title: string) => void;
   onLeave?: TaskEmbedLeave;
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
+  onToggleDetails?: () => void;
 }) {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -111,7 +128,10 @@ function TaskEmbedTitle({
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
     if (e.nativeEvent.isComposing) return;
-    if (e.key === 'Enter') {
+    if (onToggleDetails && isToggleKey(e)) {
+      e.preventDefault();
+      onToggleDetails();
+    } else if (e.key === 'Enter') {
       e.preventDefault();
       commit();
       if (onLeave) onLeave(true);
@@ -176,12 +196,17 @@ export function TaskEmbedRow({
   onLeave,
   onDelete,
   onMove,
+  details,
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
+  details?: TaskEmbedDetails;
 }) {
+  const panelId = useId();
+  const blockRef = useRef<HTMLDivElement>(null);
+
   if (view.kind === 'loading') {
     return (
       <div className="task-embed task-embed--muted" aria-busy="true">
@@ -220,15 +245,29 @@ export function TaskEmbedRow({
   const done = task.status === 'done';
   const dropped = task.status === 'dropped';
   const priority = PRIORITY_LABEL[task.priority];
-  return (
+  const open = details?.open ?? false;
+
+  const focusTitle = () => {
+    const field = blockRef.current?.querySelector('textarea');
+    field?.focus();
+    field?.setSelectionRange(field.value.length, field.value.length);
+  };
+
+  const row = (
     <div
       className={`task-embed${done ? ' task-embed--done' : ''}${dropped ? ' task-embed--dropped' : ''}`}
       data-task-status={task.status}
       onMouseDown={(e) => {
-        // The title is only as wide as its text; a press on the rest of the
-        // row edits it, as a full-width field would.
+        if (e.target !== e.currentTarget) return;
+        // The space after the title opens the details; without them, a press
+        // there edits the title, as a full-width field would.
+        if (details) {
+          e.preventDefault();
+          if (!details.open) details.onToggle();
+          return;
+        }
         const field = e.currentTarget.querySelector('textarea');
-        if (e.target !== e.currentTarget || !field) return;
+        if (!field) return;
         e.preventDefault();
         field.focus();
         field.setSelectionRange(field.value.length, field.value.length);
@@ -249,6 +288,7 @@ export function TaskEmbedRow({
           onLeave={onLeave}
           onDelete={onDelete}
           onMove={onMove}
+          onToggleDetails={details?.onToggle}
         />
       ) : (
         <span className="task-embed__title">{task.title}</span>
@@ -263,6 +303,24 @@ export function TaskEmbedRow({
           ↗
         </Link>
       ) : null}
+      {details?.hasDescription ? (
+        <span
+          className="task-embed__has-details"
+          role="img"
+          aria-label="Has details"
+          title="Has details"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path
+              d="M3 4.5h10M3 8h10M3 11.5h6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+      ) : null}
       {dropped ? <span className="task-embed__pill">Dropped</span> : null}
       {schedule ? (
         <span className="task-embed__pill task-embed__pill--schedule">
@@ -274,6 +332,56 @@ export function TaskEmbedRow({
         <span className={`task-embed__pill task-embed__pill--${task.priority}`}>
           {priority}
         </span>
+      ) : null}
+      {details ? (
+        <button
+          type="button"
+          className="task-embed__chevron"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          aria-label={`Details for ${task.title}`}
+          title={open ? 'Collapse details (⌘.)' : 'Expand details (⌘.)'}
+          onClick={details.onToggle}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path
+              d="M4 6l4 4 4-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      ) : null}
+    </div>
+  );
+
+  if (!details) return row;
+  return (
+    <div ref={blockRef} className="task-embed-block">
+      {row}
+      {!open && details.peek ? (
+        <p className="task-embed__peek">{details.peek}</p>
+      ) : null}
+      {open ? (
+        <div
+          id={panelId}
+          className="task-embed__details"
+          role="group"
+          aria-label={`Details for ${task.title}`}
+          onKeyDown={(e) => {
+            if (e.defaultPrevented) return;
+            if (e.key === 'Escape' || isToggleKey(e)) {
+              e.preventDefault();
+              focusTitle();
+              details.onToggle();
+            }
+          }}
+        >
+          {details.panel}
+        </div>
       ) : null}
     </div>
   );
