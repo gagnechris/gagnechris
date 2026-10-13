@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   taskActionError,
   useMoveTaskToDay,
   useNoteTaskEmbedSync,
+  useTasksByIds,
   type EmbedNote,
   type Task,
 } from '@gagnechris/app-core';
@@ -11,6 +12,7 @@ import {
   formatTaskDay,
   markdownPlainText,
   taskEmbedIds,
+  taskEmbedNesting,
 } from '@gagnechris/shared';
 import {
   useTaskEmbedEditor,
@@ -20,7 +22,10 @@ import { announceMove } from '../kit/markdown/taskEmbedMoves';
 import {
   TaskEmbedRow,
   type TaskEmbedDetails,
+  type TaskEmbedFinish,
   type TaskEmbedMoving,
+  type TaskEmbedParentLabel,
+  type TaskEmbedSubtasks,
   type TaskEmbedView,
 } from '../kit/tasks/TaskEmbedRow';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
@@ -28,8 +33,13 @@ import {
   TaskDetailsPanel,
   type DescriptionEditorProps,
 } from './TaskDetailsPanel';
+import { FoldSync } from './FoldSync';
 import { TaskMoveMenu } from './TaskMoveMenu';
-import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
+import {
+  toggleTaskDetails,
+  toggleTaskFold,
+  useTaskDetailsStore,
+} from './taskDetailsStore';
 import { useLocalToday } from './useLocalToday';
 
 const firstLine = (markdown: string) =>
@@ -39,6 +49,9 @@ const firstLine = (markdown: string) =>
     .find(Boolean) ?? null;
 
 const NO_EXTENSIONS: Extension[] = [];
+
+const isOpenStatus = (status: Task['status']) =>
+  status === 'todo' || status === 'in_progress';
 
 export function useNoteTaskEmbeds({
   markdown,
@@ -72,19 +85,107 @@ export function useNoteTaskEmbeds({
     retryDelaysMs,
   });
 
+  const { open, peek, folded } = useTaskDetailsStore();
+  const [finishing, setFinishing] = useState<string | null>(null);
+
+  // Subtasks are the task lines directly under a top-level task line.
+  const nesting = useMemo(() => {
+    const placed = new Map<string, string | null>();
+    const children = new Map<string, string[]>();
+    for (const e of taskEmbedNesting(markdown)) {
+      if (placed.has(e.id)) continue;
+      placed.set(e.id, e.parentId);
+      if (e.parentId) {
+        children.set(e.parentId, [...(children.get(e.parentId) ?? []), e.id]);
+      }
+    }
+    return { placed, children };
+  }, [markdown]);
+
   const viewOf = (id: string): TaskEmbedView => {
     const state = stateOf(id);
     if (state.kind !== 'task') return state;
     const { saved, ...view } = state;
-    return saved ? { ...view, to: `/tasks/${saved.id}` } : view;
+    if (!saved) return view;
+    const subtasks = (nesting.children.get(id) ?? []).flatMap(
+      (sub) => savedTask(sub) ?? [],
+    );
+    const onToggle =
+      isOpenStatus(saved.status) &&
+      subtasks.some((sub) => isOpenStatus(sub.status))
+        ? () => {
+            view.onToggle();
+            setFinishing(id);
+          }
+        : view.onToggle;
+    return { ...view, onToggle, to: `/tasks/${saved.id}` };
   };
-
-  const { open, peek } = useTaskDetailsStore();
   const peeking = note ? peek.has(note.id) : false;
 
-  const savedTask = (id: string): Task | undefined => {
+  function savedTask(id: string): Task | undefined {
     const state = stateOf(id);
     return state.kind === 'task' ? state.saved : undefined;
+  }
+
+  // A subtask can sit apart from its parent, as when it carries in alone.
+  const embedded = new Set(taskEmbedIds(markdown));
+  const parentIds = [
+    ...new Set(
+      [...embedded].flatMap((id) => {
+        const parentId = savedTask(id)?.parentId;
+        return parentId && !embedded.has(parentId) ? [parentId] : [];
+      }),
+    ),
+  ];
+  const fetchedParents = useTasksByIds(parentIds);
+  const parentLabelOf = (id: string): TaskEmbedParentLabel | undefined => {
+    const parentId = savedTask(id)?.parentId;
+    if (!parentId || nesting.placed.get(id) === parentId) return;
+    const parent =
+      savedTask(parentId) ??
+      fetchedParents.find((p) => p.data?.id === parentId)?.data;
+    if (!parent) return;
+    return { title: parent.title, finished: !isOpenStatus(parent.status) };
+  };
+
+  const subtasksOf = (id: string): TaskEmbedSubtasks | undefined => {
+    const children = (nesting.children.get(id) ?? []).flatMap(
+      (sub) => savedTask(sub) ?? [],
+    );
+    const counted = children.filter((t) => t.status !== 'dropped');
+    if (counted.length === 0) return;
+    return {
+      done: counted.filter((t) => t.status === 'done').length,
+      total: counted.length,
+      folded: folded.has(id),
+      onToggleFold: () => toggleTaskFold(id),
+    };
+  };
+
+  const finishOf = (id: string): TaskEmbedFinish | undefined => {
+    if (finishing !== id) return;
+    const state = stateOf(id);
+    if (state.kind !== 'task' || state.saved?.status !== 'done') return;
+    const openSubs = (nesting.children.get(id) ?? []).filter((sub) => {
+      const s = stateOf(sub);
+      return s.kind === 'task' && s.saved && isOpenStatus(s.saved.status);
+    });
+    if (openSubs.length === 0) return;
+    return {
+      open: openSubs.length,
+      onCompleteAll: () => {
+        for (const sub of openSubs) {
+          const s = stateOf(sub);
+          if (s.kind === 'task') s.onToggle();
+        }
+        setFinishing(null);
+      },
+      onJustParent: () => setFinishing(null),
+      onUndo: () => {
+        state.onToggle();
+        setFinishing(null);
+      },
+    };
   };
 
   const moveToDay = async (
@@ -140,6 +241,7 @@ export function useNoteTaskEmbeds({
     if (!task || !controls) return;
     return {
       shift: controls.shift,
+      indent: controls.indent,
       drag: controls.drag,
       menu: moveMenu(task, controls),
     };
@@ -167,16 +269,27 @@ export function useNoteTaskEmbeds({
     };
   };
 
-  const renderEmbed = (id: string, controls?: TaskEmbedControls) => (
-    <TaskEmbedRow
-      view={viewOf(id)}
-      onLeave={controls?.leave}
-      onDelete={controls?.remove}
-      onMove={controls?.move}
-      details={detailsOf(id, controls)}
-      moving={phone ? undefined : movingOf(id, controls)}
-    />
-  );
+  const renderEmbed = (id: string, controls?: TaskEmbedControls) => {
+    const subtasks = subtasksOf(id);
+    return (
+      <>
+        {controls ? (
+          <FoldSync fold={controls.fold} folded={!!subtasks?.folded} />
+        ) : null}
+        <TaskEmbedRow
+          view={viewOf(id)}
+          onLeave={controls?.leave}
+          onDelete={controls?.remove}
+          onMove={controls?.move}
+          details={detailsOf(id, controls)}
+          moving={phone ? undefined : movingOf(id, controls)}
+          subtasks={subtasks}
+          finish={finishOf(id)}
+          parent={parentLabelOf(id)}
+        />
+      </>
+    );
+  };
   const { extensions, portals } = useTaskEmbedEditor({
     onCreate,
     onRemove: onRemoved,

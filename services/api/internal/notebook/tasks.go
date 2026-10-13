@@ -318,7 +318,7 @@ func (r *tasksRepo) listByNote(ctx context.Context, userID string, q listTasksQu
 // carriedInto is the open tasks a new daily note for day carries in: what
 // is still open from earlier days. Tasks starting on day itself stay in
 // Still open.
-func (r *tasksRepo) carriedInto(ctx context.Context, userID, area, day string, onCorrupt func(*api.DataIntegrityError)) ([]string, error) {
+func (r *tasksRepo) carriedInto(ctx context.Context, userID, area, day string, onCorrupt func(*api.DataIntegrityError)) ([]CarriedInTask, error) {
 	q := listTasksQuery{area: area, open: true, startOnOrBefore: day, today: day, limit: 100}
 	tasks, err := CollectPages(carryInMax, func(cursor string) (store.Page[Task], error) {
 		q.cursor = cursor
@@ -327,9 +327,9 @@ func (r *tasksRepo) carriedInto(ctx context.Context, userID, area, day string, o
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]string, len(tasks))
+	carried := make([]CarriedInTask, len(tasks))
 	for i, t := range tasks {
-		ids[i] = t.ID
+		carried[i] = CarriedInTask{ID: t.ID, ParentID: t.ParentID}
 	}
-	return ids, nil
+	return carried, nil
 }

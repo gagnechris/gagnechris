@@ -7,6 +7,7 @@ import {
   moveBlock,
   moveBlockToSection,
   noteHeadings,
+  reindentBlock,
 } from './taskBlockMoves';
 
 const A = '{{task:01JTASKAAAAAAAAAAAAAAAAAAA}}';
@@ -166,5 +167,24 @@ describe('sections', () => {
     const state = stateOf(`${A}\n## Only\n${B}`);
     expect(jumpSection(state, blockAt(state.doc, 3), 'down')).toBeNull();
     expect(jumpSection(state, blockAt(state.doc, 1), 'up')).toBeNull();
+  });
+});
+
+describe('changing a task’s level', () => {
+  test('a drop can nest the block a step, or take it out of one', () => {
+    const doc = `${A}\n${B}\n  under B\n${C}`;
+    const state = stateOf(doc);
+    expect(
+      lines(apply(state, moveBlock(state, blockAt(state.doc, 4), 2, 'x', 2))),
+    ).toEqual([A, `  ${C}`, B, '  under B']);
+    expect(
+      lines(apply(state, moveBlock(state, blockAt(state.doc, 2), 2, 'x', 2))),
+    ).toEqual([A, `  ${B}`, '    under B', C]);
+    const nested = stateOf(`${A}\n  ${B}\n    under B`);
+    expect(
+      lines(
+        apply(nested, reindentBlock(nested, blockAt(nested.doc, 2), -2, 'x')),
+      ),
+    ).toEqual([A, B, '  under B']);
   });
 });

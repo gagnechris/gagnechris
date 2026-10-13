@@ -54,6 +54,7 @@ const task: Task = {
   someday: false,
   completedAt: null,
   noteId: dailyNote.id,
+  parentId: null,
   tags: [],
   version: 0,
   createdAt: ts,

@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { renderMarkdownToHtml } from './markdown.js';
 import { UlidSchema } from './schemas.js';
 import {
+  carriedInMarkdown,
   findTaskEmbeds,
   parseTaskEmbedLine,
   removeTaskEmbedLines,
   replaceTaskEmbeds,
   taskEmbedFallbackLine,
   taskEmbedIds,
+  taskEmbedNesting,
+  taskEmbedParents,
   taskEmbedToken,
 } from './task-embeds.js';
 
@@ -102,5 +105,51 @@ describe('embed ids follow the ULID pattern', () => {
   ])('%s → %s, same as UlidSchema', (id, ok) => {
     expect(parseTaskEmbedLine(`{{task:${id}}}`) !== null).toBe(ok);
     expect(UlidSchema.safeParse(id).success).toBe(ok);
+  });
+});
+
+describe('subtasks', () => {
+  const C = '01JCCCCCCCCCCCCCCCCCCCCCCC';
+  const D = '01JDDDDDDDDDDDDDDDDDDDDDDD';
+  const t = (id: string) => `{{task:${id}}}`;
+
+  it('a task line indented under a task line is its subtask, one level deep', () => {
+    const md = [t(A), '  context', `  ${t(B)}`, `    ${t(C)}`, t(D)].join('\n');
+    expect(taskEmbedParents(md)).toEqual([{ id: B, parentId: A }]);
+    expect(
+      taskEmbedNesting(md).map((e) => [e.id, e.parentId, e.depth]),
+    ).toEqual([
+      [A, null, 0],
+      [B, A, 1],
+      [C, null, 2],
+      [D, null, 0],
+    ]);
+  });
+
+  it('a blank line, a less-indented line or text between them ends the nesting', () => {
+    expect(taskEmbedParents([t(A), '', `  ${t(B)}`].join('\n'))).toEqual([]);
+    expect(
+      taskEmbedParents([t(A), '  text', `    ${t(B)}`].join('\n')),
+    ).toEqual([]);
+    expect(
+      taskEmbedParents(['- list', `  ${t(A)}`, `    ${t(B)}`].join('\n')),
+    ).toEqual([{ id: B, parentId: A }]);
+    expect(
+      taskEmbedParents(['```', t(A), '```', `  ${t(B)}`].join('\n')),
+    ).toEqual([]);
+  });
+
+  it('Carried in nests a subtask under its parent when both carry in', () => {
+    expect(
+      carriedInMarkdown([
+        { id: B, parentId: A },
+        { id: A },
+        { id: C, parentId: D },
+        { id: D, parentId: null },
+      ]),
+    ).toBe(`## Carried in\n\n${t(A)}\n  ${t(B)}\n${t(D)}\n  ${t(C)}\n\n`);
+    expect(carriedInMarkdown([{ id: B, parentId: A }])).toBe(
+      `## Carried in\n\n${t(B)}\n\n`,
+    );
   });
 });

@@ -4,6 +4,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from '@tanstack/react-query';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
@@ -24,6 +25,7 @@ import {
   type UpdateNoteRequest,
 } from './api.js';
 import { setCachedNote } from './cache.js';
+import { refetchRenestedTasks } from './tasks.js';
 import { useBatchedByIds, type ByIdResult } from './batchedByIds.js';
 import {
   createVersionedResource,
@@ -120,13 +122,18 @@ export const fetchDailyNoteEntity = async (
   return data;
 };
 
+const setSavedNote = (queryClient: QueryClient, note: Note) => {
+  setCachedNote(queryClient, note);
+  refetchRenestedTasks(queryClient, note);
+};
+
 export const noteResource = createVersionedResource<Note, NoteResourceParams>({
   queryKey: ({ id }) => queryKeys.notes.detail(id),
   fetch: (client, { id }) => fetchNote(client, id),
   update: (client, { id }, body) =>
     updateNote(client, id, body as UpdateNoteRequest),
   delete: (client, { id }, body) => deleteNote(client, id, body),
-  setCache: setCachedNote,
+  setCache: setSavedNote,
   tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 
@@ -152,7 +159,7 @@ export const dailyNoteResource = createVersionedResource<
     forgetPendingDaily(area, date);
     return saved;
   },
-  setCache: setCachedNote,
+  setCache: setSavedNote,
   tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
 

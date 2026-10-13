@@ -23,9 +23,12 @@ import { useTabs } from '../useTabs';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
+import { TaskParentLabel } from './TaskParentLabel';
 import './todayPanels.css';
 
-type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;
+type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'> & {
+  parentId?: string | null;
+};
 export type TodaySheetTab = 'open' | 'coming';
 const TABS: readonly TodaySheetTab[] = ['open', 'coming'];
 
@@ -180,10 +183,14 @@ export function TodaySheet<T extends SheetTask>({
               <span className="today-sheet__text">
                 {taskTo ? (
                   <Link to={taskTo(task)} className="today-sheet__title">
+                    <TaskParentLabel parentId={task.parentId} />
                     {task.title}
                   </Link>
                 ) : (
-                  <span className="today-sheet__title">{task.title}</span>
+                  <span className="today-sheet__title">
+                    <TaskParentLabel parentId={task.parentId} />
+                    {task.title}
+                  </span>
                 )}
                 <span className="today-sheet__meta today-sheet__meta--day">
                   {comingUpDayLabel(date, day)}
@@ -360,10 +367,14 @@ function StillOpenSheetRow({
         <span className="today-sheet__text">
           {to ? (
             <Link to={to} className="today-sheet__title">
+              <TaskParentLabel parentId={task.parentId} />
               {task.title}
             </Link>
           ) : (
-            <span className="today-sheet__title">{task.title}</span>
+            <span className="today-sheet__title">
+              <TaskParentLabel parentId={task.parentId} />
+              {task.title}
+            </span>
           )}
           <span className="today-sheet__meta">
             {due ? (

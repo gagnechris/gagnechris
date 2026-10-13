@@ -47,6 +47,7 @@ type Task struct {
 	Someday     bool     `json:"someday"`
 	CompletedAt *string  `json:"completedAt"`
 	NoteID      *string  `json:"noteId"`
+	ParentID    *string  `json:"parentId"`
 	Tags        []string `json:"tags"`
 	Version     int      `json:"version"`
 	CreatedAt   string   `json:"createdAt"`
@@ -139,6 +140,9 @@ func ParseTask(item data.Item) (Task, error) {
 	}
 	t.CompletedAt = r.NullStr("completedAt", 0)
 	t.NoteID = r.NullStr("noteId", 1)
+	if _, ok := item["parentId"]; ok {
+		t.ParentID = r.NullStr("parentId", 1)
+	}
 	t.Tags = r.StrList("tags")
 	t.Version, t.CreatedAt, t.UpdatedAt, t.Deleted = versionedMeta(r)
 	return t, r.Err("task")
@@ -201,6 +205,7 @@ func taskItem(t Task) data.Item {
 	item["someday"] = data.Bool(t.Someday)
 	item["completedAt"] = optS(t.CompletedAt)
 	item["noteId"] = optS(t.NoteID)
+	item["parentId"] = optS(t.ParentID)
 	item["tags"] = data.StrList(t.Tags)
 	item["version"] = data.N(int64(t.Version))
 	item["createdAt"] = data.S(t.CreatedAt)

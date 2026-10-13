@@ -2466,6 +2466,12 @@
             "nullable": true,
             "minLength": 1
           },
+          "parentId": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "description": "The task this is a subtask of, set from indentation in its home note"
+          },
           "tags": {
             "type": "array",
             "items": {
@@ -2501,6 +2507,7 @@
           "someday",
           "completedAt",
           "noteId",
+          "parentId",
           "tags",
           "version",
           "createdAt",
@@ -2578,6 +2585,12 @@
                   "nullable": true,
                   "minLength": 1
                 },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true,
+                  "minLength": 1,
+                  "description": "The task this is a subtask of, set from indentation in its home note"
+                },
                 "tags": {
                   "type": "array",
                   "items": {
@@ -2613,6 +2626,7 @@
                 "someday",
                 "completedAt",
                 "noteId",
+                "parentId",
                 "tags",
                 "version",
                 "createdAt",
@@ -2815,6 +2829,12 @@
                   "nullable": true,
                   "minLength": 1
                 },
+                "parentId": {
+                  "type": "string",
+                  "nullable": true,
+                  "minLength": 1,
+                  "description": "The task this is a subtask of, set from indentation in its home note"
+                },
                 "tags": {
                   "type": "array",
                   "items": {
@@ -2850,6 +2870,7 @@
                 "someday",
                 "completedAt",
                 "noteId",
+                "parentId",
                 "tags",
                 "version",
                 "createdAt",
@@ -3563,6 +3584,12 @@
                     "nullable": true,
                     "minLength": 1
                   },
+                  "parentId": {
+                    "type": "string",
+                    "nullable": true,
+                    "minLength": 1,
+                    "description": "The task this is a subtask of, set from indentation in its home note"
+                  },
                   "tags": {
                     "type": "array",
                     "items": {
@@ -3598,6 +3625,7 @@
                   "someday",
                   "completedAt",
                   "noteId",
+                  "parentId",
                   "tags",
                   "version",
                   "createdAt",
@@ -19614,6 +19642,12 @@
                             "nullable": true,
                             "minLength": 1
                           },
+                          "parentId": {
+                            "type": "string",
+                            "nullable": true,
+                            "minLength": 1,
+                            "description": "The task this is a subtask of, set from indentation in its home note"
+                          },
                           "tags": {
                             "type": "array",
                             "items": {
@@ -19649,6 +19683,7 @@
                           "someday",
                           "completedAt",
                           "noteId",
+                          "parentId",
                           "tags",
                           "version",
                           "createdAt",
@@ -19980,6 +20015,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -20015,6 +20056,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",
@@ -20342,6 +20384,12 @@
                             "nullable": true,
                             "minLength": 1
                           },
+                          "parentId": {
+                            "type": "string",
+                            "nullable": true,
+                            "minLength": 1,
+                            "description": "The task this is a subtask of, set from indentation in its home note"
+                          },
                           "tags": {
                             "type": "array",
                             "items": {
@@ -20377,6 +20425,7 @@
                           "someday",
                           "completedAt",
                           "noteId",
+                          "parentId",
                           "tags",
                           "version",
                           "createdAt",
@@ -20665,6 +20714,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -20700,6 +20755,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",
@@ -21085,6 +21141,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -21120,6 +21182,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",
@@ -21475,6 +21538,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -21510,6 +21579,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",
@@ -21872,6 +21942,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -21907,6 +21983,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",
@@ -22317,6 +22394,12 @@
                       "nullable": true,
                       "minLength": 1
                     },
+                    "parentId": {
+                      "type": "string",
+                      "nullable": true,
+                      "minLength": 1,
+                      "description": "The task this is a subtask of, set from indentation in its home note"
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -22352,6 +22435,7 @@
                     "someday",
                     "completedAt",
                     "noteId",
+                    "parentId",
                     "tags",
                     "version",
                     "createdAt",

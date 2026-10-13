@@ -7599,6 +7599,8 @@ export interface paths {
                                 /** Format: date-time */
                                 completedAt: string | null;
                                 noteId: string | null;
+                                /** @description The task this is a subtask of, set from indentation in its home note */
+                                parentId: string | null;
                                 tags: string[];
                                 version: number;
                                 /** Format: date-time */
@@ -7755,6 +7757,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -7934,6 +7938,8 @@ export interface paths {
                                 /** Format: date-time */
                                 completedAt: string | null;
                                 noteId: string | null;
+                                /** @description The task this is a subtask of, set from indentation in its home note */
+                                parentId: string | null;
                                 tags: string[];
                                 version: number;
                                 /** Format: date-time */
@@ -8084,6 +8090,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -8284,6 +8292,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -8473,6 +8483,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -8636,6 +8648,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -8837,6 +8851,8 @@ export interface paths {
                             /** Format: date-time */
                             completedAt: string | null;
                             noteId: string | null;
+                            /** @description The task this is a subtask of, set from indentation in its home note */
+                            parentId: string | null;
                             tags: string[];
                             version: number;
                             /** Format: date-time */
@@ -10618,6 +10634,8 @@ export interface components {
             /** Format: date-time */
             completedAt: string | null;
             noteId: string | null;
+            /** @description The task this is a subtask of, set from indentation in its home note */
+            parentId: string | null;
             tags: string[];
             version: number;
             /** Format: date-time */
@@ -10644,6 +10662,8 @@ export interface components {
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
+                /** @description The task this is a subtask of, set from indentation in its home note */
+                parentId: string | null;
                 tags: string[];
                 version: number;
                 /** Format: date-time */
@@ -10700,6 +10720,8 @@ export interface components {
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
+                /** @description The task this is a subtask of, set from indentation in its home note */
+                parentId: string | null;
                 tags: string[];
                 version: number;
                 /** Format: date-time */
@@ -10914,6 +10936,8 @@ export interface components {
                 /** Format: date-time */
                 completedAt: string | null;
                 noteId: string | null;
+                /** @description The task this is a subtask of, set from indentation in its home note */
+                parentId: string | null;
                 tags: string[];
                 version: number;
                 /** Format: date-time */

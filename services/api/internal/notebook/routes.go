@@ -50,7 +50,7 @@ func Routes(table *data.Table, now func() time.Time) []api.Route {
 		route(http.MethodPost, "/notebook/tasks/:id/reopen", "ReopenTask", h.taskAction((*tasksRepo).reopen)),
 		route(http.MethodGet, "/notebook/tasks/:id", "GetTask", h.getTask),
 		route(http.MethodPut, "/notebook/tasks/:id", "UpdateTask", h.updateTask),
-		route(http.MethodDelete, "/notebook/tasks/:id", "DeleteTask", h.taskAction((*tasksRepo).delete)),
+		route(http.MethodDelete, "/notebook/tasks/:id", "DeleteTask", h.deleteTask),
 
 		route(http.MethodGet, template, "GetDailyTemplate", h.getTemplate),
 		route(http.MethodPut, template, "UpdateDailyTemplate", h.updateTemplate),
@@ -292,6 +292,7 @@ func (h handlers) createNote(ctx context.Context, r *api.Request) (*api.Response
 	if err != nil {
 		return nil, err
 	}
+	h.nestSubtasks(ctx, r, n)
 	return noteResponse(http.StatusCreated, n)
 }
 
@@ -306,6 +307,14 @@ func readNoteFields(v *api.Validator, withArea bool) noteFields {
 		f.area = optStr(v.Enum("area", false, Areas...))
 	}
 	return f
+}
+
+// nestSubtasks sets the parents the note's indentation gives its tasks. The
+// note is already saved, so a failure is logged and the next save retries.
+func (h handlers) nestSubtasks(ctx context.Context, r *api.Request, n Note) {
+	if err := h.tasks.syncParents(ctx, r.UserID(), n, store.LogCorrupt(r.Log, r.Metrics)); err != nil {
+		r.Log.Warn("Subtask nesting failed", "noteId", n.ID, "errMessage", err.Error())
+	}
 }
 
 func (h handlers) emptyDay(ctx context.Context, userID, area, date string) (*api.Response, error) {
@@ -422,6 +431,9 @@ func (h handlers) upsertDaily(ctx context.Context, r *api.Request) (*api.Respons
 	if err != nil {
 		return nil, err
 	}
+	if f.bodyMarkdown != nil {
+		h.nestSubtasks(ctx, r, n)
+	}
 	return noteResponse(http.StatusOK, n)
 }
 
@@ -458,6 +470,9 @@ func (h handlers) updateNote(ctx context.Context, r *api.Request) (*api.Response
 	n, err := h.notes.update(ctx, r.UserID(), id, e, f)
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
+	}
+	if f.bodyMarkdown != nil {
+		h.nestSubtasks(ctx, r, n)
 	}
 	return noteResponse(http.StatusOK, n)
 }
@@ -685,6 +700,11 @@ func (h handlers) updateTask(ctx context.Context, r *api.Request) (*api.Response
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
 	}
+	if f.hasNote || f.area != nil {
+		if t, err = h.renest(ctx, r.UserID(), t); err != nil {
+			return nil, err
+		}
+	}
 	return taskResponse(http.StatusOK, t)
 }
 
@@ -700,6 +720,21 @@ func (h handlers) taskAction(act func(*tasksRepo, context.Context, string, strin
 		}
 		return taskResponse(http.StatusOK, t)
 	}
+}
+
+func (h handlers) deleteTask(ctx context.Context, r *api.Request) (*api.Response, error) {
+	id, e, err := versionOnly(r)
+	if err != nil {
+		return nil, err
+	}
+	t, err := h.tasks.delete(ctx, r.UserID(), id, e)
+	if err != nil {
+		return nil, e.IfMatchConflict(err)
+	}
+	if err := h.clearSubtasks(ctx, r.UserID(), t, store.LogCorrupt(r.Log, r.Metrics)); err != nil {
+		r.Log.Warn("Clearing subtasks failed", "taskId", t.ID, "errMessage", err.Error())
+	}
+	return taskResponse(http.StatusOK, t)
 }
 
 // Daily templates.

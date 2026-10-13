@@ -461,6 +461,8 @@ export const TaskMetaItemSchema = VersionedMetaFieldsSchema.extend({
   someday: z.boolean().optional(),
   completedAt: z.string().nullable(),
   noteId: z.string().min(1).nullable(),
+  /** Absent on rows written before subtasks; read as `null`. */
+  parentId: z.string().min(1).nullable().optional(),
   tags: z.array(z.string()),
 });
 
@@ -508,6 +510,7 @@ export function taskContentEqual(
     | 'someday'
     | 'completedAt'
     | 'noteId'
+    | 'parentId'
     | 'tags'
   >,
   b: Pick<
@@ -522,6 +525,7 @@ export function taskContentEqual(
     | 'someday'
     | 'completedAt'
     | 'noteId'
+    | 'parentId'
     | 'tags'
   >,
 ): boolean {
@@ -536,6 +540,7 @@ export function taskContentEqual(
     a.someday === b.someday &&
     a.completedAt === b.completedAt &&
     a.noteId === b.noteId &&
+    a.parentId === b.parentId &&
     deepEqual(a.tags, b.tags)
   );
 }
@@ -584,6 +589,7 @@ export function metaToTask(item: TaskMetaItem): Task {
     someday: item.someday ?? false,
     completedAt: item.completedAt,
     noteId: item.noteId,
+    parentId: item.parentId ?? null,
     tags: item.tags,
     version: item.version,
     createdAt: item.createdAt,
@@ -708,6 +714,7 @@ export function buildTaskMetaItem(task: Task): TaskMetaItem {
     someday: task.someday,
     completedAt: task.completedAt,
     noteId: task.noteId,
+    parentId: task.parentId,
     tags: task.tags,
     version: task.version,
     createdAt: task.createdAt,

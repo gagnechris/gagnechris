@@ -12,9 +12,10 @@ func TestTextHelpersMatchTypeScript(t *testing.T) {
 	textcases.Replay(t, "notebook", map[string]func(json.RawMessage) any{
 		"taskEmbedIds": func(in json.RawMessage) any { return TaskEmbedIDs(textcases.Decode[string](t, in)) },
 		"carriedInMarkdown": func(in json.RawMessage) any {
-			return CarriedInMarkdown(textcases.Decode[[]string](t, in))
+			return CarriedInMarkdown(textcases.Decode[[]CarriedInTask](t, in))
 		},
-		"normalizeTags": func(in json.RawMessage) any { return NormalizeTags(textcases.Decode[[]string](t, in)) },
+		"taskEmbedParents": func(in json.RawMessage) any { return TaskEmbedParents(textcases.Decode[string](t, in)) },
+		"normalizeTags":    func(in json.RawMessage) any { return NormalizeTags(textcases.Decode[[]string](t, in)) },
 		"fillDailyTemplate": func(in json.RawMessage) any {
 			c := textcases.Decode[template](t, in)
 			return FillDailyTemplate(c.Markdown, c.Area, c.Date)

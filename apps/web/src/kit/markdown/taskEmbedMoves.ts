@@ -1,6 +1,6 @@
 import { Transaction } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { findTaskEmbeds } from '@gagnechris/shared';
+import { findTaskEmbeds, taskEmbedIds } from '@gagnechris/shared';
 import { moveLinesDown, moveLinesUp } from './lineMoves';
 import {
   blockAt,
@@ -8,6 +8,7 @@ import {
   moveBlock,
   moveBlockToSection,
   noteHeadings,
+  reindentBlock,
   sectionOf,
   type LineBlock,
 } from './taskBlockMoves';
@@ -116,6 +117,54 @@ export function shiftTaskEmbedFrom(
   shiftTaskEmbed(view, lineOf(view, widget), dir, bySection);
 }
 
+const NEST = 2;
+const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
+
+/**
+ * Tab nests the task, with its lines, under the task above it at its level;
+ * ⇧Tab takes it out a level.
+ */
+export function indentTaskEmbed(
+  view: EditorView,
+  line: number,
+  dir: 'in' | 'out',
+): boolean {
+  const { state } = view;
+  const { doc } = state;
+  const text = doc.line(line).text;
+  const indent = indentOf(text);
+  if (dir === 'in') {
+    // The task above at this task's level becomes its parent.
+    let above = line - 1;
+    while (above >= 1 && indentOf(doc.line(above).text) > indent) {
+      if (!doc.line(above).text.trim()) return false;
+      above -= 1;
+    }
+    if (above < 1 || indentOf(doc.line(above).text) !== indent) return false;
+    if (!findTaskEmbeds(doc.line(above).text).length) return false;
+  } else if (indent === 0) {
+    return false;
+  }
+  const spec = reindentBlock(
+    state,
+    blockAt(doc, line),
+    dir === 'in' ? NEST : -NEST,
+    dir === 'in' ? 'input.indent' : 'delete.dedent',
+  );
+  if (!spec) return false;
+  view.dispatch(spec);
+  announceMove(dir === 'in' ? 'Nested' : 'Moved out a level');
+  return true;
+}
+
+export function indentTaskEmbedFrom(
+  view: EditorView,
+  widget: HTMLElement,
+  dir: 'in' | 'out',
+) {
+  return indentTaskEmbed(view, lineOf(view, widget), dir);
+}
+
 /** The note's `##` section titles, for Move to. */
 export const taskEmbedSections = (view: EditorView) =>
   noteHeadings(view.state.doc).map((h) => h.title);
@@ -169,6 +218,8 @@ export function taskEmbedBlock(view: EditorView, widget: HTMLElement) {
 }
 
 const EDGE = 48;
+const SIDEWAYS = 28;
+const NEST_PX = 28;
 const HEADING_LINE = /^##[ \t]/;
 
 /** The nearest scrolling box: the editor's own, or the page. */
@@ -196,6 +247,20 @@ export function dragTaskEmbed(
   const ghost = row.cloneNode(true) as HTMLElement;
   ghost.classList.add('task-embed-ghost');
   ghost.setAttribute('aria-hidden', 'true');
+  const carried =
+    taskEmbedIds(
+      startDoc.sliceString(
+        startDoc.line(block.first).from,
+        startDoc.line(block.last).to,
+      ),
+    ).length - 1;
+  if (carried > 0) {
+    const count = document.createElement('span');
+    count.className = 'task-embed-ghost__count';
+    count.textContent = `+${carried}`;
+    ghost.append(count);
+  }
+  const ownIndent = indentOf(startDoc.line(block.first).text);
   Object.assign(ghost.style, {
     left: `${rect.left}px`,
     top: `${rect.top}px`,
@@ -209,11 +274,28 @@ export function dragTaskEmbed(
   widget.classList.add('cm-task-embed--lifted');
 
   let target: number | null = null;
+  let indent = 0;
   let y = start.clientY;
+  let x = start.clientX;
   let frame = 0;
+
+  /** Sideways past a step nests under the task above, or takes it out. */
+  const levelAt = (before: number) => {
+    const dx = x - start.clientX;
+    if (dx < -SIDEWAYS) return ownIndent > 0 ? -Math.min(NEST, ownIndent) : 0;
+    if (dx <= SIDEWAYS) return 0;
+    const above = before - 1;
+    if (above < 1 || (above >= block.first && above <= block.last)) return 0;
+    const text = view.state.doc.line(above).text;
+    if (!findTaskEmbeds(text).length) return 0;
+    return indentOf(text) + NEST - ownIndent > 0
+      ? indentOf(text) + NEST - ownIndent
+      : 0;
+  };
 
   const place = () => {
     ghost.style.top = `${y - offsetY}px`;
+    ghost.style.left = `${rect.left + Math.max(-NEST_PX, Math.min(NEST_PX, x - start.clientX))}px`;
     const { doc } = view.state;
     const content = view.contentDOM.getBoundingClientRect();
     const pos = view.posAtCoords({ x: content.left + 4, y }, false);
@@ -225,16 +307,20 @@ export function dragTaskEmbed(
       : y < mid
         ? line.number
         : line.number + 1;
-    target = next >= block.first && next <= block.last + 1 ? null : next;
-    indicator.hidden = target === null;
-    if (target === null) return;
+    const inPlace = next >= block.first && next <= block.last + 1;
+    indent = levelAt(inPlace ? block.first : next);
+    target = inPlace ? null : next;
+    indicator.hidden = target === null && indent === 0;
+    if (indicator.hidden) return;
+    const mark = target ?? block.first;
     const at =
-      target > doc.lines
+      mark > doc.lines
         ? view.documentTop + view.lineBlockAt(doc.length).bottom
-        : view.documentTop + view.lineBlockAt(doc.line(target).from).top;
+        : view.documentTop + view.lineBlockAt(doc.line(mark).from).top;
+    const shift = Math.sign(indent) * NEST_PX;
     Object.assign(indicator.style, {
-      left: `${content.left}px`,
-      width: `${content.width}px`,
+      left: `${content.left + shift}px`,
+      width: `${content.width - shift}px`,
       top: `${at - 1}px`,
     });
   };
@@ -257,6 +343,7 @@ export function dragTaskEmbed(
 
   const onMove = (e: PointerEvent) => {
     y = e.clientY;
+    x = e.clientX;
     place();
   };
   const finish = (drop: boolean) => {
@@ -268,11 +355,22 @@ export function dragTaskEmbed(
     ghost.remove();
     indicator.remove();
     widget.classList.remove('cm-task-embed--lifted');
-    if (!drop || target === null || view.state.doc !== startDoc) return;
-    const spec = moveBlock(view.state, block, target, 'move.drop');
+    if (!drop || view.state.doc !== startDoc) return;
+    if (target === null && indent === 0) return;
+    const spec = moveBlock(
+      view.state,
+      block,
+      target ?? block.first,
+      'move.drop',
+      indent,
+    );
     if (!spec) return;
     view.dispatch(spec);
-    announceAfter(view, id, before, target < block.first ? 'up' : 'down');
+    if (target === null) {
+      announceMove(indent > 0 ? 'Nested' : 'Moved out a level');
+    } else {
+      announceAfter(view, id, before, target < block.first ? 'up' : 'down');
+    }
   };
   const onUp = () => finish(true);
   const onCancel = () => finish(false);

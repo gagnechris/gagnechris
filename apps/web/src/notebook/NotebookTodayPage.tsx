@@ -26,6 +26,7 @@ import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
 import { DayTitle, TodayEditor } from './TodayEditor';
 import { useLocalToday } from './useLocalToday';
 import { useTodayActions } from './useTodayActions';
+import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
 
 function resolveDate(param: string | null, today: string): string {
@@ -119,6 +120,13 @@ export default function NotebookTodayPage() {
     (n, d) => n + d.tasks.length,
     0,
   );
+  const listed = useMemo(
+    () => [
+      ...stillOpenRows.map((r) => r.task),
+      ...buckets.comingUp.flatMap((d) => d.tasks),
+    ],
+    [stillOpenRows, buckets.comingUp],
+  );
   const tasksLoading = loading.stillOpen || loading.comingUp;
   const tasksError = loadError ? 'Could not load tasks.' : actionError;
 
@@ -147,204 +155,213 @@ export default function NotebookTodayPage() {
   };
 
   return (
-    <section className="workspace-panel workspace-panel--editor">
-      <div className="notebook-today">
-        <div className="notebook-today__main" ref={editorRef}>
-          <div className="notebook-today__day-nav">
-            <button
-              type="button"
-              className="kit-btn"
-              aria-label="Previous"
-              title="Previous day"
-              onClick={() => setDate(addDays(date, -1))}
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              className="kit-btn"
-              aria-label="Jump to today"
-              disabled={date === today}
-              onClick={() => setDate(today)}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              className="kit-btn"
-              aria-label="Next"
-              title="Next day"
-              onClick={() => setDate(addDays(date, 1))}
-            >
-              ›
-            </button>
-            <details ref={calendarRef} className="notebook-today__calendar">
-              <summary>
-                <svg
-                  className="notebook-today__calendar-icon"
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM16 2v4M8 2v4M3 10h18"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                <span className="notebook-today__calendar-label">Calendar</span>
-              </summary>
-              <NotebookCalendar
-                selected={date}
-                onSelect={(next) => {
-                  setDate(next);
-                  // The open calendar covers the note.
-                  const calendar = calendarRef.current;
-                  if (!calendar) return;
-                  calendar.open = false;
-                  calendar.querySelector('summary')?.focus();
-                }}
-                markedDates={datesQuery.data}
-                onMonthChange={setCalendarMonth}
-              />
-            </details>
-            <span className="notebook-today__phone-tools">
-              <select
-                className="kit-input notebook-today__area"
-                aria-label="Notebook area"
-                value={areaFilter}
-                onChange={(e) =>
-                  setAreaFilter(e.target.value as NotebookAreaFilter)
-                }
+    <TaskParentsProvider tasks={listed}>
+      <section className="workspace-panel workspace-panel--editor">
+        <div className="notebook-today">
+          <div className="notebook-today__main" ref={editorRef}>
+            <div className="notebook-today__day-nav">
+              <button
+                type="button"
+                className="kit-btn"
+                aria-label="Previous"
+                title="Previous day"
+                onClick={() => setDate(addDays(date, -1))}
               >
-                {NOTEBOOK_AREA_FILTERS.map((area) => (
-                  <option key={area} value={area}>
-                    {NOTEBOOK_AREA_LABELS[area]}
-                  </option>
-                ))}
-              </select>
-              {openSearch ? (
-                <button
-                  type="button"
-                  className="kit-btn notebook-today__search"
-                  aria-label="Search"
-                  onClick={openSearch}
+                ‹
+              </button>
+              <button
+                type="button"
+                className="kit-btn"
+                aria-label="Jump to today"
+                disabled={date === today}
+                onClick={() => setDate(today)}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                className="kit-btn"
+                aria-label="Next"
+                title="Next day"
+                onClick={() => setDate(addDays(date, 1))}
+              >
+                ›
+              </button>
+              <details ref={calendarRef} className="notebook-today__calendar">
+                <summary>
+                  <svg
+                    className="notebook-today__calendar-icon"
+                    viewBox="0 0 24 24"
+                    width="18"
+                    height="18"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM16 2v4M8 2v4M3 10h18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span className="notebook-today__calendar-label">
+                    Calendar
+                  </span>
+                </summary>
+                <NotebookCalendar
+                  selected={date}
+                  onSelect={(next) => {
+                    setDate(next);
+                    // The open calendar covers the note.
+                    const calendar = calendarRef.current;
+                    if (!calendar) return;
+                    calendar.open = false;
+                    calendar.querySelector('summary')?.focus();
+                  }}
+                  markedDates={datesQuery.data}
+                  onMonthChange={setCalendarMonth}
+                />
+              </details>
+              <span className="notebook-today__phone-tools">
+                <select
+                  className="kit-input notebook-today__area"
+                  aria-label="Notebook area"
+                  value={areaFilter}
+                  onChange={(e) =>
+                    setAreaFilter(e.target.value as NotebookAreaFilter)
+                  }
                 >
-                  <ShellIcon name="search" />
-                </button>
-              ) : null}
-            </span>
-          </div>
-          <button
-            ref={stripRef}
-            type="button"
-            className="notebook-today__strip"
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
-            aria-label={
-              tasksLoading
-                ? 'Today’s tasks. Show list'
-                : `${stillOpenRows.length} still open, ${comingUpCount} coming up. Show list`
-            }
-            onClick={() => setSheetOpen(true)}
-          >
-            <span className="notebook-today__strip-text">
-              <strong>
-                {tasksLoading ? '…' : stillOpenRows.length} still open
-              </strong>{' '}
-              · {tasksLoading ? '…' : comingUpCount} coming up
-            </span>
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <path
-                d="m18 15-6-6-6 6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                  {NOTEBOOK_AREA_FILTERS.map((area) => (
+                    <option key={area} value={area}>
+                      {NOTEBOOK_AREA_LABELS[area]}
+                    </option>
+                  ))}
+                </select>
+                {openSearch ? (
+                  <button
+                    type="button"
+                    className="kit-btn notebook-today__search"
+                    aria-label="Search"
+                    onClick={openSearch}
+                  >
+                    <ShellIcon name="search" />
+                  </button>
+                ) : null}
+              </span>
+            </div>
+            <button
+              ref={stripRef}
+              type="button"
+              className="notebook-today__strip"
+              aria-haspopup="dialog"
+              aria-expanded={sheetOpen}
+              aria-label={
+                tasksLoading
+                  ? 'Today’s tasks. Show list'
+                  : `${stillOpenRows.length} still open, ${comingUpCount} coming up. Show list`
+              }
+              onClick={() => setSheetOpen(true)}
+            >
+              <span className="notebook-today__strip-text">
+                <strong>
+                  {tasksLoading ? '…' : stillOpenRows.length} still open
+                </strong>{' '}
+                · {tasksLoading ? '…' : comingUpCount} coming up
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  d="m18 15-6-6-6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {writingArea ? (
+              <TodayEditor
+                // A new key after a delete: a fresh editor on the day's placeholder.
+                key={`${writingArea}:${date}:${editorGeneration}`}
+                area={writingArea}
+                date={date}
+                today={today}
+                onUnsavedChange={onUnsavedChange}
+                onEmbeddedIds={onEmbeddedIds}
+                appendEmbedRef={appendEmbedRef}
+                onNoteReady={setNoteReady}
+                highlightTaskId={highlightTaskId}
+                onHighlighted={clearHighlight}
+                onDeleted={() => setEditorGeneration((n) => n + 1)}
               />
-            </svg>
-          </button>
-          {writingArea ? (
-            <TodayEditor
-              // A new key after a delete: a fresh editor on the day's placeholder.
-              key={`${writingArea}:${date}:${editorGeneration}`}
-              area={writingArea}
-              date={date}
-              today={today}
-              onUnsavedChange={onUnsavedChange}
-              onEmbeddedIds={onEmbeddedIds}
-              appendEmbedRef={appendEmbedRef}
-              onNoteReady={setNoteReady}
-              highlightTaskId={highlightTaskId}
-              onHighlighted={clearHighlight}
-              onDeleted={() => setEditorGeneration((n) => n + 1)}
+            ) : (
+              <>
+                <div className="workspace-action-bar notebook-today__header">
+                  <DayTitle area={null} date={date} today={today} />
+                </div>
+                <p className="workspace-panel__lede">
+                  Choose Work or Personal in the area switcher to write a daily
+                  note or act on tasks. All shows both areas, read-only.
+                </p>
+              </>
+            )}
+            {date >= today && !loading.stillOpen ? (
+              <CarryFooter
+                count={buckets.carryCount}
+                nextDay={addDays(date, 1)}
+              />
+            ) : null}
+          </div>
+          <aside className="notebook-today__side" aria-label="Today tasks">
+            <StillOpenPanel
+              rows={stillOpenRows}
+              snoozeFrom={snoozeBaseDay(date, today)}
+              readOnly={readOnly}
+              loading={loading.stillOpen}
+              error={tasksError}
+              onToggle={onToggle}
+              onSnooze={onSnooze}
+              onDrop={onDrop}
+              onAddToNote={canAddToNote ? addToNote : undefined}
             />
-          ) : (
-            <>
-              <div className="workspace-action-bar notebook-today__header">
-                <DayTitle area={null} date={date} today={today} />
-              </div>
-              <p className="workspace-panel__lede">
-                Choose Work or Personal in the area switcher to write a daily
-                note or act on tasks. All shows both areas, read-only.
-              </p>
-            </>
-          )}
-          {date >= today && !loading.stillOpen ? (
-            <CarryFooter
-              count={buckets.carryCount}
-              nextDay={addDays(date, 1)}
+            <ComingUpPanel
+              days={buckets.comingUp}
+              day={date}
+              readOnly={readOnly}
+              loading={loading.comingUp}
+              onToggle={onToggle}
+              taskTo={taskTo}
+              upcomingTo={UPCOMING_ROUTE}
+              onAddToNote={canAddToNote ? addToNote : undefined}
             />
-          ) : null}
+            <TaskSyntaxCheatSheet />
+          </aside>
         </div>
-        <aside className="notebook-today__side" aria-label="Today tasks">
-          <StillOpenPanel
-            rows={stillOpenRows}
+        {sheetOpen ? (
+          <TodaySheet
+            stillOpen={stillOpenRows}
+            comingUp={buckets.comingUp}
+            day={date}
             snoozeFrom={snoozeBaseDay(date, today)}
             readOnly={readOnly}
-            loading={loading.stillOpen}
+            loading={tasksLoading}
             error={tasksError}
+            onClose={closeSheet}
             onToggle={onToggle}
             onSnooze={onSnooze}
             onDrop={onDrop}
             onAddToNote={canAddToNote ? addToNote : undefined}
-          />
-          <ComingUpPanel
-            days={buckets.comingUp}
-            day={date}
-            readOnly={readOnly}
-            loading={loading.comingUp}
-            onToggle={onToggle}
             taskTo={taskTo}
-            upcomingTo={UPCOMING_ROUTE}
-            onAddToNote={canAddToNote ? addToNote : undefined}
           />
-          <TaskSyntaxCheatSheet />
-        </aside>
-      </div>
-      {sheetOpen ? (
-        <TodaySheet
-          stillOpen={stillOpenRows}
-          comingUp={buckets.comingUp}
-          day={date}
-          snoozeFrom={snoozeBaseDay(date, today)}
-          readOnly={readOnly}
-          loading={tasksLoading}
-          error={tasksError}
-          onClose={closeSheet}
-          onToggle={onToggle}
-          onSnooze={onSnooze}
-          onDrop={onDrop}
-          onAddToNote={canAddToNote ? addToNote : undefined}
-          taskTo={taskTo}
-        />
-      ) : null}
-    </section>
+        ) : null}
+      </section>
+    </TaskParentsProvider>
   );
 }
 

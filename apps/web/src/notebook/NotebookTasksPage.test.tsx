@@ -20,6 +20,7 @@ type Task = {
   someday: boolean;
   completedAt: string | null;
   noteId: string | null;
+  parentId: string | null;
   tags: string[];
   version: number;
   createdAt: string;
@@ -125,6 +126,7 @@ vi.mock('../workspace/api/client', () => ({
           someday: body.someday === true,
           completedAt: null,
           noteId: (body.noteId as string | null | undefined) ?? null,
+          parentId: null,
           tags: Array.isArray(body.tags) ? (body.tags as string[]) : [],
           version: 1,
           createdAt: now,
@@ -133,6 +135,16 @@ vi.mock('../workspace/api/client', () => ({
         };
         state.tasks.push(task);
         return { data: task, error: undefined, response: { status: 201 } };
+      }
+      if (path === '/api/notebook/tasks/batch') {
+        const ids = (init?.body?.ids ?? []) as string[];
+        return {
+          data: {
+            items: state.tasks.filter((t) => ids.includes(t.id) && !t.deleted),
+          },
+          error: undefined,
+          response: { status: 200 },
+        };
       }
       if (path === '/api/notebook/tasks/{id}/complete') {
         const id = init?.params?.path?.id;
@@ -206,6 +218,55 @@ describe('NotebookTasksPage', () => {
     state.created = [];
     state.failCreate = false;
     state.queries = [];
+  });
+
+  test('a subtask shows its parent title above its own, struck through once the parent is done', async () => {
+    const base = {
+      userId: 'u1',
+      area: 'work' as const,
+      description: '',
+      priority: 'med' as const,
+      dueDate: null,
+      startDate: null,
+      someday: false,
+      completedAt: null,
+      noteId: 'note-1',
+      tags: [],
+      version: 1,
+      createdAt: '2026-10-02T12:00:00.000Z',
+      updatedAt: '2026-10-02T12:00:00.000Z',
+      deleted: false,
+    };
+    state.tasks = [
+      { ...base, id: 'p1', title: 'Launch', status: 'todo', parentId: null },
+      {
+        ...base,
+        id: 's1',
+        title: 'Write copy',
+        status: 'todo',
+        parentId: 'p1',
+      },
+      { ...base, id: 'p2', title: 'Old plan', status: 'done', parentId: null },
+      { ...base, id: 's2', title: 'Leftover', status: 'todo', parentId: 'p2' },
+    ];
+    renderTasks();
+
+    const row = (title: string) =>
+      screen
+        .getByRole('checkbox', { name: `Complete ${title}` })
+        .closest('li')!;
+    await screen.findByText('Write copy');
+    await waitFor(() =>
+      expect(
+        row('Write copy').querySelector('.task-parent-label'),
+      ).toHaveTextContent('Launch'),
+    );
+    await waitFor(() =>
+      expect(
+        row('Leftover').querySelector('.task-parent-label--finished'),
+      ).toHaveTextContent('Old plan'),
+    );
+    expect(row('Launch').querySelector('.task-parent-label')).toBeNull();
   });
 
   test('a failed quick add shows an error and keeps the text', async () => {
@@ -316,6 +377,7 @@ describe('NotebookTasksPage', () => {
       someday: false,
       completedAt: status === 'done' ? '2026-09-01T12:00:00.000Z' : null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: '2026-09-01T12:00:00.000Z',
@@ -353,6 +415,7 @@ describe('NotebookTasksPage', () => {
       someday: false,
       completedAt: null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: '2026-09-01T12:00:00.000Z',
@@ -404,6 +467,7 @@ describe('NotebookTasksPage', () => {
       someday: false,
       completedAt: null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: '2026-09-01T12:00:00.000Z',
@@ -438,6 +502,7 @@ describe('NotebookTasksPage', () => {
       someday: false,
       completedAt: null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: '2026-09-01T12:00:00.000Z',
@@ -492,6 +557,7 @@ describe('NotebookTasksPage', () => {
       someday: false,
       completedAt: status === 'done' ? '2026-09-01T12:00:00.000Z' : null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: '2026-09-01T12:00:00.000Z',

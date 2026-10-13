@@ -582,3 +582,15 @@ td.kit-table__actions {
     margin: -12px;
   }
 }
+
+.task-parent-label {
+  display: block;
+  color: var(--neutral-500);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.task-parent-label--finished {
+  color: var(--neutral-400);
+  text-decoration: line-through;
+}

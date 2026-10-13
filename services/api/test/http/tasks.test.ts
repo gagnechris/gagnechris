@@ -355,6 +355,7 @@ describe('tasks (DynamoDB Local)', () => {
       someday: false,
       completedAt: null,
       noteId: null,
+      parentId: null,
       tags: [],
       version: 1,
       createdAt: ISO,

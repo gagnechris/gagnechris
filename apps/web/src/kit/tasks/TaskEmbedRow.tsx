@@ -56,10 +56,30 @@ export type TaskEmbedDetails = {
 export type TaskEmbedMoving = {
   /** Moves the task's block a step or a section; then focuses `refocus`. */
   shift: (dir: 'up' | 'down', bySection: boolean, refocus: string) => void;
+  /** Tab / ⇧Tab: nests the task under the line above, or takes it out; false when it can't. */
+  indent?: (dir: 'in' | 'out', refocus: string) => boolean;
   drag: (event: PointerEvent) => void;
   /** Move to…, opened by a right-click on the row. */
   menu?: (close: () => void) => ReactNode;
 };
+
+export type TaskEmbedSubtasks = {
+  done: number;
+  total: number;
+  folded: boolean;
+  onToggleFold: () => void;
+};
+
+/** Shown after a parent is checked while subtasks are still open. */
+export type TaskEmbedFinish = {
+  open: number;
+  onCompleteAll: () => void;
+  onJustParent: () => void;
+  onUndo: () => void;
+};
+
+/** The parent's title over a subtask that sits apart from it. */
+export type TaskEmbedParentLabel = { title: string; finished: boolean };
 
 /** ⌥↑ / ⌥↓, with ⇧ for a section. */
 const shiftKeyOf = (e: KeyboardEvent) =>
@@ -90,6 +110,7 @@ function TaskEmbedTitle({
   onMove,
   onToggleDetails,
   onShift,
+  onIndent,
 }: {
   title: string;
   onRename: (title: string) => void;
@@ -98,6 +119,7 @@ function TaskEmbedTitle({
   onMove?: TaskEmbedMove;
   onToggleDetails?: () => void;
   onShift?: TaskEmbedMoving['shift'];
+  onIndent?: TaskEmbedMoving['indent'];
 }) {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -155,6 +177,18 @@ function TaskEmbedTitle({
       e.preventDefault();
       commit();
       onShift?.(shift.dir, shift.bySection, '.task-embed__title-input');
+    } else if (
+      onIndent &&
+      e.key === 'Tab' &&
+      !e.altKey &&
+      !e.metaKey &&
+      !e.ctrlKey
+    ) {
+      // Where it can't nest, Tab moves focus on as usual.
+      commit();
+      if (onIndent(e.shiftKey ? 'out' : 'in', '.task-embed__title-input')) {
+        e.preventDefault();
+      }
     } else if (onToggleDetails && isToggleKey(e)) {
       e.preventDefault();
       onToggleDetails();
@@ -225,6 +259,9 @@ export function TaskEmbedRow({
   onMove,
   details,
   moving,
+  subtasks,
+  finish,
+  parent,
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
@@ -232,6 +269,9 @@ export function TaskEmbedRow({
   onMove?: TaskEmbedMove;
   details?: TaskEmbedDetails;
   moving?: TaskEmbedMoving;
+  subtasks?: TaskEmbedSubtasks;
+  finish?: TaskEmbedFinish;
+  parent?: TaskEmbedParentLabel;
 }) {
   const panelId = useId();
   const blockRef = useRef<HTMLDivElement>(null);
@@ -351,6 +391,7 @@ export function TaskEmbedRow({
           onMove={onMove}
           onToggleDetails={details?.onToggle}
           onShift={moving?.shift}
+          onIndent={moving?.indent}
         />
       ) : (
         <span className="task-embed__title">{task.title}</span>
@@ -381,6 +422,18 @@ export function TaskEmbedRow({
               strokeLinecap="round"
             />
           </svg>
+        </span>
+      ) : null}
+      {subtasks && subtasks.total > 0 ? (
+        <SubtaskProgress subtasks={subtasks} />
+      ) : null}
+      {subtasks &&
+      subtasks.total > 0 &&
+      subtasks.done === subtasks.total &&
+      !done &&
+      !dropped ? (
+        <span className="task-embed__pill task-embed__pill--all-done">
+          All done
         </span>
       ) : null}
       {dropped ? <span className="task-embed__pill">Dropped</span> : null}
@@ -430,11 +483,43 @@ export function TaskEmbedRow({
       </div>
     ) : null;
 
+  const label = parent ? (
+    <p
+      className={`task-embed__parent${parent.finished ? ' task-embed__parent--finished' : ''}`}
+    >
+      {parent.title}
+    </p>
+  ) : null;
+  const finishPrompt = finish ? (
+    <div
+      className="task-embed__finish"
+      role="group"
+      aria-label={`Finish ${task.title}`}
+    >
+      <span>
+        {finish.open === 1
+          ? '1 subtask is still open.'
+          : `${finish.open} subtasks are still open.`}
+      </span>
+      <button type="button" className="kit-btn" onClick={finish.onCompleteAll}>
+        Complete all
+      </button>
+      <button type="button" className="kit-btn" onClick={finish.onJustParent}>
+        Just the parent
+      </button>
+      <button type="button" className="kit-btn" onClick={finish.onUndo}>
+        Undo
+      </button>
+    </div>
+  ) : null;
+
   if (!details) {
-    return menu ? (
+    return menu || label || finishPrompt ? (
       <>
+        {label}
         {row}
         {menu}
+        {finishPrompt}
       </>
     ) : (
       row
@@ -442,8 +527,10 @@ export function TaskEmbedRow({
   }
   return (
     <div ref={blockRef} className="task-embed-block">
+      {label}
       {row}
       {menu}
+      {finishPrompt}
       {!open && details.peek ? (
         <p className="task-embed__peek">{details.peek}</p>
       ) : null}
@@ -466,5 +553,36 @@ export function TaskEmbedRow({
         </div>
       ) : null}
     </div>
+  );
+}
+
+const RING = 2 * Math.PI * 6;
+
+function SubtaskProgress({ subtasks }: { subtasks: TaskEmbedSubtasks }) {
+  const { done, total, folded, onToggleFold } = subtasks;
+  return (
+    <button
+      type="button"
+      className="task-embed__progress"
+      aria-expanded={!folded}
+      aria-label={`${done} of ${total} subtasks done`}
+      title={folded ? 'Show subtasks' : 'Hide subtasks'}
+      onClick={onToggleFold}
+    >
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+        <circle className="task-embed__ring-track" cx="8" cy="8" r="6" />
+        <circle
+          className="task-embed__ring"
+          cx="8"
+          cy="8"
+          r="6"
+          strokeDasharray={`${(RING * done) / total} ${RING}`}
+          transform="rotate(-90 8 8)"
+        />
+      </svg>
+      <span aria-hidden="true">
+        {done} of {total}
+      </span>
+    </button>
   );
 }

@@ -28,6 +28,7 @@ import {
 } from '../kit/tasks/taskOptions';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskRow } from '../kit/tasks/TaskRow';
+import { TaskParentsProvider } from './TaskParentsProvider';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
@@ -134,210 +135,217 @@ export default function NotebookTasksPage() {
     if (await quickAddTask.submit(quickAdd, today)) setQuickAdd('');
   };
 
+  const listed = useMemo(
+    () => [...openItems, ...doneItems],
+    [openItems, doneItems],
+  );
+
   const toggleComplete = (task: Task) => {
     void toggleTask(task);
   };
 
   return (
-    <section className="workspace-panel">
-      <div className="workspace-panel__header">
-        <div>
-          <h1>Tasks</h1>
-          <p className="workspace-panel__lede">
-            {NOTEBOOK_AREA_HEADINGS[areaFilter]}
-            {' · '}
-            quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
-            <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
-            and <code>!high</code>
-          </p>
+    <TaskParentsProvider tasks={listed}>
+      <section className="workspace-panel">
+        <div className="workspace-panel__header">
+          <div>
+            <h1>Tasks</h1>
+            <p className="workspace-panel__lede">
+              {NOTEBOOK_AREA_HEADINGS[areaFilter]}
+              {' · '}
+              quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
+              <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
+              and <code>!high</code>
+            </p>
+          </div>
         </div>
-      </div>
 
-      <form
-        className="workspace-toolbar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submitQuickAdd();
-        }}
-      >
-        <TaskSyntaxInput
-          today={today}
-          placeholder="Add a task and press Enter"
-          value={quickAdd}
-          onChange={(next) => {
-            setQuickAdd(next);
-            quickAddTask.clearMessages();
+        <form
+          className="workspace-toolbar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitQuickAdd();
           }}
-          aria-label="Quick add task"
-          disabled={quickAddTask.pending}
+        >
+          <TaskSyntaxInput
+            today={today}
+            placeholder="Add a task and press Enter"
+            value={quickAdd}
+            onChange={(next) => {
+              setQuickAdd(next);
+              quickAddTask.clearMessages();
+            }}
+            aria-label="Quick add task"
+            disabled={quickAddTask.pending}
+          />
+          <button
+            type="submit"
+            className="kit-btn kit-btn--primary"
+            disabled={quickAddTask.pending || !quickAdd.trim()}
+          >
+            Add
+          </button>
+        </form>
+        {quickAddTask.hint ? (
+          <p className="kit-hint">{quickAddTask.hint}</p>
+        ) : null}
+        {actionError ? (
+          <p className="workspace-panel__error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
+
+        <SegmentedRadio<TaskChip | ''>
+          label="Show tasks"
+          className="notebook-tasks__chips"
+          options={TASK_CHIPS}
+          value={chip}
+          onChange={(next) => {
+            if (next) pickChip(next);
+          }}
         />
-        <button
-          type="submit"
-          className="kit-btn kit-btn--primary"
-          disabled={quickAddTask.pending || !quickAdd.trim()}
-        >
-          Add
-        </button>
-      </form>
-      {quickAddTask.hint ? (
-        <p className="kit-hint">{quickAddTask.hint}</p>
-      ) : null}
-      {actionError ? (
-        <p className="workspace-panel__error" role="alert">
-          {actionError}
-        </p>
-      ) : null}
+        <div className="workspace-toolbar notebook-tasks__filters">
+          <label className="kit-field">
+            <span className="kit-field__label">Status</span>
+            <select
+              className="kit-input"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as TaskStatus | '')}
+              aria-label="Filter by status"
+            >
+              <option value="">Any</option>
+              {TASK_STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="kit-field">
+            <span className="kit-field__label">Priority</span>
+            <select
+              className="kit-input"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TaskPriority | '')}
+              aria-label="Filter by priority"
+            >
+              <option value="">Any</option>
+              {TASK_PRIORITY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="kit-field">
+            <span className="kit-field__label">Show on</span>
+            <select
+              className="kit-input"
+              value={showOn}
+              onChange={(e) => setShowOn(e.target.value as TaskShowOnFilter)}
+              aria-label="Filter by show-on date"
+            >
+              <option value="">Any</option>
+              <option value="earlier">Before today</option>
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="later">After today</option>
+              <option value="none">No date</option>
+              <option value="someday">Someday</option>
+            </select>
+          </label>
+        </div>
 
-      <SegmentedRadio<TaskChip | ''>
-        label="Show tasks"
-        className="notebook-tasks__chips"
-        options={TASK_CHIPS}
-        value={chip}
-        onChange={(next) => {
-          if (next) pickChip(next);
-        }}
-      />
-      <div className="workspace-toolbar notebook-tasks__filters">
-        <label className="kit-field">
-          <span className="kit-field__label">Status</span>
-          <select
-            className="kit-input"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as TaskStatus | '')}
-            aria-label="Filter by status"
+        {tasksQuery.isError ? (
+          <p className="workspace-panel__error" role="alert">
+            Could not load tasks.
+          </p>
+        ) : null}
+
+        {tasksQuery.isPending ? <p>Loading tasks…</p> : null}
+
+        {!tasksQuery.isPending &&
+        openItems.length === 0 &&
+        doneItems.length === 0 &&
+        (status || priority || showOn || showCompleted) ? (
+          <p className="kit-hint">No tasks match.</p>
+        ) : null}
+
+        {openItems.length > 0 ? (
+          <ul
+            className="kit-list"
+            aria-label={status === 'dropped' ? 'Dropped tasks' : 'Open tasks'}
           >
-            <option value="">Any</option>
-            {TASK_STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="kit-field">
-          <span className="kit-field__label">Priority</span>
-          <select
-            className="kit-input"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as TaskPriority | '')}
-            aria-label="Filter by priority"
-          >
-            <option value="">Any</option>
-            {TASK_PRIORITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="kit-field">
-          <span className="kit-field__label">Show on</span>
-          <select
-            className="kit-input"
-            value={showOn}
-            onChange={(e) => setShowOn(e.target.value as TaskShowOnFilter)}
-            aria-label="Filter by show-on date"
-          >
-            <option value="">Any</option>
-            <option value="earlier">Before today</option>
-            <option value="today">Today</option>
-            <option value="week">This week</option>
-            <option value="later">After today</option>
-            <option value="none">No date</option>
-            <option value="someday">Someday</option>
-          </select>
-        </label>
-      </div>
-
-      {tasksQuery.isError ? (
-        <p className="workspace-panel__error" role="alert">
-          Could not load tasks.
-        </p>
-      ) : null}
-
-      {tasksQuery.isPending ? <p>Loading tasks…</p> : null}
-
-      {!tasksQuery.isPending &&
-      openItems.length === 0 &&
-      doneItems.length === 0 &&
-      (status || priority || showOn || showCompleted) ? (
-        <p className="kit-hint">No tasks match.</p>
-      ) : null}
-
-      {openItems.length > 0 ? (
-        <ul
-          className="kit-list"
-          aria-label={status === 'dropped' ? 'Dropped tasks' : 'Open tasks'}
-        >
-          {openItems.map((task) => (
-            <TaskListRow
-              key={task.id}
-              task={task}
-              today={today}
-              onToggle={() => toggleComplete(task)}
-              actions={
-                task.status === 'dropped' ? null : (
-                  <TaskRowActions
-                    title={task.title}
-                    snoozeFrom={snoozeBaseDay(task.startDate ?? today, today)}
-                    onSnooze={(schedule) => void patch(task, schedule)}
-                    onDrop={() => void patch(task, { status: 'dropped' })}
-                  />
-                )
-              }
-            />
-          ))}
-        </ul>
-      ) : null}
-
-      {showCompletedSection ? (
-        <details
-          className="notebook-completed"
-          open={showCompleted || status === 'done'}
-          onToggle={(e) =>
-            setShowCompleted((e.target as HTMLDetailsElement).open)
-          }
-        >
-          <summary>
-            Completed
-            {showCompleted || status === 'done'
-              ? ` (${doneItems.length}${completedSource.hasNextPage ? '+' : ''})`
-              : ''}
-          </summary>
-          <ul className="kit-list" aria-label="Completed tasks">
-            {doneItems.map((task) => (
+            {openItems.map((task) => (
               <TaskListRow
                 key={task.id}
                 task={task}
                 today={today}
                 onToggle={() => toggleComplete(task)}
+                actions={
+                  task.status === 'dropped' ? null : (
+                    <TaskRowActions
+                      title={task.title}
+                      snoozeFrom={snoozeBaseDay(task.startDate ?? today, today)}
+                      onSnooze={(schedule) => void patch(task, schedule)}
+                      onDrop={() => void patch(task, { status: 'dropped' })}
+                    />
+                  )
+                }
               />
             ))}
           </ul>
-          {!status && completedQuery.hasNextPage ? (
-            <button
-              type="button"
-              className="kit-btn"
-              disabled={completedQuery.isFetchingNextPage}
-              onClick={() => void completedQuery.fetchNextPage()}
-            >
-              Load more completed
-            </button>
-          ) : null}
-        </details>
-      ) : null}
+        ) : null}
 
-      {tasksQuery.hasNextPage ? (
-        <button
-          type="button"
-          className="kit-btn"
-          disabled={tasksQuery.isFetchingNextPage}
-          onClick={() => void tasksQuery.fetchNextPage()}
-        >
-          Load more
-        </button>
-      ) : null}
-    </section>
+        {showCompletedSection ? (
+          <details
+            className="notebook-completed"
+            open={showCompleted || status === 'done'}
+            onToggle={(e) =>
+              setShowCompleted((e.target as HTMLDetailsElement).open)
+            }
+          >
+            <summary>
+              Completed
+              {showCompleted || status === 'done'
+                ? ` (${doneItems.length}${completedSource.hasNextPage ? '+' : ''})`
+                : ''}
+            </summary>
+            <ul className="kit-list" aria-label="Completed tasks">
+              {doneItems.map((task) => (
+                <TaskListRow
+                  key={task.id}
+                  task={task}
+                  today={today}
+                  onToggle={() => toggleComplete(task)}
+                />
+              ))}
+            </ul>
+            {!status && completedQuery.hasNextPage ? (
+              <button
+                type="button"
+                className="kit-btn"
+                disabled={completedQuery.isFetchingNextPage}
+                onClick={() => void completedQuery.fetchNextPage()}
+              >
+                Load more completed
+              </button>
+            ) : null}
+          </details>
+        ) : null}
+
+        {tasksQuery.hasNextPage ? (
+          <button
+            type="button"
+            className="kit-btn"
+            disabled={tasksQuery.isFetchingNextPage}
+            onClick={() => void tasksQuery.fetchNextPage()}
+          >
+            Load more
+          </button>
+        ) : null}
+      </section>
+    </TaskParentsProvider>
   );
 }
 

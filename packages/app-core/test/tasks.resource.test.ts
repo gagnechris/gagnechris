@@ -17,6 +17,7 @@ const sample = (overrides: Partial<Task> = {}): Task => ({
   someday: false,
   completedAt: null,
   noteId: null,
+  parentId: null,
   tags: [],
   version: 1,
   createdAt: '2026-10-02T12:00:00.000Z',

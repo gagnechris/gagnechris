@@ -127,9 +127,13 @@ export {
   removeTaskEmbedLines,
   taskEmbedFallbackLine,
   taskEmbedIds,
+  taskEmbedNesting,
+  taskEmbedParents,
   taskEmbedToken,
+  type CarriedInTask,
   type TaskEmbed,
   type TaskEmbedMarkdownTask,
+  type TaskEmbedNesting,
 } from './task-embeds.js';
 export {
   parseTaskLine,
