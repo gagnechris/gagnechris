@@ -1094,9 +1094,13 @@
   gap: var(--space-3);
   margin: 0 0 var(--space-4);
   padding: var(--space-3) 0;
-  background: color-mix(in srgb, var(--neutral-50) 88%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--neutral-50);
   border-bottom: 1px solid var(--neutral-200);
+  /* Paints past both edges without widening the box, so the borders of an
+     editor scrolling under it are covered too. */
+  box-shadow:
+    calc(-1 * var(--space-2)) 0 var(--neutral-50),
+    var(--space-2) 0 var(--neutral-50);
 }
 
 .workspace-action-bar__status {
