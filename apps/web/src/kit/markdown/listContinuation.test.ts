@@ -1,6 +1,10 @@
-import { EditorState } from '@codemirror/state';
+import { EditorState, type StateCommand } from '@codemirror/state';
 import { describe, expect, it } from 'vitest';
-import { continueMarkdownList } from './listContinuation';
+import {
+  continueMarkdownList,
+  cursorListItemStart,
+  selectListItemStart,
+} from './listContinuation';
 
 /** `|` marks the cursor. */
 function enter(text: string): string | null {
@@ -49,5 +53,48 @@ describe('continueMarkdownList', () => {
     expect(enter('plain|')).toBeNull();
     expect(enter('[ ] task line|')).toBeNull();
     expect(enter('-| one')).toBeNull();
+  });
+});
+
+/** `|` marks the cursor; `^` marks the anchor when it differs. */
+function run(command: StateCommand, text: string): string | null {
+  const head = text.replace('^', '').indexOf('|');
+  const anchorAt = text.replace('|', '').indexOf('^');
+  let state = EditorState.create({
+    doc: text.replace('|', '').replace('^', ''),
+    selection: { anchor: anchorAt >= 0 ? anchorAt : head, head },
+  });
+  const handled = command({
+    state,
+    dispatch: (tr) => {
+      state = tr.state;
+    },
+  });
+  if (!handled) return null;
+  const doc = state.doc.toString();
+  const { anchor, head: at } = state.selection.main;
+  if (anchor === at) return `${doc.slice(0, at)}|${doc.slice(at)}`;
+  const [a, b] = [Math.min(anchor, at), Math.max(anchor, at)];
+  const marks = anchor < at ? ['^', '|'] : ['|', '^'];
+  return `${doc.slice(0, a)}${marks[0]}${doc.slice(a, b)}${marks[1]}${doc.slice(b)}`;
+}
+
+describe('cursorListItemStart', () => {
+  it('goes to the start of the item text past the marker and checkbox', () => {
+    expect(run(cursorListItemStart, '- buy milk|')).toBe('- |buy milk');
+    expect(run(cursorListItemStart, '  - [ ] call| Sam')).toBe(
+      '  - [ ] |call Sam',
+    );
+    expect(run(cursorListItemStart, '12. twelve|')).toBe('12. |twelve');
+  });
+
+  it('leaves the default binding to plain lines and the text start', () => {
+    expect(run(cursorListItemStart, 'plain| text')).toBeNull();
+    expect(run(cursorListItemStart, '- |buy')).toBeNull();
+    expect(run(cursorListItemStart, '|- buy')).toBeNull();
+  });
+
+  it('extends the selection with Shift', () => {
+    expect(run(selectListItemStart, '- buy milk|')).toBe('- |buy milk^');
   });
 });
