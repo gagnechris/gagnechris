@@ -28,7 +28,13 @@ import {
   useRef,
 } from 'react';
 import { moveLinesDown, moveLinesUp } from './lineMoves';
-import { continueMarkdownList } from './listContinuation';
+import {
+  continueMarkdownList,
+  cursorListItemBoundary,
+  cursorListItemStart,
+  selectListItemBoundary,
+  selectListItemStart,
+} from './listContinuation';
 
 export type MarkdownEditorHandle = {
   focus: () => void;
@@ -141,6 +147,22 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         highlightActiveLine(),
         cmKeymap.of([
           { key: 'Enter', run: continueMarkdownList },
+          {
+            key: 'Home',
+            mac: 'Mod-ArrowLeft',
+            run: cursorListItemBoundary,
+            shift: selectListItemBoundary,
+          },
+          {
+            mac: 'Home',
+            run: cursorListItemBoundary,
+            shift: selectListItemBoundary,
+          },
+          {
+            mac: 'Ctrl-a',
+            run: cursorListItemStart,
+            shift: selectListItemStart,
+          },
           { key: 'Alt-ArrowUp', run: moveLinesUp },
           { key: 'Alt-ArrowDown', run: moveLinesDown },
           ...defaultKeymap,

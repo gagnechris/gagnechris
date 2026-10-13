@@ -1,4 +1,10 @@
-import type { EditorState, StateCommand } from '@codemirror/state';
+import {
+  EditorSelection,
+  type EditorState,
+  type StateCommand,
+  type Transaction,
+} from '@codemirror/state';
+import type { Command } from '@codemirror/view';
 
 const LIST_ITEM = /^(\s*)(?:([-*+])|(\d+)([.)]))(\s+)(\[[ xX]\]\s+)?/;
 
@@ -37,3 +43,80 @@ function listContinuation(state: EditorState) {
     selection: { anchor: main.head + insert.length },
   };
 }
+
+function listTextStart(state: EditorState, head: number): number | null {
+  const line = state.doc.lineAt(head);
+  const match = LIST_ITEM.exec(line.text);
+  return match ? line.from + match[0].length : null;
+}
+
+function moveTo(
+  state: EditorState,
+  dispatch: (tr: Transaction) => void,
+  target: (head: number) => number | null,
+  extend: boolean,
+): boolean {
+  let moved = false;
+  const selection = EditorSelection.create(
+    state.selection.ranges.map((range) => {
+      const to = target(range.head);
+      if (to === null || to === range.head) return range;
+      moved = true;
+      return extend
+        ? EditorSelection.range(range.anchor, to)
+        : EditorSelection.cursor(to);
+    }),
+    state.selection.mainIndex,
+  );
+  if (!moved) return false;
+  dispatch(
+    state.update({ selection, scrollIntoView: true, userEvent: 'select' }),
+  );
+  return true;
+}
+
+/**
+ * Ctrl+A in a list item goes to the start of its text, past the marker and
+ * any checkbox, like a paragraph start in Notes. From there, the default
+ * binding takes over and goes to the line start.
+ */
+const listItemStart =
+  (extend: boolean): StateCommand =>
+  ({ state, dispatch }) =>
+    moveTo(
+      state,
+      dispatch,
+      (head) => {
+        const textStart = listTextStart(state, head);
+        return textStart !== null && head > textStart ? textStart : null;
+      },
+      extend,
+    );
+
+export const cursorListItemStart = listItemStart(false);
+export const selectListItemStart = listItemStart(true);
+
+/**
+ * Home and Cmd+Left: the same, but only on an item's first visual line, so a
+ * wrapped item still goes to the start of the row the caret is on.
+ */
+const listItemBoundary =
+  (extend: boolean): Command =>
+  (view) =>
+    moveTo(
+      view.state,
+      view.dispatch,
+      (head) => {
+        const textStart = listTextStart(view.state, head);
+        if (textStart === null || head <= textStart) return null;
+        const rowStart = view.moveToLineBoundary(
+          EditorSelection.cursor(head),
+          false,
+        ).head;
+        return rowStart <= textStart ? textStart : null;
+      },
+      extend,
+    );
+
+export const cursorListItemBoundary = listItemBoundary(false);
+export const selectListItemBoundary = listItemBoundary(true);
