@@ -30,6 +30,9 @@ type Props = {
   editable?: boolean;
   /** Return in the title. */
   onTitleSubmit?: () => void;
+  /** With it, a chevron opens and closes the task's details under the row. */
+  onToggleDetails?: () => void;
+  detailsOpen?: boolean;
 };
 
 const Pill = ({ text, tone }: { text: string; tone?: 'alert' | 'accent' }) => (
@@ -137,6 +140,8 @@ export const TaskEmbedRow = ({
   onDelete,
   editable,
   onTitleSubmit,
+  onToggleDetails,
+  detailsOpen = false,
 }: Props) => {
   const titleInput = useRef<TextInput>(null);
   const a11yActions = onRemove
@@ -266,9 +271,29 @@ export const TaskEmbedRow = ({
             accessibilityLabel={`Open task ${task.title}`}
             onPress={onOpen}
             onLongPress={onRemove}
+            style={onToggleDetails ? styles.openBeside : styles.open}
+          >
+            <Icon
+              name={onToggleDetails ? 'arrow.up.right' : 'chevron.right'}
+              size={onToggleDetails ? 14 : 16}
+              color={color.muted}
+            />
+          </Pressable>
+        ) : null}
+        {onToggleDetails ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Details for ${task.title}`}
+            accessibilityState={{ expanded: detailsOpen }}
+            onPress={onToggleDetails}
+            onLongPress={onRemove}
             style={styles.open}
           >
-            <Icon name="chevron.right" size={16} color={color.muted} />
+            <Icon
+              name={detailsOpen ? 'chevron.up' : 'chevron.down'}
+              size={14}
+              color={detailsOpen ? color.accent : color.muted}
+            />
           </Pressable>
         ) : null}
       </View>
@@ -354,6 +379,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: -tokens.space[2],
+  },
+  // Two buttons share the edge, so the first gives up its outer margin.
+  openBeside: {
+    width: MIN_TARGET - tokens.space[3],
+    height: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   retry: { minHeight: MIN_TARGET, justifyContent: 'center' },
   retryText: {

@@ -11,6 +11,7 @@ import { createAppAuth } from '../src/auth';
 import { SessionQueryCache, wipeLocalData } from '../src/cache';
 import { apiBaseUrl } from '../src/config';
 import { NetworkStatus, startConnectivity } from '../src/net';
+import { loadTaskDetailsStore } from '../src/notebook/taskDetailsStore';
 import { outboxMiddleware, useOutboxSession } from '../src/outbox';
 import { rootGuards, SessionProvider, useSession } from '../src/session';
 import { SpaceProvider } from '../src/space';
@@ -71,6 +72,7 @@ const RootStack = () => {
 
 const RootLayout = () => {
   useEffect(() => startConnectivity(), []);
+  useEffect(() => void loadTaskDetailsStore(AsyncStorage), []);
   return (
     <SessionProvider backend={backend} wipe={wipeLocalData}>
       <SessionQueryCache>

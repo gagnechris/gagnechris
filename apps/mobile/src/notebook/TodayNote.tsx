@@ -18,10 +18,11 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, type RefObject } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { nativeRetrySignals } from '../net';
-import { color, font } from '../theme';
+import { color, font, MIN_TARGET } from '../theme';
 import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
 import { nativeConfirm } from '../ui/confirm';
 import {
   EditorError,
@@ -30,6 +31,8 @@ import {
   useDetailEditor,
 } from './DetailEditorShell';
 import { NoteBodyEditor } from './NoteBodyEditor';
+import { showTaskRowsChoice } from './taskActionSheets';
+import { useTaskDetailsStore } from './taskDetailsStore';
 
 const DAILY_TAKEN_MESSAGE =
   'Another device started this daily note first. What you typed is still here.';
@@ -93,6 +96,7 @@ const DailyNoteEditor = ({
     onReload,
   });
 
+  const { peek } = useTaskDetailsStore();
   const ready = !editor.loadError && !editor.isLoading && Boolean(entity);
   const body = draft.bodyMarkdown;
   useReportEmbeddedIds(ready ? body : null, onEmbeddedIds);
@@ -136,13 +140,23 @@ const DailyNoteEditor = ({
 
   return (
     <View style={styles.note}>
-      <Text
-        style={styles.saveState}
-        accessibilityLiveRegion="polite"
-        accessibilityLabel={`Daily note: ${saveLabel}`}
-      >
-        {entity!.version === 0 && !dirty ? 'New' : saveLabel}
-      </Text>
+      <View style={styles.header}>
+        <Text
+          style={styles.saveState}
+          accessibilityLiveRegion="polite"
+          accessibilityLabel={`Daily note: ${saveLabel}`}
+        >
+          {entity!.version === 0 && !dirty ? 'New' : saveLabel}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Note options"
+          onPress={() => showTaskRowsChoice(entity!.id, peek.has(entity!.id))}
+          style={styles.options}
+        >
+          <Icon name="ellipsis" size={16} color={color.inkSoft} />
+        </Pressable>
+      </View>
       <EditorNotices conflict={conflict} saveError={saveError} dirty={dirty} />
       {isTemplateStartedDaily(entity!) && !dirty && saveState !== 'saving' ? (
         <View style={styles.template} accessibilityRole="summary">
@@ -179,6 +193,7 @@ const DailyNoteEditor = ({
         embeds={embeds}
         today={today}
         onOpenTask={onOpenTask}
+        noteId={entity!.id}
       />
     </View>
   );
@@ -186,11 +201,23 @@ const DailyNoteEditor = ({
 
 const styles = StyleSheet.create({
   note: { gap: tokens.space[2] },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginVertical: -tokens.space[2],
+  },
   saveState: {
     ...font.medium,
     fontSize: tokens.text.caption,
     color: color.inkSoft,
-    alignSelf: 'flex-end',
+  },
+  options: {
+    width: MIN_TARGET,
+    height: MIN_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -tokens.space[3],
   },
   template: {
     gap: tokens.space[2],

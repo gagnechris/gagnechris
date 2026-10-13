@@ -41,6 +41,8 @@ import {
   deleteNoteMessage,
   deleteNoteTitle,
 } from '../../../src/notebook/noteActions';
+import { showTaskRowsChoice } from '../../../src/notebook/taskActionSheets';
+import { useTaskDetailsStore } from '../../../src/notebook/taskDetailsStore';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
@@ -111,6 +113,7 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
     removeEmbeds: removeDeletedEmbeds,
   });
   const { openTask } = routes;
+  const { peek } = useTaskDetailsStore();
 
   const setTitle = useCallback(
     (title: string) => updateDraft((prev) => ({ ...prev, title })),
@@ -149,11 +152,12 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
     const options = [
       draft.pinned ? 'Unpin' : 'Pin',
       'Share',
+      'Task rows…',
       'Delete',
       'Cancel',
     ];
     ActionSheetIOS.showActionSheetWithOptions(
-      { options, destructiveButtonIndex: 2, cancelButtonIndex: 3 },
+      { options, destructiveButtonIndex: 3, cancelButtonIndex: 4 },
       (index) => {
         if (index === 0) {
           updateDraft((prev) => ({ ...prev, pinned: !prev.pinned }));
@@ -163,6 +167,8 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
             message: draft.bodyMarkdown,
           });
         } else if (index === 2) {
+          showTaskRowsChoice(id, peek.has(id));
+        } else if (index === 3) {
           void editor.runDelete();
         }
       },
@@ -273,6 +279,7 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
               embeds={embeds}
               today={today}
               onOpenTask={openTask}
+              noteId={id}
               autoFocus={note.type === 'page' && !note.bodyMarkdown}
             />
           )}
