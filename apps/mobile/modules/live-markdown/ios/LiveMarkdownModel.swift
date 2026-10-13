@@ -40,6 +40,8 @@ struct ThemeColors: Decodable {
   let fenceBackground: String
   let placeholder: String
   let imagePlaceholder: String
+  /// Markdown syntax on the lines the selection touches.
+  let syntax: String?
 }
 
 struct Theme: Decodable {
@@ -59,6 +61,8 @@ struct Theme: Decodable {
 extension NSAttributedString.Key {
   static let liveMarkdownHidden = NSAttributedString.Key("LiveMarkdownHidden")
   static let liveMarkdownBullet = NSAttributedString.Key("LiveMarkdownBullet")
+  /// On dimmed syntax: the colour its line's text takes.
+  static let liveMarkdownSyntax = NSAttributedString.Key("LiveMarkdownSyntax")
 }
 
 /// The same hash the JS side computes over the UTF-16 code units.

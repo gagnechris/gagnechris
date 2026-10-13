@@ -34,7 +34,8 @@ private struct ImageRange {
 }
 
 /// Plain markdown in a TextKit 1 text view. Lines the selection doesn't touch
-/// hide their syntax; a line holding only an image shows the image, which
+/// hide their syntax, and the lines it touches keep their formatting with the
+/// syntax dimmed; a line holding only an image shows the image, which
 /// the caret steps over and Backspace removes whole.
 final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDelegate {
   let onChangeText = EventDispatcher()
@@ -412,18 +413,22 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
                            range: NSRange(location: start + image.f, length: image.t - image.f))
       return
     }
-    guard !signature.active else { return }
+    let syntax = liveMarkdownColor(theme.colors.syntax ?? theme.colors.placeholder)
     for mark in decoration.marks ?? [] {
       let range = NSRange(location: start + mark.f, length: mark.t - mark.f)
       guard range.length > 0, range.location + range.length <= storage.length else { continue }
       switch mark.k {
-      case "hide":
-        storage.addAttribute(.liveMarkdownHidden, value: true, range: range)
-      case "bullet":
-        storage.addAttributes([
-          .liveMarkdownBullet: true,
-          .foregroundColor: liveMarkdownColor(theme.colors.bullet),
-        ], range: range)
+      case "hide", "bullet":
+        if signature.active {
+          storage.addAttributes([.foregroundColor: syntax, .liveMarkdownSyntax: color], range: range)
+        } else if mark.k == "hide" {
+          storage.addAttribute(.liveMarkdownHidden, value: true, range: range)
+        } else {
+          storage.addAttributes([
+            .liveMarkdownBullet: true,
+            .foregroundColor: liveMarkdownColor(theme.colors.bullet),
+          ], range: range)
+        }
       case "strong":
         if decoration.style == nil || decoration.style == "quote" {
           storage.addAttribute(.font, value: liveMarkdownFont(theme.strongFont, size: font.pointSize), range: range)
@@ -462,6 +467,9 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     }
     attributes[.liveMarkdownHidden] = nil
     attributes[.liveMarkdownBullet] = nil
+    if let text = attributes.removeValue(forKey: .liveMarkdownSyntax) as? UIColor {
+      attributes[.foregroundColor] = text
+    }
     attributes[.underlineStyle] = nil
     attributes[.backgroundColor] = nil
     textView.typingAttributes = attributes
