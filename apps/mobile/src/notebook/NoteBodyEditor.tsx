@@ -533,7 +533,9 @@ const styles = StyleSheet.create({
     fontSize: tokens.text.caption,
     color: color.muted,
     marginTop: -tokens.space[2],
-    marginLeft: MIN_TARGET - tokens.space[2],
+    marginBottom: tokens.space[1],
+    // Lines up with the title, past the checkbox and the row's gap.
+    marginLeft: MIN_TARGET,
   },
   error: {
     ...font.medium,

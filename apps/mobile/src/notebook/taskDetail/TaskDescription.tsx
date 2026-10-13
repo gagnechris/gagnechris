@@ -44,14 +44,16 @@ export const TaskDescription = ({
         <MarkdownView markdown={description} />
       </View>
     ) : (
-      <LiveMarkdownInput
-        variant="note"
-        style={styles.description}
-        accessibilityLabel="Description"
-        placeholder="Notes, links, markdown"
-        value={description}
-        onChangeText={onChange}
-      />
+      // The native text view ignores padding, so the card around it pads.
+      <View style={styles.description}>
+        <LiveMarkdownInput
+          variant="note"
+          accessibilityLabel="Description"
+          placeholder="Notes, links, markdown"
+          value={description}
+          onChangeText={onChange}
+        />
+      </View>
     )}
   </>
 );
