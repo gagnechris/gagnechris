@@ -7311,15 +7311,18 @@ type Task struct {
 	DueDate     nullable.Nullable[string] `json:"dueDate"`
 	ID          string                    `json:"id"`
 	NoteID      nullable.Nullable[string] `json:"noteId"`
-	Priority    TaskPriority              `json:"priority"`
-	Someday     bool                      `json:"someday"`
-	StartDate   nullable.Nullable[string] `json:"startDate"`
-	Status      TaskStatus                `json:"status"`
-	Tags        []string                  `json:"tags"`
-	Title       string                    `json:"title"`
-	UpdatedAt   string                    `json:"updatedAt"`
-	UserID      string                    `json:"userId"`
-	Version     int                       `json:"version"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string] `json:"parentId"`
+	Priority  TaskPriority              `json:"priority"`
+	Someday   bool                      `json:"someday"`
+	StartDate nullable.Nullable[string] `json:"startDate"`
+	Status    TaskStatus                `json:"status"`
+	Tags      []string                  `json:"tags"`
+	Title     string                    `json:"title"`
+	UpdatedAt string                    `json:"updatedAt"`
+	UserID    string                    `json:"userId"`
+	Version   int                       `json:"version"`
 }
 
 // TaskArea defines model for Task.Area.
@@ -7348,23 +7351,26 @@ type TaskBatchResponseItemsStatus string
 
 // TaskBatchResponse_Items defines model for TaskBatchResponse.Items.
 type TaskBatchResponse_Items struct {
-	Area        TaskBatchResponseItemsArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]      `json:"completedAt"`
-	CreatedAt   string                         `json:"createdAt"`
-	Deleted     bool                           `json:"deleted"`
-	Description string                         `json:"description"`
-	DueDate     nullable.Nullable[string]      `json:"dueDate"`
-	ID          string                         `json:"id"`
-	NoteID      nullable.Nullable[string]      `json:"noteId"`
-	Priority    TaskBatchResponseItemsPriority `json:"priority"`
-	Someday     bool                           `json:"someday"`
-	StartDate   nullable.Nullable[string]      `json:"startDate"`
-	Status      TaskBatchResponseItemsStatus   `json:"status"`
-	Tags        []string                       `json:"tags"`
-	Title       string                         `json:"title"`
-	UpdatedAt   string                         `json:"updatedAt"`
-	UserID      string                         `json:"userId"`
-	Version     int                            `json:"version"`
+	Area        TaskBatchResponseItemsArea `json:"area"`
+	CompletedAt nullable.Nullable[string]  `json:"completedAt"`
+	CreatedAt   string                     `json:"createdAt"`
+	Deleted     bool                       `json:"deleted"`
+	Description string                     `json:"description"`
+	DueDate     nullable.Nullable[string]  `json:"dueDate"`
+	ID          string                     `json:"id"`
+	NoteID      nullable.Nullable[string]  `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]      `json:"parentId"`
+	Priority  TaskBatchResponseItemsPriority `json:"priority"`
+	Someday   bool                           `json:"someday"`
+	StartDate nullable.Nullable[string]      `json:"startDate"`
+	Status    TaskBatchResponseItemsStatus   `json:"status"`
+	Tags      []string                       `json:"tags"`
+	Title     string                         `json:"title"`
+	UpdatedAt string                         `json:"updatedAt"`
+	UserID    string                         `json:"userId"`
+	Version   int                            `json:"version"`
 }
 
 // TaskListResponse defines model for TaskListResponse.
@@ -7384,23 +7390,26 @@ type TaskListResponseItemsStatus string
 
 // TaskListResponse_Items defines model for TaskListResponse.Items.
 type TaskListResponse_Items struct {
-	Area        TaskListResponseItemsArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]     `json:"completedAt"`
-	CreatedAt   string                        `json:"createdAt"`
-	Deleted     bool                          `json:"deleted"`
-	Description string                        `json:"description"`
-	DueDate     nullable.Nullable[string]     `json:"dueDate"`
-	ID          string                        `json:"id"`
-	NoteID      nullable.Nullable[string]     `json:"noteId"`
-	Priority    TaskListResponseItemsPriority `json:"priority"`
-	Someday     bool                          `json:"someday"`
-	StartDate   nullable.Nullable[string]     `json:"startDate"`
-	Status      TaskListResponseItemsStatus   `json:"status"`
-	Tags        []string                      `json:"tags"`
-	Title       string                        `json:"title"`
-	UpdatedAt   string                        `json:"updatedAt"`
-	UserID      string                        `json:"userId"`
-	Version     int                           `json:"version"`
+	Area        TaskListResponseItemsArea `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]     `json:"parentId"`
+	Priority  TaskListResponseItemsPriority `json:"priority"`
+	Someday   bool                          `json:"someday"`
+	StartDate nullable.Nullable[string]     `json:"startDate"`
+	Status    TaskListResponseItemsStatus   `json:"status"`
+	Tags      []string                      `json:"tags"`
+	Title     string                        `json:"title"`
+	UpdatedAt string                        `json:"updatedAt"`
+	UserID    string                        `json:"userId"`
+	Version   int                           `json:"version"`
 }
 
 // TaskSyncChange defines model for TaskSyncChange.
@@ -7425,23 +7434,26 @@ type TaskSyncChange0EntityStatus string
 
 // TaskSyncChange_0_Entity defines model for TaskSyncChange.0.Entity.
 type TaskSyncChange_0_Entity struct {
-	Area        TaskSyncChange0EntityArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]     `json:"completedAt"`
-	CreatedAt   string                        `json:"createdAt"`
-	Deleted     bool                          `json:"deleted"`
-	Description string                        `json:"description"`
-	DueDate     nullable.Nullable[string]     `json:"dueDate"`
-	ID          string                        `json:"id"`
-	NoteID      nullable.Nullable[string]     `json:"noteId"`
-	Priority    TaskSyncChange0EntityPriority `json:"priority"`
-	Someday     bool                          `json:"someday"`
-	StartDate   nullable.Nullable[string]     `json:"startDate"`
-	Status      TaskSyncChange0EntityStatus   `json:"status"`
-	Tags        []string                      `json:"tags"`
-	Title       string                        `json:"title"`
-	UpdatedAt   string                        `json:"updatedAt"`
-	UserID      string                        `json:"userId"`
-	Version     int                           `json:"version"`
+	Area        TaskSyncChange0EntityArea `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]     `json:"parentId"`
+	Priority  TaskSyncChange0EntityPriority `json:"priority"`
+	Someday   bool                          `json:"someday"`
+	StartDate nullable.Nullable[string]     `json:"startDate"`
+	Status    TaskSyncChange0EntityStatus   `json:"status"`
+	Tags      []string                      `json:"tags"`
+	Title     string                        `json:"title"`
+	UpdatedAt string                        `json:"updatedAt"`
+	UserID    string                        `json:"userId"`
+	Version   int                           `json:"version"`
 }
 
 // TaskSyncChange0Type defines model for TaskSyncChange.0.Type.
@@ -12131,23 +12143,26 @@ type GetAPINotebookTasks200JSONResponseBodyItemsStatus string
 
 // GetAPINotebookTasks200JSONResponseBody_Items defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasks200JSONResponseBody_Items struct {
-	Area        GetAPINotebookTasks200JSONResponseBodyItemsArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                           `json:"completedAt"`
-	CreatedAt   string                                              `json:"createdAt"`
-	Deleted     bool                                                `json:"deleted"`
-	Description string                                              `json:"description"`
-	DueDate     nullable.Nullable[string]                           `json:"dueDate"`
-	ID          string                                              `json:"id"`
-	NoteID      nullable.Nullable[string]                           `json:"noteId"`
-	Priority    GetAPINotebookTasks200JSONResponseBodyItemsPriority `json:"priority"`
-	Someday     bool                                                `json:"someday"`
-	StartDate   nullable.Nullable[string]                           `json:"startDate"`
-	Status      GetAPINotebookTasks200JSONResponseBodyItemsStatus   `json:"status"`
-	Tags        []string                                            `json:"tags"`
-	Title       string                                              `json:"title"`
-	UpdatedAt   string                                              `json:"updatedAt"`
-	UserID      string                                              `json:"userId"`
-	Version     int                                                 `json:"version"`
+	Area        GetAPINotebookTasks200JSONResponseBodyItemsArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                       `json:"completedAt"`
+	CreatedAt   string                                          `json:"createdAt"`
+	Deleted     bool                                            `json:"deleted"`
+	Description string                                          `json:"description"`
+	DueDate     nullable.Nullable[string]                       `json:"dueDate"`
+	ID          string                                          `json:"id"`
+	NoteID      nullable.Nullable[string]                       `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                           `json:"parentId"`
+	Priority  GetAPINotebookTasks200JSONResponseBodyItemsPriority `json:"priority"`
+	Someday   bool                                                `json:"someday"`
+	StartDate nullable.Nullable[string]                           `json:"startDate"`
+	Status    GetAPINotebookTasks200JSONResponseBodyItemsStatus   `json:"status"`
+	Tags      []string                                            `json:"tags"`
+	Title     string                                              `json:"title"`
+	UpdatedAt string                                              `json:"updatedAt"`
+	UserID    string                                              `json:"userId"`
+	Version   int                                                 `json:"version"`
 }
 
 // GetAPINotebookTasks200JSONResponseBody defines parameters for GetAPINotebookTasks.
@@ -12230,23 +12245,26 @@ type PostAPINotebookTasks201JSONResponseBodyStatus string
 
 // PostAPINotebookTasks201JSONResponseBody defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasks201JSONResponseBody struct {
-	Area        PostAPINotebookTasks201JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                       `json:"completedAt"`
-	CreatedAt   string                                          `json:"createdAt"`
-	Deleted     bool                                            `json:"deleted"`
-	Description string                                          `json:"description"`
-	DueDate     nullable.Nullable[string]                       `json:"dueDate"`
-	ID          string                                          `json:"id"`
-	NoteID      nullable.Nullable[string]                       `json:"noteId"`
-	Priority    PostAPINotebookTasks201JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                            `json:"someday"`
-	StartDate   nullable.Nullable[string]                       `json:"startDate"`
-	Status      PostAPINotebookTasks201JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                        `json:"tags"`
-	Title       string                                          `json:"title"`
-	UpdatedAt   string                                          `json:"updatedAt"`
-	UserID      string                                          `json:"userId"`
-	Version     int                                             `json:"version"`
+	Area        PostAPINotebookTasks201JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                   `json:"completedAt"`
+	CreatedAt   string                                      `json:"createdAt"`
+	Deleted     bool                                        `json:"deleted"`
+	Description string                                      `json:"description"`
+	DueDate     nullable.Nullable[string]                   `json:"dueDate"`
+	ID          string                                      `json:"id"`
+	NoteID      nullable.Nullable[string]                   `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                       `json:"parentId"`
+	Priority  PostAPINotebookTasks201JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                            `json:"someday"`
+	StartDate nullable.Nullable[string]                       `json:"startDate"`
+	Status    PostAPINotebookTasks201JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                        `json:"tags"`
+	Title     string                                          `json:"title"`
+	UpdatedAt string                                          `json:"updatedAt"`
+	UserID    string                                          `json:"userId"`
+	Version   int                                             `json:"version"`
 }
 
 // PostAPINotebookTasks400JSONResponseBody defines parameters for PostAPINotebookTasks.
@@ -12319,23 +12337,26 @@ type PostAPINotebookTasksBatch200JSONResponseBodyItemsStatus string
 
 // PostAPINotebookTasksBatch200JSONResponseBody_Items defines parameters for PostAPINotebookTasksBatch.
 type PostAPINotebookTasksBatch200JSONResponseBody_Items struct {
-	Area        PostAPINotebookTasksBatch200JSONResponseBodyItemsArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                                 `json:"completedAt"`
-	CreatedAt   string                                                    `json:"createdAt"`
-	Deleted     bool                                                      `json:"deleted"`
-	Description string                                                    `json:"description"`
-	DueDate     nullable.Nullable[string]                                 `json:"dueDate"`
-	ID          string                                                    `json:"id"`
-	NoteID      nullable.Nullable[string]                                 `json:"noteId"`
-	Priority    PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority `json:"priority"`
-	Someday     bool                                                      `json:"someday"`
-	StartDate   nullable.Nullable[string]                                 `json:"startDate"`
-	Status      PostAPINotebookTasksBatch200JSONResponseBodyItemsStatus   `json:"status"`
-	Tags        []string                                                  `json:"tags"`
-	Title       string                                                    `json:"title"`
-	UpdatedAt   string                                                    `json:"updatedAt"`
-	UserID      string                                                    `json:"userId"`
-	Version     int                                                       `json:"version"`
+	Area        PostAPINotebookTasksBatch200JSONResponseBodyItemsArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                             `json:"completedAt"`
+	CreatedAt   string                                                `json:"createdAt"`
+	Deleted     bool                                                  `json:"deleted"`
+	Description string                                                `json:"description"`
+	DueDate     nullable.Nullable[string]                             `json:"dueDate"`
+	ID          string                                                `json:"id"`
+	NoteID      nullable.Nullable[string]                             `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                                 `json:"parentId"`
+	Priority  PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority `json:"priority"`
+	Someday   bool                                                      `json:"someday"`
+	StartDate nullable.Nullable[string]                                 `json:"startDate"`
+	Status    PostAPINotebookTasksBatch200JSONResponseBodyItemsStatus   `json:"status"`
+	Tags      []string                                                  `json:"tags"`
+	Title     string                                                    `json:"title"`
+	UpdatedAt string                                                    `json:"updatedAt"`
+	UserID    string                                                    `json:"userId"`
+	Version   int                                                       `json:"version"`
 }
 
 // PostAPINotebookTasksBatch200JSONResponseBody defines parameters for PostAPINotebookTasksBatch.
@@ -12401,23 +12422,26 @@ type DeleteAPINotebookTasksID200JSONResponseBodyStatus string
 
 // DeleteAPINotebookTasksID200JSONResponseBody defines parameters for DeleteAPINotebookTasksID.
 type DeleteAPINotebookTasksID200JSONResponseBody struct {
-	Area        DeleteAPINotebookTasksID200JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                           `json:"completedAt"`
-	CreatedAt   string                                              `json:"createdAt"`
-	Deleted     bool                                                `json:"deleted"`
-	Description string                                              `json:"description"`
-	DueDate     nullable.Nullable[string]                           `json:"dueDate"`
-	ID          string                                              `json:"id"`
-	NoteID      nullable.Nullable[string]                           `json:"noteId"`
-	Priority    DeleteAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                                `json:"someday"`
-	StartDate   nullable.Nullable[string]                           `json:"startDate"`
-	Status      DeleteAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                            `json:"tags"`
-	Title       string                                              `json:"title"`
-	UpdatedAt   string                                              `json:"updatedAt"`
-	UserID      string                                              `json:"userId"`
-	Version     int                                                 `json:"version"`
+	Area        DeleteAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                       `json:"completedAt"`
+	CreatedAt   string                                          `json:"createdAt"`
+	Deleted     bool                                            `json:"deleted"`
+	Description string                                          `json:"description"`
+	DueDate     nullable.Nullable[string]                       `json:"dueDate"`
+	ID          string                                          `json:"id"`
+	NoteID      nullable.Nullable[string]                       `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                           `json:"parentId"`
+	Priority  DeleteAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                                `json:"someday"`
+	StartDate nullable.Nullable[string]                           `json:"startDate"`
+	Status    DeleteAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                            `json:"tags"`
+	Title     string                                              `json:"title"`
+	UpdatedAt string                                              `json:"updatedAt"`
+	UserID    string                                              `json:"userId"`
+	Version   int                                                 `json:"version"`
 }
 
 // DeleteAPINotebookTasksID400JSONResponseBody defines parameters for DeleteAPINotebookTasksID.
@@ -12497,23 +12521,26 @@ type GetAPINotebookTasksID200JSONResponseBodyStatus string
 
 // GetAPINotebookTasksID200JSONResponseBody defines parameters for GetAPINotebookTasksID.
 type GetAPINotebookTasksID200JSONResponseBody struct {
-	Area        GetAPINotebookTasksID200JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                        `json:"completedAt"`
-	CreatedAt   string                                           `json:"createdAt"`
-	Deleted     bool                                             `json:"deleted"`
-	Description string                                           `json:"description"`
-	DueDate     nullable.Nullable[string]                        `json:"dueDate"`
-	ID          string                                           `json:"id"`
-	NoteID      nullable.Nullable[string]                        `json:"noteId"`
-	Priority    GetAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                             `json:"someday"`
-	StartDate   nullable.Nullable[string]                        `json:"startDate"`
-	Status      GetAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                         `json:"tags"`
-	Title       string                                           `json:"title"`
-	UpdatedAt   string                                           `json:"updatedAt"`
-	UserID      string                                           `json:"userId"`
-	Version     int                                              `json:"version"`
+	Area        GetAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                    `json:"completedAt"`
+	CreatedAt   string                                       `json:"createdAt"`
+	Deleted     bool                                         `json:"deleted"`
+	Description string                                       `json:"description"`
+	DueDate     nullable.Nullable[string]                    `json:"dueDate"`
+	ID          string                                       `json:"id"`
+	NoteID      nullable.Nullable[string]                    `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                        `json:"parentId"`
+	Priority  GetAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                             `json:"someday"`
+	StartDate nullable.Nullable[string]                        `json:"startDate"`
+	Status    GetAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                         `json:"tags"`
+	Title     string                                           `json:"title"`
+	UpdatedAt string                                           `json:"updatedAt"`
+	UserID    string                                           `json:"userId"`
+	Version   int                                              `json:"version"`
 }
 
 // GetAPINotebookTasksID400JSONResponseBody defines parameters for GetAPINotebookTasksID.
@@ -12601,23 +12628,26 @@ type PutAPINotebookTasksID200JSONResponseBodyStatus string
 
 // PutAPINotebookTasksID200JSONResponseBody defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksID200JSONResponseBody struct {
-	Area        PutAPINotebookTasksID200JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                        `json:"completedAt"`
-	CreatedAt   string                                           `json:"createdAt"`
-	Deleted     bool                                             `json:"deleted"`
-	Description string                                           `json:"description"`
-	DueDate     nullable.Nullable[string]                        `json:"dueDate"`
-	ID          string                                           `json:"id"`
-	NoteID      nullable.Nullable[string]                        `json:"noteId"`
-	Priority    PutAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                             `json:"someday"`
-	StartDate   nullable.Nullable[string]                        `json:"startDate"`
-	Status      PutAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                         `json:"tags"`
-	Title       string                                           `json:"title"`
-	UpdatedAt   string                                           `json:"updatedAt"`
-	UserID      string                                           `json:"userId"`
-	Version     int                                              `json:"version"`
+	Area        PutAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                    `json:"completedAt"`
+	CreatedAt   string                                       `json:"createdAt"`
+	Deleted     bool                                         `json:"deleted"`
+	Description string                                       `json:"description"`
+	DueDate     nullable.Nullable[string]                    `json:"dueDate"`
+	ID          string                                       `json:"id"`
+	NoteID      nullable.Nullable[string]                    `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                        `json:"parentId"`
+	Priority  PutAPINotebookTasksID200JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                             `json:"someday"`
+	StartDate nullable.Nullable[string]                        `json:"startDate"`
+	Status    PutAPINotebookTasksID200JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                         `json:"tags"`
+	Title     string                                           `json:"title"`
+	UpdatedAt string                                           `json:"updatedAt"`
+	UserID    string                                           `json:"userId"`
+	Version   int                                              `json:"version"`
 }
 
 // PutAPINotebookTasksID400JSONResponseBody defines parameters for PutAPINotebookTasksID.
@@ -12715,23 +12745,26 @@ type PostAPINotebookTasksIDComplete200JSONResponseBodyStatus string
 
 // PostAPINotebookTasksIDComplete200JSONResponseBody defines parameters for PostAPINotebookTasksIDComplete.
 type PostAPINotebookTasksIDComplete200JSONResponseBody struct {
-	Area        PostAPINotebookTasksIDComplete200JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                                 `json:"completedAt"`
-	CreatedAt   string                                                    `json:"createdAt"`
-	Deleted     bool                                                      `json:"deleted"`
-	Description string                                                    `json:"description"`
-	DueDate     nullable.Nullable[string]                                 `json:"dueDate"`
-	ID          string                                                    `json:"id"`
-	NoteID      nullable.Nullable[string]                                 `json:"noteId"`
-	Priority    PostAPINotebookTasksIDComplete200JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                                      `json:"someday"`
-	StartDate   nullable.Nullable[string]                                 `json:"startDate"`
-	Status      PostAPINotebookTasksIDComplete200JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                                  `json:"tags"`
-	Title       string                                                    `json:"title"`
-	UpdatedAt   string                                                    `json:"updatedAt"`
-	UserID      string                                                    `json:"userId"`
-	Version     int                                                       `json:"version"`
+	Area        PostAPINotebookTasksIDComplete200JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                             `json:"completedAt"`
+	CreatedAt   string                                                `json:"createdAt"`
+	Deleted     bool                                                  `json:"deleted"`
+	Description string                                                `json:"description"`
+	DueDate     nullable.Nullable[string]                             `json:"dueDate"`
+	ID          string                                                `json:"id"`
+	NoteID      nullable.Nullable[string]                             `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                                 `json:"parentId"`
+	Priority  PostAPINotebookTasksIDComplete200JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                                      `json:"someday"`
+	StartDate nullable.Nullable[string]                                 `json:"startDate"`
+	Status    PostAPINotebookTasksIDComplete200JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                                  `json:"tags"`
+	Title     string                                                    `json:"title"`
+	UpdatedAt string                                                    `json:"updatedAt"`
+	UserID    string                                                    `json:"userId"`
+	Version   int                                                       `json:"version"`
 }
 
 // PostAPINotebookTasksIDComplete400JSONResponseBody defines parameters for PostAPINotebookTasksIDComplete.
@@ -12822,23 +12855,26 @@ type PostAPINotebookTasksIDReopen200JSONResponseBodyStatus string
 
 // PostAPINotebookTasksIDReopen200JSONResponseBody defines parameters for PostAPINotebookTasksIDReopen.
 type PostAPINotebookTasksIDReopen200JSONResponseBody struct {
-	Area        PostAPINotebookTasksIDReopen200JSONResponseBodyArea     `json:"area"`
-	CompletedAt nullable.Nullable[string]                               `json:"completedAt"`
-	CreatedAt   string                                                  `json:"createdAt"`
-	Deleted     bool                                                    `json:"deleted"`
-	Description string                                                  `json:"description"`
-	DueDate     nullable.Nullable[string]                               `json:"dueDate"`
-	ID          string                                                  `json:"id"`
-	NoteID      nullable.Nullable[string]                               `json:"noteId"`
-	Priority    PostAPINotebookTasksIDReopen200JSONResponseBodyPriority `json:"priority"`
-	Someday     bool                                                    `json:"someday"`
-	StartDate   nullable.Nullable[string]                               `json:"startDate"`
-	Status      PostAPINotebookTasksIDReopen200JSONResponseBodyStatus   `json:"status"`
-	Tags        []string                                                `json:"tags"`
-	Title       string                                                  `json:"title"`
-	UpdatedAt   string                                                  `json:"updatedAt"`
-	UserID      string                                                  `json:"userId"`
-	Version     int                                                     `json:"version"`
+	Area        PostAPINotebookTasksIDReopen200JSONResponseBodyArea `json:"area"`
+	CompletedAt nullable.Nullable[string]                           `json:"completedAt"`
+	CreatedAt   string                                              `json:"createdAt"`
+	Deleted     bool                                                `json:"deleted"`
+	Description string                                              `json:"description"`
+	DueDate     nullable.Nullable[string]                           `json:"dueDate"`
+	ID          string                                              `json:"id"`
+	NoteID      nullable.Nullable[string]                           `json:"noteId"`
+
+	// ParentID The task this is a subtask of, set from indentation in its home note
+	ParentID  nullable.Nullable[string]                               `json:"parentId"`
+	Priority  PostAPINotebookTasksIDReopen200JSONResponseBodyPriority `json:"priority"`
+	Someday   bool                                                    `json:"someday"`
+	StartDate nullable.Nullable[string]                               `json:"startDate"`
+	Status    PostAPINotebookTasksIDReopen200JSONResponseBodyStatus   `json:"status"`
+	Tags      []string                                                `json:"tags"`
+	Title     string                                                  `json:"title"`
+	UpdatedAt string                                                  `json:"updatedAt"`
+	UserID    string                                                  `json:"userId"`
+	Version   int                                                     `json:"version"`
 }
 
 // PostAPINotebookTasksIDReopen400JSONResponseBody defines parameters for PostAPINotebookTasksIDReopen.

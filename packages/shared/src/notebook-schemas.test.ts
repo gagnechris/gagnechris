@@ -102,6 +102,7 @@ describe('Notebook schemas', () => {
         someday: false,
         completedAt: null,
         noteId: null,
+        parentId: null,
         tags: [],
         version: 2,
         createdAt: ts,

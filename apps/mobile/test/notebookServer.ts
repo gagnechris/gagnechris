@@ -57,6 +57,7 @@ export const makeTask = (
   someday: false,
   completedAt: null,
   noteId: null,
+  parentId: null,
   tags: [],
   version: 1,
   createdAt: '2026-10-01T09:00:00.000Z',

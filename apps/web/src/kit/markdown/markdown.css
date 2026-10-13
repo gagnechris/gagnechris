@@ -367,6 +367,99 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   pointer-events: none;
 }
 
+.task-embed-ghost__count {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--primary-600);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* Embed lines draw their indent as padding: two spaces are one step. */
+.markdown-editor .cm-line.cm-task-line {
+  position: relative;
+  padding-inline-start: calc(var(--task-indent) * 0.875rem + 6px);
+}
+
+.markdown-editor .cm-line.cm-task-line--sub::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 50%;
+  left: calc(var(--task-guide) * 0.875rem + 6px + 0.55rem);
+  width: 0.6rem;
+  border-bottom: 1px solid var(--neutral-200);
+  border-left: 1px solid var(--neutral-200);
+  border-bottom-left-radius: 4px;
+  pointer-events: none;
+}
+
+.task-embed__progress {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.5rem;
+  padding: 0 0.35rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--neutral-600);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.task-embed__progress:hover,
+.task-embed__progress:focus-visible {
+  background: var(--neutral-100);
+}
+
+.task-embed__ring-track,
+.task-embed__ring {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.task-embed__ring-track {
+  stroke: var(--neutral-200);
+}
+
+.task-embed__ring {
+  stroke: var(--primary-600);
+  stroke-linecap: round;
+}
+
+.task-embed__pill--all-done {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.task-embed__parent {
+  margin: 0 0 -0.15rem 1.6rem;
+  color: var(--neutral-500);
+  font-size: var(--text-xs);
+}
+
+.task-embed__parent--finished {
+  color: var(--neutral-400);
+  text-decoration: line-through;
+}
+
+.task-embed__finish {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0.25rem 0 0.5rem 1.6rem;
+  font-size: var(--text-sm);
+}
+
 .task-move-menu-anchor {
   position: fixed;
   z-index: 50;
@@ -617,6 +710,10 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   .task-embed__chevron {
     width: 2.25rem;
     height: 44px;
+  }
+
+  .task-embed__progress {
+    min-height: 44px;
   }
 
   .task-details__chip {

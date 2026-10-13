@@ -289,7 +289,7 @@ test('dragging a task by its handle takes its indented line along and the order 
   const to = (await row(c!.id).boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(to.x + 40, to.y + 4, { steps: 12 });
+  await page.mouse.move(from.x + from.width / 2, to.y + 4, { steps: 12 });
   await expect(page.locator('.task-drop-indicator')).toBeVisible();
   await page.mouse.up();
 
@@ -390,4 +390,104 @@ test.describe('on Today', () => {
       page.getByTestId('still-open').getByText(title, { exact: true }),
     ).toHaveCount(0);
   });
+});
+
+test('Tab nests a task under the one above, the parent folds it, and Complete all finishes both', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} launch` });
+  const [parent, child] = await Promise.all(
+    ['Launch site', 'Write copy'].map((t) =>
+      seed.task({ title: `${t} ${prefix}`, noteId: note.id }),
+    ),
+  );
+  await seed.api.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+    body: {
+      version: note.version,
+      bodyMarkdown: [token(parent!.id), token(child!.id)].join('\n'),
+    },
+  });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const row = (id: string) =>
+    page.locator(`.cm-task-embed[data-task-id="${id}"] .task-embed`);
+  await row(child!.id).getByRole('textbox', { name: 'Task title' }).click();
+  await page.keyboard.press('Tab');
+
+  const parentOf = async (id: string) =>
+    (
+      await seed.api.GET('/api/notebook/tasks/{id}', {
+        params: { path: { id } },
+      })
+    ).data?.parentId;
+  await expect.poll(() => parentOf(child!.id)).toBe(parent!.id);
+
+  const progress = row(parent!.id).getByRole('button', {
+    name: '0 of 1 subtasks done',
+  });
+  await expect(progress).toHaveAttribute('aria-expanded', 'true');
+  await progress.click();
+  await expect(progress).toHaveAttribute('aria-expanded', 'false');
+  await expect(row(child!.id)).toBeHidden();
+  await progress.click();
+  await expect(row(child!.id)).toBeVisible();
+
+  await row(parent!.id)
+    .getByRole('checkbox', { name: `Complete ${parent!.title}` })
+    .click();
+  await page
+    .getByRole('group', { name: `Finish ${parent!.title}` })
+    .getByRole('button', { name: 'Complete all' })
+    .click();
+  await expect
+    .poll(async () =>
+      Promise.all(
+        [parent!.id, child!.id].map(
+          async (id) =>
+            (
+              await seed.api.GET('/api/notebook/tasks/{id}', {
+                params: { path: { id } },
+              })
+            ).data?.status,
+        ),
+      ),
+    )
+    .toEqual(['done', 'done']);
+});
+
+test('All tasks shows a subtask’s parent above its title', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} plan` });
+  const [parent, child] = await Promise.all(
+    ['Plan offsite', 'Pick venue'].map((t) =>
+      seed.task({ title: `${t} ${prefix}`, noteId: note.id }),
+    ),
+  );
+  await seed.api.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+    body: {
+      version: note.version,
+      bodyMarkdown: [token(parent!.id), `  ${token(child!.id)}`].join('\n'),
+    },
+  });
+  await signIn();
+  await page.goto(`${apps.notebook}/tasks`);
+
+  const childRow = page
+    .getByRole('checkbox', { name: `Complete ${child!.title}` })
+    .locator('xpath=ancestor::li[1]');
+  await expect(childRow.locator('.task-parent-label')).toHaveText(
+    parent!.title,
+  );
 });

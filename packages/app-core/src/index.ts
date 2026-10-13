@@ -288,6 +288,7 @@ export {
   useCreateTaskMutation,
   useDeleteTaskMutation,
   usePatchTaskMutation,
+  useTaskParents,
   useReopenTaskMutation,
   useCachedTasks,
   useTasksByIds,

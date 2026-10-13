@@ -48,6 +48,40 @@ export function sectionOf(
 
 const isBlank = (doc: Text, n: number) => doc.line(n).text.trim() === '';
 
+/** Adds `delta` spaces to each line, or takes up to `-delta` of its indent. */
+export function reindent(text: string, delta: number): string {
+  if (delta === 0) return text;
+  return text
+    .split('\n')
+    .map((line) => {
+      if (delta > 0) return line.trim() ? ' '.repeat(delta) + line : line;
+      const lead = /^[ \t]*/.exec(line)![0].length;
+      return line.slice(Math.min(lead, -delta));
+    })
+    .join('\n');
+}
+
+/** Indents or outdents the block in place, keeping the selection on its text. */
+export function reindentBlock(
+  state: EditorState,
+  block: LineBlock,
+  delta: number,
+  userEvent: string,
+): TransactionSpec | null {
+  const { doc } = state;
+  const from = doc.line(block.first).from;
+  const to = doc.line(block.last).to;
+  const text = doc.sliceString(from, to);
+  const next = reindent(text, delta);
+  if (next === text) return null;
+  const changes = state.changes({ from, to, insert: next });
+  return {
+    changes,
+    selection: state.selection.map(changes, 1),
+    userEvent,
+  };
+}
+
 /**
  * Moves the block so it starts at line `before`, or to the end of the note
  * when `before` is past the last line. Null when it would not move.
@@ -57,12 +91,16 @@ export function moveBlock(
   block: LineBlock,
   before: number,
   userEvent: string,
+  indent = 0,
 ): TransactionSpec | null {
   const { doc } = state;
   const { first, last } = block;
-  if (before >= first && before <= last + 1) return null;
+  if (before >= first && before <= last + 1) {
+    return indent ? reindentBlock(state, block, indent, userEvent) : null;
+  }
   if (first === 1 && last === doc.lines) return null;
-  const text = doc.sliceString(doc.line(first).from, doc.line(last).to);
+  const original = doc.sliceString(doc.line(first).from, doc.line(last).to);
+  const text = reindent(original, indent);
   const remove =
     last < doc.lines
       ? { from: doc.line(first).from, to: doc.line(last + 1).from }
@@ -80,7 +118,7 @@ export function moveBlock(
   const newStart = changes.mapPos(at, -1) + (atEnd ? 1 : 0);
   const map = (pos: number) =>
     pos >= oldStart && pos <= oldEnd
-      ? newStart + (pos - oldStart)
+      ? newStart + Math.max(0, Math.min(text.length, pos - oldStart + indent))
       : changes.mapPos(pos);
   const selection = EditorSelection.create(
     state.selection.ranges.map((r) =>

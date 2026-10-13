@@ -15,9 +15,12 @@ import {
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
 import { TaskRowActions } from './TaskRowActions';
+import { TaskParentLabel } from './TaskParentLabel';
 import './todayPanels.css';
 
-type PanelTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'>;
+type PanelTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'> & {
+  parentId?: string | null;
+};
 
 export type StillOpenRow = {
   task: PanelTask;
@@ -119,7 +122,10 @@ export function StillOpenPanel(props: StillOpenProps) {
             >
               <div className="today-row__main">
                 <span className="today-row__text">
-                  <span className="today-row__title">{task.title}</span>
+                  <span className="today-row__title">
+                    <TaskParentLabel parentId={task.parentId} />
+                    {task.title}
+                  </span>
                   <span className="today-row__source">
                     {due ? (
                       <>
@@ -174,10 +180,14 @@ function FullStillOpenList({
             />
             {to ? (
               <Link to={to} className="today-row__title">
+                <TaskParentLabel parentId={task.parentId} />
                 {task.title}
               </Link>
             ) : (
-              <span className="today-row__title">{task.title}</span>
+              <span className="today-row__title">
+                <TaskParentLabel parentId={task.parentId} />
+                {task.title}
+              </span>
             )}
           </div>
           <div className="today-row__meta">
@@ -259,10 +269,14 @@ export function ComingUpPanel<T extends PanelTask>({
         />
         {taskTo ? (
           <Link to={taskTo(task)} className="today-row__title">
+            <TaskParentLabel parentId={task.parentId} />
             {task.title}
           </Link>
         ) : (
-          <span className="today-row__title">{task.title}</span>
+          <span className="today-row__title">
+            <TaskParentLabel parentId={task.parentId} />
+            {task.title}
+          </span>
         )}
         {compact ? (
           <span className="today-row__day">

@@ -15,6 +15,7 @@ import (
 var Owners = map[string]string{
 	"taskEmbedIds":          "notebook",
 	"carriedInMarkdown":     "notebook",
+	"taskEmbedParents":      "notebook",
 	"normalizeTags":         "notebook",
 	"fillDailyTemplate":     "notebook",
 	"dailyTemplateHasTasks": "notebook",

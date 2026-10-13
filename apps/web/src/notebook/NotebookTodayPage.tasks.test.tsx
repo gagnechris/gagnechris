@@ -166,6 +166,7 @@ const task = (n: number, overrides: Partial<Task>): Task => ({
   someday: false,
   completedAt: null,
   noteId: null,
+  parentId: null,
   tags: [],
   version: 1,
   createdAt: '2026-10-01T14:00:00.000Z',

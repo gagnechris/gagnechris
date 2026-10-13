@@ -27,7 +27,9 @@ import {
   NOTEBOOK_AREA_HEADINGS,
 } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
+import { TaskParentsProvider } from './TaskParentsProvider';
 import { useLocalToday } from './useLocalToday';
+import { TaskParentLabel } from '../kit/tasks/TaskParentLabel';
 
 export default function NotebookUpcomingPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
@@ -56,6 +58,8 @@ export default function NotebookUpcomingPage() {
       ),
     [scheduled.data, parked.data, today],
   );
+
+  const listed = useMemo(() => groups.flatMap((g) => g.tasks), [groups]);
 
   const noteIds = useMemo(
     () => [
@@ -100,140 +104,144 @@ export default function NotebookUpcomingPage() {
   const error = toggleError ?? patchError ?? quickAddTask.error;
 
   return (
-    <section className="workspace-panel notebook-upcoming">
-      <div className="workspace-panel__header">
-        <div>
-          <p className="notebook-today__kicker">
-            {NOTEBOOK_AREA_HEADINGS[areaFilter]}
-          </p>
-          <h1>Upcoming</h1>
-          <p className="workspace-panel__lede">
-            Tasks hidden until their day. Each one shows on Today from that day.
-          </p>
+    <TaskParentsProvider tasks={listed}>
+      <section className="workspace-panel notebook-upcoming">
+        <div className="workspace-panel__header">
+          <div>
+            <p className="notebook-today__kicker">
+              {NOTEBOOK_AREA_HEADINGS[areaFilter]}
+            </p>
+            <h1>Upcoming</h1>
+            <p className="workspace-panel__lede">
+              Tasks hidden until their day. Each one shows on Today from that
+              day.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <form
-        className="workspace-toolbar notebook-upcoming__add"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <TaskSyntaxInput
-          today={today}
-          placeholder="Schedule a task… e.g. Renew passport @nov 1"
-          value={quickAdd}
-          onChange={(next) => {
-            setQuickAdd(next);
-            quickAddTask.clearMessages();
+        <form
+          className="workspace-toolbar notebook-upcoming__add"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
           }}
-          aria-label="Schedule a task"
-          disabled={quickAddTask.pending}
-        />
-        <button
-          type="submit"
-          className="kit-btn kit-btn--primary"
-          disabled={quickAddTask.pending || !quickAdd.trim()}
         >
-          Add
-        </button>
-      </form>
-      {quickAddTask.hint ? (
-        <p className="kit-hint" role="status">
-          {quickAddTask.hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="workspace-panel__error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {scheduled.isError || parked.isError ? (
-        <p className="workspace-panel__error" role="alert">
-          Could not load tasks.
-        </p>
-      ) : loading ? (
-        <p className="kit-hint">Loading tasks…</p>
-      ) : groups.length === 0 ? (
-        <p className="kit-hint">
-          Nothing scheduled. Add <code>@mon</code>, <code>@oct 12</code> or{' '}
-          <code>@someday</code> to a task to see it here.
-        </p>
-      ) : (
-        groups.map((group) => (
-          <section
-            key={group.key}
-            className="notebook-upcoming__group"
-            aria-labelledby={`upcoming-${group.key}`}
+          <TaskSyntaxInput
+            today={today}
+            placeholder="Schedule a task… e.g. Renew passport @nov 1"
+            value={quickAdd}
+            onChange={(next) => {
+              setQuickAdd(next);
+              quickAddTask.clearMessages();
+            }}
+            aria-label="Schedule a task"
+            disabled={quickAddTask.pending}
+          />
+          <button
+            type="submit"
+            className="kit-btn kit-btn--primary"
+            disabled={quickAddTask.pending || !quickAdd.trim()}
           >
-            <header className="notebook-upcoming__group-header">
-              <h2 id={`upcoming-${group.key}`}>{group.label}</h2>
-              <span>{group.sub}</span>
-            </header>
-            <ul className="notebook-upcoming__list">
-              {group.tasks.map((task) => {
-                const note = task.noteId
-                  ? notesById.get(task.noteId)
-                  : undefined;
-                return (
-                  <li
-                    key={task.id}
-                    className="notebook-upcoming__row"
-                    data-task-id={task.id}
-                  >
-                    <TaskCheckbox
-                      task={task}
-                      onToggle={() => void toggle(task)}
-                    />
-                    <span className="notebook-upcoming__body">
-                      <Link
-                        to={`/tasks/${task.id}`}
-                        className="notebook-upcoming__title"
-                      >
-                        {task.title}
-                      </Link>
-                      {group.datedRows && task.startDate ? (
-                        <span className="notebook-upcoming__chip">
-                          {formatTaskDay(task.startDate)}
-                        </span>
-                      ) : null}
-                      <TaskDuePill due={taskDue(task, today)} />
-                      {note ? (
-                        <Link
-                          to={`/notes/${note.id}`}
-                          className="notebook-upcoming__chip"
-                        >
-                          {noteChipLabel(note)}
-                        </Link>
-                      ) : null}
-                    </span>
-                    <button
-                      type="button"
-                      className="kit-btn notebook-upcoming__today"
-                      aria-label={`Do “${task.title}” today`}
-                      onClick={() => doToday(task)}
+            Add
+          </button>
+        </form>
+        {quickAddTask.hint ? (
+          <p className="kit-hint" role="status">
+            {quickAddTask.hint}
+          </p>
+        ) : null}
+        {error ? (
+          <p className="workspace-panel__error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {scheduled.isError || parked.isError ? (
+          <p className="workspace-panel__error" role="alert">
+            Could not load tasks.
+          </p>
+        ) : loading ? (
+          <p className="kit-hint">Loading tasks…</p>
+        ) : groups.length === 0 ? (
+          <p className="kit-hint">
+            Nothing scheduled. Add <code>@mon</code>, <code>@oct 12</code> or{' '}
+            <code>@someday</code> to a task to see it here.
+          </p>
+        ) : (
+          groups.map((group) => (
+            <section
+              key={group.key}
+              className="notebook-upcoming__group"
+              aria-labelledby={`upcoming-${group.key}`}
+            >
+              <header className="notebook-upcoming__group-header">
+                <h2 id={`upcoming-${group.key}`}>{group.label}</h2>
+                <span>{group.sub}</span>
+              </header>
+              <ul className="notebook-upcoming__list">
+                {group.tasks.map((task) => {
+                  const note = task.noteId
+                    ? notesById.get(task.noteId)
+                    : undefined;
+                  return (
+                    <li
+                      key={task.id}
+                      className="notebook-upcoming__row"
+                      data-task-id={task.id}
                     >
-                      Do today
-                    </button>
-                    <span className="task-row__actions">
-                      <TaskRowActions
-                        title={task.title}
-                        snoozeFrom={snoozeBaseDay(
-                          task.startDate ?? today,
-                          today,
-                        )}
-                        onSnooze={(schedule) => void patch(task, schedule)}
+                      <TaskCheckbox
+                        task={task}
+                        onToggle={() => void toggle(task)}
                       />
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))
-      )}
-    </section>
+                      <span className="notebook-upcoming__body">
+                        <Link
+                          to={`/tasks/${task.id}`}
+                          className="notebook-upcoming__title"
+                        >
+                          <TaskParentLabel parentId={task.parentId} />
+                          {task.title}
+                        </Link>
+                        {group.datedRows && task.startDate ? (
+                          <span className="notebook-upcoming__chip">
+                            {formatTaskDay(task.startDate)}
+                          </span>
+                        ) : null}
+                        <TaskDuePill due={taskDue(task, today)} />
+                        {note ? (
+                          <Link
+                            to={`/notes/${note.id}`}
+                            className="notebook-upcoming__chip"
+                          >
+                            {noteChipLabel(note)}
+                          </Link>
+                        ) : null}
+                      </span>
+                      <button
+                        type="button"
+                        className="kit-btn notebook-upcoming__today"
+                        aria-label={`Do “${task.title}” today`}
+                        onClick={() => doToday(task)}
+                      >
+                        Do today
+                      </button>
+                      <span className="task-row__actions">
+                        <TaskRowActions
+                          title={task.title}
+                          snoozeFrom={snoozeBaseDay(
+                            task.startDate ?? today,
+                            today,
+                          )}
+                          onSnooze={(schedule) => void patch(task, schedule)}
+                        />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
+        )}
+      </section>
+    </TaskParentsProvider>
   );
 }

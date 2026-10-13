@@ -187,6 +187,7 @@ vi.mock('../workspace/api/client', () => ({
             someday: false,
             completedAt: null,
             noteId: String(body.noteId),
+            parentId: null,
             tags: [],
             version: 1,
             createdAt: TS,
@@ -251,6 +252,7 @@ function seedTask(overrides: Partial<Task> = {}) {
     someday: false,
     completedAt: null,
     noteId: NOTE_A,
+    parentId: null,
     tags: [],
     version: 1,
     createdAt: TS,
@@ -928,7 +930,7 @@ describe('editing an embedded task title in place', () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(api.taskPuts).toEqual([]);
 
-    await user.tab();
+    act(() => field.blur());
 
     await waitFor(() => expect(api.taskPuts).toHaveLength(1));
     expect(api.taskPuts[0]).toMatchObject({
@@ -1549,5 +1551,169 @@ describe('moving tasks in a note', () => {
       noteId: dayId,
     });
     expect(api.taskDeletes).toEqual([]);
+  });
+});
+
+describe('subtasks in a note', () => {
+  const PARENT = TASK_ID;
+  const SUB_1 = '01JTASKSBB1AAAAAAAAAAAAAAA';
+  const SUB_2 = '01JTASKSBB2AAAAAAAAAAAAAAA';
+  const OTHER = '01JTASKCCCCCCCCCCCCCCCCCCC';
+
+  function seed(
+    subs: { id: string; title: string; status?: Task['status'] }[],
+  ) {
+    seedTask({ title: 'Plan offsite', priority: 'med' });
+    for (const sub of subs) {
+      api.tasks.set(sub.id, {
+        ...api.tasks.get(PARENT)!,
+        id: sub.id,
+        title: sub.title,
+        status: sub.status ?? 'todo',
+        parentId: PARENT,
+      });
+    }
+  }
+
+  function renderNote(body: string) {
+    let current = body;
+    const Note = () => {
+      const [value, setValue] = useState(body);
+      current = value;
+      return (
+        <section aria-label="Note A">
+          <NotebookMarkdownBody
+            note={{ id: NOTE_A, area: 'work' }}
+            value={value}
+            onChange={setValue}
+          />
+        </section>
+      );
+    };
+    const router = createMemoryRouter([{ path: '/', element: <Note /> }]);
+    const utils = render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+    return { ...utils, body: () => current };
+  }
+
+  const nested = (...ids: string[]) =>
+    [tokenLine(PARENT), ...ids.map((id) => `  ${tokenLine(id)}`)].join('\n');
+
+  test('Tab in a title nests the task under the task above, and ⇧Tab takes it out', async () => {
+    seed([]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book venue',
+    });
+    const body = `${tokenLine(PARENT)}\n${tokenLine(OTHER)}`;
+    const { body: current } = renderNote(body);
+    const user = userEvent.setup();
+    const titles = await screen.findAllByRole('textbox', {
+      name: 'Task title',
+    });
+    await user.click(titles[1]!);
+
+    await user.keyboard('{Tab}');
+    expect(current()).toBe(`${tokenLine(PARENT)}\n  ${tokenLine(OTHER)}`);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('textbox', { name: 'Task title' })[1],
+      ).toHaveFocus(),
+    );
+    await user.keyboard('{Shift>}{Tab}{/Shift}');
+    expect(current()).toBe(body);
+  });
+
+  test('the parent shows how many subtasks are done and folds them away', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates', status: 'done' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    renderNote(`${nested(SUB_1, SUB_2)}\n  a note under them\nafter`);
+    const user = userEvent.setup();
+    const progress = await screen.findByRole('button', {
+      name: '1 of 2 subtasks done',
+    });
+    expect(progress).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByDisplayValue('Book venue')).toBeInTheDocument();
+
+    await user.click(progress);
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+    expect(screen.queryByText('a note under them')).toBeNull();
+    expect(screen.getByText('after')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '1 of 2 subtasks done' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(
+      screen.getByRole('button', { name: '1 of 2 subtasks done' }),
+    );
+    expect(await screen.findByDisplayValue('Book venue')).toBeInTheDocument();
+  });
+
+  test('checking the last subtask leaves the parent open with All done', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates', status: 'done' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    renderNote(nested(SUB_1, SUB_2));
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Complete Book venue' }),
+    );
+    expect(await screen.findByText('All done')).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: 'Complete Plan offsite' }),
+    ).not.toBeChecked();
+  });
+
+  test('checking a parent with open subtasks asks; Complete all completes them, Undo reopens the parent', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    renderNote(nested(SUB_1, SUB_2));
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Complete Plan offsite' }),
+    );
+    const prompt = await screen.findByRole('group', {
+      name: 'Finish Plan offsite',
+    });
+    expect(prompt).toHaveTextContent('2 subtasks are still open.');
+    await user.click(within(prompt).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(api.tasks.get(PARENT)!.status).toBe('todo'));
+
+    await user.click(
+      await screen.findByRole('checkbox', { name: 'Complete Plan offsite' }),
+    );
+    await user.click(
+      within(
+        await screen.findByRole('group', { name: 'Finish Plan offsite' }),
+      ).getByRole('button', { name: 'Complete all' }),
+    );
+    await waitFor(() => {
+      expect(api.tasks.get(SUB_1)!.status).toBe('done');
+      expect(api.tasks.get(SUB_2)!.status).toBe('done');
+    });
+    expect(api.tasks.get(PARENT)!.status).toBe('done');
+    expect(
+      screen.queryByRole('group', { name: 'Finish Plan offsite' }),
+    ).toBeNull();
+  });
+
+  test('a subtask away from its parent shows the parent’s title above its own, muted when the parent is done', async () => {
+    seed([{ id: SUB_1, title: 'Pick dates' }]);
+    api.tasks.set(PARENT, { ...api.tasks.get(PARENT)!, status: 'done' });
+    renderNote(`## Carried in\n${tokenLine(SUB_1)}`);
+    const label = await screen.findByText('Plan offsite');
+    expect(label).toHaveClass('task-embed__parent--finished');
   });
 });

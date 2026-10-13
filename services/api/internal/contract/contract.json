@@ -1433,6 +1433,17 @@
             }
           ]
         },
+        "parentId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "tags": {
           "type": "array",
           "items": {
@@ -2229,6 +2240,7 @@
       "someday": false,
       "completedAt": null,
       "noteId": "01NOTE",
+      "parentId": "01PARENT",
       "tags": [],
       "version": 1,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -2398,16 +2410,107 @@
     "carriedInMarkdown": [
       {
         "input": [
-          "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
         ],
         "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n"
       },
       {
         "input": [
-          "01arz3ndektsv4rrffq69g5fav",
-          "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+          {
+            "id": "01arz3ndektsv4rrffq69g5fav"
+          },
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": null
+          }
         ],
         "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      },
+      {
+        "input": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01arz3ndektsv4rrffq69g5fav"
+          },
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      },
+      {
+        "input": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      },
+      {
+        "input": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FB0"
+          },
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ],
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      }
+    ],
+    "taskEmbedParents": [
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ]
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\t  text\n\t{{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\r\n    {{task:01ARZ3NDEKTSV4RRFFQ69G5FAW}}",
+        "want": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ]
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
+      },
+      {
+        "input": "- item\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n    {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ]
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  ```\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n  ```",
+        "want": []
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": [
+          {
+            "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+            "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+          }
+        ]
+      },
+      {
+        "input": "{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  text\n    {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}",
+        "want": []
       }
     ],
     "normalizeTags": [
@@ -3130,6 +3233,7 @@
       "someday": false,
       "completedAt": null,
       "noteId": "01NOTE",
+      "parentId": "01PARENT",
       "tags": [],
       "version": 1,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -3178,6 +3282,7 @@
         "someday": false,
         "completedAt": null,
         "noteId": "01NOTE",
+        "parentId": "01PARENT",
         "tags": [],
         "version": 1,
         "createdAt": "2026-10-01T12:00:00.000Z",

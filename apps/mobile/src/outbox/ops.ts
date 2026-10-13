@@ -241,6 +241,7 @@ const taskFromCreate = (id: string, body: Body, now: string): Task => ({
   someday: (body.someday as boolean | undefined) ?? false,
   completedAt: null,
   noteId: (body.noteId as string | null | undefined) ?? null,
+  parentId: null,
   tags: (body.tags as string[] | undefined) ?? [],
   version: 1,
   createdAt: now,

@@ -173,14 +173,119 @@ func TaskEmbedIDs(markdown string) []string {
 
 const carriedInHeading = "## Carried in"
 
+// CarriedInTask is a task a new daily note carries in.
+type CarriedInTask struct {
+	ID       string  `json:"id"`
+	ParentID *string `json:"parentId"`
+}
+
 // CarriedInMarkdown is the block a new daily note opens with: open tasks
-// from earlier days.
-func CarriedInMarkdown(taskIDs []string) string {
-	tokens := make([]string, len(taskIDs))
-	for i, id := range taskIDs {
-		tokens[i] = "{{task:" + strings.ToUpper(id) + "}}"
+// from earlier days. A subtask whose parent carries in too sits indented
+// under it.
+func CarriedInMarkdown(tasks []CarriedInTask) string {
+	ids := map[string]CarriedInTask{}
+	for _, t := range tasks {
+		ids[strings.ToUpper(t.ID)] = t
 	}
-	return carriedInHeading + "\n\n" + strings.Join(tokens, "\n") + "\n\n"
+	parentOf := func(t CarriedInTask) string {
+		if t.ParentID == nil {
+			return ""
+		}
+		return strings.ToUpper(*t.ParentID)
+	}
+	nestedUnder := func(t CarriedInTask) string {
+		parent := parentOf(t)
+		p, ok := ids[parent]
+		if parent == "" || parent == strings.ToUpper(t.ID) || !ok {
+			return ""
+		}
+		if grand := parentOf(p); grand != "" && grand != parent {
+			if _, ok := ids[grand]; ok {
+				return ""
+			}
+		}
+		return parent
+	}
+	children := map[string][]CarriedInTask{}
+	for _, t := range tasks {
+		if parent := nestedUnder(t); parent != "" {
+			children[parent] = append(children[parent], t)
+		}
+	}
+	token := func(id string) string { return "{{task:" + strings.ToUpper(id) + "}}" }
+	var lines []string
+	for _, t := range tasks {
+		if nestedUnder(t) != "" {
+			continue
+		}
+		lines = append(lines, token(t.ID))
+		for _, c := range children[strings.ToUpper(t.ID)] {
+			lines = append(lines, "  "+token(c.ID))
+		}
+	}
+	return carriedInHeading + "\n\n" + strings.Join(lines, "\n") + "\n\n"
+}
+
+// TaskSubtask is a subtask line and the task it sits under.
+type TaskSubtask struct {
+	ID       string `json:"id"`
+	ParentID string `json:"parentId"`
+}
+
+func indentWidth(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
+}
+
+// TaskEmbedParents is taskEmbedParents: each subtask in the note, first line
+// per task, with its parent. A line is under the nearest line above it with
+// less indent and no blank line between; subtasks are one level deep.
+func TaskEmbedParents(markdown string) []TaskSubtask {
+	lines := strings.Split(markdown, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSuffix(line, "\r")
+	}
+	embedAt := map[int]TaskEmbed{}
+	embeds := FindTaskEmbeds(markdown)
+	for _, e := range embeds {
+		embedAt[e.Line] = e
+	}
+	owner := make([]int, len(lines))
+	underTask := make([]bool, len(lines))
+	var stack []int
+	for i, line := range lines {
+		owner[i] = -1
+		if api.TrimJS(line) == "" {
+			stack = stack[:0]
+			continue
+		}
+		width := indentWidth(line)
+		for len(stack) > 0 && indentWidth(lines[stack[len(stack)-1]]) >= width {
+			stack = stack[:len(stack)-1]
+		}
+		if len(stack) > 0 {
+			above := stack[len(stack)-1]
+			owner[i] = above
+			_, isEmbed := embedAt[above]
+			underTask[i] = isEmbed || underTask[above]
+		}
+		stack = append(stack, i)
+	}
+	out := []TaskSubtask{}
+	seen := map[string]bool{}
+	for _, e := range embeds {
+		if seen[e.ID] {
+			continue
+		}
+		seen[e.ID] = true
+		above := owner[e.Line]
+		if above < 0 || underTask[above] {
+			continue
+		}
+		if parent, ok := embedAt[above]; ok && parent.ID != e.ID {
+			out = append(out, TaskSubtask{ID: e.ID, ParentID: parent.ID})
+		}
+	}
+	return out
 }
 
 var jsSpaces = regexp.MustCompile(`[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+`)

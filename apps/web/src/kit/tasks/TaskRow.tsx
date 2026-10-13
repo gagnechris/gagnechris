@@ -1,8 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Task } from '@gagnechris/shared';
+import { TaskParentLabel } from './TaskParentLabel';
 
-type RowTask = Pick<Task, 'title' | 'priority' | 'status'>;
+type RowTask = Pick<Task, 'title' | 'priority' | 'status'> & {
+  parentId?: string | null;
+};
 
 export function TaskCheckbox({
   task,
@@ -66,6 +69,7 @@ export function TaskRow({
             : undefined
         }
       >
+        <TaskParentLabel parentId={task.parentId} />
         {task.title}
         <span className="kit-badge">{task.priority}</span>
         {list && task.status === 'in_progress' ? (

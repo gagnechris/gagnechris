@@ -6,6 +6,8 @@ import {
   type QueryClient,
   type QueryKey,
 } from '@tanstack/react-query';
+import { taskEmbedIds, taskEmbedParents } from '@gagnechris/shared';
+import { useMemo } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
   completeTask,
@@ -93,6 +95,21 @@ export const useTasksByIds = (
     fetchOne: (id) => fetchTask(getClient(), id),
     notFound: 'Task not found.',
   });
+};
+
+/** The parents of `tasks`, by id, read in one batch. */
+export const useTaskParents = (
+  tasks: readonly { parentId?: string | null }[],
+): ReadonlyMap<string, Task> => {
+  const ids = [
+    ...new Set(tasks.flatMap((t) => (t.parentId ? [t.parentId] : []))),
+  ];
+  const results = useTasksByIds(ids);
+  return useMemo(
+    () =>
+      new Map(results.flatMap((r) => (r.data ? [[r.data.id, r.data]] : []))),
+    [results],
+  );
 };
 
 // A list's first fetch absorbs an invalidation instead of restarting, so one
@@ -282,6 +299,29 @@ export const applyTaskPatch = (task: Task, patch: TaskPatch): Task => {
     completedAt: status === 'done' ? task.completedAt : null,
     version: task.version + 1,
   };
+};
+
+/**
+ * Saving a note sets its tasks' parents from its indentation, which changes
+ * their versions: refetch tasks when a cached one's parent no longer matches.
+ */
+export const refetchRenestedTasks = (
+  queryClient: QueryClient,
+  note: { id: string; bodyMarkdown: string },
+): void => {
+  const want = new Map(
+    taskEmbedParents(note.bodyMarkdown).map((s) => [s.id, s.parentId]),
+  );
+  const stale = taskEmbedIds(note.bodyMarkdown).some((id) => {
+    const task = findCachedTask(queryClient, id);
+    if (!task || task.noteId !== note.id) return false;
+    const parentId = want.get(id) ?? null;
+    if ((task.parentId ?? null) === parentId) return false;
+    const parent = parentId ? findCachedTask(queryClient, parentId) : undefined;
+    // Tasks in different areas never nest.
+    return !(parent && parent.area !== task.area && task.parentId == null);
+  });
+  if (stale) void refetchTasks(queryClient);
 };
 
 const findCachedTask = (

@@ -24,6 +24,7 @@ import {
   parseTaskEmbedLine,
   parseTaskLine,
   scanFences,
+  taskEmbedNesting,
   taskEmbedToken,
   taskLineDraftKey,
   type TaskLineDraft,
@@ -38,8 +39,11 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { blockEnd } from './lineMoves';
 import {
   dragTaskEmbed,
+  indentTaskEmbed,
+  indentTaskEmbedFrom,
   moveTaskEmbedToSection,
   refocusTaskEmbed,
   shiftTaskEmbed,
@@ -273,21 +277,92 @@ function removedEmbeds(tr: Transaction): string[] {
 
 const draftLine = Decoration.line({ class: 'cm-task-draft' });
 
+const embedIndent = Decoration.replace({});
+
+/**
+ * Each embed becomes its row. Its indent is drawn as padding rather than
+ * spaces, so a subtask sits a step in, with a guide back to its parent.
+ */
 function buildWidgets(state: EditorState, host: TaskEmbedHost) {
   const doc = state.doc;
   const ranges: Range<Decoration>[] = [];
-  for (const embed of findTaskEmbeds(doc.toString())) {
+  for (const embed of taskEmbedNesting(doc.toString())) {
     const line = doc.line(embed.line + 1);
     const from = line.from + embed.indent.length;
     const to = line.from + line.text.trimEnd().length;
+    const columns = embed.indent.length;
+    if (columns > 0 || embed.depth > 0) {
+      ranges.push(
+        Decoration.line({
+          class:
+            embed.depth > 0 ? 'cm-task-line cm-task-line--sub' : 'cm-task-line',
+          attributes: {
+            style: `--task-indent: ${columns}; --task-guide: ${Math.max(0, columns - 2)}`,
+          },
+        }).range(line.from),
+      );
+    }
+    if (columns > 0) ranges.push(embedIndent.range(line.from, from));
     ranges.push(
       Decoration.replace({
         widget: new TaskEmbedWidget(embed.id, host),
       }).range(from, to),
     );
   }
+  return Decoration.set(ranges, true);
+}
+
+const foldEffect = StateEffect.define<{ id: string; folded: boolean }>();
+
+/** Parent tasks whose subtasks, and the lines under them, are hidden. */
+const foldedTasksField = StateField.define<ReadonlySet<string>>({
+  create: () => new Set(),
+  update(value, tr) {
+    let next = value;
+    for (const effect of tr.effects) {
+      if (!effect.is(foldEffect)) continue;
+      const { id, folded } = effect.value;
+      if (next.has(id) === folded) continue;
+      const copy = new Set(next);
+      if (folded) copy.add(id);
+      else copy.delete(id);
+      next = copy;
+    }
+    return next;
+  },
+});
+
+const hiddenLines = Decoration.replace({});
+
+function buildFolds(state: EditorState) {
+  const folded = state.field(foldedTasksField);
+  if (folded.size === 0) return Decoration.none;
+  const { doc } = state;
+  const ranges: Range<Decoration>[] = [];
+  let hiddenTo = -1;
+  for (const embed of findTaskEmbeds(doc.toString())) {
+    if (!folded.has(embed.id)) continue;
+    const line = doc.line(embed.line + 1);
+    if (line.from <= hiddenTo) continue;
+    const last = blockEnd(doc, line.number);
+    if (last === line.number) continue;
+    hiddenTo = doc.line(last).to;
+    ranges.push(hiddenLines.range(line.to, hiddenTo));
+  }
   return Decoration.set(ranges);
 }
+
+const foldDecorations = StateField.define<DecorationSet>({
+  create: buildFolds,
+  update: (deco, tr) =>
+    tr.docChanged || tr.effects.some((e) => e.is(foldEffect))
+      ? buildFolds(tr.state)
+      : deco,
+  provide: (field) => [
+    EditorView.decorations.from(field),
+    EditorView.atomicRanges.of((view) => view.state.field(field)),
+  ],
+});
 
 function buildDraftLines(view: EditorView) {
   const { doc } = view.state;
@@ -328,7 +403,8 @@ const draftLines = ViewPlugin.fromClass(
 /** The embed widget's range on `line`, if the line is an embed. */
 function embedOn(widgets: DecorationSet, line: Line) {
   let range: { from: number; to: number } | null = null;
-  widgets.between(line.from, line.to, (from, to) => {
+  widgets.between(line.from, line.to, (from, to, deco) => {
+    if (!(deco.spec.widget instanceof TaskEmbedWidget)) return;
     range = { from, to };
     return false;
   });
@@ -445,8 +521,20 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
       return true;
     },
   });
+  const indentKey = (key: string, dir: 'in' | 'out') => ({
+    key,
+    run: (view: EditorView) => {
+      const { state } = view;
+      const line = state.doc.lineAt(state.selection.main.head);
+      if (!embedOn(state.field(widgets), line)) return false;
+      indentTaskEmbed(view, line.number, dir);
+      return true;
+    },
+  });
   return Prec.high(
     keymap.of([
+      indentKey('Tab', 'in'),
+      indentKey('Shift-Tab', 'out'),
       shiftKey('up', false),
       shiftKey('down', false),
       shiftKey('up', true),
@@ -507,6 +595,8 @@ export function taskEmbedEditor({
     convertedField,
     convertLeftLine(newId),
     widgets,
+    foldedTasksField,
+    foldDecorations,
     guardEmbedLines(widgets),
     embedEdgeKeys(widgets),
     draftLines,
@@ -678,6 +768,19 @@ const controlsFor = (el: HTMLElement): TaskEmbedControls => {
         shiftTaskEmbedFrom(view, el, dir, bySection);
         refocusTaskEmbed(view, id, refocus);
       }, undefined),
+    indent: (dir, refocus) =>
+      withView((view) => {
+        const id = el.dataset.taskId ?? '';
+        if (!indentTaskEmbedFrom(view, el, dir)) return false;
+        refocusTaskEmbed(view, id, refocus);
+        return true;
+      }, false),
+    fold: (folded) =>
+      withView((view) => {
+        const id = el.dataset.taskId ?? '';
+        if (view.state.field(foldedTasksField).has(id) === folded) return;
+        view.dispatch({ effects: foldEffect.of({ id, folded }) });
+      }, undefined),
     drag: (event) =>
       withView((view) => dragTaskEmbed(view, el, event), undefined),
     sections: () => withView(taskEmbedSections, []),
@@ -694,6 +797,10 @@ export type TaskEmbedControls = {
   move: (dir: 'up' | 'down') => void;
   /** Moves the task's block a step or a section; then focuses `refocus` in the row. */
   shift: (dir: 'up' | 'down', bySection: boolean, refocus: string) => void;
+  /** Tab / ⇧Tab: nests the task under the line above, or takes it out; false when it can't. */
+  indent: (dir: 'in' | 'out', refocus: string) => boolean;
+  /** Hides or shows the lines under the task. */
+  fold: (folded: boolean) => void;
   drag: (event: PointerEvent) => void;
   /** The note's `##` section titles. */
   sections: () => string[];

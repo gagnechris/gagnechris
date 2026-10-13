@@ -839,6 +839,13 @@ export const TaskSchema = z.object({
   someday: z.boolean(),
   completedAt: z.string().datetime({ offset: true }).nullable(),
   noteId: z.string().min(1).nullable(),
+  parentId: z
+    .string()
+    .min(1)
+    .nullable()
+    .describe(
+      'The task this is a subtask of, set from indentation in its home note',
+    ),
   tags: z.array(z.string()),
   version: VersionSchema,
   createdAt: z.string().datetime({ offset: true }),

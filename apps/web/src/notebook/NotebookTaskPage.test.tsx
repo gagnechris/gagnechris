@@ -135,6 +135,7 @@ function seedTask(overrides: Partial<Task> = {}) {
     someday: false,
     completedAt: null,
     noteId: null,
+    parentId: null,
     tags: [],
     version: 3,
     createdAt: TS,
