@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { initials, SITE_AUTHOR_NAME } from '@gagnechris/shared';
 import { clearPendingFlushes, hasPendingFlushes } from '@gagnechris/app-core';
@@ -22,7 +28,9 @@ import {
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import { useModalDialog } from '../kit/useModalDialog';
 import { visibleNavSections } from './navSections';
+import { ResizeHandle } from './ui/ResizeHandle';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
+import { useStoredWidth } from './ui/useStoredWidth';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import { WorkspaceSearchContext } from './workspaceSearch';
 import '../kit/kit.css';
@@ -102,6 +110,9 @@ function ExternalLink({
   );
 }
 
+const SIDEBAR_MIN = 192;
+const SIDEBAR_MAX = 400;
+
 /** Sidebar, phone tab bar and ⌘K for one signed-in app. */
 export function WorkspaceFrame({
   app,
@@ -120,6 +131,12 @@ export function WorkspaceFrame({
   const [moreOpenAt, setMoreOpenAt] = useState<string | null>(null);
   const moreOpen = moreOpenAt === location.key;
   useVisualViewportCssVars();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [sidebarWidth, setSidebarWidth] = useStoredWidth(
+    `gagnechris.${app}.sidebarWidth`,
+    SIDEBAR_MIN,
+    SIDEBAR_MAX,
+  );
 
   // Editors that already unmounted can still be retrying a save.
   useEffect(() => {
@@ -236,6 +253,13 @@ export function WorkspaceFrame({
           ? 'workspace-shell workspace workspace--rail'
           : 'workspace-shell workspace'
       }
+      style={
+        sidebarWidth === null
+          ? undefined
+          : ({
+              '--workspace-sidebar-width': `${sidebarWidth}px`,
+            } as CSSProperties)
+      }
     >
       <title>{`${title} - ${SITE_AUTHOR_NAME}`}</title>
       <meta name="robots" content="noindex, nofollow" />
@@ -245,7 +269,7 @@ export function WorkspaceFrame({
         </div>
       ) : null}
       <div className="workspace__body">
-        <aside className="workspace-sidebar">
+        <aside className="workspace-sidebar" ref={sidebarRef}>
           <div className="workspace-brand workspace-desktop">
             <span className="workspace-brand__mark" aria-hidden="true">
               CG
@@ -336,6 +360,18 @@ export function WorkspaceFrame({
             {yourApps}
             {account}
           </div>
+          {rail ? null : (
+            <ResizeHandle
+              label="Resize sidebar"
+              className="workspace-sidebar__resize"
+              target={() => sidebarRef.current}
+              width={sidebarWidth}
+              min={SIDEBAR_MIN}
+              max={SIDEBAR_MAX}
+              edge="right"
+              onChange={setSidebarWidth}
+            />
+          )}
         </aside>
         <main className="workspace-main">
           <WorkspaceSearchContext.Provider value={openSearch}>
