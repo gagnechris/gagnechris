@@ -416,6 +416,31 @@ describe('MarkdownEditor task list + options', () => {
     expect(view.state.doc.toString()).not.toBe('- item');
   });
 
+  test('⌥↓ moves a list item and the lines under it past the next item', () => {
+    const handle = createRef<MarkdownEditorHandle>();
+    render(
+      <MarkdownEditor
+        ref={handle}
+        value={'- a\n  - a1\n- b'}
+        onChange={vi.fn()}
+      />,
+    );
+    const view = handle.current!.view()!;
+    view.focus();
+    view.dispatch({ selection: { anchor: 1 } });
+    view.contentDOM.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+        keyCode: 40,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(view.state.doc.toString()).toBe('- b\n- a\n  - a1');
+  });
+
   test('reports blur from the editor', () => {
     const onBlur = vi.fn();
     const handle = createRef<MarkdownEditorHandle>();

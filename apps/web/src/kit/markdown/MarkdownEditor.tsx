@@ -27,6 +27,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
+import { moveLinesDown, moveLinesUp } from './lineMoves';
 import { continueMarkdownList } from './listContinuation';
 
 export type MarkdownEditorHandle = {
@@ -140,6 +141,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         highlightActiveLine(),
         cmKeymap.of([
           { key: 'Enter', run: continueMarkdownList },
+          { key: 'Alt-ArrowUp', run: moveLinesUp },
+          { key: 'Alt-ArrowDown', run: moveLinesDown },
           ...defaultKeymap,
           ...historyKeymap,
         ]),
