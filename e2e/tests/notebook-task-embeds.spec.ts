@@ -250,3 +250,144 @@ test('task details open under the row, save the description and stay open after 
     'Book the venue',
   );
 });
+
+test('dragging a task by its handle takes its indented line along and the order survives a reload', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} drag` });
+  const [a, b, c] = await Promise.all(
+    ['Draft agenda', 'Call Sam', 'Book room'].map((t) =>
+      seed.task({ title: `${t} ${prefix}`, noteId: note.id }),
+    ),
+  );
+  await seed.api.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+    body: {
+      version: note.version,
+      bodyMarkdown: [
+        '## Today',
+        token(a!.id),
+        '  room for ten',
+        '## Meetings',
+        token(b!.id),
+        token(c!.id),
+      ].join('\n'),
+    },
+  });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const row = (id: string) =>
+    page.locator(`.cm-task-embed[data-task-id="${id}"] .task-embed`);
+  await row(a!.id).hover();
+  const handle = page.getByRole('button', { name: `Move ${a!.title}` });
+  const from = (await handle.boundingBox())!;
+  const to = (await row(c!.id).boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + 40, to.y + 4, { steps: 12 });
+  await expect(page.locator('.task-drop-indicator')).toBeVisible();
+  await page.mouse.up();
+
+  const expected = [
+    '## Today',
+    '## Meetings',
+    token(b!.id),
+    token(a!.id),
+    '  room for ten',
+    token(c!.id),
+  ].join('\n');
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET('/api/notebook/notes/{id}', {
+        params: { path: { id: note.id } },
+      });
+      return data?.bodyMarkdown;
+    })
+    .toBe(expected);
+
+  await page.reload();
+  const titles = page.locator('.markdown-editor .cm-task-embed');
+  await expect(titles).toHaveCount(3);
+  await expect
+    .poll(() =>
+      titles.evaluateAll((els) =>
+        els.map((el) => (el as HTMLElement).dataset.taskId),
+      ),
+    )
+    .toEqual([b!.id, a!.id, c!.id]);
+});
+
+test.describe('on Today', () => {
+  test.use({ timezoneId: 'America/New_York' });
+
+  test('Move to tomorrow’s note takes the task off today and starts it tomorrow', async ({
+    page,
+    apps,
+    signIn,
+    seed,
+    prefix,
+  }) => {
+    const today = await seed.daily('2026-10-02', 'Standup');
+    const title = `${prefix} vendor contract`;
+    const task = await seed.task({ title, noteId: today.id });
+    await seed.daily('2026-10-02', `Standup\n${token(task.id)}`, {
+      id: today.id,
+      version: today.version,
+    });
+    await page.clock.setFixedTime(new Date('2026-10-02T09:00:00-04:00'));
+    await signIn();
+    await page.goto(`${apps.notebook}/today`);
+
+    await page
+      .locator(`.cm-task-embed[data-task-id="${task.id}"] .task-embed`)
+      .click({ button: 'right', position: { x: 4, y: 4 } });
+    const menu = page.getByRole('menu', { name: 'Move to' });
+    await menu.getByRole('menuitem', { name: 'Another day’s note…' }).click();
+    await page
+      .getByRole('menu', { name: 'Move to another day’s note' })
+      .getByRole('menuitem', { name: /Tomorrow/ })
+      .click();
+
+    await expect
+      .poll(async () => {
+        const { data } = await seed.api.GET('/api/notebook/tasks/{id}', {
+          params: { path: { id: task.id } },
+        });
+        return [data?.startDate, data?.noteId === today.id];
+      })
+      .toEqual(['2026-10-03', false]);
+    const { data: moved } = await seed.api.GET('/api/notebook/tasks/{id}', {
+      params: { path: { id: task.id } },
+    });
+    const { data: tomorrow } = await seed.api.GET(
+      '/api/notebook/notes/daily/{area}/{date}',
+      { params: { path: { area: 'work', date: '2026-10-03' } } },
+    );
+    expect(tomorrow && 'id' in tomorrow ? tomorrow.id : null).toBe(
+      moved?.noteId,
+    );
+    expect(tomorrow?.bodyMarkdown).toContain(token(task.id));
+    await expect
+      .poll(async () => {
+        const { data } = await seed.api.GET('/api/notebook/notes/{id}', {
+          params: { path: { id: today.id } },
+        });
+        return data?.bodyMarkdown;
+      })
+      .toBe('Standup');
+
+    await page.reload();
+    await expect(page.getByTestId('still-open')).not.toContainText('Loading');
+    await expect(
+      page.locator('.markdown-editor').getByText(title, { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId('still-open').getByText(title, { exact: true }),
+    ).toHaveCount(0);
+  });
+});

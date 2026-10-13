@@ -38,6 +38,15 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  dragTaskEmbed,
+  moveTaskEmbedToSection,
+  refocusTaskEmbed,
+  shiftTaskEmbed,
+  shiftTaskEmbedFrom,
+  taskEmbedBlock,
+  taskEmbedSections,
+} from './taskEmbedMoves';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 
@@ -426,8 +435,22 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
     const embed = embedOn(state.field(widgets), state.doc.line(n));
     return embed ? { line, embed } : null;
   };
+  const shiftKey = (dir: 'up' | 'down', bySection: boolean) => ({
+    key: `${bySection ? 'Shift-' : ''}Alt-Arrow${dir === 'up' ? 'Up' : 'Down'}`,
+    run: (view: EditorView) => {
+      const { state } = view;
+      const line = state.doc.lineAt(state.selection.main.head);
+      if (!embedOn(state.field(widgets), line)) return false;
+      shiftTaskEmbed(view, line.number, dir, bySection);
+      return true;
+    },
+  });
   return Prec.high(
     keymap.of([
+      shiftKey('up', false),
+      shiftKey('down', false),
+      shiftKey('up', true),
+      shiftKey('down', true),
       {
         key: 'Backspace',
         run: (view) => {
@@ -640,11 +663,46 @@ const moveFrom = (el: HTMLElement) => (dir: 'up' | 'down') => {
   if (view) moveFromTaskEmbed(view, el, dir);
 };
 
-/** What an embed row's title field does to the note around it. */
+const controlsFor = (el: HTMLElement): TaskEmbedControls => {
+  const withView = <T,>(run: (view: EditorView) => T, fallback: T) => {
+    const view = viewOf(el);
+    return view ? run(view) : fallback;
+  };
+  return {
+    leave: leaveFrom(el),
+    remove: deleteFrom(el),
+    move: moveFrom(el),
+    shift: (dir, bySection, refocus) =>
+      withView((view) => {
+        const id = el.dataset.taskId ?? '';
+        shiftTaskEmbedFrom(view, el, dir, bySection);
+        refocusTaskEmbed(view, id, refocus);
+      }, undefined),
+    drag: (event) =>
+      withView((view) => dragTaskEmbed(view, el, event), undefined),
+    sections: () => withView(taskEmbedSections, []),
+    toSection: (index) =>
+      withView((view) => moveTaskEmbedToSection(view, el, index), undefined),
+    takeBlock: () => withView((view) => taskEmbedBlock(view, el), null),
+  };
+};
+
+/** What an embed row does to the note around it. */
 export type TaskEmbedControls = {
   leave: (below: boolean) => void;
   remove: () => void;
   move: (dir: 'up' | 'down') => void;
+  /** Moves the task's block a step or a section; then focuses `refocus` in the row. */
+  shift: (dir: 'up' | 'down', bySection: boolean, refocus: string) => void;
+  drag: (event: PointerEvent) => void;
+  /** The note's `##` section titles. */
+  sections: () => string[];
+  toSection: (index: number) => void;
+  /**
+   * The task's line and the lines under it, for another note, and a way to
+   * take them out of this one afterwards, keeping their tasks.
+   */
+  takeBlock: () => { lines: string; remove: () => void } | null;
 };
 
 /**
@@ -709,14 +767,7 @@ export function useTaskEmbedEditor({
     <>
       {[...mounts.byEl].map(([el, { id, key }]) => (
         <Fragment key={key}>
-          {createPortal(
-            renderEmbed(id, {
-              leave: leaveFrom(el),
-              remove: deleteFrom(el),
-              move: moveFrom(el),
-            }),
-            el,
-          )}
+          {createPortal(renderEmbed(id, controlsFor(el)), el)}
         </Fragment>
       ))}
     </>

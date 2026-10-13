@@ -21,7 +21,12 @@ import {
 } from './tasks.js';
 import { useTaskToggle } from './useTaskToggle.js';
 
-export type EmbedNote = { id: string; area: NotebookArea };
+/** `date` is set on a daily note. */
+export type EmbedNote = {
+  id: string;
+  area: NotebookArea;
+  date?: string | null;
+};
 
 /** A `[ ] …` line the editor just turned into `{{task:id}}`. */
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };

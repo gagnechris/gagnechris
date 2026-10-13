@@ -252,6 +252,7 @@ export type TaskPatch = Partial<
     | 'priority'
     | 'dueDate'
     | 'tags'
+    | 'noteId'
   >
 >;
 
@@ -269,6 +270,7 @@ export const applyTaskPatch = (task: Task, patch: TaskPatch): Task => {
     title: patch.title ?? task.title,
     priority: patch.priority ?? task.priority,
     tags: patch.tags ?? task.tags,
+    noteId: patch.noteId !== undefined ? patch.noteId : task.noteId,
     dueDate: patch.dueDate !== undefined ? patch.dueDate : task.dueDate,
     status,
     someday,

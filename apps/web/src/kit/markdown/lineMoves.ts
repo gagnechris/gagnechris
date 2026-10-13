@@ -11,7 +11,7 @@ const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
 const blank = (text: string) => text.trim().length === 0;
 
 /** The last line of the item at `n` and the lines indented under it. */
-function blockEnd(doc: Text, n: number): number {
+export function blockEnd(doc: Text, n: number): number {
   const head = doc.line(n).text;
   if (!ITEM.test(head)) return n;
   const base = indentOf(head);
