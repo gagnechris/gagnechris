@@ -19,9 +19,6 @@ import MarkdownEditor, {
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
 import { livePreview } from '../kit/markdown/livePreview';
-import { useEditorViewMode } from '../kit/markdown/editorViewMode';
-import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
-import { loadMarkdownPreview } from '../kit/markdown/markdownPreviewModule';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { useLocalToday } from './useLocalToday';
@@ -68,11 +65,6 @@ export function NotebookMarkdownBody({
     }),
     [],
   );
-  const mode = useEditorViewMode({
-    rawStorageKey: 'notebook.rawMarkdown',
-    editorRef,
-    preloadPreview: loadMarkdownPreview,
-  });
   const getView = useCallback(() => editorRef.current?.view(), []);
   const phone = useMediaQuery(PHONE_QUERY);
   const [focused, setFocused] = useState(false);
@@ -97,8 +89,7 @@ export function NotebookMarkdownBody({
   const withTasks = note !== undefined;
   const extensions = useMemo(
     () => [
-      mode.previewKeymap,
-      ...(mode.raw ? [] : [livePreview()]),
+      livePreview(),
       taskListToggle(),
       ...(withTasks ? dateMenu.extensions : []),
       ...embeds.extensions,
@@ -109,17 +100,9 @@ export function NotebookMarkdownBody({
         ? [EditorView.scrollMargins.of(() => ({ bottom: PHONE_SCROLL_MARGIN }))]
         : []),
     ],
-    [
-      embeds.extensions,
-      dateMenu.extensions,
-      withTasks,
-      phone,
-      mode.raw,
-      mode.previewKeymap,
-    ],
+    [embeds.extensions, dateMenu.extensions, withTasks, phone],
   );
 
-  const { previewing, showEditor } = mode;
   const handledHighlight = useRef<string | null>(null);
   useEffect(() => {
     if (!highlightTaskId) {
@@ -127,10 +110,6 @@ export function NotebookMarkdownBody({
       return;
     }
     if (handledHighlight.current === highlightTaskId) return;
-    if (previewing) {
-      showEditor();
-      return;
-    }
     let frame = 0;
     const deadline = performance.now() + HIGHLIGHT_WAIT_MS;
     // The editor can apply a new `value` a beat after this render: it holds
@@ -170,13 +149,12 @@ export function NotebookMarkdownBody({
     };
     attempt();
     return () => cancelAnimationFrame(frame);
-  }, [highlightTaskId, onHighlighted, value, previewing, showEditor]);
+  }, [highlightTaskId, onHighlighted, value]);
 
   return (
     <>
       <div className="markdown-workspace markdown-workspace--single">
-        <div className="markdown-bar markdown-bar--end">{mode.toggles}</div>
-        <div className="markdown-single" data-previewing={mode.previewing}>
+        <div className="markdown-single">
           <MarkdownEditor
             ref={editorRef}
             value={value}
@@ -186,12 +164,6 @@ export function NotebookMarkdownBody({
             label={label}
             placeholder={placeholder}
           />
-          {mode.previewPane(
-            <LazyMarkdownPreview
-              markdown={value}
-              renderTaskEmbed={embeds.renderEmbed}
-            />,
-          )}
         </div>
       </div>
       {embeds.portals}

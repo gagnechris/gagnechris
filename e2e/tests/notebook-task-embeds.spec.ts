@@ -145,13 +145,6 @@ test('renaming a task changes every embed, and export writes titles instead of t
     await expect(
       page.locator('.markdown-editor').getByText(renamed, { exact: true }),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Preview' }).click();
-    await expect(
-      page
-        .getByRole('region', { name: 'Preview' })
-        .getByText(renamed, { exact: true }),
-    ).toBeVisible();
-    await expect(page.locator('.markdown-editor')).toBeHidden();
   }
 
   await page.goto(`${apps.notebook}/notes`);

@@ -22,3 +22,18 @@
   max-width: none;
   padding-inline: 0;
 }
+
+.admin-draft-preview {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.admin-draft-preview__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+}

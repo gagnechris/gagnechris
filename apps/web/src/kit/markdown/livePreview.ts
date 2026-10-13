@@ -22,10 +22,18 @@ const lineClass = (cls: string) => Decoration.line({ class: cls });
 const headingLines = [1, 2, 3, 4, 5, 6].map((n) => lineClass(`cm-md-h${n}`));
 const quoteLine = lineClass('cm-md-quote');
 const fenceLine = lineClass('cm-md-fence');
+const idleFenceLine = lineClass('cm-md-fence cm-md-fence--idle');
 const codeLine = lineClass('cm-md-code-block');
+const doneLine = lineClass('cm-md-check-done');
 const strongMark = Decoration.mark({ class: 'cm-md-strong' });
 const emphasisMark = Decoration.mark({ class: 'cm-md-em' });
 const codeMark = Decoration.mark({ class: 'cm-md-code' });
+const syntaxMark = Decoration.mark({ class: 'cm-md-syntax' });
+
+/** Longer URLs are shortened on the caret line until the caret enters the link. */
+export const LINK_URL_MAX = 24;
+
+const CHECKLIST = /^([ \t]*)[-*+][ \t]+\[([ xX])\](?!\()[ \t]?/;
 
 class BulletWidget extends WidgetType {
   eq() {
@@ -42,6 +50,75 @@ class BulletWidget extends WidgetType {
 }
 
 const bullet = Decoration.replace({ widget: new BulletWidget() });
+
+class CheckboxWidget extends WidgetType {
+  constructor(readonly checked: boolean) {
+    super();
+  }
+
+  eq(other: CheckboxWidget) {
+    return other.checked === this.checked;
+  }
+
+  toDOM(view: EditorView) {
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.className = 'cm-md-checkbox';
+    box.checked = this.checked;
+    box.setAttribute('aria-label', this.checked ? 'Done' : 'Not done');
+    box.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (view.state.readOnly) return;
+      const line = view.state.doc.lineAt(view.posAtDOM(box));
+      const at = line.text.indexOf('[');
+      if (at < 0) return;
+      view.dispatch({
+        changes: {
+          from: line.from + at,
+          to: line.from + at + 3,
+          insert: this.checked ? '[ ]' : '[x]',
+        },
+        userEvent: 'input.toggleTask',
+      });
+    });
+    return box;
+  }
+
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const checkboxes = [new CheckboxWidget(false), new CheckboxWidget(true)].map(
+  (widget) => Decoration.replace({ widget }),
+);
+
+class UrlWidget extends WidgetType {
+  constructor(readonly text: string) {
+    super();
+  }
+
+  eq(other: UrlWidget) {
+    return other.text === this.text;
+  }
+
+  toDOM() {
+    const el = document.createElement('span');
+    el.className = 'cm-md-syntax';
+    el.textContent = this.text;
+    return el;
+  }
+}
+
+/** `example.com/a-long/path` → `example.com/…`. */
+export function shortenUrl(url: string): string {
+  if (url.length <= LINK_URL_MAX) return url;
+  const bare = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  const slash = bare.indexOf('/');
+  const host = slash < 0 ? bare : bare.slice(0, slash);
+  if (host.length > 0 && host.length < LINK_URL_MAX) return `${host}/…`;
+  return `${bare.slice(0, LINK_URL_MAX - 1)}…`;
+}
 
 /** Lines any selection range touches; their markdown stays visible. */
 function activeLines(state: EditorState): Set<number> {
@@ -66,12 +143,11 @@ const lineDecorations: Record<LiveLineStyle, Decoration> = {
   code: codeLine,
 };
 
-function markDecoration(mark: LiveMark): Decoration {
+function styleDecoration(mark: LiveMark): Decoration | null {
   switch (mark.kind) {
     case 'hide':
-      return hide;
     case 'bullet':
-      return bullet;
+      return null;
     case 'strong':
       return strongMark;
     case 'em':
@@ -88,6 +164,22 @@ function markDecoration(mark: LiveMark): Decoration {
 
 const fencesOf = (doc: Text) => scanFences(doc.iterLines());
 
+function blockOf(
+  fences: readonly FenceBlock[],
+  line: number,
+): FenceBlock | undefined {
+  return fences.find(
+    (b) => line >= b.open && (b.close === null || line <= b.close),
+  );
+}
+
+type Ctx = {
+  state: EditorState;
+  active: Set<number>;
+  fences: readonly FenceBlock[];
+  out: Range<Decoration>[];
+};
+
 /** Decorations for the lines in `ranges` (the viewport, or the whole doc). */
 export function buildLivePreview(
   state: EditorState,
@@ -97,41 +189,106 @@ export function buildLivePreview(
   fences: readonly FenceBlock[] = fencesOf(state.doc),
 ): DecorationSet {
   const doc = state.doc;
-  const active = activeLines(state);
-  const out: Range<Decoration>[] = [];
+  const ctx: Ctx = { state, active: activeLines(state), fences, out: [] };
   let last = 0;
   for (const range of ranges) {
     const first = Math.max(doc.lineAt(range.from).number, last + 1);
     const end = doc.lineAt(range.to).number;
-    for (let n = first; n <= end; n += 1) {
-      decorateLine(doc.line(n), n, active, fences, out);
-    }
+    for (let n = first; n <= end; n += 1) decorateLine(doc.line(n), n, ctx);
     last = Math.max(last, end);
   }
-  return Decoration.set(out, true);
+  return Decoration.set(ctx.out, true);
 }
 
 function decorateLine(
-  line: { from: number; text: string },
+  line: { from: number; to: number; text: string },
   n: number,
-  active: Set<number>,
-  fences: readonly FenceBlock[],
-  out: Range<Decoration>[],
+  { state, active, fences, out }: Ctx,
 ) {
   const fenced = fenceLineKind(fences, n - 1);
-  if (fenced) {
-    out.push(lineDecorations[fenced].range(line.from));
+  if (fenced === 'code') {
+    out.push(codeLine.range(line.from));
+    return;
+  }
+  if (fenced === 'fence') {
+    const block = blockOf(fences, n - 1)!;
+    const last = (block.close ?? state.doc.lines - 1) + 1;
+    let editing = false;
+    for (let k = block.open + 1; k <= last && !editing; k += 1) {
+      editing = active.has(k);
+    }
+    if (editing) {
+      out.push(fenceLine.range(line.from));
+    } else {
+      out.push(idleFenceLine.range(line.from), hide.range(line.from, line.to));
+    }
     return;
   }
   if (parseTaskEmbedLine(line.text)) return;
 
   const { style, marks } = liveMarkdownLine(line.text);
   if (style) out.push(lineDecorations[style].range(line.from));
-  if (active.has(n)) return;
-  for (const mark of marks) {
+  const check = CHECKLIST.exec(line.text);
+  const isActive = active.has(n);
+
+  if (!isActive) {
+    if (check) {
+      const checked = check[2] !== ' ';
+      if (checked) out.push(doneLine.range(line.from));
+      out.push(
+        checkboxes[checked ? 1 : 0]!.range(
+          line.from + check[1]!.length,
+          line.from + check[0].length,
+        ),
+      );
+    }
+    for (const mark of marks) {
+      const deco =
+        mark.kind === 'hide'
+          ? hide
+          : mark.kind === 'bullet'
+            ? bullet
+            : styleDecoration(mark)!;
+      out.push(deco.range(line.from + mark.from, line.from + mark.to));
+    }
+    return;
+  }
+
+  if (check) {
     out.push(
-      markDecoration(mark).range(line.from + mark.from, line.from + mark.to),
+      syntaxMark.range(
+        line.from + check[1]!.length,
+        line.from + check[0].length,
+      ),
     );
+  }
+  const heads = state.selection.ranges.map((r) => r.head);
+  for (let i = 0; i < marks.length; i += 1) {
+    const mark = marks[i]!;
+    const from = line.from + mark.from;
+    const to = line.from + mark.to;
+    if (mark.kind === 'hide' || mark.kind === 'bullet') {
+      if (from < to) out.push(syntaxMark.range(from, to));
+      continue;
+    }
+    out.push(styleDecoration(mark)!.range(from, to));
+    const tail = marks[i + 1];
+    if (mark.kind !== 'link' || !mark.href || tail?.kind !== 'hide') continue;
+    // The link is `[` label `](url …)`: the caret inside it shows the full URL.
+    const linkFrom = from - 1;
+    const linkTo = line.from + tail.to;
+    const inside = heads.some((h) => h > linkFrom && h < linkTo);
+    const short = shortenUrl(mark.href);
+    if (inside || short === mark.href) continue;
+    out.push(
+      syntaxMark.range(to, to + 2),
+      Decoration.replace({ widget: new UrlWidget(short) }).range(
+        to + 2,
+        linkTo - 1,
+      ),
+      syntaxMark.range(linkTo - 1, linkTo),
+    );
+    i += 1;
   }
 }
 
@@ -165,9 +322,10 @@ const plugin = ViewPlugin.fromClass(
 );
 
 /**
- * Renders markdown syntax in place and shows it again on the lines the
- * selection touches. Line-based: no markdown parser, which keeps the editor
- * chunk small.
+ * Renders markdown in place. The lines a selection touches keep their
+ * formatting and show their syntax, dimmed; code fences show only while the
+ * selection is in the block. Line-based: no markdown parser, which keeps the
+ * editor chunk small.
  */
 export function livePreview(): Extension {
   return [plugin, EditorView.editorAttributes.of({ class: 'cm-live' })];

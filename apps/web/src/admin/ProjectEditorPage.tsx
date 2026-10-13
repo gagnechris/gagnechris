@@ -12,7 +12,7 @@ import {
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { ProjectEditorFields } from './ProjectEditorFields';
 import { publicImageSrc, publicUrl } from './publicUrl';
-import { LazyBodyPreview } from './editor/LazyBodyPreview';
+import { useDraftPreview } from './preview/draftPreview';
 import { EditorFrame, EditorNotice } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
@@ -62,6 +62,10 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
     },
   });
   const { draft, save, actionBarProps } = editor;
+  const previewPage = useDraftPreview('project', projectId, {
+    title: draft.name,
+    markdown: draft.bodyMarkdown,
+  });
   const { setField, setSlugManual } = useDraftFields(editor, {
     slugFrom: 'name',
   });
@@ -108,9 +112,7 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
             value={draft.bodyMarkdown}
             onChange={(value) => setField('bodyMarkdown', value)}
             onUploadImages={uploadBodyImages}
-            preview={
-              <LazyBodyPreview kind="project" markdown={draft.bodyMarkdown} />
-            }
+            previewPage={previewPage}
             resolveImageSrc={publicImageSrc}
           />
         </>

@@ -1,9 +1,7 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
-import { EditorView } from '@codemirror/view';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import { StrictMode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { PHONE_QUERY } from '../kit/useMediaQuery';
 import { QueryClientTestProvider } from '../test-utils';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
@@ -21,20 +19,6 @@ const renderBody = (initial = '# Plan\n\nShip **today**') =>
       </MemoryRouter>
     </QueryClientTestProvider>,
   );
-
-beforeAll(() => {
-  // jsdom has no layout; switching modes measures the caret.
-  Range.prototype.getClientRects ??= () => [] as unknown as DOMRectList;
-  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
-});
-
-afterEach(() => {
-  try {
-    window.localStorage.clear();
-  } catch {
-    // ignore
-  }
-});
 
 describe('NotebookMarkdownBody', () => {
   test('renders the editor in the first commit, with no loading fallback', () => {
@@ -68,77 +52,14 @@ describe('NotebookMarkdownBody', () => {
     expect(container.querySelector('.cm-live')).not.toBeNull();
   });
 
-  test('⌘/ (Ctrl+/ here) switches to a rendered preview and back to the editor', async () => {
+  test('has no Markdown or Preview toggle, and keeps the live view', async () => {
     const { container } = renderBody();
-    const user = userEvent.setup();
-    const editor = await screen.findByRole('textbox', { name: 'Note body' });
-    const view = EditorView.findFromDOM(editor)!;
-    act(() => {
-      view.focus();
-      view.contentDOM.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: '/',
-          code: 'Slash',
-          keyCode: 191,
-          ctrlKey: true,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-    });
-    const preview = await screen.findByRole('region', { name: 'Preview' });
-    expect(preview).toHaveFocus();
-    await waitFor(() =>
-      expect(preview.querySelector('h1')).toHaveTextContent('Plan'),
-    );
-    expect(screen.getByRole('button', { name: 'Preview' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-
-    await user.keyboard('{Control>}/{/Control}');
-    await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull(),
-    );
-    expect(container.querySelector('.cm-content')).toHaveFocus();
-  });
-
-  test('Markdown in Preview leaves Preview for raw markdown in one click', async () => {
-    const { container } = renderBody();
-    const user = userEvent.setup();
     await screen.findByRole('textbox', { name: 'Note body' });
-    await user.click(screen.getByRole('button', { name: 'Preview' }));
-    await screen.findByRole('region', { name: 'Preview' });
-
-    await user.click(screen.getByRole('button', { name: 'Markdown' }));
-    expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Markdown' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(container.querySelector('.cm-live')).toBeNull();
-    expect(window.localStorage.getItem('notebook.rawMarkdown')).toBe('1');
-  });
-
-  test('the Markdown toggle shows raw markdown everywhere and is remembered', async () => {
-    const { container, unmount } = renderBody();
-    const user = userEvent.setup();
-    await screen.findByRole('textbox', { name: 'Note body' });
-    const toggle = screen.getByRole('button', { name: 'Markdown' });
-    toggle.focus();
-    await user.keyboard('{Enter}');
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await waitFor(() => expect(container.querySelector('.cm-live')).toBeNull());
-    expect(container.querySelector('.cm-content')).toHaveTextContent('# Plan');
-    unmount();
-
-    const again = renderBody();
-    await screen.findByRole('textbox', { name: 'Note body' });
-    expect(screen.getByRole('button', { name: 'Markdown' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(again.container.querySelector('.cm-live')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Markdown' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
+    expect(screen.queryByRole('toolbar', { name: 'View' })).toBeNull();
+    expect(container.querySelector('.cm-live')).not.toBeNull();
+    expect(container.querySelector('.cm-md-h1')).toHaveTextContent('Plan');
   });
 
   test('the phone task hint shows its syntax as code, not markdown', async () => {

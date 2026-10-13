@@ -13,6 +13,7 @@ import { queryKeys } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
 import { adminApi } from '../mockAdminApi';
+import DraftPreviewPage from './preview/DraftPreviewPage';
 
 const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
@@ -846,6 +847,18 @@ describe('PostEditorPage View live', () => {
   });
 });
 
+async function openPreviewPage(kind: 'post' | 'project', id: string) {
+  const link = screen.getByRole('link', { name: /Preview page/ });
+  expect(link).toHaveAttribute('href', `/preview/${kind}/${id}`);
+  expect(link).toHaveAttribute('target', '_blank');
+  await userEvent.click(link);
+  const router = createMemoryRouter(
+    [{ path: '/preview/:kind/:id', element: <DraftPreviewPage /> }],
+    { initialEntries: [`/preview/${kind}/${id}`] },
+  );
+  return render(<RouterProvider router={router} />).container;
+}
+
 describe('PostEditorPage preview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -861,9 +874,9 @@ describe('PostEditorPage preview', () => {
   });
 
   test('renders the body exactly as the published article does', async () => {
-    const { container } = renderEditor();
+    renderEditor();
     await screen.findByDisplayValue('Hello');
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    const container = await openPreviewPage('post', basePost.id);
     await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
@@ -891,9 +904,9 @@ describe('PostEditorPage preview', () => {
       error: undefined,
       response: { status: 200 },
     });
-    const { container } = renderEditor();
+    renderEditor();
     await screen.findByDisplayValue('Hello');
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    const container = await openPreviewPage('post', basePost.id);
 
     const preview = container.querySelector<HTMLElement>(
       '.admin-body-preview',

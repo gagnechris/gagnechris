@@ -20,7 +20,7 @@ const PNG_1X1 = Buffer.from(
   'base64',
 );
 
-test('the post body is one pane: an inserted image shows inline and survives reload, and Preview renders the post', async ({
+test('the post body is one pane: an inserted image shows inline and survives reload, and Preview page renders the unsaved draft in a new tab', async ({
   page,
   apps,
   signIn,
@@ -62,9 +62,22 @@ test('the post body is one pane: an inserted image shows inline and survives rel
     'chart',
   );
 
-  await page.getByRole('button', { name: 'Preview' }).click();
-  const preview = page.getByRole('region', { name: 'Preview' });
+  await editor.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.type('\n\nNot saved yet');
+  const [tab] = await Promise.all([
+    page.context().waitForEvent('page'),
+    page.getByRole('link', { name: /Preview page/ }).click(),
+  ]);
+  await expect(tab).toHaveURL(`${apps.admin}/preview/post/${post.id}`);
+  const preview = tab.getByRole('article', { name: 'Preview' });
   await expect(preview.getByRole('heading', { name: 'Intro' })).toBeVisible();
   await expect(preview.getByRole('img', { name: 'chart' })).toBeVisible();
-  await expect(editor).toBeHidden();
+  await expect(preview).toContainText('Not saved yet');
+
+  await page.bringToFront();
+  await editor.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+End');
+  await page.keyboard.type(' and still typing');
+  await expect(preview).toContainText('Not saved yet and still typing');
 });

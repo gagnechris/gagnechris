@@ -8,7 +8,6 @@ import {
 } from '@gagnechris/shared';
 import { Field, TextArea, TextInput } from '../kit/Field';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
-import { LazyBodyPreview } from './editor/LazyBodyPreview';
 import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
@@ -194,15 +193,21 @@ type BodyProps = {
   draft: PostDraftFields;
   setField: SetDraftField<PostDraftFields>;
   onUploadImages: (files: File[]) => Promise<string[]>;
+  previewPage: { href: string; onOpen: () => void };
 };
 
-export function PostEditorBody({ draft, setField, onUploadImages }: BodyProps) {
+export function PostEditorBody({
+  draft,
+  setField,
+  onUploadImages,
+  previewPage,
+}: BodyProps) {
   return (
     <MarkdownBodyEditor
       value={draft.bodyMarkdown}
       onChange={(value) => setField('bodyMarkdown', value)}
       onUploadImages={onUploadImages}
-      preview={<LazyBodyPreview kind="post" markdown={draft.bodyMarkdown} />}
+      previewPage={previewPage}
       resolveImageSrc={publicImageSrc}
     />
   );

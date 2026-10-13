@@ -20,7 +20,7 @@ const dailyBody = (seed: Seed, date: string) => async () => {
   return data?.bodyMarkdown;
 };
 
-test('completing an embedded task in Preview on Today checks it in the editor and in raw markdown', async ({
+test('completing an embedded task on Today saves it as done', async ({
   page,
   apps,
   signIn,
@@ -41,28 +41,20 @@ test('completing an embedded task in Preview on Today checks it in the editor an
   await page.goto(`${apps.notebook}/today`);
   const editorRow = (name: string) =>
     page.locator('.markdown-editor').getByRole('checkbox', { name });
-  await expect(editorRow(`Complete ${task.title}`)).toBeVisible();
-
-  await page.getByRole('button', { name: 'Preview' }).click();
-  const preview = page.getByRole('region', { name: 'Preview' });
-  await preview
-    .getByRole('checkbox', { name: `Complete ${task.title}` })
-    .click();
-  await expect(
-    preview.getByRole('checkbox', { name: `Reopen ${task.title}` }),
-  ).toBeChecked();
-
-  await page.getByRole('button', { name: 'Preview' }).click();
+  await editorRow(`Complete ${task.title}`).click();
   await expect(editorRow(`Reopen ${task.title}`)).toBeChecked();
-  await page.getByRole('button', { name: 'Markdown' }).click();
-  await expect(editorRow(`Reopen ${task.title}`)).toBeChecked();
-  const { data } = await seed.api.GET('/api/notebook/tasks/{id}', {
-    params: { path: { id: task.id } },
-  });
-  expect(data?.status).toBe('done');
+  await expect(page.locator('.markdown-editor')).not.toContainText('{{task:');
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET('/api/notebook/tasks/{id}', {
+        params: { path: { id: task.id } },
+      });
+      return data?.status;
+    })
+    .toBe('done');
 });
 
-test('Add to today’s note from Preview returns to the editor with the caret under the task', async ({
+test('Add to today’s note puts the caret under the task', async ({
   page,
   apps,
   signIn,
@@ -79,14 +71,10 @@ test('Add to today’s note from Preview returns to the editor with the caret un
   await page.goto(`${apps.notebook}/today`);
   await page.getByRole('textbox', { name: 'Note body' }).click();
   await page.keyboard.type('Standup');
-  await page.keyboard.press('ControlOrMeta+/');
-  const preview = page.getByRole('region', { name: 'Preview' });
-  await expect(preview).toContainText('Standup');
 
   await page
     .getByRole('button', { name: `Add ${task.title} to today’s note` })
     .click();
-  await expect(preview).toBeHidden();
   await expect(page.locator('.cm-content')).toBeFocused();
   await page.keyboard.type('Finance needs the PO');
   await expect
@@ -94,7 +82,7 @@ test('Add to today’s note from Preview returns to the editor with the caret un
     .toBe(`Standup\n\n${token(task.id)}\nFinance needs the PO\n`);
 });
 
-test('slow saves while switching modes keep every word', async ({
+test('slow saves while typing keep every word', async ({
   page,
   apps,
   signIn,
@@ -105,7 +93,7 @@ test('slow saves while switching modes keep every word', async ({
     title: `${prefix} slow`,
     bodyMarkdown: 'Start',
   });
-  // Each save is still in flight when the next switch happens.
+  // Each save is still in flight when the next words are typed.
   await page.route('**/api/notebook/notes/**', async (route) => {
     if (route.request().method() === 'PUT') {
       await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -124,12 +112,6 @@ test('slow saves while switching modes keep every word', async ({
     await page.waitForRequest(
       (r) => r.method() === 'PUT' && r.url().includes(note.id),
     );
-    await page.keyboard.press('ControlOrMeta+/');
-    await expect(page.getByRole('region', { name: 'Preview' })).toContainText(
-      `w${i}`,
-    );
-    await page.keyboard.press('ControlOrMeta+/');
-    await page.getByRole('button', { name: 'Markdown' }).click();
   }
   await expect(editor).toHaveText(expected.join(' '));
   await expect.poll(noteBody(seed, note.id)).toBe(expected.join(' '));
@@ -163,7 +145,7 @@ test('text typed just before changing day is saved to its own day', async ({
   await expect.poll(dailyBody(seed, '2026-10-01')).toBe('Yesterday plus');
 });
 
-test('[ ] in raw markdown makes a task that stays a row in live mode', async ({
+test('[ ] text then Enter makes a task row that never shows its token', async ({
   page,
   apps,
   signIn,
@@ -173,7 +155,7 @@ test('[ ] in raw markdown makes a task that stays a row in live mode', async ({
   const note = await seed.note({ title: `${prefix} raw`, bodyMarkdown: '' });
   await signIn();
   await page.goto(`${apps.notebook}/notes/${note.id}`);
-  await page.getByRole('button', { name: 'Markdown' }).click();
+  await page.getByRole('textbox', { name: 'Note body' }).click();
   const title = `Raw task ${prefix}`;
   await page.keyboard.type(`[ ] ${title}`);
   await page.keyboard.press('Enter');
@@ -182,33 +164,10 @@ test('[ ] in raw markdown makes a task that stays a row in live mode', async ({
     .getByRole('checkbox', { name: `Complete ${title}` });
   await expect(row).toBeVisible();
 
-  await page.getByRole('button', { name: 'Markdown' }).click();
+  await page.keyboard.press('ControlOrMeta+a');
   await expect(row).toBeVisible();
+  await expect(page.locator('.markdown-editor')).not.toContainText('{{task:');
   await expect
     .poll(noteBody(seed, note.id))
     .toMatch(/^\{\{task:[0-9A-Z]{26}\}\}\n$/);
-});
-
-test('undo reaches typing done before the mode switches', async ({
-  page,
-  apps,
-  signIn,
-  seed,
-  prefix,
-}) => {
-  const note = await seed.note({
-    title: `${prefix} undo`,
-    bodyMarkdown: 'Base',
-  });
-  await signIn();
-  await page.goto(`${apps.notebook}/notes/${note.id}`);
-  const editor = page.getByRole('textbox', { name: 'Note body' });
-  await editor.click();
-  await page.keyboard.press('ControlOrMeta+End');
-  await page.keyboard.type(' added');
-  await page.getByRole('button', { name: 'Markdown' }).click();
-  await page.keyboard.press('ControlOrMeta+/');
-  await page.keyboard.press('ControlOrMeta+/');
-  await page.keyboard.press('ControlOrMeta+z');
-  await expect(editor).toHaveText('Base');
 });

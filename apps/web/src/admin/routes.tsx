@@ -44,6 +44,10 @@ export const adminRoutes: RouteObject[] = [
         load: () => import('./AdminResumePage.tsx'),
       }),
       lazyRoute({
+        path: 'preview/:kind/:id',
+        load: () => import('./preview/DraftPreviewPage.tsx'),
+      }),
+      lazyRoute({
         path: 'settings/users',
         load: () => import('./settings/AdminUsersPage.tsx'),
       }),
