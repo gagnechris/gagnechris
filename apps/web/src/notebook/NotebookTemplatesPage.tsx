@@ -107,7 +107,7 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
         <div className="notebook-templates__bar">
           <h2>{label} template</h2>
           <div className="notebook-templates__actions">
-            <SaveIndicator saveState={saveState} dirty={dirty} />
+            <SaveIndicator quiet saveState={saveState} dirty={dirty} />
             <button type="button" className="kit-btn" onClick={insertDate}>
               Insert date
             </button>

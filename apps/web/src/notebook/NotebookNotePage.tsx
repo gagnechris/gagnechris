@@ -88,7 +88,7 @@ export default function NotebookNotePage() {
           <Link to="/notes" className="workspace-back">
             ← Notes
           </Link>
-          <SaveIndicator saveState={saveState} dirty={dirty} />
+          <SaveIndicator quiet saveState={saveState} dirty={dirty} />
         </div>
         <div className="workspace-toolbar">
           <NoteDetailsToggle markdown={draft.bodyMarkdown} />
