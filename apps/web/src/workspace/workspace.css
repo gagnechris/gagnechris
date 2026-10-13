@@ -1092,12 +1092,15 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  /* Opaque and a little wider than the column, so scrolled content and the
-     edges of a bordered editor under it never show beside or through it. */
-  margin: 0 calc(-1 * var(--space-2)) var(--space-4);
-  padding: var(--space-3) var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) 0;
   background: var(--neutral-50);
   border-bottom: 1px solid var(--neutral-200);
+  /* Paints past both edges without widening the box, so the borders of an
+     editor scrolling under it are covered too. */
+  box-shadow:
+    calc(-1 * var(--space-2)) 0 var(--neutral-50),
+    var(--space-2) 0 var(--neutral-50);
 }
 
 .workspace-action-bar__status {
@@ -1190,7 +1193,7 @@
   .workspace-action-bar {
     justify-content: flex-start;
     gap: 0 var(--space-2);
-    padding: 0 var(--space-2) var(--space-2);
+    padding: 0 0 var(--space-2);
   }
 
   /* Ends the nav row, so the status always starts a line of its own. */
