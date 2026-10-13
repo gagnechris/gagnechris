@@ -25,7 +25,7 @@ export type LiveMarkdownHandle = {
   setSelection: (start: number, end: number) => void;
 };
 
-/** Notes in Inter; posts and projects in the public reading style. */
+/** Notes in Newsreader with Inter headings; posts and projects in the public reading style. */
 export type LiveMarkdownVariant = 'note' | 'reading';
 
 type Props = {
@@ -55,6 +55,7 @@ type Props = {
 
 const MONO = 'Menlo';
 const IMAGE_MAX_HEIGHT = 384;
+const NOTE_LINE = 27;
 
 const heading = (font: string, size: number, lineHeight: number) => ({
   font,
@@ -75,17 +76,17 @@ const sharedColors = {
 
 const THEMES: Record<LiveMarkdownVariant, string> = {
   note: JSON.stringify({
-    body: heading(font.regular.fontFamily, tokens.text.body, 24),
+    body: heading(readingFont.regular.fontFamily, tokens.text.body, NOTE_LINE),
     headings: [
-      heading(font.bold.fontFamily, 27, 34),
-      heading(font.bold.fontFamily, 22, 28),
-      heading(font.semibold.fontFamily, 19, 26),
-      heading(font.semibold.fontFamily, tokens.text.body, 24),
-      heading(font.semibold.fontFamily, tokens.text.body, 24),
-      heading(font.semibold.fontFamily, tokens.text.body, 24),
+      heading(font.bold.fontFamily, 24, 38),
+      heading(font.bold.fontFamily, 20, 32),
+      heading(font.semibold.fontFamily, tokens.text.body, NOTE_LINE),
+      heading(font.semibold.fontFamily, tokens.text.body, NOTE_LINE),
+      heading(font.semibold.fontFamily, tokens.text.body, NOTE_LINE),
+      heading(font.semibold.fontFamily, tokens.text.body, NOTE_LINE),
     ],
-    strongFont: font.bold.fontFamily,
-    emFont: null,
+    strongFont: readingFont.medium.fontFamily,
+    emFont: readingFont.italic.fontFamily,
     codeFont: MONO,
     codeScale: 0.9,
     quoteIndent: tokens.space[3],
@@ -113,7 +114,7 @@ const THEMES: Record<LiveMarkdownVariant, string> = {
 };
 
 const LINE_HEIGHT: Record<LiveMarkdownVariant, number> = {
-  note: 24,
+  note: NOTE_LINE,
   reading: 32,
 };
 
@@ -221,9 +222,9 @@ const NativeInput = ({
 
 const fallbackStyles = StyleSheet.create({
   note: {
-    ...font.regular,
+    ...readingFont.regular,
     fontSize: tokens.text.body,
-    lineHeight: 24,
+    lineHeight: NOTE_LINE,
     color: color.ink,
   },
   reading: {
