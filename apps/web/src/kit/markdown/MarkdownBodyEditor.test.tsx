@@ -8,34 +8,27 @@ vi.mock('./MarkdownEditor', () => ({
 }));
 
 describe('MarkdownBodyEditor', () => {
-  test('one pane, no Write/Split/Preview tabs; Preview swaps in the given renderer and hides the insert toolbar', async () => {
-    const user = userEvent.setup();
-    const { container } = render(
+  test('one pane with no view toggles; Preview page opens in a new tab', async () => {
+    const onOpen = vi.fn();
+    render(
       <MarkdownBodyEditor
         value="# Hi"
         onChange={() => {}}
         onUploadImages={() => Promise.resolve([])}
-        preview={<div data-testid="published" />}
+        previewPage={{ href: '/preview/post/1', onOpen }}
       />,
     );
     await screen.findByLabelText('Markdown');
     expect(screen.queryByRole('tab')).toBeNull();
-    expect(container.querySelector('.markdown-single')).toHaveAttribute(
-      'data-previewing',
-      'false',
-    );
-    expect(screen.queryByTestId('published')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Markdown' })).toBeNull();
     expect(screen.getByRole('toolbar', { name: 'Insert' })).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Preview' }));
-    expect(screen.getByRole('region', { name: 'Preview' })).toContainElement(
-      screen.getByTestId('published'),
-    );
-    expect(screen.getByRole('region', { name: 'Preview' })).toHaveFocus();
-    expect(screen.queryByRole('toolbar', { name: 'Insert' })).toBeNull();
-
-    await user.keyboard('{Control>}/{/Control}');
-    expect(screen.queryByRole('region', { name: 'Preview' })).toBeNull();
-    expect(screen.getByRole('toolbar', { name: 'Insert' })).toBeVisible();
+    const link = screen.getByRole('link', { name: /Preview page/ });
+    expect(link).toHaveAttribute('href', '/preview/post/1');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAccessibleName(/^Preview page ?\(opens in a new tab\)$/);
+    await userEvent.click(link);
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });

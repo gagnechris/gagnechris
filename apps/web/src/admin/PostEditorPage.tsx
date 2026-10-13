@@ -21,6 +21,7 @@ import { EditorError, EditorFrame, EditorNotice } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';
 import { useDraftFields } from './editor/useDraftFields';
 import { useImageUpload } from './editor/useImageUpload';
+import { useDraftPreview } from './preview/draftPreview';
 
 const BACK = { to: '/', label: '← Back to posts' };
 
@@ -63,6 +64,10 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     },
   });
   const { draft, save, saveError } = editor;
+  const previewPage = useDraftPreview('post', postId, {
+    title: draft.title,
+    markdown: draft.bodyMarkdown,
+  });
   const { setField, slugManual, setSlugManual } = useDraftFields(editor, {
     slugFrom: 'title',
   });
@@ -122,6 +127,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
               draft={draft}
               setField={setField}
               onUploadImages={uploadBodyImages}
+              previewPage={previewPage}
             />
           </div>
 

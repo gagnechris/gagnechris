@@ -16,6 +16,7 @@ import { renderProjectPageBodyHtml } from '@gagnechris/public-ui/server';
 import { answerConfirms, QueryClientTestProvider } from '../test-utils';
 import ProjectEditorPage from './ProjectEditorPage';
 import { adminApi } from '../mockAdminApi';
+import DraftPreviewPage from './preview/DraftPreviewPage';
 
 const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
@@ -635,6 +636,18 @@ describe('ProjectEditorPage lifecycle', () => {
   });
 });
 
+async function openPreviewPage(kind: 'post' | 'project', id: string) {
+  const link = screen.getByRole('link', { name: /Preview page/ });
+  expect(link).toHaveAttribute('href', `/preview/${kind}/${id}`);
+  expect(link).toHaveAttribute('target', '_blank');
+  await userEvent.click(link);
+  const router = createMemoryRouter(
+    [{ path: '/preview/:kind/:id', element: <DraftPreviewPage /> }],
+    { initialEntries: [`/preview/${kind}/${id}`] },
+  );
+  return render(<RouterProvider router={router} />).container;
+}
+
 describe('ProjectEditorPage preview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -651,7 +664,7 @@ describe('ProjectEditorPage preview', () => {
     };
     renderEditor(project);
     await screen.findByDisplayValue('Notebook');
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    const container = await openPreviewPage('project', project.id);
     await screen.findByText('A caption under the image');
 
     const published = document.createElement('div');
@@ -659,7 +672,7 @@ describe('ProjectEditorPage preview', () => {
     const publishedBody = published.querySelector(
       '.project-page .project-main > .project-body',
     );
-    const previewBody = document.querySelector(
+    const previewBody = container.querySelector(
       '.admin-body-preview .project-page .project-main > .project-body',
     );
     expect(publishedBody?.querySelector('dl')).not.toBeNull();
@@ -676,9 +689,11 @@ describe('ProjectEditorPage preview', () => {
         'Read [the welcome post](/posts/welcome) or [elsewhere](https://example.com/x).\n\n![Screenshot](/media/projects/notebook.png)',
     });
     await screen.findByDisplayValue('Notebook');
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    const container = await openPreviewPage('project', baseProject.id);
 
-    const preview = document.querySelector<HTMLElement>('.admin-body-preview')!;
+    const preview = container.querySelector<HTMLElement>(
+      '.admin-body-preview',
+    )!;
     const link = within(preview).getByRole('link', {
       name: 'the welcome post',
     });
