@@ -154,7 +154,7 @@ export function NotebookMarkdownBody({
   return (
     <>
       <div className="markdown-workspace markdown-workspace--single">
-        <div className="markdown-single">
+        <div className="markdown-single markdown-single--notebook">
           <MarkdownEditor
             ref={editorRef}
             value={value}

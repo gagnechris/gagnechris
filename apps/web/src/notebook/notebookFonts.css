@@ -1,0 +1,30 @@
+/*
+ * Notebook body text. `optional`: a cold load that misses the first 100 ms
+ * keeps the metric-matched fallback for that view instead of swapping fonts
+ * under the reader; the next load has it cached.
+ */
+@font-face {
+  font-family: 'Newsreader';
+  src: url('../../public/fonts/newsreader-roman.c4b10fbd.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: 'Newsreader';
+  src: url('../../public/fonts/newsreader-italic.30a9315f.woff2')
+    format('woff2');
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: 'Newsreader Fallback';
+  src: local('Georgia');
+  size-adjust: 96.14%;
+  ascent-override: 76.45%;
+  descent-override: 27.56%;
+  line-gap-override: 0%;
+}
