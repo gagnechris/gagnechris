@@ -193,7 +193,7 @@ const DailyNoteEditor = ({
         embeds={embeds}
         today={today}
         onOpenTask={onOpenTask}
-        noteId={entity!.id}
+        note={entity}
       />
     </View>
   );

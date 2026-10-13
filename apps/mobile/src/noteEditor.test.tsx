@@ -595,6 +595,7 @@ describe('note editor', () => {
     const title = byLabel(renderer, 'Task title');
     expect(title.props.value).toBe('Ship it');
     expect(title.props.accessibilityActions).toEqual([
+      { name: 'menu', label: 'Task actions' },
       { name: 'remove', label: 'Delete task' },
     ]);
     expect(byLabel(renderer, 'Open task Ship it').props.accessibilityRole).toBe(
@@ -602,13 +603,17 @@ describe('note editor', () => {
     );
   });
 
-  it('deletes a task from its long-press menu, line and all', async () => {
+  it('deletes a task from its long-press menu, after asking, line and all', async () => {
     serve(
       [makeNote(NOTE, `a\n{{task:${TASK}}}\nb`)],
       [makeTask(TASK, 'Ship it')],
     );
     const renderer = await renderNote();
     act(() => byLabel(renderer, 'Open task Ship it').props.onLongPress());
+    const [menu, choose] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
+      .mock.lastCall!;
+    expect(menu.options).toEqual(['Move to…', 'Delete', 'Cancel']);
+    act(() => choose(1));
     const [sheet, pick] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
       .mock.lastCall!;
     expect(sheet.options).toEqual(['Delete task', 'Cancel']);

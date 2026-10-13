@@ -48,6 +48,7 @@ import {
 import { PickDateModal } from './PickDateModal';
 import { TaskDetailsPanel } from './TaskDetailsPanel';
 import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
+import { useTaskRowMenu, type MenuNote } from './useTaskRowMenu';
 import {
   applyToolbarAction,
   lineStart,
@@ -61,8 +62,8 @@ type Props = {
   embeds: ReturnType<typeof useNoteTaskEmbedSync>;
   today: string;
   onOpenTask: (id: string) => void;
-  /** Whether rows show their first details line is kept per note. */
-  noteId?: string;
+  /** For Move to another day's note, and the note's Task rows choice. */
+  note?: MenuNote | null;
   autoFocus?: boolean;
   /** Ids for tests; real ones are ULIDs. */
   newId?: () => string;
@@ -103,13 +104,13 @@ export const NoteBodyEditor = ({
   embeds,
   today,
   onOpenTask,
-  noteId,
+  note,
   autoFocus,
   newId = createUlid,
 }: Props) => {
   const { onCreate, stateOf, error } = embeds;
   const details = useTaskDetailsStore();
-  const peeking = noteId ? details.peek.has(noteId) : false;
+  const peeking = note ? details.peek.has(note.id) : false;
   const segments = useMemo(() => noteSegments(markdown), [markdown]);
   const inputs = useRef(new Map<string, LiveMarkdownHandle>());
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -375,6 +376,27 @@ export const NoteBodyEditor = ({
       },
     );
 
+  const menu = useTaskRowMenu({
+    note,
+    today,
+    markdown: () => latest.current.markdown,
+    onChange,
+    stateOf,
+    onDelete: (taskId) => {
+      const segment = latest.current.segments.find(
+        (s) => s.kind === 'embed' && s.id === taskId,
+      );
+      const state = stateOf(taskId);
+      if (segment) {
+        confirmDeleteEmbed(
+          segment.key,
+          taskId,
+          state.kind === 'task' ? state.task.title : 'Task',
+        );
+      }
+    },
+  });
+
   /** Puts the caret on a blank line right under the embed at `key`. */
   const continueAfter = (key: string) => {
     const all = latest.current.segments;
@@ -394,9 +416,9 @@ export const NoteBodyEditor = ({
 
   return (
     <View>
-      {error ? (
+      {error || menu.error ? (
         <Text style={styles.error} accessibilityRole="alert">
-          {error}
+          {error ?? menu.error}
         </Text>
       ) : null}
       {segments.map((segment, index) => {
@@ -415,6 +437,7 @@ export const NoteBodyEditor = ({
                 onRemove={() =>
                   confirmDeleteEmbed(segment.key, segment.id, title)
                 }
+                onMenu={() => menu.open(segment.id)}
                 onDelete={() => deleteEmbed(segment.key, segment.id)}
                 editable
                 onTitleSubmit={() => continueAfter(segment.key)}
@@ -482,6 +505,7 @@ export const NoteBodyEditor = ({
           </Fragment>
         );
       })}
+      {menu.datePicker}
       <PickDateModal
         key={picking ? 'picking' : 'closed'}
         title={

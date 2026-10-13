@@ -9,7 +9,7 @@ import {
   type ReactTestRenderer,
 } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '../test/render';
+import { Providers, render } from '../test/render';
 import { NoteBodyEditor } from './notebook/NoteBodyEditor';
 
 vi.mock('../modules/live-markdown', () => ({
@@ -56,12 +56,14 @@ const setup = async (initial: string) => {
   let n = 0;
   const newId = () => `01TASK${String((n += 1)).padStart(20, '0')}`;
   const renderer = await render(
-    <Harness
-      initial={initial}
-      creates={creates}
-      onMarkdown={(next) => (markdown.current = next)}
-      newId={newId}
-    />,
+    <Providers>
+      <Harness
+        initial={initial}
+        creates={creates}
+        onMarkdown={(next) => (markdown.current = next)}
+        newId={newId}
+      />
+    </Providers>,
   );
   return { renderer, creates, markdown };
 };
