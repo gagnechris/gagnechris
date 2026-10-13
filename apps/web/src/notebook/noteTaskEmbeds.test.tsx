@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EditorSelection } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
@@ -33,6 +40,11 @@ import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
+import {
+  resetTaskDetailsStore,
+  setNotePeek,
+  TASK_DETAILS_OPEN_KEY,
+} from './taskDetailsStore';
 
 const TODAY = '2026-10-02';
 const TS = '2026-10-02T12:00:00.000Z';
@@ -126,11 +138,8 @@ vi.mock('../workspace/api/client', () => ({
           api.taskPuts.push(body);
           const prev = api.tasks.get(p.id!)!;
           if (body.version !== prev.version) return fail(409, 'conflict');
-          const next = {
-            ...prev,
-            title: String(body.title),
-            version: prev.version + 1,
-          };
+          const { version: _version, ...fields } = body;
+          const next = { ...prev, ...fields, version: prev.version + 1 };
           api.tasks.set(next.id, next);
           return ok(next);
         }
@@ -320,6 +329,7 @@ beforeEach(() => {
   api.taskReads = [];
   api.dropNextTaskResponse = false;
   localStorage.clear();
+  resetTaskDetailsStore();
 });
 
 afterEach(() => {
@@ -1138,5 +1148,225 @@ describe('editing an embedded task title in place', () => {
       await within(noteA()).findByText(/changed on another device/),
     ).toBeTruthy();
     await waitFor(() => expect(field).toHaveValue('Call Sam'));
+  });
+});
+
+describe('task details under the row', () => {
+  function renderNotes(body: string) {
+    const Notes = () => {
+      const [value, setValue] = useState(body);
+      return (
+        <>
+          <section aria-label="Note A">
+            <NotebookMarkdownBody
+              note={{ id: NOTE_A, area: 'work' }}
+              value={value}
+              onChange={setValue}
+            />
+          </section>
+          <section aria-label="Note B">
+            <NotebookMarkdownBody
+              note={{ id: NOTE_B, area: 'work' }}
+              value={tokenLine(TASK_ID)}
+              onChange={() => {}}
+            />
+          </section>
+        </>
+      );
+    };
+    const router = createMemoryRouter([{ path: '/', element: <Notes /> }]);
+    return render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+  }
+
+  const noteA = () => screen.getByRole('region', { name: 'Note A' });
+  const noteB = () => screen.getByRole('region', { name: 'Note B' });
+  const chevronIn = (note: HTMLElement) =>
+    within(note).findByRole('button', { name: 'Details for Call Sam' });
+  const panelIn = (note: HTMLElement) =>
+    within(note).queryByRole('group', { name: 'Details for Call Sam' });
+
+  test('a task starts collapsed with its row chips, and the chevron opens and closes its details', async () => {
+    seedTask({ description: 'Ask about the **launch**', tags: ['ops'] });
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const chevron = await chevronIn(noteA());
+    const row = chevron.closest('.task-embed')!;
+
+    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+    expect(panelIn(noteA())).toBeNull();
+    expect(within(noteA()).getByRole('img', { name: 'Has details' }));
+    expect(row).toHaveTextContent('High');
+    expect(row).not.toHaveTextContent('ops');
+
+    await user.click(chevron);
+    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    const panel = panelIn(noteA())!;
+    expect(chevron).toHaveAttribute('aria-controls', panel.id);
+    expect(
+      within(panel).getByRole('button', { name: 'Tags: ops' }),
+    ).toBeVisible();
+    expect(panelIn(noteB())).not.toBeNull();
+
+    await user.keyboard('{Enter}');
+    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+    expect(panelIn(noteA())).toBeNull();
+  });
+
+  test('a press in the empty space after the title opens the details', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const chevron = await chevronIn(noteA());
+    const row = chevron.closest('.task-embed')!;
+
+    fireEvent.mouseDown(row);
+    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('editing the description saves it to the task and shows it on the task page', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    await user.click(await chevronIn(noteA()));
+    const panel = panelIn(noteA())!;
+    const editor = within(panel).getByRole('textbox', {
+      name: 'Details for Call Sam',
+    });
+    expect(editor).toHaveTextContent('Add details…');
+
+    typeInto(await editorView(panel), 'Bring the numbers');
+
+    await waitFor(
+      () =>
+        expect(api.tasks.get(TASK_ID)?.description).toBe('Bring the numbers'),
+      { timeout: 3000 },
+    );
+    expect(last(api.taskPuts)).toEqual({
+      version: 1,
+      description: 'Bring the numbers',
+    });
+    expect(api.tasks.get(TASK_ID)?.title).toBe('Call Sam');
+  });
+
+  test('Due in the details sets the deadline and the row shows it', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const chevron = await chevronIn(noteA());
+    await user.click(chevron);
+    const panel = panelIn(noteA())!;
+
+    await user.click(
+      within(panel).getByRole('combobox', { name: 'Due: none' }),
+    );
+    await user.click(within(panel).getByRole('option', { name: /^Tomorrow/ }));
+
+    await waitFor(() =>
+      expect(api.tasks.get(TASK_ID)?.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/),
+    );
+    const row = chevron.closest('.task-embed')!;
+    await waitFor(() => expect(row.querySelector('.task-due')).not.toBeNull());
+  });
+
+  test('the Status chip sets In progress and Dropped, and the row follows', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const chevron = await chevronIn(noteA());
+    await user.click(chevron);
+    const status = within(panelIn(noteA())!).getByRole('combobox', {
+      name: 'Status',
+    });
+
+    await user.selectOptions(status, 'In progress');
+    await waitFor(() =>
+      expect(api.tasks.get(TASK_ID)?.status).toBe('in_progress'),
+    );
+
+    await user.selectOptions(status, 'Dropped');
+    await waitFor(() => expect(api.tasks.get(TASK_ID)?.status).toBe('dropped'));
+    const row = chevron.closest('.task-embed')!;
+    await waitFor(() => expect(row).toHaveTextContent('Dropped'));
+    expect(row).toHaveClass('task-embed--dropped');
+  });
+
+  test('⌘. in the title toggles the details; Esc inside them closes them and returns to the title', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    const chevron = await chevronIn(noteA());
+    const title = await within(noteA()).findByRole('textbox', {
+      name: 'Task title',
+    });
+
+    await user.click(title);
+    await user.keyboard('{Meta>}.{/Meta}');
+    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Control>}.{/Control}');
+    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(chevron);
+    const panel = panelIn(noteA())!;
+    await user.click(within(panel).getByRole('button', { name: 'Add tags' }));
+    await user.keyboard('{Escape}');
+    expect(panelIn(noteA())).not.toBeNull();
+    await user.click(within(panel).getByRole('combobox', { name: 'Status' }));
+    await user.keyboard('{Escape}');
+    expect(panelIn(noteA())).toBeNull();
+    expect(title).toHaveFocus();
+  });
+
+  test('⌘. with the caret beside a row in the note toggles its details', async () => {
+    seedTask();
+    const { container } = renderNotes(`Standup\n${tokenLine(TASK_ID)}`);
+    await chevronIn(noteA());
+    const view = await editorView(
+      container.querySelector<HTMLElement>('[aria-label="Note A"]')!,
+    );
+    act(() => {
+      view.focus();
+      view.dispatch({ selection: { anchor: view.state.doc.length } });
+      view.contentDOM.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: '.',
+          code: 'Period',
+          keyCode: 190,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    // The row is drawn again once the caret is on its line.
+    expect(await chevronIn(noteA())).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('open details stay open after a reload, on this device', async () => {
+    seedTask();
+    const first = renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    await user.click(await chevronIn(noteA()));
+    expect(localStorage.getItem(TASK_DETAILS_OPEN_KEY)).toContain(TASK_ID);
+    first.unmount();
+
+    resetTaskDetailsStore();
+    renderNotes(tokenLine(TASK_ID));
+    expect(await chevronIn(noteA())).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  test('the peek setting shows the first description line in that note only', async () => {
+    seedTask({ description: '\n## Agenda\n- budget\n- hiring' });
+    renderNotes(tokenLine(TASK_ID));
+    await chevronIn(noteA());
+    expect(noteA().querySelector('.task-embed__peek')).toBeNull();
+
+    act(() => setNotePeek(NOTE_A, true));
+    expect(noteA().querySelector('.task-embed__peek')).toHaveTextContent(
+      /^Agenda$/,
+    );
+    expect(noteB().querySelector('.task-embed__peek')).toBeNull();
   });
 });

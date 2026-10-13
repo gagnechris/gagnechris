@@ -18,6 +18,7 @@ import {
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
 import {
   NOTEBOOK_AREA_HEADINGS,
   NOTEBOOK_AREA_LABELS,
@@ -170,16 +171,14 @@ export function TodayEditor({
             isNew={entity.version === 0}
           />
         </div>
-        {entity.version > 0 ? (
-          <button
-            type="button"
-            className="kit-btn"
-            disabled={busy}
-            onClick={() => void runDelete()}
-          >
-            Delete
-          </button>
-        ) : null}
+        <div className="workspace-toolbar">
+          <NoteDetailsToggle markdown={draft.bodyMarkdown} />
+          <NoteMenu
+            noteId={entity.id}
+            onDelete={entity.version > 0 ? () => void runDelete() : undefined}
+            deleteDisabled={busy}
+          />
+        </div>
       </div>
       {saveError ? (
         <p className="workspace-panel__error" role="alert">

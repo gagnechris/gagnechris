@@ -4,6 +4,7 @@ import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
 import {
   emptyNoteDraft,
   noteDraftFromNote,
@@ -90,14 +91,12 @@ export default function NotebookNotePage() {
           <SaveIndicator saveState={saveState} dirty={dirty} />
         </div>
         <div className="workspace-toolbar">
-          <button
-            type="button"
-            className="kit-btn"
-            disabled={busy}
-            onClick={() => void runDelete()}
-          >
-            Delete
-          </button>
+          <NoteDetailsToggle markdown={draft.bodyMarkdown} />
+          <NoteMenu
+            noteId={entity.id}
+            onDelete={() => void runDelete()}
+            deleteDisabled={busy}
+          />
         </div>
       </div>
 

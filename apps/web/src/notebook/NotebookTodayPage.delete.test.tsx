@@ -216,7 +216,8 @@ describe('Today after deleting its daily note', () => {
       await screen.findByRole('textbox', { name: 'Note body' }),
     ).toHaveValue('old text');
 
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Note options' }));
+    await user.click(screen.getByRole('button', { name: 'Delete note' }));
     expect(state.note?.deleted).toBe(true);
 
     await waitFor(() =>

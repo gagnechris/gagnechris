@@ -204,3 +204,49 @@ test('the same [ ] line twice makes two tasks, and a multi-line insert converts 
   });
   expect(new Set(saved?.taskIds).size).toBe(4);
 });
+
+test('task details open under the row, save the description and stay open after a reload', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} details` });
+  const title = `Plan offsite ${prefix}`;
+  const task = await seed.task({ title, noteId: note.id });
+  await seed.api.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+    body: { version: note.version, bodyMarkdown: token(task.id) },
+  });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const chevron = page.getByRole('button', { name: `Details for ${title}` });
+  await expect(chevron).toHaveAttribute('aria-expanded', 'false');
+  await chevron.click();
+  const details = page.getByRole('group', { name: `Details for ${title}` });
+  await details.getByRole('textbox', { name: `Details for ${title}` }).click();
+  await page.keyboard.type('Book the venue');
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET('/api/notebook/tasks/{id}', {
+        params: { path: { id: task.id } },
+      });
+      return data?.description;
+    })
+    .toBe('Book the venue');
+
+  await page.keyboard.press('Escape');
+  await expect(details).toBeHidden();
+  await expect(page.getByRole('img', { name: 'Has details' })).toBeVisible();
+  await chevron.click();
+  await page.reload();
+  await expect(chevron).toHaveAttribute('aria-expanded', 'true');
+  await expect(details).toContainText('Book the venue');
+
+  await page.getByRole('link', { name: `Open task ${title}` }).click();
+  await expect(page.getByRole('textbox', { name: 'Note body' })).toContainText(
+    'Book the venue',
+  );
+});

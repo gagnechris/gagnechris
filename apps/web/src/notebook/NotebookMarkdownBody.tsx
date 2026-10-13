@@ -7,9 +7,13 @@ import {
   useState,
   type RefObject,
 } from 'react';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { useLatest, type EmbedNote } from '@gagnechris/app-core';
-import { findTaskEmbeds, removeTaskEmbedLines } from '@gagnechris/shared';
+import {
+  findTaskEmbeds,
+  parseTaskEmbedLine,
+  removeTaskEmbedLines,
+} from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 // Static: only lazy routes render this body, so CodeMirror loads with the
 // route chunk instead of after it behind Suspense's reveal delay.
@@ -21,6 +25,8 @@ import { taskListToggle } from '../kit/markdown/taskListToggle';
 import { livePreview } from '../kit/markdown/livePreview';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
+import type { DescriptionEditorProps } from './TaskDetailsPanel';
+import { toggleTaskDetails } from './taskDetailsStore';
 import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
 
@@ -43,6 +49,27 @@ type Props = {
 const PHONE_SCROLL_MARGIN = 160;
 const FLASH_MS = 2000;
 const HIGHLIGHT_WAIT_MS = 2000;
+
+// The editor of a task's open details, under its row in the note.
+const renderDescription = (props: DescriptionEditorProps) => (
+  <NotebookMarkdownBody {...props} />
+);
+
+/** ⌘. with the caret beside a task's row opens or closes its details. */
+const toggleDetailsKey = keymap.of([
+  {
+    key: 'Mod-.',
+    run: (view) => {
+      const { state } = view;
+      const embed = parseTaskEmbedLine(
+        state.doc.lineAt(state.selection.main.head).text,
+      );
+      if (!embed) return false;
+      toggleTaskDetails(embed.id);
+      return true;
+    },
+  },
+]);
 /** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({
   value,
@@ -81,6 +108,7 @@ export function NotebookMarkdownBody({
     note: note ?? null,
     ensureNoteSaved,
     removeEmbeds,
+    renderEditor: renderDescription,
   });
   const dateMenu = useTaskDateMenuEditor({
     today: useLocalToday(),
@@ -91,7 +119,7 @@ export function NotebookMarkdownBody({
     () => [
       livePreview(),
       taskListToggle(),
-      ...(withTasks ? dateMenu.extensions : []),
+      ...(withTasks ? [...dateMenu.extensions, toggleDetailsKey] : []),
       ...embeds.extensions,
       EditorView.updateListener.of((update) => {
         if (update.focusChanged) setFocused(update.view.hasFocus);

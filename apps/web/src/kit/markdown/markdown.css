@@ -309,6 +309,98 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   font-size: var(--text-sm);
 }
 
+.task-embed__has-details {
+  flex: none;
+  display: inline-flex;
+  color: var(--neutral-400);
+}
+
+.task-embed__chevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--neutral-500);
+  cursor: pointer;
+}
+
+.task-embed__chevron svg {
+  transition: transform var(--transition-fast);
+}
+
+.task-embed__chevron[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
+.task-embed__chevron:hover,
+.task-embed__chevron:focus-visible {
+  background: var(--neutral-100);
+  color: var(--neutral-800);
+}
+
+.task-embed__peek {
+  margin: 0;
+  padding-inline-start: calc(1.05rem + var(--space-2));
+  overflow: hidden;
+  color: var(--neutral-500);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.task-embed__details {
+  margin: var(--space-1) 0 var(--space-2) calc(1.05rem + var(--space-2));
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 2px solid var(--neutral-200);
+  white-space: normal;
+}
+
+.task-embed__details .markdown-single--notebook .cm-live .cm-scroller {
+  font-size: var(--text-base);
+}
+
+.task-details__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.task-details__chip {
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-full);
+  background: white;
+  color: var(--neutral-700);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.task-details__chip:hover,
+.task-details__chip:focus-visible {
+  border-color: var(--neutral-400);
+}
+
+.task-details__tags-input {
+  min-width: 12rem;
+  cursor: text;
+}
+
+.task-details__save {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+}
+
 .markdown-editor .cm-task-embed {
   display: inline-block;
   width: calc(100% - 0.5rem);
@@ -386,9 +478,15 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
     font-size: max(16px, 1em);
   }
 
-  .task-embed__open {
+  .task-embed__open,
+  .task-embed__chevron {
     width: 2.25rem;
     height: 44px;
+  }
+
+  .task-details__chip {
+    min-height: 44px;
+    font-size: max(16px, 1em);
   }
 }
 

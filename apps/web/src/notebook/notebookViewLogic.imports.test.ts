@@ -87,7 +87,7 @@ describe('Notebook view logic', () => {
       ['kit/tasks/TaskSyntaxInput.tsx', 'taskDateMenuReducer'],
       ['kit/markdown/taskDateMenuEditor.tsx', 'taskDateMenuReducer'],
       ['kit/markdown/taskDateMenuEditor.tsx', 'tokenInsertion'],
-      ['kit/tasks/SnoozeMenu.tsx', 'taskDateMenuItems'],
+      ['kit/tasks/TaskDateButton.tsx', 'taskDateMenuItems'],
     ];
     for (const [file, name] of uses) {
       expect({ file, name, from: importOf(file, name) }).toEqual({

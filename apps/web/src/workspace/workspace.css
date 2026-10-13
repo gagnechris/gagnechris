@@ -601,6 +601,57 @@
   align-items: flex-end;
 }
 
+.note-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.note-menu__trigger {
+  min-width: 2.5rem;
+}
+
+.note-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 14rem;
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.note-menu__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.note-menu__group legend {
+  margin-bottom: var(--space-1);
+  color: var(--neutral-600);
+  font-size: var(--text-sm);
+}
+
+.note-menu__item {
+  padding: var(--space-2) 0 0;
+  border: 0;
+  border-top: 1px solid var(--neutral-200);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-menu__item--danger {
+  color: var(--color-danger);
+}
+
 .notebook-today__kicker {
   margin: 0;
   font-size: var(--text-sm);
