@@ -200,6 +200,7 @@ export function TaskDetailsPanel({
         ) : null}
         <span className="task-details__save">
           <SaveIndicator
+            quiet
             saveState={description.saveState}
             dirty={description.dirty}
           />

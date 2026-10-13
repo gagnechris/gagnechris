@@ -166,6 +166,7 @@ export function TodayEditor({
         <DayTitle area={area} date={date} today={today} />
         <div className="workspace-action-bar__status">
           <SaveIndicator
+            quiet
             saveState={saveState}
             dirty={dirty}
             isNew={entity.version === 0}

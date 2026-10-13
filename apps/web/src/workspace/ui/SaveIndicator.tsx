@@ -5,6 +5,8 @@ type Props = {
   saveState: SaveState;
   dirty: boolean;
   isNew?: boolean;
+  /** Screen readers still hear routine states; only offline shows. */
+  quiet?: boolean;
 };
 
 const subscribeOnline = (onChange: () => void) => {
@@ -16,12 +18,14 @@ const subscribeOnline = (onChange: () => void) => {
   };
 };
 
-export function SaveIndicator({ saveState, dirty, isNew }: Props) {
+export function SaveIndicator({ saveState, dirty, isNew, quiet }: Props) {
   const offline = useSyncExternalStore(
     subscribeOnline,
     () => !navigator.onLine,
     () => false,
   );
+  const label = saveLabel(saveState, dirty, { isNew, offline });
+  const hidden = quiet && !(offline && (dirty || saveState === 'error'));
   return (
     <span
       className="workspace-save-indicator"
@@ -29,7 +33,7 @@ export function SaveIndicator({ saveState, dirty, isNew }: Props) {
       role="status"
       aria-live="polite"
     >
-      {saveLabel(saveState, dirty, { isNew, offline })}
+      {hidden ? <span className="kit-visually-hidden">{label}</span> : label}
     </span>
   );
 }

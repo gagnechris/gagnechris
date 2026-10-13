@@ -105,7 +105,7 @@ export default function NotebookTaskPage() {
           <Link to="/tasks" className="workspace-back">
             ← Tasks
           </Link>
-          <SaveIndicator saveState={saveState} dirty={dirty} />
+          <SaveIndicator quiet saveState={saveState} dirty={dirty} />
         </div>
         <div className="workspace-toolbar">
           {phone ? null : (
