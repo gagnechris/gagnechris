@@ -623,6 +623,36 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   font-weight: 500;
 }
 
+/* Notebook: notes read in Newsreader; headings and task rows stay Inter. */
+.markdown-single--notebook .cm-live .cm-scroller {
+  font-family: var(--font-serif);
+  font-size: var(--text-lead);
+  line-height: 1.6;
+}
+
+.markdown-single--notebook
+  .cm-live
+  :is(.cm-md-h1, .cm-md-h2, .cm-md-h3, .cm-md-h4, .cm-md-h5, .cm-md-h6) {
+  font-family: var(--font-sans);
+}
+
+.markdown-single--notebook .cm-live .cm-md-h1 {
+  font-size: 1.4em;
+}
+
+.markdown-single--notebook .cm-live .cm-md-h2 {
+  font-size: 1.15em;
+}
+
+.markdown-single--notebook .cm-live .cm-md-h3 {
+  font-size: 1em;
+}
+
+.markdown-single--notebook .cm-task-embed {
+  font-size: var(--text-base);
+  line-height: var(--line-normal, 1.5);
+}
+
 .markdown-editor .cm-md-image {
   display: block;
   max-width: 100%;
@@ -648,5 +678,9 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 
   .markdown-editor .cm-content {
     font-size: max(16px, 1em);
+  }
+
+  .markdown-single--notebook .cm-live .cm-scroller {
+    font-size: var(--text-body);
   }
 }
