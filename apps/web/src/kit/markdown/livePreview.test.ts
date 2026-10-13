@@ -1,8 +1,8 @@
 import { deleteCharBackward } from '@codemirror/commands';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { afterEach, describe, expect, test } from 'vitest';
-import { livePreview, shortenUrl } from './livePreview';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { livePreview, openableHref, shortenUrl } from './livePreview';
 import { taskEmbedEditor } from './taskEmbeds';
 
 const TASK = '01JAAAAAAAAAAAAAAAAAAAAAAA';
@@ -210,5 +210,58 @@ describe('livePreview', () => {
     const v = setup(doc);
     deleteCharBackward(v);
     expect(v.state.doc.toString()).toBe('Standup\n');
+  });
+});
+
+describe('openableHref', () => {
+  const base = 'https://notebook.example.com/today';
+
+  it('resolves web, mail and app-relative links', () => {
+    expect(openableHref('https://a.io/x', base)).toBe('https://a.io/x');
+    expect(openableHref('mailto:a@b.io', base)).toBe('mailto:a@b.io');
+    expect(openableHref('/notes/1', base)).toBe(
+      'https://notebook.example.com/notes/1',
+    );
+  });
+
+  it('refuses script and data URLs', () => {
+    expect(openableHref('javascript:alert(1)', base)).toBeNull();
+    expect(openableHref('data:text/html,hi', base)).toBeNull();
+  });
+});
+
+describe('clicking a link', () => {
+  const click = (el: Element, init: MouseEventInit = {}) =>
+    el.dispatchEvent(
+      new MouseEvent('mousedown', { bubbles: true, cancelable: true, ...init }),
+    );
+
+  test('opens a rendered link in a new tab', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const v = setup('[site](https://a.io)\nhttps://b.io\n', 0);
+    const links = v.contentDOM.querySelectorAll('.cm-md-link');
+    expect([...links].map((l) => l.textContent)).toEqual([
+      'site',
+      'https://b.io',
+    ]);
+    click(links[1]!);
+    expect(open).toHaveBeenCalledWith(
+      'https://b.io/',
+      '_blank',
+      'noopener,noreferrer',
+    );
+    open.mockRestore();
+  });
+
+  test('on the line being edited, only Cmd/Ctrl+click opens it', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const v = setup('https://b.io', 0);
+    v.focus();
+    const link = v.contentDOM.querySelector('.cm-md-link')!;
+    click(link);
+    expect(open).not.toHaveBeenCalled();
+    click(link, { metaKey: true });
+    expect(open).toHaveBeenCalledTimes(1);
+    open.mockRestore();
   });
 });

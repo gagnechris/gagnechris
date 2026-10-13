@@ -6,6 +6,7 @@ const QUOTE = /^([ \t]{0,3}>[ \t]?)/;
 const BULLET = /^([ \t]*)([-*+])([ \t]+)(?!\[[ xX]\])/;
 const CODE_SPAN = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
 const LINK = /(?<!!)\[([^\]\n]+)\]\(([^)\s]+)(?:[ \t]+"[^"\n]*")?\)/g;
+const BARE_URL = /\bhttps?:\/\/[^\s<>()[\]]*[^\s<>()[\].,;:!?'"]/g;
 const STRONG = /(\*\*|__)(?=\S)([^\n]*?\S)\1/g;
 const EMPHASIS = /(?<![*_\w])([*_])(?=[^\s*_])([^\n*_]*?[^\s*_])\1(?![*_\w])/g;
 
@@ -76,6 +77,18 @@ function inlineMarks(text: string, offset: number, out: LiveMark[]) {
       },
       { from: offset + labelEnd, to: offset + to, kind: 'hide' },
     );
+  }
+  for (const m of text.matchAll(BARE_URL)) {
+    const from = m.index;
+    const to = from + m[0].length;
+    if (overlaps(taken, from, to)) continue;
+    taken.push({ from, to });
+    out.push({
+      from: offset + from,
+      to: offset + to,
+      kind: 'link',
+      href: m[0],
+    });
   }
   for (const [pattern, kind] of [
     [STRONG, 'strong'],
