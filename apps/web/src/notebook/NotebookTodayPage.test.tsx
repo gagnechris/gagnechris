@@ -355,6 +355,26 @@ describe('NotebookTodayPage', () => {
     expect(await screen.findByDisplayValue(/hello daily/)).toBeInTheDocument();
   });
 
+  test('hides the task panel and remembers it', async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderToday();
+    const hide = await screen.findByRole('button', { name: /Hide tasks/ });
+    const side = screen.getByRole('complementary', { name: 'Today tasks' });
+    expect(hide).toHaveAttribute('aria-expanded', 'true');
+    await user.click(hide);
+    expect(side.parentElement).toHaveClass('notebook-today--side-closed');
+    expect(screen.getByRole('button', { name: /Show tasks/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+
+    unmount();
+    renderToday();
+    expect(
+      await screen.findByRole('button', { name: /Show tasks/ }),
+    ).toBeInTheDocument();
+  });
+
   test('surfaces version conflict instead of silent overwrite', async () => {
     const user = userEvent.setup();
     state.note = {

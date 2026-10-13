@@ -666,6 +666,21 @@
   min-width: 0;
 }
 
+.notebook-today__side-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.notebook-today--side-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notebook-today--side-closed .notebook-today__side {
+  display: none;
+}
+
 .notebook-today__template {
   display: flex;
   flex-wrap: wrap;
@@ -1512,6 +1527,7 @@
 /* Phones: the note fills the page; the task lists live in a bottom sheet. */
 
 @media (max-width: 767px) {
+  .notebook-today__side-toggle,
   .notebook-today__side,
   .notebook-today__kicker,
   .notebook-today__day-nav [aria-label='Jump to today']:disabled {
