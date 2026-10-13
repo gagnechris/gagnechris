@@ -13,6 +13,7 @@ import {
 import { color, font, MIN_TARGET } from '../theme';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { TaskRow } from '../ui/TaskRow';
+import { TaskParentsProvider } from './taskParents';
 
 type Tab = 'stillOpen' | 'comingUp';
 const TABS = ['stillOpen', 'comingUp'] as const;
@@ -52,6 +53,10 @@ export const TodaySheet = ({
 }: Props) => {
   const [tab, setTab] = useState<Tab>('stillOpen');
   const comingUpCount = comingUp.reduce((n, d) => n + d.tasks.length, 0);
+  const listed = [
+    ...stillOpen.map((row) => row.task),
+    ...comingUp.flatMap((d) => d.tasks),
+  ];
   const rowActions = (task: Task) =>
     readOnly
       ? {}
@@ -96,58 +101,60 @@ export const TodaySheet = ({
             {error}
           </Text>
         ) : null}
-        <ScrollView contentContainerStyle={styles.list}>
-          {loading ? (
-            <Text style={styles.empty}>Loading tasks…</Text>
-          ) : tab === 'stillOpen' ? (
-            stillOpen.length === 0 ? (
-              <Text style={styles.empty}>Nothing left open.</Text>
-            ) : (
-              stillOpen.map(({ task, source, due }) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  detail={source.label}
-                  due={due}
-                  onOpen={() => onOpenTask(task)}
-                  onOpenDetail={
-                    source.noteId
-                      ? () => onOpenNote(source.noteId!)
-                      : () => onOpenTask(task)
-                  }
-                  {...rowActions(task)}
-                />
-              ))
-            )
-          ) : comingUp.length === 0 ? (
-            <Text style={styles.empty}>
-              Nothing scheduled for the next two weeks.
-            </Text>
-          ) : (
-            comingUp.map(({ date, tasks }) => (
-              <View key={date}>
-                <Text style={styles.dayLabel} accessibilityRole="header">
-                  {comingUpDayLabel(date, day)}
-                </Text>
-                {tasks.map((task) => (
+        <TaskParentsProvider tasks={listed}>
+          <ScrollView contentContainerStyle={styles.list}>
+            {loading ? (
+              <Text style={styles.empty}>Loading tasks…</Text>
+            ) : tab === 'stillOpen' ? (
+              stillOpen.length === 0 ? (
+                <Text style={styles.empty}>Nothing left open.</Text>
+              ) : (
+                stillOpen.map(({ task, source, due }) => (
                   <TaskRow
                     key={task.id}
                     task={task}
+                    detail={source.label}
+                    due={due}
                     onOpen={() => onOpenTask(task)}
-                    {...(readOnly
-                      ? {}
-                      : {
-                          onToggle: () => onToggle(task),
-                          onAddToNote: onAddToNote
-                            ? () => onAddToNote(task)
-                            : undefined,
-                        })}
+                    onOpenDetail={
+                      source.noteId
+                        ? () => onOpenNote(source.noteId!)
+                        : () => onOpenTask(task)
+                    }
+                    {...rowActions(task)}
                   />
-                ))}
-              </View>
-            ))
-          )}
-        </ScrollView>
+                ))
+              )
+            ) : comingUp.length === 0 ? (
+              <Text style={styles.empty}>
+                Nothing scheduled for the next two weeks.
+              </Text>
+            ) : (
+              comingUp.map(({ date, tasks }) => (
+                <View key={date}>
+                  <Text style={styles.dayLabel} accessibilityRole="header">
+                    {comingUpDayLabel(date, day)}
+                  </Text>
+                  {tasks.map((task) => (
+                    <TaskRow
+                      key={task.id}
+                      task={task}
+                      onOpen={() => onOpenTask(task)}
+                      {...(readOnly
+                        ? {}
+                        : {
+                            onToggle: () => onToggle(task),
+                            onAddToNote: onAddToNote
+                              ? () => onAddToNote(task)
+                              : undefined,
+                          })}
+                    />
+                  ))}
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </TaskParentsProvider>
       </View>
     </Modal>
   );

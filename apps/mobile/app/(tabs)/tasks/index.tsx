@@ -40,6 +40,7 @@ import { Section } from '../../../src/ui/Section';
 import { SegmentedControl } from '../../../src/ui/SegmentedControl';
 import { SwipeRow } from '../../../src/ui/SwipeRow';
 import { TaskRow } from '../../../src/ui/TaskRow';
+import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
 const STATUSES = ['open', 'done', 'dropped'] as const;
 type StatusFilter = (typeof STATUSES)[number];
@@ -209,54 +210,56 @@ const TasksScreen = () => {
           <EmptyState icon="checkmark.square" {...EMPTY[status]} />
         )
       ) : (
-        <Section>
-          {items.map((task) => {
-            const open = isOpenTaskStatus(task.status);
-            return (
-              <SwipeRow
-                key={task.id}
-                right={
-                  open
-                    ? {
-                        label: 'Complete',
-                        tint: color.accent,
-                        run: () => complete(task),
-                      }
-                    : {
-                        label: 'Reopen',
-                        tint: color.accent,
-                        run: () => reopen(task),
-                      }
-                }
-                left={
-                  open
-                    ? {
-                        label: 'Drop',
-                        tint: color.alert,
-                        run: () => drop(task),
-                      }
-                    : undefined
-                }
-              >
-                <TaskRow
-                  task={task}
-                  detail={[
-                    area === 'all' ? NOTEBOOK_AREA_LABELS[task.area] : '',
-                    scheduleText(task),
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  due={open ? taskDue(task, today) : null}
-                  priority={task.priority}
-                  onOpen={() => router.push(`/tasks/${task.id}`)}
-                  onToggle={() => (open ? complete(task) : reopen(task))}
-                  onMore={() => showMore(task)}
-                  moreLabel={open ? 'Complete or drop' : 'Reopen'}
-                />
-              </SwipeRow>
-            );
-          })}
-        </Section>
+        <TaskParentsProvider tasks={items}>
+          <Section>
+            {items.map((task) => {
+              const open = isOpenTaskStatus(task.status);
+              return (
+                <SwipeRow
+                  key={task.id}
+                  right={
+                    open
+                      ? {
+                          label: 'Complete',
+                          tint: color.accent,
+                          run: () => complete(task),
+                        }
+                      : {
+                          label: 'Reopen',
+                          tint: color.accent,
+                          run: () => reopen(task),
+                        }
+                  }
+                  left={
+                    open
+                      ? {
+                          label: 'Drop',
+                          tint: color.alert,
+                          run: () => drop(task),
+                        }
+                      : undefined
+                  }
+                >
+                  <TaskRow
+                    task={task}
+                    detail={[
+                      area === 'all' ? NOTEBOOK_AREA_LABELS[task.area] : '',
+                      scheduleText(task),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    due={open ? taskDue(task, today) : null}
+                    priority={task.priority}
+                    onOpen={() => router.push(`/tasks/${task.id}`)}
+                    onToggle={() => (open ? complete(task) : reopen(task))}
+                    onMore={() => showMore(task)}
+                    moreLabel={open ? 'Complete or drop' : 'Reopen'}
+                  />
+                </SwipeRow>
+              );
+            })}
+          </Section>
+        </TaskParentsProvider>
       )}
       {tasks.hasNextPage ? (
         <Button

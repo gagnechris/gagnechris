@@ -29,6 +29,7 @@ import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 import { SegmentedControl } from '../../../src/ui/SegmentedControl';
 import { TaskRow } from '../../../src/ui/TaskRow';
+import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
 const UpcomingScreen = () => {
   const { openTask, openNote } = useDetailRoutes();
@@ -152,38 +153,40 @@ const UpcomingScreen = () => {
           body="Add @mon, @oct 12 or @someday to a task to see it here."
         />
       ) : (
-        groups.map((group) => (
-          <Section key={group.key} title={`${group.label} · ${group.sub}`}>
-            {group.tasks.map((task) => {
-              const note = noteFor(task);
-              return (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  detail={[
-                    group.datedRows && task.startDate
-                      ? formatTaskDay(task.startDate)
-                      : '',
-                    note ? noteChipLabel(note) : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                  due={taskDue(task, today)}
-                  onOpen={() => openTask(task.id)}
-                  onOpenDetail={note ? () => openNote(note.id) : undefined}
-                  onToggle={() => void toggle(task)}
-                  onDoToday={() =>
-                    void patch(
-                      task,
-                      { startDate: today, someday: false },
-                      'move',
-                    )
-                  }
-                />
-              );
-            })}
-          </Section>
-        ))
+        <TaskParentsProvider tasks={groups.flatMap((g) => g.tasks)}>
+          {groups.map((group) => (
+            <Section key={group.key} title={`${group.label} · ${group.sub}`}>
+              {group.tasks.map((task) => {
+                const note = noteFor(task);
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    detail={[
+                      group.datedRows && task.startDate
+                        ? formatTaskDay(task.startDate)
+                        : '',
+                      note ? noteChipLabel(note) : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    due={taskDue(task, today)}
+                    onOpen={() => openTask(task.id)}
+                    onOpenDetail={note ? () => openNote(note.id) : undefined}
+                    onToggle={() => void toggle(task)}
+                    onDoToday={() =>
+                      void patch(
+                        task,
+                        { startDate: today, someday: false },
+                        'move',
+                      )
+                    }
+                  />
+                );
+              })}
+            </Section>
+          ))}
+        </TaskParentsProvider>
       )}
     </Screen>
   );

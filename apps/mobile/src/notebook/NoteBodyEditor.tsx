@@ -31,6 +31,7 @@ import {
   type LiveMarkdownHandle,
 } from '../ui/LiveMarkdownInput';
 import { TaskEmbedRow } from '../ui/TaskEmbedRow';
+import { TaskParentLabel } from '../ui/TaskParentLabel';
 import { createUlid } from '../ulid';
 import { NOTE_TOOLBAR_ID, NoteKeyboardToolbar } from './NoteKeyboardToolbar';
 import {
@@ -48,6 +49,7 @@ import {
 import { PickDateModal } from './PickDateModal';
 import { TaskDetailsPanel } from './TaskDetailsPanel';
 import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
+import { useNoteSubtasks } from './useNoteSubtasks';
 import { useTaskRowMenu, type MenuNote } from './useTaskRowMenu';
 import {
   applyToolbarAction,
@@ -376,6 +378,7 @@ export const NoteBodyEditor = ({
       },
     );
 
+  const subtasks = useNoteSubtasks(markdown, stateOf);
   const menu = useTaskRowMenu({
     note,
     today,
@@ -422,15 +425,30 @@ export const NoteBodyEditor = ({
         </Text>
       ) : null}
       {segments.map((segment, index) => {
+        if (subtasks.hidden(segment)) return null;
         if (segment.kind === 'embed') {
-          const state = stateOf(segment.id);
+          const state = subtasks.withFinishPrompt(segment.id);
           const title = state.kind === 'task' ? state.task.title : 'Task';
           const saved = state.kind === 'task' ? state.saved : undefined;
           const open = Boolean(saved) && details.open.has(segment.id);
           const peek =
             saved && !open && peeking ? firstLine(saved.description) : null;
+          const parent = subtasks.parentLabelOf(segment.id);
+          const depth = subtasks.depthOf(segment.id);
           return (
-            <Fragment key={segment.key}>
+            <View
+              key={segment.key}
+              style={
+                depth > 0
+                  ? [styles.nested, { marginLeft: depth * NEST }]
+                  : undefined
+              }
+            >
+              {parent ? (
+                <View style={styles.parentLabel}>
+                  <TaskParentLabel {...parent} />
+                </View>
+              ) : null}
               <TaskEmbedRow
                 state={state}
                 onOpen={saved ? () => onOpenTask(segment.id) : undefined}
@@ -445,6 +463,7 @@ export const NoteBodyEditor = ({
                   saved ? () => toggleTaskDetails(segment.id) : undefined
                 }
                 detailsOpen={open}
+                subtasks={subtasks.subtasksOf(segment.id)}
               />
               {saved && open ? (
                 <TaskDetailsPanel task={saved} today={today} />
@@ -454,7 +473,7 @@ export const NoteBodyEditor = ({
                   {peek}
                 </Text>
               ) : null}
-            </Fragment>
+            </View>
           );
         }
         const empty = segment.lines.length === 0;
@@ -534,6 +553,7 @@ export const NoteBodyEditor = ({
 };
 
 const STRIP = tokens.space[1];
+const NEST = tokens.space[4];
 const STRIP_OVERLAP = tokens.space[2];
 
 const styles = StyleSheet.create({
@@ -552,6 +572,13 @@ const styles = StyleSheet.create({
     height: STRIP + 2 * STRIP_OVERLAP,
     marginTop: -STRIP_OVERLAP,
   },
+  // A faint guide down the left of a subtask, where its indent is.
+  nested: {
+    borderLeftWidth: 1.5,
+    borderLeftColor: color.border,
+    paddingLeft: tokens.space[2],
+  },
+  parentLabel: { marginLeft: MIN_TARGET - tokens.space[2], marginBottom: -6 },
   peek: {
     ...font.regular,
     fontSize: tokens.text.caption,
