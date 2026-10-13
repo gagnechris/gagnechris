@@ -12,3 +12,9 @@ export const largeTitleStack: NativeStackNavigationOptions = {
   headerTintColor: color.accent,
   contentStyle: { backgroundColor: color.background },
 };
+
+// A row dragged sideways in a note nests it; iOS's full-width swipe back would
+// take that touch. The swipe from the screen's edge still goes back.
+export const noteDetail: NativeStackNavigationOptions = {
+  fullScreenGestureEnabled: false,
+};
