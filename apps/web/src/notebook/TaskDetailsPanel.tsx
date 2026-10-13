@@ -88,11 +88,15 @@ export type DescriptionEditorProps = {
 export function TaskDetailsPanel({
   task,
   renderEditor,
+  moveMenu,
 }: {
   task: Task;
   /** The note's own editor, passed in since it renders these panels. */
   renderEditor: (props: DescriptionEditorProps) => ReactNode;
+  /** Move to…, under its chip. */
+  moveMenu?: (close: () => void) => ReactNode;
 }) {
+  const [moving, setMoving] = useState(false);
   const today = useLocalToday();
   const description = useTaskDescriptionEditor(task);
   const { mutateAsync: patchTask } = usePatchTaskMutation();
@@ -181,6 +185,19 @@ export function TaskDetailsPanel({
           ))}
         </select>
         <TagsChip tags={task.tags} onChange={(tags) => patch({ tags })} />
+        {moveMenu ? (
+          <span className="task-details__move">
+            <button
+              type="button"
+              className="task-details__chip"
+              aria-expanded={moving}
+              onClick={() => setMoving((v) => !v)}
+            >
+              Move to…
+            </button>
+            {moving ? moveMenu(() => setMoving(false)) : null}
+          </span>
+        ) : null}
         <span className="task-details__save">
           <SaveIndicator
             saveState={description.saveState}

@@ -1370,3 +1370,184 @@ describe('task details under the row', () => {
     expect(noteB().querySelector('.task-embed__peek')).toBeNull();
   });
 });
+
+describe('moving tasks in a note', () => {
+  const SUB_OPEN = '01JTASKSBB1AAAAAAAAAAAAAAA';
+  const SUB_LATER = '01JTASKSBB2AAAAAAAAAAAAAAA';
+  const SUB_DONE = '01JTASKSBB3AAAAAAAAAAAAAAA';
+
+  function renderNote(
+    body: string,
+    note = { id: NOTE_A, area: 'work' as const },
+  ) {
+    let current = body;
+    const Note = () => {
+      const [value, setValue] = useState(body);
+      current = value;
+      return (
+        <section aria-label="Note A">
+          <NotebookMarkdownBody note={note} value={value} onChange={setValue} />
+        </section>
+      );
+    };
+    const router = createMemoryRouter([{ path: '/', element: <Note /> }]);
+    const utils = render(
+      <QueryClientTestProvider>
+        <RouterProvider router={router} />
+      </QueryClientTestProvider>,
+    );
+    return { ...utils, body: () => current };
+  }
+
+  const handle = (title = 'Call Sam') =>
+    screen.findByRole('button', { name: `Move ${title}` });
+
+  const localDay = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  test('⌥↓ from the handle moves the task and its indented line past the next line; undo puts it back; the task is unchanged', async () => {
+    seedTask();
+    const body = `${tokenLine(TASK_ID)}\n  ask about the PO\nnext line\nlast`;
+    const { body: current, container } = renderNote(body);
+    const user = userEvent.setup();
+    (await handle()).focus();
+
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+
+    expect(current()).toBe(
+      `next line\n${tokenLine(TASK_ID)}\n  ask about the PO\nlast`,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector(
+          '[role="status"][aria-live="polite"].kit-visually-hidden',
+        ),
+      ).toHaveTextContent('Moved down'),
+    );
+    await waitFor(async () => expect(await handle()).toHaveFocus());
+    expect(api.taskPuts).toEqual([]);
+
+    const view = await editorView(container);
+    act(() => {
+      undo(view);
+    });
+    expect(current()).toBe(body);
+  });
+
+  test('⌥⇧↓ from the handle moves the task first into the next section', async () => {
+    seedTask();
+    const body = `## Today\n${tokenLine(TASK_ID)}\nnotes\n\n## Meetings\nagenda`;
+    const { body: current } = renderNote(body);
+    const user = userEvent.setup();
+    (await handle()).focus();
+
+    await user.keyboard('{Alt>}{Shift>}{ArrowDown}{/Shift}{/Alt}');
+
+    expect(current()).toBe(
+      `## Today\nnotes\n\n## Meetings\n${tokenLine(TASK_ID)}\nagenda`,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector(
+          '[role="status"][aria-live="polite"].kit-visually-hidden',
+        ),
+      ).toHaveTextContent('Moved to Meetings'),
+    );
+  });
+
+  test('right-click → Move to → Meetings puts the task last in Meetings', async () => {
+    seedTask();
+    const body = `## Today\n${tokenLine(TASK_ID)}\n\n## Meetings\nagenda\nmore\n\n## Later`;
+    const { body: current } = renderNote(body);
+    const user = userEvent.setup();
+    const row = (await handle()).closest('.task-embed')!;
+
+    fireEvent.contextMenu(row);
+    const menu = screen.getByRole('menu', { name: 'Move to' });
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Today', 'Meetings', 'Later', 'Another day’s note…']);
+    await user.click(within(menu).getByRole('menuitem', { name: 'Meetings' }));
+
+    expect(current()).toBe(
+      `## Today\n\n## Meetings\nagenda\nmore\n${tokenLine(TASK_ID)}\n\n## Later`,
+    );
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(api.taskPuts).toEqual([]);
+  });
+
+  test('Move to → another day’s note → tomorrow moves the lines to that day and points the tasks at it', async () => {
+    const tomorrow = localDay(1);
+    seedTask({ startDate: localDay(0) });
+    const sub = (id: string, overrides: Partial<Task>) =>
+      api.tasks.set(id, {
+        ...api.tasks.get(TASK_ID)!,
+        id,
+        title: id,
+        priority: 'med',
+        ...overrides,
+      });
+    sub(SUB_OPEN, { startDate: localDay(-3) });
+    sub(SUB_LATER, { startDate: localDay(5) });
+    sub(SUB_DONE, { status: 'done', startDate: localDay(-3) });
+    const body = [
+      'Standup',
+      tokenLine(TASK_ID),
+      `  ${tokenLine(SUB_OPEN)}`,
+      `  ${tokenLine(SUB_LATER)}`,
+      `  ${tokenLine(SUB_DONE)}`,
+      'after',
+    ].join('\n');
+    const { body: current } = renderNote(body);
+    const user = userEvent.setup();
+    const chevron = await screen.findByRole('button', {
+      name: 'Details for Call Sam',
+    });
+    await user.click(chevron);
+    await user.click(screen.getByRole('button', { name: 'Move to…' }));
+    await user.click(
+      screen.getByRole('menuitem', { name: 'Another day’s note…' }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: /^Tomorrow/ }));
+
+    await waitFor(() => expect(current()).toBe('Standup\nafter'));
+    expect(api.daily?.date).toBe(tomorrow);
+    expect(api.daily?.bodyMarkdown).toBe(
+      [
+        tokenLine(TASK_ID),
+        `  ${tokenLine(SUB_OPEN)}`,
+        `  ${tokenLine(SUB_LATER)}`,
+        `  ${tokenLine(SUB_DONE)}`,
+        '',
+        '',
+      ].join('\n'),
+    );
+    const dayId = api.daily!.id;
+    await waitFor(() =>
+      expect(api.tasks.get(TASK_ID)).toMatchObject({
+        startDate: tomorrow,
+        noteId: dayId,
+      }),
+    );
+    expect(api.tasks.get(SUB_OPEN)).toMatchObject({
+      startDate: tomorrow,
+      noteId: dayId,
+    });
+    expect(api.tasks.get(SUB_LATER)).toMatchObject({
+      startDate: localDay(5),
+      noteId: dayId,
+    });
+    expect(api.tasks.get(SUB_DONE)).toMatchObject({
+      startDate: localDay(-3),
+      status: 'done',
+      noteId: dayId,
+    });
+    expect(api.taskDeletes).toEqual([]);
+  });
+});

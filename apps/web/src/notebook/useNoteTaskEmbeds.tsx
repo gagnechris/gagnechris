@@ -1,20 +1,34 @@
-import type { ReactNode } from 'react';
-import { useNoteTaskEmbedSync, type EmbedNote } from '@gagnechris/app-core';
+import { useState, type ReactNode } from 'react';
+import {
+  taskActionError,
+  useMoveTaskToDay,
+  useNoteTaskEmbedSync,
+  type EmbedNote,
+  type Task,
+} from '@gagnechris/app-core';
 import type { Extension } from '@codemirror/state';
-import { markdownPlainText } from '@gagnechris/shared';
+import {
+  formatTaskDay,
+  markdownPlainText,
+  taskEmbedIds,
+} from '@gagnechris/shared';
 import {
   useTaskEmbedEditor,
   type TaskEmbedControls,
 } from '../kit/markdown/taskEmbeds';
+import { announceMove } from '../kit/markdown/taskEmbedMoves';
 import {
   TaskEmbedRow,
   type TaskEmbedDetails,
+  type TaskEmbedMoving,
   type TaskEmbedView,
 } from '../kit/tasks/TaskEmbedRow';
+import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import {
   TaskDetailsPanel,
   type DescriptionEditorProps,
 } from './TaskDetailsPanel';
+import { TaskMoveMenu } from './TaskMoveMenu';
 import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
 import { useLocalToday } from './useLocalToday';
 
@@ -45,10 +59,14 @@ export function useNoteTaskEmbeds({
   /** The editor a task's open details use for its description. */
   renderEditor?: (props: DescriptionEditorProps) => ReactNode;
 }) {
+  const today = useLocalToday();
+  const phone = useMediaQuery(PHONE_QUERY);
+  const moveTaskToDay = useMoveTaskToDay();
+  const [moveError, setMoveError] = useState<string | null>(null);
   const { onCreate, onRemoved, stateOf, error } = useNoteTaskEmbedSync({
     markdown,
     note,
-    today: useLocalToday(),
+    today,
     ensureNoteSaved,
     removeEmbeds,
     retryDelaysMs,
@@ -64,10 +82,75 @@ export function useNoteTaskEmbeds({
   const { open, peek } = useTaskDetailsStore();
   const peeking = note ? peek.has(note.id) : false;
 
-  const detailsOf = (id: string): TaskEmbedDetails | undefined => {
+  const savedTask = (id: string): Task | undefined => {
     const state = stateOf(id);
-    if (state.kind !== 'task' || !state.saved || !renderEditor) return;
-    const task = state.saved;
+    return state.kind === 'task' ? state.saved : undefined;
+  };
+
+  const moveToDay = async (
+    task: Task,
+    controls: TaskEmbedControls,
+    date: string,
+  ) => {
+    const block = controls.takeBlock();
+    if (!note || !block) return;
+    setMoveError(null);
+    const subtasks = taskEmbedIds(block.lines)
+      .slice(1)
+      .flatMap((sub) => savedTask(sub) ?? []);
+    try {
+      await moveTaskToDay({
+        area: note.area,
+        date,
+        lines: block.lines,
+        fromNoteId: note.id,
+        task,
+        subtasks,
+      });
+      block.remove();
+      announceMove(`Moved to ${formatTaskDay(date)}`);
+    } catch (err) {
+      setMoveError(taskActionError('move', task.title, err));
+    }
+  };
+
+  const moveMenu =
+    (task: Task, controls: TaskEmbedControls) => (close: () => void) => (
+      <TaskMoveMenu
+        sections={controls.sections()}
+        today={today}
+        noteDate={note?.date}
+        onSection={(index) => {
+          close();
+          controls.toSection(index);
+        }}
+        onDay={(date) => {
+          close();
+          void moveToDay(task, controls, date);
+        }}
+        onClose={close}
+      />
+    );
+
+  const movingOf = (
+    id: string,
+    controls?: TaskEmbedControls,
+  ): TaskEmbedMoving | undefined => {
+    const task = savedTask(id);
+    if (!task || !controls) return;
+    return {
+      shift: controls.shift,
+      drag: controls.drag,
+      menu: moveMenu(task, controls),
+    };
+  };
+
+  const detailsOf = (
+    id: string,
+    controls?: TaskEmbedControls,
+  ): TaskEmbedDetails | undefined => {
+    const task = savedTask(id);
+    if (!task || !renderEditor) return;
     const isOpen = open.has(id);
     return {
       open: isOpen,
@@ -75,7 +158,11 @@ export function useNoteTaskEmbeds({
       hasDescription: task.description.trim() !== '',
       peek: peeking ? firstLine(task.description) : null,
       panel: isOpen ? (
-        <TaskDetailsPanel task={task} renderEditor={renderEditor} />
+        <TaskDetailsPanel
+          task={task}
+          renderEditor={renderEditor}
+          moveMenu={controls ? moveMenu(task, controls) : undefined}
+        />
       ) : null,
     };
   };
@@ -86,7 +173,8 @@ export function useNoteTaskEmbeds({
       onLeave={controls?.leave}
       onDelete={controls?.remove}
       onMove={controls?.move}
-      details={detailsOf(id)}
+      details={detailsOf(id, controls)}
+      moving={phone ? undefined : movingOf(id, controls)}
     />
   );
   const { extensions, portals } = useTaskEmbedEditor({
@@ -98,5 +186,5 @@ export function useNoteTaskEmbeds({
   if (!note) {
     return { extensions: NO_EXTENSIONS, portals: null, toggleError: null };
   }
-  return { extensions, portals, renderEmbed, toggleError: error };
+  return { extensions, portals, renderEmbed, toggleError: error ?? moveError };
 }

@@ -53,6 +53,26 @@ export type TaskEmbedDetails = {
   panel: ReactNode;
 };
 
+export type TaskEmbedMoving = {
+  /** Moves the task's block a step or a section; then focuses `refocus`. */
+  shift: (dir: 'up' | 'down', bySection: boolean, refocus: string) => void;
+  drag: (event: PointerEvent) => void;
+  /** Move to…, opened by a right-click on the row. */
+  menu?: (close: () => void) => ReactNode;
+};
+
+/** ⌥↑ / ⌥↓, with ⇧ for a section. */
+const shiftKeyOf = (e: KeyboardEvent) =>
+  e.altKey &&
+  !e.metaKey &&
+  !e.ctrlKey &&
+  (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+    ? {
+        dir: e.key === 'ArrowUp' ? ('up' as const) : ('down' as const),
+        bySection: e.shiftKey,
+      }
+    : null;
+
 const isToggleKey = (e: KeyboardEvent) =>
   e.key === '.' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
 
@@ -69,6 +89,7 @@ function TaskEmbedTitle({
   onDelete,
   onMove,
   onToggleDetails,
+  onShift,
 }: {
   title: string;
   onRename: (title: string) => void;
@@ -76,6 +97,7 @@ function TaskEmbedTitle({
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
   onToggleDetails?: () => void;
+  onShift?: TaskEmbedMoving['shift'];
 }) {
   // Null while not editing, so a rename from elsewhere shows at once.
   const [draft, setDraft] = useState<string | null>(null);
@@ -128,7 +150,12 @@ function TaskEmbedTitle({
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     e.stopPropagation();
     if (e.nativeEvent.isComposing) return;
-    if (onToggleDetails && isToggleKey(e)) {
+    const shift = onShift ? shiftKeyOf(e) : null;
+    if (shift) {
+      e.preventDefault();
+      commit();
+      onShift?.(shift.dir, shift.bySection, '.task-embed__title-input');
+    } else if (onToggleDetails && isToggleKey(e)) {
       e.preventDefault();
       onToggleDetails();
     } else if (e.key === 'Enter') {
@@ -197,15 +224,18 @@ export function TaskEmbedRow({
   onDelete,
   onMove,
   details,
+  moving,
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
   details?: TaskEmbedDetails;
+  moving?: TaskEmbedMoving;
 }) {
   const panelId = useId();
   const blockRef = useRef<HTMLDivElement>(null);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
 
   if (view.kind === 'loading') {
     return (
@@ -257,6 +287,14 @@ export function TaskEmbedRow({
     <div
       className={`task-embed${done ? ' task-embed--done' : ''}${dropped ? ' task-embed--dropped' : ''}`}
       data-task-status={task.status}
+      onContextMenu={
+        moving?.menu
+          ? (e) => {
+              e.preventDefault();
+              setMenuAt({ x: e.clientX, y: e.clientY });
+            }
+          : undefined
+      }
       onMouseDown={(e) => {
         if (e.target !== e.currentTarget) return;
         // The space after the title opens the details; without them, a press
@@ -273,6 +311,29 @@ export function TaskEmbedRow({
         field.setSelectionRange(field.value.length, field.value.length);
       }}
     >
+      {moving ? (
+        <button
+          type="button"
+          className="task-embed__handle"
+          aria-label={`Move ${task.title}`}
+          title="Drag to move, or ⌥↑ / ⌥↓ (⇧ for a section)"
+          onPointerDown={(e) => moving.drag(e.nativeEvent)}
+          onKeyDown={(e) => {
+            const shift = shiftKeyOf(e);
+            if (!shift) return;
+            e.preventDefault();
+            moving.shift(shift.dir, shift.bySection, '.task-embed__handle');
+          }}
+        >
+          <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+            {[3, 8, 13].flatMap((cy) =>
+              [3, 7].map((cx) => (
+                <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r="1.3" />
+              )),
+            )}
+          </svg>
+        </button>
+      ) : null}
       <input
         type="checkbox"
         className="task-embed__check"
@@ -289,6 +350,7 @@ export function TaskEmbedRow({
           onDelete={onDelete}
           onMove={onMove}
           onToggleDetails={details?.onToggle}
+          onShift={moving?.shift}
         />
       ) : (
         <span className="task-embed__title">{task.title}</span>
@@ -358,10 +420,30 @@ export function TaskEmbedRow({
     </div>
   );
 
-  if (!details) return row;
+  const menu =
+    menuAt && moving?.menu ? (
+      <div
+        className="task-move-menu-anchor"
+        style={{ left: menuAt.x, top: menuAt.y }}
+      >
+        {moving.menu(() => setMenuAt(null))}
+      </div>
+    ) : null;
+
+  if (!details) {
+    return menu ? (
+      <>
+        {row}
+        {menu}
+      </>
+    ) : (
+      row
+    );
+  }
   return (
     <div ref={blockRef} className="task-embed-block">
       {row}
+      {menu}
       {!open && details.peek ? (
         <p className="task-embed__peek">{details.peek}</p>
       ) : null}
