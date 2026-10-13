@@ -641,7 +641,14 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     textChanged()
     updateActiveLines()
     restyle()
-    onChangeText(["text": textView.textStorage.string, "eventCount": eventCount])
+    // UIKit reports the caret before the text it belongs to; JS takes both
+    // from here so it never pairs the text with an older caret.
+    let selection = textView.selectedRange
+    onChangeText([
+      "text": textView.textStorage.string,
+      "eventCount": eventCount,
+      "selection": ["start": selection.location, "end": selection.location + selection.length],
+    ])
     reportHeight()
     revealCaret()
   }

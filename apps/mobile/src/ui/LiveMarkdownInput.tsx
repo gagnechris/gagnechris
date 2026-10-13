@@ -31,7 +31,11 @@ export type LiveMarkdownVariant = 'note' | 'reading';
 type Props = {
   ref?: Ref<LiveMarkdownHandle | null>;
   value: string;
-  onChangeText: (text: string) => void;
+  /** The native view sends the selection in `text`; a TextInput doesn't. */
+  onChangeText: (
+    text: string,
+    selection?: { start: number; end: number },
+  ) => void;
   onSelectionChange?: (
     event: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
   ) => void;
@@ -195,7 +199,7 @@ const NativeInput = ({
       blurRequest={blurRequest || undefined}
       onChangeText={(event) => {
         setEventCount(event.nativeEvent.eventCount);
-        onChangeText(event.nativeEvent.text);
+        onChangeText(event.nativeEvent.text, event.nativeEvent.selection);
       }}
       onSelectionChange={(event) =>
         onSelectionChange?.(

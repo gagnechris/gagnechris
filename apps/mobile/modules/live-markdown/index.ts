@@ -19,7 +19,12 @@ export type LiveMarkdownNativeProps = ViewProps & {
   editable?: boolean;
   autoFocus?: boolean;
   onChangeText?: (
-    event: NativeSyntheticEvent<{ text: string; eventCount: number }>,
+    event: NativeSyntheticEvent<{
+      text: string;
+      eventCount: number;
+      /** The selection in `text`. */
+      selection: { start: number; end: number };
+    }>,
   ) => void;
   onSelectionChange?: (
     event: NativeSyntheticEvent<{ selection: { start: number; end: number } }>,
