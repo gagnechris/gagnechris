@@ -70,6 +70,7 @@ const sharedColors = {
   fenceBackground: tokens.neutral[100],
   placeholder: color.muted,
   imagePlaceholder: tokens.neutral[100],
+  syntax: tokens.neutral[500],
 };
 
 const THEMES: Record<LiveMarkdownVariant, string> = {
@@ -117,9 +118,9 @@ const LINE_HEIGHT: Record<LiveMarkdownVariant, number> = {
 };
 
 /**
- * A Markdown body that hides its syntax off the caret's lines, through the
- * native LiveMarkdown view. Without that view in the binary it is a plain
- * multiline TextInput with the same props.
+ * A Markdown body that hides its syntax off the caret's lines and dims it on
+ * them, through the native LiveMarkdown view. Without that view in the binary
+ * it is a plain multiline TextInput with the same props.
  */
 export const LiveMarkdownInput = (props: Props) =>
   LiveMarkdownNativeView ? (
