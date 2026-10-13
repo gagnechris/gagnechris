@@ -1,8 +1,9 @@
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MarkdownView } from '../../markdown/MarkdownView';
 import { color, font } from '../../theme';
 import { Icon } from '../../ui/Icon';
+import { LiveMarkdownInput } from '../../ui/LiveMarkdownInput';
 import { detailStyles } from '../DetailEditorShell';
 
 type Props = {
@@ -43,16 +44,16 @@ export const TaskDescription = ({
         <MarkdownView markdown={description} />
       </View>
     ) : (
-      <TextInput
-        style={[styles.description, styles.input]}
-        accessibilityLabel="Description"
-        placeholder="Notes, links, markdown"
-        placeholderTextColor={color.muted}
-        value={description}
-        onChangeText={onChange}
-        multiline
-        scrollEnabled={false}
-      />
+      // The native text view ignores padding, so the card around it pads.
+      <View style={styles.description}>
+        <LiveMarkdownInput
+          variant="note"
+          accessibilityLabel="Description"
+          placeholder="Notes, links, markdown"
+          value={description}
+          onChangeText={onChange}
+        />
+      </View>
     )}
   </>
 );
@@ -76,11 +77,5 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.lg - 4,
     padding: tokens.space[4],
     minHeight: 120,
-  },
-  input: {
-    ...font.regular,
-    fontSize: tokens.text.body,
-    color: color.ink,
-    textAlignVertical: 'top',
   },
 });

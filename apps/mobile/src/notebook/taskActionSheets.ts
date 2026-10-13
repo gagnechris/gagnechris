@@ -4,6 +4,7 @@ import {
   type TaskSchedule,
 } from '@gagnechris/shared';
 import { ActionSheetIOS } from 'react-native';
+import { setNotePeek } from './taskDetailsStore';
 
 /** The shared date items as a sheet; Pick a date… calls `onPickDate`. */
 export const showTaskDates = ({
@@ -105,3 +106,17 @@ export const showChoice = <T extends string>({
       if (value !== undefined) onChoose(value);
     },
   );
+
+const TASK_ROWS = ['title', 'peek'] as const;
+
+/** The note's Task rows choice: titles alone, or each with its first details line. */
+export const showTaskRowsChoice = (noteId: string, peeking: boolean) =>
+  showChoice({
+    title: 'Task rows',
+    options: TASK_ROWS,
+    labels: {
+      title: `${peeking ? '' : '✓ '}Title only`,
+      peek: `${peeking ? '✓ ' : ''}Title and first line`,
+    },
+    onChoose: (rows) => setNotePeek(noteId, rows === 'peek'),
+  });

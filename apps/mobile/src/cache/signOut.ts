@@ -1,5 +1,6 @@
 import { clearPendingFlushes, pendingFlushCount } from '@gagnechris/app-core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resetTaskDetailsStore } from '../notebook/taskDetailsStore';
 import { deleteOutboxDb } from '../outbox/nativeDb';
 import {
   outboxFailedCount,
@@ -32,4 +33,5 @@ export const wipeLocalData = async () => {
   // Everything in AsyncStorage is per-user (cache, area preference, install
   // marker, which sign-in rewrites); new on-disk data must join the sign-out test.
   await AsyncStorage.clear();
+  resetTaskDetailsStore();
 };

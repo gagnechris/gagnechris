@@ -50,6 +50,12 @@ import {
   RECENT_SEARCHES_KEY,
   writeRecentSearches,
 } from '../notebook/recentSearches';
+import {
+  loadTaskDetailsStore,
+  TASK_DETAILS_OPEN_KEY,
+  taskDetailsSnapshot,
+  toggleTaskDetails,
+} from '../notebook/taskDetailsStore';
 import { createCachePersister } from './persister';
 import { CACHE_STORAGE_KEY } from './policy';
 
@@ -544,6 +550,10 @@ describe('sign-out', () => {
     await asyncStorage.setItem('gagnechris.installed', '1');
     await writeRecentSearches(asyncStorage, ['passport']);
     expect(asyncStorage.data.has(RECENT_SEARCHES_KEY)).toBe(true);
+    await loadTaskDetailsStore(asyncStorage);
+    act(() => toggleTaskDetails('01HTASKAAAAAAAAAAAAAAAAAAA'));
+    await advance(0);
+    expect(asyncStorage.data.has(TASK_DETAILS_OPEN_KEY)).toBe(true);
 
     await act(async () => {
       await signOut();
@@ -551,6 +561,7 @@ describe('sign-out', () => {
     await advance(5_000);
 
     expect([...asyncStorage.data.keys()]).toEqual([]);
+    expect(taskDetailsSnapshot().open.size).toBe(0);
     expect(order).toEqual(['revoke with 0 keys left']);
   });
 

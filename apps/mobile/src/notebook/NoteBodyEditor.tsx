@@ -1,5 +1,6 @@
 import { useLatest, type useNoteTaskEmbedSync } from '@gagnechris/app-core';
 import {
+  markdownPlainText,
   openTaskDateQuery,
   TASK_LINE_PREFIX,
   taskDateMenuItems,
@@ -24,7 +25,7 @@ import {
   type NativeSyntheticEvent,
   type TextInputSelectionChangeEventData,
 } from 'react-native';
-import { color, font } from '../theme';
+import { color, font, MIN_TARGET } from '../theme';
 import {
   LiveMarkdownInput,
   type LiveMarkdownHandle,
@@ -45,6 +46,8 @@ import {
   type NoteSegment,
 } from './noteSegments';
 import { PickDateModal } from './PickDateModal';
+import { TaskDetailsPanel } from './TaskDetailsPanel';
+import { toggleTaskDetails, useTaskDetailsStore } from './taskDetailsStore';
 import {
   applyToolbarAction,
   lineStart,
@@ -58,12 +61,20 @@ type Props = {
   embeds: ReturnType<typeof useNoteTaskEmbedSync>;
   today: string;
   onOpenTask: (id: string) => void;
+  /** Whether rows show their first details line is kept per note. */
+  noteId?: string;
   autoFocus?: boolean;
   /** Ids for tests; real ones are ULIDs. */
   newId?: () => string;
 };
 
 const CONVERT_AFTER_MS = 400;
+
+const firstLine = (markdown: string) =>
+  markdownPlainText(markdown)
+    .split('\n')
+    .map((line) => line.trim())
+    .find(Boolean) ?? null;
 
 type Focus = { key: string; selection: Selection };
 type TextSegment = Extract<NoteSegment, { kind: 'text' }>;
@@ -92,10 +103,13 @@ export const NoteBodyEditor = ({
   embeds,
   today,
   onOpenTask,
+  noteId,
   autoFocus,
   newId = createUlid,
 }: Props) => {
   const { onCreate, stateOf, error } = embeds;
+  const details = useTaskDetailsStore();
+  const peeking = noteId ? details.peek.has(noteId) : false;
   const segments = useMemo(() => noteSegments(markdown), [markdown]);
   const inputs = useRef(new Map<string, LiveMarkdownHandle>());
   const [focus, setFocus] = useState<Focus | null>(null);
@@ -389,22 +403,35 @@ export const NoteBodyEditor = ({
         if (segment.kind === 'embed') {
           const state = stateOf(segment.id);
           const title = state.kind === 'task' ? state.task.title : 'Task';
+          const saved = state.kind === 'task' ? state.saved : undefined;
+          const open = Boolean(saved) && details.open.has(segment.id);
+          const peek =
+            saved && !open && peeking ? firstLine(saved.description) : null;
           return (
-            <TaskEmbedRow
-              key={segment.key}
-              state={state}
-              onOpen={
-                state.kind === 'task' && state.saved
-                  ? () => onOpenTask(segment.id)
-                  : undefined
-              }
-              onRemove={() =>
-                confirmDeleteEmbed(segment.key, segment.id, title)
-              }
-              onDelete={() => deleteEmbed(segment.key, segment.id)}
-              editable
-              onTitleSubmit={() => continueAfter(segment.key)}
-            />
+            <Fragment key={segment.key}>
+              <TaskEmbedRow
+                state={state}
+                onOpen={saved ? () => onOpenTask(segment.id) : undefined}
+                onRemove={() =>
+                  confirmDeleteEmbed(segment.key, segment.id, title)
+                }
+                onDelete={() => deleteEmbed(segment.key, segment.id)}
+                editable
+                onTitleSubmit={() => continueAfter(segment.key)}
+                onToggleDetails={
+                  saved ? () => toggleTaskDetails(segment.id) : undefined
+                }
+                detailsOpen={open}
+              />
+              {saved && open ? (
+                <TaskDetailsPanel task={saved} today={today} />
+              ) : null}
+              {peek ? (
+                <Text style={styles.peek} numberOfLines={1}>
+                  {peek}
+                </Text>
+              ) : null}
+            </Fragment>
           );
         }
         const empty = segment.lines.length === 0;
@@ -500,6 +527,15 @@ const styles = StyleSheet.create({
   collapsedBelowRow: {
     height: STRIP + 2 * STRIP_OVERLAP,
     marginTop: -STRIP_OVERLAP,
+  },
+  peek: {
+    ...font.regular,
+    fontSize: tokens.text.caption,
+    color: color.muted,
+    marginTop: -tokens.space[2],
+    marginBottom: tokens.space[1],
+    // Lines up with the title, past the checkbox and the row's gap.
+    marginLeft: MIN_TARGET,
   },
   error: {
     ...font.medium,
