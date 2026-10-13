@@ -13,8 +13,8 @@
     "test:http": "vitest run --project http"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1145.0",
-    "@aws-sdk/lib-dynamodb": "^3.1145.0",
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/lib-dynamodb": "^3.1149.0",
     "@gagnechris/data": "*",
     "@gagnechris/ops": "*",
     "@gagnechris/shared": "*"
