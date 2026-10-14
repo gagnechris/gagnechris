@@ -686,8 +686,14 @@
   color: var(--neutral-600);
 }
 
+.notebook-today__title {
+  min-width: 0;
+}
+
+/* A last resort under the phone title size below. */
 .notebook-today__title h1 {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .notebook-today__side {
@@ -1216,7 +1222,8 @@
 @media (max-width: 767px) {
   .workspace-panel h1,
   .users-page h1 {
-    font-size: 2rem;
+    /* Shrinks on the narrowest phones, where "Wednesday," alone is too wide. */
+    font-size: min(2rem, 13vw);
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
