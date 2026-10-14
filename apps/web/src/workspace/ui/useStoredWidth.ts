@@ -16,9 +16,10 @@ function read(key: string, min: number, max: number): number | null {
 export function useStoredWidth(key: string, min: number, max: number) {
   const [width, setWidthState] = useState(() => read(key, min, max));
   const setWidth = useCallback(
-    (next: number | null) => {
+    (next: number | null, live = false) => {
       const value = next === null ? null : Math.round(clamp(next, min, max));
       setWidthState(value);
+      if (live) return;
       try {
         if (value === null) localStorage.removeItem(key);
         else localStorage.setItem(key, String(value));

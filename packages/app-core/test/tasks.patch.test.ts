@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 import { describe, expect, test } from 'vitest';
 import { AppApiProvider } from '../src/AppApiProvider.js';
+import { setCachedTask } from '../src/query/cache.js';
 import { queryKeys } from '../src/query/keys.js';
 import { applyTaskPatch, usePatchTaskMutation } from '../src/query/tasks.js';
 import type { Task } from '../src/query/api.js';
@@ -84,6 +85,42 @@ const deferred = () => {
 };
 
 describe('usePatchTaskMutation', () => {
+  test('a failed patch keeps a description saved while it was in flight', async () => {
+    const gate = deferred();
+    const { qc, result } = setup(async () => {
+      await gate.promise;
+      return {
+        error: { error: 'server', message: 'boom' },
+        response: { status: 500 },
+      };
+    });
+    const id = task().id;
+    qc.setQueryData(queryKeys.tasks.detail(id), task());
+    let done!: Promise<unknown>;
+    act(() => {
+      done = result.current
+        .mutateAsync({ id, version: 3, patch: { priority: 'low' } })
+        .catch(() => undefined);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    setCachedTask(qc, task({ description: 'Saved meanwhile', version: 4 }));
+
+    gate.resolve(undefined);
+    await act(async () => {
+      await done;
+    });
+    expect(qc.getQueryData<Task>(queryKeys.tasks.detail(id))).toMatchObject({
+      priority: 'med',
+      description: 'Saved meanwhile',
+    });
+    expect(
+      qc.getQueryData<{ pages: { items: Task[] }[] }>(todayKey)?.pages[0]
+        ?.items[0]?.description,
+    ).toBe('Saved meanwhile');
+  });
+
   test('snooze moves the task out of Today and into Upcoming before the server answers', async () => {
     const gate = deferred();
     const { qc, result } = setup(async (body) => {
