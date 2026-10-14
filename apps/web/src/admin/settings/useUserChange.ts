@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
 import {
+  changeToast,
   isReauthRequired,
   isRecentSignIn,
+  useInviteUserMutation,
   useSetUserAccessMutation,
   useUserActionMutation,
   type UserChange,
@@ -9,7 +11,8 @@ import {
 import { getAuthTime, redirectToSignIn } from '../../workspace/auth/session';
 import { savePendingChange } from './userChange';
 
-export type ChangeOutcome = 'done' | 'confirming';
+export type ChangeOutcome =
+  { status: 'done'; toast: string } | { status: 'confirming' };
 
 /**
  * Applies a change that needs a recent sign-in. Without one, the change is
@@ -17,6 +20,7 @@ export type ChangeOutcome = 'done' | 'confirming';
  * the page applies it when they come back.
  */
 export function useUserChange() {
+  const { mutateAsync: invite, isPending: inviting } = useInviteUserMutation();
   const { mutateAsync: setAccess, isPending: settingAccess } =
     useSetUserAccessMutation();
   const { mutateAsync: runAction, isPending: runningAction } =
@@ -30,10 +34,18 @@ export function useUserChange() {
       const confirm = async () => {
         savePendingChange(change);
         await redirectToSignIn({ prompt: 'LOGIN' });
-        return 'confirming' as const;
+        return { status: 'confirming' } as const;
       };
       if (!confirmed && !isRecentSignIn(await getAuthTime())) return confirm();
       try {
+        if (change.kind === 'invite') {
+          const invited = await invite({
+            email: change.email,
+            name: change.name,
+            level: change.level,
+          });
+          return { status: 'done', toast: changeToast(change, invited) };
+        }
         if (change.kind === 'access') {
           await setAccess({ id: change.id, level: change.level });
         } else {
@@ -43,14 +55,14 @@ export function useUserChange() {
             level: change.level,
           });
         }
-        return 'done';
+        return { status: 'done', toast: changeToast(change) };
       } catch (error) {
         if (isReauthRequired(error) && !confirmed) return confirm();
         throw error;
       }
     },
-    [setAccess, runAction],
+    [invite, setAccess, runAction],
   );
 
-  return { perform, isPending: settingAccess || runningAction };
+  return { perform, isPending: inviting || settingAccess || runningAction };
 }

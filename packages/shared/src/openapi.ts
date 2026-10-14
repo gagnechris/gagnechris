@@ -402,6 +402,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     path: '/api/admin/users',
     summary:
       'Invite a user by email; an email that belonged to a removed user restores that user',
+    description: recentSignIn,
     ...base,
     request: { body: jsonBody(InviteUserRequestSchema) },
     responses: {

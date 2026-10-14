@@ -1,5 +1,5 @@
-import { useInviteUserMutation, userErrorMessage } from '@gagnechris/app-core';
-import { displayName, type AccessLevel } from '@gagnechris/shared';
+import { userErrorMessage } from '@gagnechris/app-core';
+import type { AccessLevel } from '@gagnechris/shared';
 import { useState } from 'react';
 import { Button } from '../../ui/Button';
 import {
@@ -9,6 +9,7 @@ import {
   TextField,
 } from '../DetailsSheet';
 import { AccessLevelPicker } from './AccessLevelPicker';
+import { useUserChange } from './useUserChange';
 
 type Props = {
   visible: boolean;
@@ -17,7 +18,7 @@ type Props = {
 };
 
 export const InviteUserSheet = ({ visible, onClose, onDone }: Props) => {
-  const invite = useInviteUserMutation();
+  const { perform, isPending } = useUserChange();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [level, setLevel] = useState<AccessLevel>('notebook');
@@ -34,16 +35,14 @@ export const InviteUserSheet = ({ visible, onClose, onDone }: Props) => {
   const send = async () => {
     setError(null);
     try {
-      const { user, restored } = await invite.mutateAsync({
+      const outcome = await perform({
+        kind: 'invite',
         email: email.trim(),
         name: name.trim() || undefined,
         level,
       });
-      onDone(
-        restored
-          ? `${displayName(user)} has access again. Their notes are back.`
-          : `Invite sent to ${user.email}.`,
-      );
+      if (outcome.status === 'cancelled') return;
+      onDone(outcome.toast);
       close();
     } catch (err) {
       setError(userErrorMessage(err, 'Could not send the invite.'));
@@ -79,8 +78,8 @@ export const InviteUserSheet = ({ visible, onClose, onDone }: Props) => {
       </FieldHint>
       <FieldError>{error ?? undefined}</FieldError>
       <Button
-        title={invite.isPending ? 'Sending…' : 'Send invite'}
-        disabled={invite.isPending || !email.trim()}
+        title={isPending ? 'Sending…' : 'Send invite'}
+        disabled={isPending || !email.trim()}
         onPress={() => void send()}
       />
     </DetailsSheet>

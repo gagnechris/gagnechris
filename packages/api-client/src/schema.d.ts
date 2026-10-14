@@ -2946,7 +2946,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Invite a user by email; an email that belonged to a removed user restores that user */
+        /**
+         * Invite a user by email; an email that belonged to a removed user restores that user
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;

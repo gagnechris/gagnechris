@@ -13,7 +13,6 @@ import { UsersOverlay } from './UsersOverlay';
 import { useUserChange } from './useUserChange';
 import {
   accessChange,
-  changeToast,
   type UserChange,
   formatAdded,
   userErrorMessage,
@@ -26,7 +25,7 @@ type Props = {
   onToast: (message: string) => void;
 };
 
-type AccountAction = Exclude<UserChange['kind'], 'access'>;
+type AccountAction = Exclude<UserChange['kind'], 'access' | 'invite'>;
 
 export default function EditUserDrawer({
   user,
@@ -49,11 +48,12 @@ export default function EditUserDrawer({
   const submit = async (change: UserChange, fallback: string) => {
     setError(null);
     try {
-      if ((await perform(change)) === 'confirming') {
+      const outcome = await perform(change);
+      if (outcome.status === 'confirming') {
         setConfirming(true);
         return;
       }
-      onToast(changeToast(change));
+      onToast(outcome.toast);
       if (change.kind === 'access') onClose();
     } catch (err) {
       setError(userErrorMessage(err, fallback));

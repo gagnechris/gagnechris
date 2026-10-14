@@ -344,6 +344,65 @@ describe('AdminUsersPage', () => {
       );
     });
 
+    test('an invite without a recent sign-in asks for one first and sends nothing', async () => {
+      session.authTime = Math.floor(Date.now() / 1000) - 600;
+      renderPage();
+      await screen.findByText('Sam Rivera');
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Invite user' }),
+      );
+      const dialog = screen.getByRole('dialog', { name: 'Invite user' });
+      await userEvent.type(
+        within(dialog).getByLabelText('Email'),
+        'alex@example.com',
+      );
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: 'Send invite' }),
+      );
+      expect(session.redirectToSignIn).toHaveBeenCalledWith({
+        prompt: 'LOGIN',
+      });
+      expect(post).not.toHaveBeenCalled();
+      expect(
+        JSON.parse(window.sessionStorage.getItem(PENDING)!).change,
+      ).toEqual({
+        kind: 'invite',
+        email: 'alex@example.com',
+        level: 'notebook',
+      });
+      expect(dialog).toHaveTextContent('Confirm it’s you with your passkey');
+    });
+
+    test('coming back signed in sends the invite once', async () => {
+      window.sessionStorage.setItem(
+        PENDING,
+        JSON.stringify({
+          change: {
+            kind: 'invite',
+            email: 'alex@example.com',
+            name: 'Alex Kim',
+            level: 'cms',
+          },
+          at: Date.now() - 30_000,
+        }),
+      );
+      session.authTime = Math.floor(Date.now() / 1000);
+      post.mockResolvedValue(
+        ok({
+          user: person({ id: 'alex', email: 'alex@example.com', level: 'cms' }),
+          restored: false,
+        }),
+      );
+      renderPage();
+      expect(
+        await screen.findByText('Invite sent to alex@example.com.'),
+      ).toBeInTheDocument();
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(post).toHaveBeenCalledWith('/api/admin/users', {
+        body: { email: 'alex@example.com', name: 'Alex Kim', level: 'cms' },
+      });
+    });
+
     test('the server asking for a fresh sign-in also prompts', async () => {
       post.mockResolvedValue({
         data: undefined,

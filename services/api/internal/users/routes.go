@@ -200,6 +200,9 @@ func (h handlers) invite(ctx context.Context, r *api.Request) (*api.Response, er
 		namePtr = &name
 	}
 	return h.run(func() (any, error) {
+		if err := assertRecentSignIn(r); err != nil {
+			return nil, err
+		}
 		a, err := h.admin(r)
 		if err != nil {
 			return nil, err
