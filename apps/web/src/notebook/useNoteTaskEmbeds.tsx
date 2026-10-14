@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   taskActionError,
   useMoveTaskToDay,
@@ -188,6 +188,15 @@ export function useNoteTaskEmbeds({
     };
   };
 
+  // Null once the editor is gone, or while it shows another note.
+  const shownNoteId = useRef<string | null>(null);
+  useEffect(() => {
+    shownNoteId.current = note?.id ?? null;
+    return () => {
+      shownNoteId.current = null;
+    };
+  }, [note?.id]);
+
   const moveToDay = async (
     task: Task,
     controls: TaskEmbedControls,
@@ -195,21 +204,25 @@ export function useNoteTaskEmbeds({
   ) => {
     const block = controls.takeBlock();
     if (!note || !block) return;
+    const fromNoteId = note.id;
+    const shown = () => shownNoteId.current === fromNoteId;
     setMoveError(null);
-    const subtasks = taskEmbedIds(block.lines)
-      .slice(1)
-      .flatMap((sub) => savedTask(sub) ?? []);
     try {
-      await moveTaskToDay({
+      const moved = await moveTaskToDay({
         area: note.area,
         date,
-        lines: block.lines,
-        fromNoteId: note.id,
+        fromNoteId,
         task,
-        subtasks,
+        readLines: () => (shown() ? block.lines() : null),
+        removeLines: () => shown() && block.remove(),
       });
-      block.remove();
+      if (!moved) return;
       announceMove(`Moved to ${formatTaskDay(date)}`);
+      if (moved.patchError) {
+        setMoveError(
+          taskActionError('finish moving', task.title, moved.patchError),
+        );
+      }
     } catch (err) {
       setMoveError(taskActionError('move', task.title, err));
     }

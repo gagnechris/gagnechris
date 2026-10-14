@@ -5,12 +5,8 @@ import {
   type Task,
   type TaskEmbedState,
 } from '@gagnechris/app-core';
-import {
-  taskDateMenuItems,
-  taskEmbedIds,
-  tomorrowOf,
-} from '@gagnechris/shared';
-import { useState } from 'react';
+import { taskDateMenuItems, tomorrowOf } from '@gagnechris/shared';
+import { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS } from 'react-native';
 import { PickDateModal } from './PickDateModal';
 import {
@@ -65,23 +61,38 @@ export function useTaskRowMenu({
     return state.kind === 'task' ? state.saved : undefined;
   };
 
+  // Null once the note's screen is gone, or while it shows another note.
+  const shownNoteId = useRef<string | null>(null);
+  useEffect(() => {
+    shownNoteId.current = note?.id ?? null;
+    return () => {
+      shownNoteId.current = null;
+    };
+  }, [note?.id]);
+
   const moveToDay = async (task: Task, date: string) => {
-    const lines = taskBlockLines(markdown(), task.id);
-    if (!note || lines === null) return;
+    if (!note) return;
+    const fromNoteId = note.id;
+    const shown = () => shownNoteId.current === fromNoteId;
     setError(null);
-    const subtasks = taskEmbedIds(lines)
-      .slice(1)
-      .flatMap((id) => savedTask(id) ?? []);
     try {
-      await moveTaskToDay({
+      const moved = await moveTaskToDay({
         area: note.area,
         date,
-        lines,
-        fromNoteId: note.id,
+        fromNoteId,
         task,
-        subtasks,
+        readLines: () => (shown() ? taskBlockLines(markdown(), task.id) : null),
+        removeLines: () => {
+          if (!shown()) return false;
+          onChange(removeTaskBlock(markdown(), task.id));
+          return true;
+        },
       });
-      onChange(removeTaskBlock(markdown(), task.id));
+      if (moved?.patchError) {
+        setError(
+          taskActionError('finish moving', task.title, moved.patchError),
+        );
+      }
     } catch (err) {
       setError(taskActionError('move', task.title, err));
     }

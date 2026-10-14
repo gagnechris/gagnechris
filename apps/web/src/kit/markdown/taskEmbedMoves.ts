@@ -186,23 +186,32 @@ export function moveTaskEmbedToSection(
 /**
  * The task's line and the lines under it, with the row's own indent taken off,
  * and a way to take them out of the note later. Taking them out keeps their
- * tasks and leaves undo alone: they now live in another note.
+ * tasks and leaves undo alone: they now live in another note. Both read the
+ * note as it is when called; both fail once the editor is gone.
  */
 export function taskEmbedBlock(view: EditorView, widget: HTMLElement) {
   const id = widget.dataset.taskId ?? '';
-  const { doc } = view.state;
-  const { first, last } = blockAt(doc, lineOf(view, widget));
-  const rows: string[] = [];
-  for (let n = first; n <= last; n += 1) rows.push(doc.line(n).text);
-  const indent = /^[ \t]*/.exec(rows[0]!)![0].length;
-  const lines = rows
-    .map((row) => row.slice(Math.min(indent, /^[ \t]*/.exec(row)![0].length)))
-    .join('\n');
-  const remove = () => {
+  const find = () => {
     const line = lineOfId(view, id);
-    if (line === null) return;
+    return line === null ? null : blockAt(view.state.doc, line);
+  };
+  const lines = () => {
+    const block = view.dom.isConnected ? find() : null;
+    if (!block) return null;
+    const rows: string[] = [];
+    for (let n = block.first; n <= block.last; n += 1) {
+      rows.push(view.state.doc.line(n).text);
+    }
+    const indent = /^[ \t]*/.exec(rows[0]!)![0].length;
+    return rows
+      .map((row) => row.slice(Math.min(indent, /^[ \t]*/.exec(row)![0].length)))
+      .join('\n');
+  };
+  const remove = (): boolean => {
+    if (!view.dom.isConnected) return false;
+    const block = find();
+    if (!block) return true;
     const now = view.state.doc;
-    const block = blockAt(now, line);
     const [from, to] =
       block.last < now.lines
         ? [now.line(block.first).from, now.line(block.last + 1).from]
@@ -214,6 +223,7 @@ export function taskEmbedBlock(view: EditorView, widget: HTMLElement) {
       changes: { from, to },
       annotations: Transaction.addToHistory.of(false),
     });
+    return true;
   };
   return { lines, remove };
 }
