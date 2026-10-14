@@ -149,6 +149,31 @@ describe('GitHub Actions supply chain', () => {
     expect(offenders).toEqual([]);
   });
 
+  // Steps of one job share the runner, so a build's install scripts could
+  // reach any later secret step through files or $GITHUB_ENV.
+  it('runs native build installs only after every step that holds a secret', () => {
+    const buildsWithInstallScripts = (run: string) =>
+      /\beas\s+build\b|\bnpx\b|\bpod\s+install\b|eas-local-build\.sh\s+build\b/.test(
+        run,
+      );
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!readsSecret(job)) continue;
+        const steps = job.steps ?? [];
+        const lastSecret = steps
+          .map((s) => /\bsecrets\./.test(JSON.stringify(s)))
+          .lastIndexOf(true);
+        steps.forEach((step, i) => {
+          if (buildsWithInstallScripts(step.run ?? '') && i <= lastSecret) {
+            offenders.push(`${path}#${jobId}/${step.name ?? step.uses}`);
+          }
+        });
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('installs before any credential step in every cdk.yml job', () => {
     for (const [jobId, job] of Object.entries(cdk.jobs)) {
       const setup = stepIndex(job, (s) => s.uses === SETUP_ACTION);
@@ -992,8 +1017,9 @@ describe('deploy-lag.sh', () => {
 });
 
 describe('iOS release', () => {
-  const release = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ios-release.yml'))
-    .jobs.release! as GatedJob;
+  const workflow = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ios-release.yml'));
+  const release = workflow.jobs.build! as GatedJob;
+  const submit = workflow.jobs.submit! as GatedJob;
   const environments = JSON.parse(
     readFileSync(join(ROOT, 'scripts', 'github-environments.json'), 'utf8'),
   ) as {
@@ -1014,6 +1040,12 @@ describe('iOS release', () => {
     expect(release.steps![0]!.with?.['fetch-depth']).toBe(0);
   });
 
+  it('submits from a fresh job after the build', () => {
+    expect(submit.needs).toBe('build');
+    expect(submit.environment).toBe('testflight');
+    expect(Object.keys(workflow.jobs).sort()).toEqual(['build', 'submit']);
+  });
+
   it('runs in a testflight environment limited to ios-v* tags', () => {
     expect(release.environment).toBe('testflight');
     const env = environments.environments.find((e) => e.name === 'testflight');
@@ -1024,10 +1056,84 @@ describe('iOS release', () => {
   });
 });
 
+describe('eas-local-build.sh', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'eas-local-build-'));
+  const bin = join(dir, 'bin');
+  const state = join(dir, 'state');
+  const npmRoot = join(dir, 'global');
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  mkdirSync(bin);
+  mkdirSync(join(npmRoot, 'eas-cli/node_modules/@expo/eas-build-job'), {
+    recursive: true,
+  });
+  writeFileSync(
+    join(npmRoot, 'eas-cli/node_modules/@expo/eas-build-job/package.json'),
+    JSON.stringify({ version: '9.8.7' }),
+  );
+  const stub = (name: string, body: string) => {
+    writeFileSync(join(bin, name), `#!/usr/bin/env bash\n${body}\n`);
+    chmodSync(join(bin, name), 0o755);
+  };
+  // Like eas-cli: adds the EAS environment variables and hands the job to the
+  // plugin with its own environment.
+  stub(
+    'eas',
+    `echo "$*" >"${dir}/eas-args"
+EAS_SERVER_VAR='from eas' EAS_LOCAL_BUILD_PLUGIN_INPUT=am9i "$EAS_LOCAL_BUILD_PLUGIN_PATH"`,
+  );
+  stub('npm', `[ "$*" = 'root -g' ] && echo "${npmRoot}"`);
+  stub('npx', `{ echo "$*"; env; } >"${dir}/npx-env"`);
+  const env = { PATH: `${bin}:${process.env.PATH}` };
+
+  it('saves the job eas-cli hands over, then builds it without the token', () => {
+    const prepared = runScript('eas-local-build.sh', ['prepare', state], {
+      ...env,
+      EXPO_TOKEN: 'tok',
+    });
+    expect(prepared.status, prepared.stderr).toBe(0);
+    expect(readFileSync(join(dir, 'eas-args'), 'utf8').trim()).toBe(
+      'build --local --platform ios --profile production --non-interactive',
+    );
+
+    const built = runScript(
+      'eas-local-build.sh',
+      ['build', state, join(dir, 'app.ipa')],
+      { ...env, EXPO_TOKEN: '' },
+    );
+    expect(built.status, built.stderr).toBe(0);
+    const npx = readFileSync(join(dir, 'npx-env'), 'utf8').split('\n');
+    expect(npx[0]).toBe('-y eas-cli-local-build-plugin@9.8.7');
+    expect(npx).toContain('EAS_LOCAL_BUILD_PLUGIN_INPUT=am9i');
+    expect(npx).toContain(`EAS_LOCAL_BUILD_ARTIFACT_PATH=${dir}/app.ipa`);
+    expect(npx).toContain('EAS_SERVER_VAR=from eas');
+    expect(npx.filter((l) => /^EXPO_TOKEN=./.test(l))).toEqual([]);
+    expect(readdirSync(state)).toEqual([]);
+  });
+
+  it('refuses to build while holding the token', () => {
+    const r = runScript('eas-local-build.sh', ['build', state, 'x.ipa'], {
+      ...env,
+      EXPO_TOKEN: 'tok',
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/without EXPO_TOKEN/);
+  });
+
+  it('fails when eas build never hands over a job', () => {
+    stub('eas', 'true');
+    const r = runScript('eas-local-build.sh', ['prepare', state], {
+      ...env,
+      EXPO_TOKEN: 'tok',
+    });
+    expect(r.status).toBe(1);
+  });
+});
+
 describe('mobile jobs', () => {
   const mobileJobs = [
     ['mobile.yml', 'mobile'],
-    ['ios-release.yml', 'release'],
+    ['ios-release.yml', 'build'],
   ].map(([file, jobId]) => ({
     label: `${file}#${jobId}`,
     job: loadYaml<Workflow>(join(WORKFLOWS_DIR, file!)).jobs[jobId!]!,

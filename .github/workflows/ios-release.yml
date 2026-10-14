@@ -4,7 +4,10 @@ name: iOS release
 # TestFlight. A manual run must pick such a tag as its ref.
 # `eas build --local` keeps builds off the EAS cloud quota while EAS still
 # holds the signing credentials, the build number (`autoIncrement`) and the
-# App Store Connect API key, so this job only holds the Expo token.
+# App Store Connect API key, so the workflow only holds the Expo token.
+# The local build runs dependency install scripts and `pod install`, so it runs
+# without the token (scripts/ci/eas-local-build.sh), after the last step that
+# has it, and the submit runs in a fresh job.
 on:
   push:
     tags: ['ios-v*']
@@ -22,8 +25,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Build and submit to TestFlight
+  build:
+    name: Build
     runs-on: macos-26
     timeout-minutes: 90
     environment: testflight
@@ -47,7 +50,6 @@ jobs:
               process.exit(1);
             }'
 
-      # This job holds EXPO_TOKEN.
       - name: Setup
         uses: ./.github/actions/setup
         with:
@@ -67,13 +69,58 @@ jobs:
       - name: Install EAS CLI
         run: npm install --global --ignore-scripts eas-cli@24.7.0
 
-      - name: Build
+      - name: Prepare the build
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: bash ../../scripts/ci/eas-local-build.sh prepare "${RUNNER_TEMP}/eas-local-build"
+
+      - name: Build
+        working-directory: apps/mobile
         run: >-
-          eas build --local --platform ios --profile production
-          --non-interactive --output "${RUNNER_TEMP}/app.ipa"
+          bash ../../scripts/ci/eas-local-build.sh build
+          "${RUNNER_TEMP}/eas-local-build" "${RUNNER_TEMP}/app.ipa"
+
+      - name: Upload the build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: app-ipa
+          path: ${{ runner.temp }}/app.ipa
+          if-no-files-found: error
+          retention-days: 1
+
+  submit:
+    name: Submit to TestFlight
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: testflight
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # eas-cli reads the app config, which loads the config plugins.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          ignore-scripts: 'true'
+          npm-cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+          go: 'false'
+
+      - name: Install mobile
+        working-directory: apps/mobile
+        run: npm ci --ignore-scripts
+
+      - name: Install EAS CLI
+        run: npm install --global --ignore-scripts eas-cli@24.7.0
+
+      - name: Download the build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: app-ipa
+          path: ${{ runner.temp }}
 
       - name: Submit to TestFlight
         working-directory: apps/mobile
