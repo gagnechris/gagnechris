@@ -15,12 +15,17 @@ import {
  *
  * A text run is keyed by the embed after it, so converting a line keeps the
  * focused view (now the text after the new task) mounted with its keyboard.
+ * A run is also split before each line in `breaks`, so a fold can hide part
+ * of it; the part before a break is keyed by its start.
  */
 export type NoteSegment =
   | { kind: 'text'; key: string; start: number; lines: string[] }
   | { kind: 'embed'; key: string; start: number; id: string; line: string };
 
-export const noteSegments = (markdown: string): NoteSegment[] => {
+export const noteSegments = (
+  markdown: string,
+  breaks: ReadonlySet<number> = new Set(),
+): NoteSegment[] => {
   const lines = markdown.split('\n');
   const embeds = new Map(findTaskEmbeds(markdown).map((e) => [e.line, e.id]));
   const segments: NoteSegment[] = [];
@@ -30,6 +35,11 @@ export const noteSegments = (markdown: string): NoteSegment[] => {
   lines.forEach((line, i) => {
     const id = embeds.get(i);
     if (id === undefined) {
+      if (breaks.has(i) && text.length) {
+        segments.push({ kind: 'text', key: `to:${i}`, start, lines: text });
+        text = [];
+        start = i;
+      }
       text.push(line);
       return;
     }

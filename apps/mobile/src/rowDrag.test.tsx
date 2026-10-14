@@ -1,4 +1,7 @@
-import { clearPendingFlushes } from '@gagnechris/app-core';
+import {
+  AUTOSAVE_DEBOUNCE_MS,
+  clearPendingFlushes,
+} from '@gagnechris/app-core';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NoteScreen from '../app/(tabs)/notes/[id]';
@@ -150,6 +153,9 @@ describe('dragging task rows', () => {
   it('leaves the note alone when a row is dropped where it was', async () => {
     const renderer = await renderNote(`{{task:${A}}}\n{{task:${B}}}`);
     dragBy(renderer, 'Alpha', 0, 4);
+    await act(
+      () => new Promise((done) => setTimeout(done, AUTOSAVE_DEBOUNCE_MS * 2)),
+    );
     await settle(10);
     expect(saved()).toBe(`{{task:${A}}}\n{{task:${B}}}`);
   });
