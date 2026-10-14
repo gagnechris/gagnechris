@@ -25,7 +25,7 @@ Public HTML (home, resume, blog posts), `posts.json`, the iOS app's JSON, `sitem
 
 ## Quickstart (local admin)
 
-Requires Node.js 22.12+ (see `.nvmrc`) and Docker (DynamoDB Local).
+Requires Node.js 22.22.2+ (see `.nvmrc`) and Docker (DynamoDB Local).
 
 ```bash
 nvm use
