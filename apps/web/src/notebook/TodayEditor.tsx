@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject, type ReactNode } from 'react';
+import { useEffect, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
 import {
   dailyNoteResource,
@@ -64,7 +64,6 @@ export function TodayEditor({
   highlightTaskId,
   onHighlighted,
   onDeleted,
-  tasksToggle,
 }: {
   area: NotebookArea;
   date: string;
@@ -78,8 +77,6 @@ export function TodayEditor({
   highlightTaskId: string | null;
   onHighlighted: () => void;
   onDeleted: () => void;
-  /** Ends the title row, so it stays in view with the sticky header. */
-  tasksToggle?: ReactNode;
 }) {
   const deleteMutation = useDeleteNoteMutation();
   const {
@@ -151,7 +148,6 @@ export function TodayEditor({
       <>
         <div className="workspace-action-bar notebook-today__header">
           <DayTitle area={area} date={date} today={today} />
-          <div className="workspace-toolbar">{tasksToggle}</div>
         </div>
         {loadError ? (
           <p className="workspace-panel__error" role="alert">
@@ -183,7 +179,6 @@ export function TodayEditor({
             onDelete={entity.version > 0 ? () => void runDelete() : undefined}
             deleteDisabled={busy}
           />
-          {tasksToggle}
         </div>
       </div>
       {saveError ? (

@@ -249,7 +249,9 @@ test('at 1280px dragging either panel wider stops when the note reaches 480px', 
   await drag('Resize sidebar', 500);
   await atMinimum();
   expect((await layout(page)).sidebar).toBeLessThan(400);
-  await page.getByRole('separator', { name: 'Resize sidebar' }).dblclick();
+  await page
+    .getByRole('separator', { name: 'Resize sidebar' })
+    .dblclick({ position: { x: 3, y: 200 } });
 
   await drag('Resize task panel', -500);
   await atMinimum();
