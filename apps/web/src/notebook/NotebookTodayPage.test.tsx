@@ -1,9 +1,11 @@
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -318,6 +320,8 @@ const advance = async (ms: number) => {
   }
 };
 
+const tasksButton = () => screen.getByRole('button', { name: 'Tasks' });
+
 describe('NotebookTodayPage', () => {
   beforeEach(() => {
     state.note = null;
@@ -363,47 +367,75 @@ describe('NotebookTodayPage', () => {
     expect(await screen.findByDisplayValue(/hello daily/)).toBeInTheDocument();
   });
 
-  test('the Tasks toggle on the title row hides the panel and remembers it', async () => {
+  test('the button on the panel edge hides it, the window edge brings it back, and it is remembered', async () => {
     const user = userEvent.setup();
-    const { unmount } = renderToday();
-    await screen.findByRole('textbox', { name: 'Note body' });
-    const toggle = screen.getByRole('button', { name: /^Tasks/ });
+    const { unmount } = renderToday(null);
+    await screen.findByTestId('carry-footer');
     const side = screen.getByRole('complementary', { name: 'Today tasks' });
-    expect(toggle.closest('.workspace-action-bar')).not.toBeNull();
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(toggle).toHaveAttribute('aria-controls', side.id);
-    await user.click(toggle);
+    const collapse = tasksButton();
+    expect(side).toContainElement(collapse);
+    expect(
+      collapse.closest('.workspace-edge-track')?.previousElementSibling,
+    ).toBe(screen.getByRole('separator', { name: 'Resize task panel' }));
+    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    expect(collapse).toHaveAttribute('aria-controls', side.id);
+    expect(collapse).toHaveAttribute('title', 'Hide the task panel (⌥⌘\\)');
+
+    await user.click(collapse);
     expect(side.parentElement).toHaveClass('notebook-today--side-closed');
-    const closed = screen.getByRole('button', { name: /^Tasks/ });
-    expect(closed).toHaveAttribute('aria-expanded', 'false');
-    expect(closed).toHaveTextContent(/^Tasks$/);
-    expect(side.parentElement!.lastElementChild).toBe(side);
+    const expand = tasksButton();
+    expect(side).not.toContainElement(expand);
+    expect(expand.closest('.workspace-edge-zone')).toHaveClass(
+      'workspace-edge-zone--right',
+    );
+    expect(expand).toHaveFocus();
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    expect(expand).toHaveAttribute('aria-controls', side.id);
+    expect(expand).toHaveAttribute('title', 'Show the task panel (⌥⌘\\)');
+    expect(expand).toHaveAccessibleName('Tasks');
 
     unmount();
-    renderToday();
-    await screen.findByRole('textbox', { name: 'Note body' });
-    expect(screen.getByRole('button', { name: /^Tasks/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
+    renderToday(null);
+    await screen.findByTestId('carry-footer');
+    expect(tasksButton()).toHaveAttribute('aria-expanded', 'false');
+    await user.click(tasksButton());
+    expect(tasksButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(tasksButton()).toHaveFocus();
+    expect(
+      screen.getByRole('complementary', { name: 'Today tasks' }),
+    ).toContainElement(tasksButton());
   });
 
-  test('the Tasks toggle is on the title row with All selected', async () => {
+  test('no Sidebar or Tasks button in the page header, with an area or All', async () => {
+    renderToday();
+    await screen.findByRole('textbox', { name: 'Note body' });
+    const headers = () =>
+      [
+        ...document.querySelectorAll(
+          '.notebook-today__day-nav, .notebook-today__header',
+        ),
+      ].flatMap((el) =>
+        within(el as HTMLElement)
+          .queryAllByRole('button')
+          .map((b) => b.getAttribute('aria-label') ?? b.textContent),
+      );
+    expect(headers()).not.toContain('Tasks');
+    expect(headers()).not.toContain('Sidebar');
+    expect(headers().join(' ')).not.toMatch(/Tasks|Sidebar/);
+    cleanup();
+
     localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, 'all');
     renderToday();
     await screen.findByText(/All shows both areas/);
-    expect(
-      (await screen.findByRole('button', { name: /^Tasks/ })).closest(
-        '.workspace-action-bar',
-      ),
-    ).not.toBeNull();
+    expect(headers().join(' ')).not.toMatch(/Tasks|Sidebar/);
+    expect(tasksButton().closest('.workspace-action-bar')).toBeNull();
   });
 
   test('⌥⌘\\ toggles the panel with focus in the editor', async () => {
     renderToday();
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     editor.focus();
-    const toggle = () => screen.getByRole('button', { name: /^Tasks/ });
+    const toggle = tasksButton;
     const press = (init: KeyboardEventInit) =>
       fireEvent.keyDown(editor, { code: 'Backslash', key: '«', ...init });
 
@@ -429,7 +461,7 @@ describe('NotebookTodayPage', () => {
     handle.setPointerCapture = () => {};
     fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 1000, pointerId: 1 });
-    const show = screen.getByRole('button', { name: /^Tasks/ });
+    const show = tasksButton();
     expect(show).toHaveAttribute('aria-expanded', 'false');
     expect(show).toHaveFocus();
   });
@@ -481,7 +513,7 @@ describe('NotebookTodayPage', () => {
       renderToday();
       await screen.findByRole('textbox', { name: 'Note body' });
       return {
-        toggle: () => screen.getByRole('button', { name: /^Tasks/ }),
+        toggle: tasksButton,
         side: screen.getByRole('complementary', { name: 'Today tasks' }),
       };
     };
@@ -502,12 +534,13 @@ describe('NotebookTodayPage', () => {
       expect(side.parentElement).not.toHaveClass('notebook-today--side-closed');
       expect(scrim()).not.toBeNull();
       expect(side).toHaveFocus();
+      expect(side).toContainElement(toggle());
       expect(
         screen.queryByRole('separator', { name: 'Resize task panel' }),
       ).toBeNull();
     });
 
-    test('Esc, the scrim and the toggle close it and focus the toggle', async () => {
+    test('Esc, the scrim and the edge button close it and focus the expand control', async () => {
       const user = userEvent.setup();
       const { toggle } = await openPage();
 

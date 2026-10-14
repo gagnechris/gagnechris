@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '../fixtures';
 
 test.use({
@@ -10,8 +10,11 @@ const DAY = '2026-11-18';
 const MORNING = new Date(`${DAY}T09:00:00-05:00`);
 
 const tasksToggle = (page: Page) =>
-  page.getByRole('button', { name: /^Tasks/ });
+  page.getByRole('button', { name: 'Tasks', exact: true });
 const side = (page: Page) => page.locator('#notebook-today-side');
+const expandZone = (page: Page) => page.locator('.workspace-edge-zone--right');
+const opacity = (locator: Locator) =>
+  locator.evaluate((el) => getComputedStyle(el).opacity);
 
 async function openToday(
   page: Page,
@@ -30,7 +33,7 @@ async function openToday(
 const sideWidth = (page: Page) =>
   side(page).evaluate((el) => el.getBoundingClientRect().width);
 
-test('the Tasks toggle sits on the sticky title row, counts Still open and leaves nothing on the right when hidden', async ({
+test('hovering the panel edge shows a button that collapses it; the window edge brings it back at its width with the Still open count, taking no width', async ({
   page,
   apps,
   signIn,
@@ -39,81 +42,130 @@ test('the Tasks toggle sits on the sticky title row, counts Still open and leave
 }) => {
   await seed.task({ title: `${prefix} one`, startDate: DAY });
   await seed.task({ title: `${prefix} two`, startDate: DAY });
-  const lines = Array.from({ length: 120 }, (_, i) => `Line ${i + 1}`);
-  await seed.daily(DAY, lines.join('\n\n'));
   await openToday(page, signIn, apps.notebook);
-
-  const toggle = tasksToggle(page);
+  await page.evaluate(() =>
+    localStorage.setItem('gagnechris.notebook.todaySideWidth', '400'),
+  );
+  await page.reload();
+  await expect(page.locator('.cm-content')).toBeVisible();
   await expect(
-    page.locator('.workspace-action-bar').getByRole('button', {
-      name: /^Tasks/,
-    }),
-  ).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    page.getByTestId('still-open').getByText('Loading tasks…'),
+  ).toHaveCount(0);
+  await expect.poll(() => sideWidth(page)).toBe(400);
+  await expect(
+    page
+      .locator('.notebook-today__header, .notebook-today__day-nav')
+      .getByRole('button', { name: /Tasks|Sidebar/ }),
+  ).toHaveCount(0);
+
+  const collapse = side(page).getByRole('button', { name: 'Tasks' });
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect(collapse).toHaveAttribute(
+    'title',
+    /^Hide the task panel \(⌥⌘\\\)$/,
+  );
+  expect(await opacity(collapse)).toBe('0');
+  const handle = page.getByRole('separator', { name: 'Resize task panel' });
+  const edge = (await handle.boundingBox())!;
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + 20);
+  await expect.poll(() => opacity(collapse)).toBe('1');
+  const button = (await collapse.boundingBox())!;
+  expect(
+    Math.abs(button.x + button.width / 2 - (edge.x + edge.width / 2)),
+  ).toBeLessThanOrEqual(1);
+
+  await collapse.click();
+  const expand = tasksToggle(page);
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expect(expand).toBeFocused();
+  await expect.poll(() => sideWidth(page)).toBe(0);
+  await expect(side(page)).toBeHidden();
   const stillOpenCount = await page
     .getByTestId('still-open')
     .locator('[data-task-id]')
     .count();
   expect(stillOpenCount).toBeGreaterThanOrEqual(2);
-  await expect(toggle).toHaveAccessibleName(
-    `Tasks ${stillOpenCount} still open`,
-  );
-  await expect(toggle.locator('.notebook-today__side-count')).toHaveText(
+  await expect(expand).toHaveAccessibleDescription(
     `${stillOpenCount} still open`,
   );
-
-  await page
-    .locator('.cm-content')
-    .getByText('Line 1', { exact: true })
-    .click();
-  await page.keyboard.press('ControlOrMeta+End');
-  await expect(
-    page.locator('.cm-content').getByText('Line 120'),
-  ).toBeInViewport();
-  await expect(page.getByText('Line 1', { exact: true })).not.toBeInViewport();
-  await expect(toggle).toBeInViewport();
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(toggle).toHaveText(/^Tasks/);
-  await expect(toggle).toBeInViewport();
-  await expect.poll(() => sideWidth(page)).toBe(0);
-  await expect(side(page)).toBeHidden();
-  const edges = await page.evaluate(() => {
+  await page.mouse.move(600, 400);
+  await expect(expand).toBeInViewport();
+  expect(await opacity(expand)).toBe('1');
+  await expect(expand.locator('.workspace-edge-button__count')).toHaveText(
+    String(stillOpenCount),
+  );
+  const layout = await page.evaluate(() => {
     const grid = document.querySelector('.notebook-today')!;
     const main = document.querySelector('.notebook-today__main')!;
+    const zone = document.querySelector('.workspace-edge-zone--right')!;
     return {
       grid: grid.getBoundingClientRect().right,
       main: main.getBoundingClientRect().right,
       children: [...grid.children].map((c) => c.className),
+      zone: {
+        position: getComputedStyle(zone).position,
+        right: window.innerWidth - zone.getBoundingClientRect().right,
+        width: zone.getBoundingClientRect().width,
+      },
     };
   });
-  expect(edges.main).toBeCloseTo(edges.grid, 0);
-  expect(edges.children).toEqual([
+  expect(layout.main).toBeCloseTo(layout.grid, 0);
+  expect(layout.children).toEqual([
     'notebook-today__main notebook-column',
     'notebook-today__side',
   ]);
+  expect(layout.zone).toEqual({ position: 'fixed', right: 0, width: 12 });
+
+  await page.mouse.move(page.viewportSize()!.width - 3, 200);
+  await expect
+    .poll(() =>
+      expandZone(page).evaluate(
+        (el) => getComputedStyle(el, '::before').opacity,
+      ),
+    )
+    .toBe('1');
+  await expand.click();
+  await expect(side(page)).toBeVisible();
+  await expect.poll(() => sideWidth(page)).toBe(400);
+  await expect(collapse).toBeFocused();
+  await expect(expandZone(page)).toHaveCount(0);
 });
 
-test('a mouse click leaves no focus ring on the Tasks toggle; Tab shows one', async ({
+test('the task panel edge buttons work by keyboard and say whether it is expanded; a mouse click leaves no focus ring', async ({
   page,
   apps,
   signIn,
+  browserName,
 }) => {
   await openToday(page, signIn, apps.notebook);
-  const toggle = tasksToggle(page);
-  const outline = () =>
-    toggle.evaluate((el) => getComputedStyle(el).outlineStyle);
+  const outline = (locator: Locator) =>
+    locator.evaluate((el) => getComputedStyle(el).outlineStyle);
 
-  await toggle.click();
-  await expect(toggle).toBeFocused();
-  expect(await outline()).toBe('none');
-  await toggle.click();
+  const collapse = side(page).getByRole('button', { name: 'Tasks' });
+  const expand = expandZone(page).getByRole('button', { name: 'Tasks' });
+  await collapse.click();
+  await expect(expand).toBeFocused();
+  // WebKit ignores focus({ focusVisible: false }).
+  if (browserName === 'chromium') expect(await outline(expand)).toBe('none');
+  await expand.click();
+  await expect(collapse).toBeFocused();
 
-  await page.getByRole('button', { name: 'Note options' }).focus();
+  await page.getByRole('separator', { name: 'Resize task panel' }).focus();
   await page.keyboard.press('Tab');
-  await expect(toggle).toBeFocused();
-  expect(await outline()).not.toBe('none');
+  await expect(collapse).toBeFocused();
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(() => opacity(collapse)).toBe('1');
+  expect(await outline(collapse)).not.toBe('none');
+
+  await page.keyboard.press('Enter');
+  await expect(expand).toBeFocused();
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(() => opacity(expand)).toBe('1');
+  expect(await outline(expand)).not.toBe('none');
+
+  await page.keyboard.press('Enter');
+  await expect(collapse).toBeFocused();
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
 });
 
 test('⌥⌘\\ opens and closes the task panel from inside the editor', async ({
@@ -165,7 +217,9 @@ const toggleAndReadTransitions = (page: Page) =>
     const grid = document.querySelector('.notebook-today')!;
     const panel = document.querySelector('#notebook-today-side')!;
     document
-      .querySelector<HTMLButtonElement>('.notebook-today__side-toggle')!
+      .querySelector<HTMLButtonElement>(
+        'button[aria-controls="notebook-today-side"]',
+      )!
       .click();
     await new Promise(requestAnimationFrame);
     return [...grid.getAnimations(), ...panel.getAnimations()].map((a) => ({
@@ -235,11 +289,20 @@ test.describe('at 1000px', () => {
     await expect(side(page)).toBeHidden();
     const before = await noteWidth(page);
 
+    await expect(expandZone(page)).toBeVisible();
+    expect(
+      await expandZone(page).evaluate(
+        (el) => window.innerWidth - el.getBoundingClientRect().right,
+      ),
+    ).toBe(0);
+
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(side(page)).toBeVisible();
     await settled(page);
     expect(await noteWidth(page)).toBe(before);
+    const close = side(page).getByRole('button', { name: 'Tasks' });
+    expect(await opacity(close)).toBe('1');
     await expect(page.locator('.notebook-today__scrim')).toBeVisible();
     await expect(
       page.getByRole('separator', { name: 'Resize task panel' }),
@@ -271,7 +334,7 @@ test.describe('at 1000px', () => {
     ).toBeVisible();
   });
 
-  test('Esc closes the overlay and focus returns to the Tasks toggle', async ({
+  test('Esc, the scrim and the panel edge close the overlay and focus moves to the expand control', async ({
     page,
     apps,
     signIn,
@@ -304,6 +367,12 @@ test.describe('at 1000px', () => {
       .click({ position: { x: 20, y: 400 } });
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toBeFocused();
+
+    await toggle.click();
+    await settled(page);
+    await side(page).getByRole('button', { name: 'Tasks' }).click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(expandZone(page).getByRole('button')).toBeFocused();
   });
 
   test('widening the window past 1100px restores the side-by-side panel at its remembered width and state', async ({

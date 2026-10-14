@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -30,8 +29,10 @@ import {
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
 import { useModalDialog } from '../kit/useModalDialog';
 import { visibleNavSections } from './navSections';
+import { PanelCollapseButton, PanelExpandEdge } from './ui/PanelEdge';
 import { ResizeHandle } from './ui/ResizeHandle';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
+import { usePanelEdgeFocus } from './ui/usePanelEdgeFocus';
 import { useStoredWidth } from './ui/useStoredWidth';
 import { noteColumnRoom } from './ui/noteColumn';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
@@ -39,9 +40,7 @@ import { WorkspaceSearchContext } from './workspaceSearch';
 import {
   isSidebarShortcut,
   readSidebarOpen,
-  WorkspaceSidebarContext,
   writeSidebarOpen,
-  type WorkspaceSidebar,
 } from './workspaceSidebar';
 import '../kit/kit.css';
 import './workspace.css';
@@ -73,7 +72,7 @@ type WorkspaceFrameProps = {
   sidebarTop?: ReactNode;
   /** Icon rail instead of the full sidebar, for focused editors. */
   rail?: boolean;
-  /** Pages can hide the sidebar with a SidebarToggle or ⌘\. */
+  /** The sidebar's edge and ⌘\ hide and show it. */
   collapsible?: boolean;
   renderSearch: (close: () => void) => ReactNode;
   /** Defaults to the route outlet. */
@@ -155,29 +154,27 @@ export function WorkspaceFrame({
     readSidebarOpen(app),
   );
   const sidebarOpen = !collapsible || sidebarOpenState;
-  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
+  const {
+    collapseRef: sidebarCollapseRef,
+    expandRef: sidebarExpandRef,
+    handOff: sidebarHandOff,
+  } = usePanelEdgeFocus(sidebarOpen);
   const setSidebarOpen = useCallback(
-    (open: boolean) => {
+    (open: boolean, fromEdge?: { byKeyboard: boolean }) => {
       writeSidebarOpen(app, open);
       setSidebarOpenState(open);
-      // Focus inside a sidebar that is going away would drop to the body.
-      if (!open && sidebarRef.current?.contains(document.activeElement)) {
-        sidebarToggleRef.current?.focus();
+      const active = document.activeElement;
+      if (fromEdge) {
+        sidebarHandOff(fromEdge.byKeyboard);
+      } else if (
+        open
+          ? active === sidebarExpandRef.current
+          : sidebarRef.current?.contains(active)
+      ) {
+        sidebarHandOff();
       }
     },
-    [app],
-  );
-  const sidebar = useMemo<WorkspaceSidebar | null>(
-    () =>
-      collapsible
-        ? {
-            id: SIDEBAR_ID,
-            open: sidebarOpen,
-            toggle: () => setSidebarOpen(!sidebarOpen),
-            toggleRef: sidebarToggleRef,
-          }
-        : null,
-    [collapsible, sidebarOpen, setSidebarOpen],
+    [app, sidebarExpandRef, sidebarHandOff],
   );
 
   // Editors that already unmounted can still be retrying a save.
@@ -206,16 +203,25 @@ export function WorkspaceFrame({
   }, []);
 
   useEffect(() => {
-    if (!sidebar) return;
+    if (!collapsible) return;
     const onKey = (e: KeyboardEvent) => {
       if (!isSidebarShortcut(e)) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       e.preventDefault();
-      sidebar.toggle();
+      setSidebarOpen(!sidebarOpen);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [sidebar]);
+  }, [collapsible, sidebarOpen, setSidebarOpen]);
+
+  const sidebarEdgeProps = {
+    label: 'Sidebar',
+    noun: 'sidebar',
+    controls: SIDEBAR_ID,
+    side: 'left',
+    shortcut: '⌘\\',
+    keyShortcuts: 'Meta+\\ Control+\\',
+  } as const;
 
   const visibleSections = visibleNavSections(sections, user.groups);
   const phoneOverflow = new Set(
@@ -432,21 +438,31 @@ export function WorkspaceFrame({
               onChange={setSidebarWidth}
               onCollapse={
                 collapsible
-                  ? () => {
-                      setSidebarOpen(false);
-                      sidebarToggleRef.current?.focus();
-                    }
+                  ? () => setSidebarOpen(false, { byKeyboard: false })
                   : undefined
               }
               room={noteColumnRoom}
             />
           )}
+          {collapsible && sidebarOpen ? (
+            <PanelCollapseButton
+              {...sidebarEdgeProps}
+              ref={sidebarCollapseRef}
+              className="workspace-sidebar__edge"
+              onToggle={(byKeyboard) => setSidebarOpen(false, { byKeyboard })}
+            />
+          ) : null}
         </aside>
+        {collapsible && !sidebarOpen ? (
+          <PanelExpandEdge
+            {...sidebarEdgeProps}
+            ref={sidebarExpandRef}
+            onToggle={(byKeyboard) => setSidebarOpen(true, { byKeyboard })}
+          />
+        ) : null}
         <main className="workspace-main">
           <WorkspaceSearchContext.Provider value={openSearch}>
-            <WorkspaceSidebarContext.Provider value={sidebar}>
-              {children ?? <Outlet />}
-            </WorkspaceSidebarContext.Provider>
+            {children ?? <Outlet />}
           </WorkspaceSearchContext.Provider>
         </main>
       </div>

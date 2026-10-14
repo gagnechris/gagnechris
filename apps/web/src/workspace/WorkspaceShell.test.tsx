@@ -9,7 +9,6 @@ import {
 } from '@gagnechris/shared';
 import { accessLevel } from './access';
 import type { AuthUser } from './auth/session';
-import { SidebarToggle } from './ui/SidebarToggle';
 import { WorkspaceFrame, type ShellNavSection } from './WorkspaceShell';
 
 const { openAddPasskey } = vi.hoisted(() => ({ openAddPasskey: vi.fn() }));
@@ -76,7 +75,6 @@ function renderFrame(
                 </div>
               )}
             >
-              <SidebarToggle />
               <textarea aria-label="Note" />
               <h1>Page</h1>
             </WorkspaceFrame>
@@ -223,27 +221,66 @@ describe('collapsible sidebar', () => {
   const shell = (container: HTMLElement) => container.firstChild as Element;
   const sidebarToggle = () => screen.getByRole('button', { name: 'Sidebar' });
 
-  test('the toggle and ⌘\\ from inside a text field hide and show the sidebar', async () => {
+  test('the button on the sidebar edge collapses it and the one on the window edge brings it back', async () => {
     const user = userEvent.setup();
     const { container } = renderFrame(['notebook'], {
       app: 'notebook',
       collapsible: true,
     });
-    const toggle = sidebarToggle();
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(toggle).toHaveAttribute('title', 'Hide sidebar (⌘\\)');
-    expect(toggle).toHaveAttribute(
-      'aria-controls',
-      container.querySelector('.workspace-sidebar')?.id,
-    );
+    const sidebar = container.querySelector('.workspace-sidebar')!;
+    const collapse = sidebarToggle();
+    expect(sidebar).toContainElement(collapse);
+    expect(
+      collapse.closest('.workspace-edge-track')?.previousElementSibling,
+    ).toBe(screen.getByRole('separator', { name: 'Resize sidebar' }));
+    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    expect(collapse).toHaveAttribute('title', 'Hide sidebar (⌘\\)');
+    expect(collapse).toHaveAttribute('aria-controls', sidebar.id);
 
-    await user.click(toggle);
+    await user.click(collapse);
     expect(shell(container)).toHaveClass('workspace--sidebar-closed');
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(toggle).toHaveAccessibleName('Sidebar');
-    expect(toggle).toHaveAttribute('title', 'Show sidebar (⌘\\)');
+    const expand = sidebarToggle();
+    expect(sidebar).not.toContainElement(expand);
+    expect(expand.closest('.workspace-edge-zone')).toHaveClass(
+      'workspace-edge-zone--left',
+    );
+    expect(expand).toHaveFocus();
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    expect(expand).toHaveAttribute('aria-controls', sidebar.id);
+    expect(expand).toHaveAttribute('title', 'Show sidebar (⌘\\)');
+
+    await user.keyboard('{Enter}');
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+    expect(sidebarToggle()).toHaveAttribute('aria-expanded', 'true');
+    expect(sidebarToggle()).toHaveFocus();
+    expect(container.querySelector('.workspace-edge-zone')).toBeNull();
+  });
+
+  test('Tab reaches the sidebar edge button, and ⌘\\ hands focus to the window edge', async () => {
+    const user = userEvent.setup();
+    renderFrame(['notebook'], { app: 'notebook', collapsible: true });
+    screen.getByRole('separator', { name: 'Resize sidebar' }).focus();
+    await user.tab();
+    expect(sidebarToggle()).toHaveFocus();
+    await user.keyboard('{Meta>}\\{/Meta}');
+    expect(sidebarToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(sidebarToggle()).toHaveFocus();
+    await user.keyboard('{Meta>}\\{/Meta}');
+    expect(sidebarToggle()).toHaveAttribute('aria-expanded', 'true');
+    expect(sidebarToggle()).toHaveFocus();
+  });
+
+  test('⌘\\ from inside a text field hides and shows the sidebar', async () => {
+    const user = userEvent.setup();
+    const { container } = renderFrame(['notebook'], {
+      app: 'notebook',
+      collapsible: true,
+    });
 
     await user.click(screen.getByRole('textbox', { name: 'Note' }));
+    await user.keyboard('{Control>}\\{/Control}');
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+    expect(screen.getByRole('textbox', { name: 'Note' })).toHaveFocus();
     await user.keyboard('{Meta>}\\{/Meta}');
     expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
     expect(screen.getByRole('textbox', { name: 'Note' })).toHaveFocus();
