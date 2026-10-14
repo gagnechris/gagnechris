@@ -82,7 +82,7 @@ export default function NotebookNotePage() {
   }
 
   return (
-    <section className="workspace-panel workspace-panel--editor">
+    <section className="workspace-panel workspace-panel--editor notebook-column">
       <div className="workspace-action-bar">
         <div className="workspace-action-bar__status">
           <Link to="/notes" className="workspace-back">

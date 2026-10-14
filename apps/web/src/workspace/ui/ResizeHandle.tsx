@@ -24,6 +24,8 @@ type Props = {
   onChange: (width: number | null) => void;
   /** Dragging well past the minimum, or shrinking from it by key, calls this. */
   onCollapse?: () => void;
+  /** How much wider the panel may grow before it squeezes its neighbour too far. */
+  room?: () => number;
 };
 
 /** A drag handle on a panel's edge; arrows nudge it, double-click resets it. */
@@ -37,15 +39,22 @@ export function ResizeHandle({
   edge,
   onChange,
   onCollapse,
+  room = () => Infinity,
 }: Props) {
   const drag = useRef<{
     x: number;
     width: number;
     initial: number | null;
+    limit: number;
   } | null>(null);
   const sign = edge === 'right' ? 1 : -1;
-  const current = () =>
-    width ?? target.current?.getBoundingClientRect().width ?? min;
+  // The rendered width, since CSS can hold a remembered width back on a
+  // small window.
+  const current = () => {
+    const rendered = target.current?.getBoundingClientRect().width ?? 0;
+    return rendered > 0 ? rendered : (width ?? min);
+  };
+  const limitFrom = (from: number) => from + Math.max(0, room());
   // A focusable separator needs aria-valuenow, also while the CSS default
   // width applies.
   const [measured, setMeasured] = useState<number | null>(null);
@@ -59,13 +68,19 @@ export function ResizeHandle({
     observer.observe(el);
     return () => observer.disconnect();
   }, [target]);
-  const now = Math.round(width ?? measured ?? min);
+  const now = Math.round(measured || width || min);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { x: e.clientX, width: current(), initial: width };
+    const from = current();
+    drag.current = {
+      x: e.clientX,
+      width: from,
+      initial: width,
+      limit: limitFrom(from),
+    };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const start = drag.current;
@@ -81,7 +96,7 @@ export function ResizeHandle({
       onCollapse();
       return;
     }
-    onChange(next);
+    onChange(Math.min(next, start.limit));
   };
   const endDrag = () => {
     drag.current = null;
@@ -90,12 +105,13 @@ export function ResizeHandle({
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : null;
     if (dir === null) return;
     e.preventDefault();
-    const next = current() + sign * dir * STEP;
-    if (onCollapse && next < min && Math.round(current()) <= min) {
+    const from = current();
+    const next = from + sign * dir * STEP;
+    if (onCollapse && next < min && Math.round(from) <= min) {
       onCollapse();
       return;
     }
-    onChange(next);
+    onChange(Math.min(next, limitFrom(from)));
   };
 
   return (
