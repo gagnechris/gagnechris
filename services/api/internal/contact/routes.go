@@ -151,18 +151,17 @@ func (h handlers) contact(ctx context.Context, r *api.Request) (*api.Response, e
 		return nil, &api.RateLimitedError{Message: errContactIPLimit}
 	}
 
-	contactID, err := h.store.save(ctx, form.name, form.email, form.message, ip)
-	if err != nil {
-		return nil, err
-	}
-
 	if ok, err := h.store.consumeSESSend(ctx); err != nil {
 		return nil, err
 	} else if !ok {
-		r.Log.Warn("Daily email cap reached; contact message saved but not mailed", "contactId", contactID)
+		r.Log.Warn("Daily email cap reached; contact message refused")
 		r.Metrics.Add(contract.Data.API.Metrics.SESCapReached, observability.Count, 1)
-		h.tryUpdateEmailStatus(ctx, r, contactID, "failed", errSESDailyLimit)
 		return nil, &api.RateLimitedError{Message: errSESDailyLimit}
+	}
+
+	contactID, err := h.store.save(ctx, form.name, form.email, form.message, ip)
+	if err != nil {
+		return nil, err
 	}
 
 	err = h.send(ctx, Mail{

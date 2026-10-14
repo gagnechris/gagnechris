@@ -2,6 +2,7 @@ package contact
 
 import (
 	"context"
+	"net/netip"
 	"time"
 	"unicode/utf16"
 
@@ -28,15 +29,30 @@ func (s store) tryIncrement(ctx context.Context, pk, sk string, maxCount int, tt
 
 const errContactIPLimit = "Too many contact submissions from this address. Try again later."
 
-const errSESDailyLimit = "Daily email quota reached. Your message was saved; try again tomorrow."
+const errSESDailyLimit = "Daily email quota reached. Try again tomorrow."
+
+// rateKeyIP is the address a per-IP limit counts against. An IPv6 client
+// usually holds a whole /64 and can rotate within it, so IPv6 counts per /64.
+func rateKeyIP(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+	addr = addr.Unmap()
+	if addr.Is4() {
+		return addr.String()
+	}
+	return netip.PrefixFrom(addr.WithZone(""), 64).Masked().String()
+}
 
 func (s store) consumeContactIP(ctx context.Context, ip string) (bool, error) {
 	at := s.now()
-	return s.tryIncrement(ctx, keys.RateContactIPPk(ip), keys.RateHourSk(at),
+	return s.tryIncrement(ctx, keys.RateContactIPPk(rateKeyIP(ip)), keys.RateHourSk(at),
 		contract.Data.API.ContactPerIPPerHour, keys.TTLEndOfUTCHour(at))
 }
 
-// consumeSESSend is called only just before sending mail.
+// consumeSESSend runs before the contact row is saved, so a used-up cap
+// stops the writes too.
 func (s store) consumeSESSend(ctx context.Context) (bool, error) {
 	at := s.now()
 	return s.tryIncrement(ctx, keys.RateSESGlobalPk(), keys.RateDaySk(at),
@@ -53,7 +69,7 @@ func (s store) consumeResumeSESSend(ctx context.Context) (bool, error) {
 
 func (s store) claimResumeNotifyIP(ctx context.Context, ip string) (bool, error) {
 	at := s.now()
-	return s.tryIncrement(ctx, keys.RateResumeIPPk(ip), keys.RateDaySk(at), 1, keys.TTLEndOfUTCDay(at))
+	return s.tryIncrement(ctx, keys.RateResumeIPPk(rateKeyIP(ip)), keys.RateDaySk(at), 1, keys.TTLEndOfUTCDay(at))
 }
 
 func (s store) save(ctx context.Context, name, email, message, sourceIP string) (string, error) {

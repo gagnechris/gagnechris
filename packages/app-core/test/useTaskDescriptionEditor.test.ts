@@ -117,4 +117,22 @@ describe('useTaskDescriptionEditor', () => {
     expect(result.current.saveError).toBeNull();
     expect(result.current.dirty).toBe(false);
   });
+
+  test('a description edited on another device is not written over', async () => {
+    const { result, bodies } = setup(() => ({
+      error: {
+        error: 'conflict',
+        message: 'conflict',
+        current: task({ description: 'From the phone', version: 4 }),
+      },
+      response: { status: 409 },
+    }));
+
+    act(() => result.current.onChange('Bring the numbers'));
+    await settle();
+
+    expect(bodies.map((b) => b.version)).toEqual([3]);
+    expect(result.current.saveError).toMatch(/another device/);
+    expect(result.current.dirty).toBe(true);
+  });
 });

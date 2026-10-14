@@ -232,7 +232,7 @@ describe('POST /api/contact', () => {
     expect(counter!.ttl).toBeGreaterThan(Date.now() / 1000 + 3600);
   });
 
-  it('saves but does not mail once the daily mail cap is reached', async () => {
+  it('neither saves nor mails once the daily mail cap is reached', async () => {
     await h.doc.send(
       new PutCommand({
         TableName: h.tableName,
@@ -248,15 +248,9 @@ describe('POST /api/contact', () => {
     expect(res.status).toBe(429);
     expect(res.body).toEqual({
       error: 'rate_limited',
-      message:
-        'Daily email quota reached. Your message was saved; try again tomorrow.',
+      message: 'Daily email quota reached. Try again tomorrow.',
     });
-    const [row] = await rows('CONTACT#');
-    expect(row).toMatchObject({
-      emailStatus: 'failed',
-      emailError:
-        'Daily email quota reached. Your message was saved; try again tomorrow.',
-    });
+    expect(await rows('CONTACT#')).toEqual([]);
     expect(sentMail()).toEqual([]);
   });
 });

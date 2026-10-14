@@ -3,6 +3,9 @@ import {
   affectedWorkspaces,
   loadWorkspaces,
   planSteps,
+  runAll,
+  schedule,
+  type Step,
   type Workspace,
 } from '../verify.js';
 
@@ -27,6 +30,7 @@ const all = [
   ws('@gagnechris/mobile', 'apps/mobile', ['@gagnechris/shared'], {
     prefix: true,
   }),
+  ws('@gagnechris/scripts', 'scripts'),
 ];
 
 const names = (steps: { name: string }[]) => steps.map((s) => s.name);
@@ -118,6 +122,88 @@ describe('verify', () => {
         'Case collisions',
       ]),
     );
+  });
+
+  it('checks the importers of a deleted file but formats nothing', () => {
+    const steps = planSteps([], [], all, false, [
+      'packages/shared/src/gone.ts',
+    ]);
+    expect(names(steps)).toEqual(
+      expect.arrayContaining([
+        'Typecheck @gagnechris/shared',
+        'Typecheck @gagnechris/web',
+        'go:generate:check',
+      ]),
+    );
+    expect(names(steps)).not.toContain('Prettier');
+    expect(names(steps)).not.toContain('ESLint');
+  });
+
+  it('checks both workspaces of a file moved between them', () => {
+    const steps = planSteps(
+      ['packages/tokens/src/a.ts'],
+      ['packages/tokens/src/a.ts'],
+      all,
+      false,
+      ['apps/web/src/a.ts'],
+    );
+    expect(names(steps)).toEqual(
+      expect.arrayContaining([
+        'Typecheck @gagnechris/tokens',
+        'Typecheck @gagnechris/web',
+      ]),
+    );
+    expect(steps.find((s) => s.name === 'Prettier')!.cmd).not.toContain(
+      'apps/web/src/a.ts',
+    );
+  });
+
+  it('runs the scripts tests when only workflows or git hooks change', () => {
+    for (const file of ['.github/workflows/ci.yml', '.githooks/pre-push']) {
+      expect(names(planSteps([file], [], all))).toContain(
+        'Test @gagnechris/scripts',
+      );
+    }
+  });
+
+  it('runs the code generators and the Go steps one after another', () => {
+    const steps = planSteps(
+      ['packages/shared/src/a.ts', 'services/api/internal/x.go'],
+      [],
+      all,
+    );
+    const units = schedule(steps).map((u) => u.map((s) => s.name));
+    expect(units).toContainEqual([
+      'openapi:check',
+      'go:generate:check',
+      'Go lint',
+      'Go test',
+    ]);
+    expect(units.filter((u) => u.length > 1)).toHaveLength(1);
+  });
+
+  it('never overlaps two steps of one group', async () => {
+    const steps: Step[] = [
+      { name: 'a', cmd: [], group: 'g' },
+      { name: 'b', cmd: [] },
+      { name: 'c', cmd: [], group: 'g' },
+      { name: 'd', cmd: [] },
+    ];
+    let running = 0;
+    let most = 0;
+    const log = console.log;
+    console.log = () => {};
+    try {
+      await runAll(steps, 4, async (step) => {
+        if (step.group) most = Math.max(most, ++running);
+        await new Promise((r) => setTimeout(r, 10));
+        if (step.group) running--;
+        return { step, ok: true, output: '', seconds: 0 };
+      });
+    } finally {
+      console.log = log;
+    }
+    expect(most).toBe(1);
   });
 
   it('runs every CI check with --all', () => {
