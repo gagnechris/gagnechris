@@ -1,5 +1,9 @@
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { noteResource, useDeleteNoteMutation } from '@gagnechris/app-core';
+import {
+  noteResource,
+  useDeleteNoteMutation,
+  type Note,
+} from '@gagnechris/app-core';
 import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
@@ -9,7 +13,6 @@ import {
   emptyNoteDraft,
   noteDraftFromNote,
   notePayloadFromDraft,
-  type Note,
   type NoteDraft,
 } from '@gagnechris/shared';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
