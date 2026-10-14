@@ -9,6 +9,11 @@ import (
 
 func TestTextHelpersMatchTypeScript(t *testing.T) {
 	type template struct{ Markdown, Area, Date string }
+	type carry struct {
+		Markdown string
+		Tasks    []CarriedInTask
+		Section  *string
+	}
 	textcases.Replay(t, "notebook", map[string]func(json.RawMessage) any{
 		"taskEmbedIds": func(in json.RawMessage) any { return TaskEmbedIDs(textcases.Decode[string](t, in)) },
 		"carriedInMarkdown": func(in json.RawMessage) any {
@@ -22,6 +27,13 @@ func TestTextHelpersMatchTypeScript(t *testing.T) {
 		},
 		"dailyTemplateHasTasks": func(in json.RawMessage) any {
 			return DailyTemplateHasTasks(textcases.Decode[string](t, in))
+		},
+		"dailyTemplateHeadings": func(in json.RawMessage) any {
+			return DailyTemplateHeadings(textcases.Decode[string](t, in))
+		},
+		"carryIntoDailyTemplate": func(in json.RawMessage) any {
+			c := textcases.Decode[carry](t, in)
+			return CarryIntoDailyTemplate(c.Markdown, c.Tasks, c.Section)
 		},
 		"markdownPlainText": func(in json.RawMessage) any {
 			return MarkdownPlainText(textcases.Decode[string](t, in))

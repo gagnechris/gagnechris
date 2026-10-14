@@ -37,3 +37,44 @@ test('a new day starts from the area’s template and is saved only once typed i
     .toBe('## Focus for Friday\nShip the release');
   await expect(page.getByRole('note')).toHaveCount(0);
 });
+
+test('carried-in tasks go under the section picked in Daily templates', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const title = `${prefix} carried into Meetings`;
+  const task = await seed.task({ title, startDate: '2026-10-01' });
+  await page.clock.setFixedTime(FRIDAY_MORNING);
+  await signIn();
+  await page.goto(`${apps.notebook}/settings/templates?template=work`);
+
+  const select = page.getByRole('combobox', {
+    name: /^Carried-in tasks go under/,
+  });
+  await expect(select).toHaveValue('');
+  await select.selectOption('Meetings');
+  await expect
+    .poll(async () => {
+      const { data } = await seed.api.GET(
+        '/api/notebook/templates/daily/{area}',
+        { params: { path: { area: 'work' } } },
+      );
+      return data?.carryOverSection;
+    })
+    .toBe('Meetings');
+
+  await page.goto(`${apps.notebook}/today`);
+  const editor = page.locator('.markdown-editor');
+  await expect(editor).toContainText(title);
+  await expect(editor).not.toContainText('Carried in');
+  const { data } = await seed.api.GET(
+    '/api/notebook/notes/daily/{area}/{date}',
+    { params: { path: { area: 'work', date: '2026-10-02' } } },
+  );
+  expect(data?.bodyMarkdown).toContain(
+    `## Meetings\n\n{{task:${task.id}}}\n\n## Notes`,
+  );
+});

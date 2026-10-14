@@ -891,7 +891,7 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
         method: 'post',
         path: '/api/notebook/notes/daily/{area}/{date}/open',
         summary:
-          'Open the daily note; on first open, creates it with open tasks from earlier days under Carried in',
+          'Open the daily note; on first open, creates it from the template with open tasks from earlier days in its carry-over section',
         tags: ['Notebook'],
         security: [{ bearerAuth: [] }],
         request: {

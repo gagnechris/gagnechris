@@ -11,10 +11,12 @@ import {
   DAILY_TEMPLATE_DATE_TOKEN,
   DAILY_TEMPLATE_TASK_MESSAGE,
   dailyTemplateHasTasks,
+  dailyTemplateHeadings,
   fillDailyTemplate,
   formatCalendarDay,
   NOTEBOOK_AREA_LABELS,
 } from '@gagnechris/shared';
+import { Field, Select } from '../kit/Field';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -31,7 +33,19 @@ const AREA_OPTIONS = AREAS.map((value) => ({
   label: NOTEBOOK_AREA_LABELS[value],
 }));
 
-type TemplateDraft = { bodyMarkdown: string };
+type TemplateDraft = { bodyMarkdown: string; carryOverSection: string | null };
+
+const INITIAL_DRAFT: TemplateDraft = {
+  bodyMarkdown: '',
+  carryOverSection: null,
+};
+
+/** A section the text no longer has reads as the first one, as the API treats it. */
+const carryOverSection = (draft: TemplateDraft) =>
+  draft.carryOverSection !== null &&
+  dailyTemplateHeadings(draft.bodyMarkdown).includes(draft.carryOverSection)
+    ? draft.carryOverSection
+    : null;
 
 function TemplateEditor({ area }: { area: NotebookArea }) {
   const editorRef = useRef<MarkdownEditorHandle>(null);
@@ -39,10 +53,16 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
   const editor = useWorkspaceDocEditor({
     resource: dailyTemplateResource,
     params: { area },
-    initialDraft: { bodyMarkdown: '' } satisfies TemplateDraft,
-    toDraft: (template) => ({ bodyMarkdown: template.bodyMarkdown }),
+    initialDraft: INITIAL_DRAFT,
+    toDraft: (template): TemplateDraft => ({
+      bodyMarkdown: template.bodyMarkdown,
+      carryOverSection: template.carryOverSection,
+    }),
     getEntityId: (template) => template.area,
-    toPayload: (draft) => ({ bodyMarkdown: draft.bodyMarkdown }),
+    toPayload: (draft) => ({
+      bodyMarkdown: draft.bodyMarkdown,
+      carryOverSection: carryOverSection(draft),
+    }),
     conflictMessage:
       'Another device changed this template. Reload to see its version.',
     loadErrorFallback: 'Could not load the template.',
@@ -60,8 +80,10 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
       return;
     }
     setInvalidText(null);
-    updateDraft(() => ({ bodyMarkdown: next }));
+    updateDraft((current) => ({ ...current, bodyMarkdown: next }));
   };
+  const headings = dailyTemplateHeadings(draft.bodyMarkdown);
+  const section = carryOverSection(draft);
 
   const insertDate = () => {
     const handle = editorRef.current;
@@ -142,6 +164,35 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
           Headings, lists and checklists. {DAILY_TEMPLATE_DATE_TOKEN} fills in
           the day when the note is created.
         </p>
+        <div className="notebook-templates__carry">
+          <Field
+            label="Carried-in tasks go under"
+            hint={
+              headings.length === 0
+                ? 'With no headings, open tasks from earlier days go under Carried in at the top.'
+                : 'Open tasks from earlier days are added at the end of this section.'
+            }
+          >
+            <Select
+              value={section ?? ''}
+              disabled={headings.length === 0}
+              onChange={(event) => {
+                const value = event.target.value;
+                updateDraft((current) => ({
+                  ...current,
+                  carryOverSection: value === '' ? null : value,
+                }));
+              }}
+            >
+              <option value="">First section</option>
+              {headings.map((heading) => (
+                <option key={heading} value={heading}>
+                  {heading}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </section>
       <aside className="notebook-templates__side">
         <section className="notebook-card" aria-labelledby="template-preview">

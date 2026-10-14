@@ -124,17 +124,18 @@ type Users struct {
 }
 
 type Notebook struct {
-	TextMaxBytes             int               `json:"textMaxBytes"`
-	TitleMaxLength           int               `json:"titleMaxLength"`
-	TagMaxLength             int               `json:"tagMaxLength"`
-	TagsMax                  int               `json:"tagsMax"`
-	BatchMaxIDs              int               `json:"batchMaxIds"`
-	PageSize                 int               `json:"pageSize"`
-	SearchMaxLength          int               `json:"searchMaxLength"`
-	SearchLimitMax           int64             `json:"searchLimitMax"`
-	DailyTemplates           map[string]string `json:"dailyTemplates"`
-	DailyTemplateMaxBytes    int               `json:"dailyTemplateMaxBytes"`
-	DailyTemplateTaskMessage string            `json:"dailyTemplateTaskMessage"`
+	TextMaxBytes                int               `json:"textMaxBytes"`
+	TitleMaxLength              int               `json:"titleMaxLength"`
+	TagMaxLength                int               `json:"tagMaxLength"`
+	TagsMax                     int               `json:"tagsMax"`
+	BatchMaxIDs                 int               `json:"batchMaxIds"`
+	PageSize                    int               `json:"pageSize"`
+	SearchMaxLength             int               `json:"searchMaxLength"`
+	SearchLimitMax              int64             `json:"searchLimitMax"`
+	DailyTemplates              map[string]string `json:"dailyTemplates"`
+	DailyTemplateMaxBytes       int               `json:"dailyTemplateMaxBytes"`
+	DailyTemplateTaskMessage    string            `json:"dailyTemplateTaskMessage"`
+	DailyTemplateSectionMessage string            `json:"dailyTemplateSectionMessage"`
 }
 
 type Sync struct {

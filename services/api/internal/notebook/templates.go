@@ -18,11 +18,12 @@ import (
 
 // DailyTemplate is DailyTemplateSchema, in its field order.
 type DailyTemplate struct {
-	Area         string  `json:"area"`
-	BodyMarkdown string  `json:"bodyMarkdown"`
-	IsDefault    bool    `json:"isDefault"`
-	Version      int     `json:"version"`
-	UpdatedAt    *string `json:"updatedAt"`
+	Area             string  `json:"area"`
+	BodyMarkdown     string  `json:"bodyMarkdown"`
+	CarryOverSection *string `json:"carryOverSection"`
+	IsDefault        bool    `json:"isDefault"`
+	Version          int     `json:"version"`
+	UpdatedAt        *string `json:"updatedAt"`
 }
 
 type storedTemplate struct {
@@ -54,10 +55,11 @@ func parseTemplate(item data.Item) (storedTemplate, error) {
 	r.Literal("entityType", "dailyTemplate")
 	r.Str("userId", 1)
 	t := storedTemplate{DailyTemplate: DailyTemplate{
-		Area:         r.Enum("area", Areas...),
-		IsDefault:    r.Bool("isDefault"),
-		BodyMarkdown: r.Str("bodyMarkdown", 0),
-		Version:      r.NonNegativeInt("version"),
+		Area:             r.Enum("area", Areas...),
+		IsDefault:        r.Bool("isDefault"),
+		BodyMarkdown:     r.Str("bodyMarkdown", 0),
+		CarryOverSection: r.OptOnlyStr("carryOverSection", 1),
+		Version:          r.NonNegativeInt("version"),
 	}}
 	r.OptPositiveInt("version")
 	t.createdAt = r.Str("createdAt", 1)
@@ -65,6 +67,7 @@ func parseTemplate(item data.Item) (storedTemplate, error) {
 	t.UpdatedAt = &updated
 	if t.IsDefault {
 		t.BodyMarkdown = contract.Data.Notebook.DailyTemplates[t.Area]
+		t.CarryOverSection = nil
 	}
 	return t, r.Err("daily template")
 }
@@ -99,8 +102,16 @@ func (r *templatesRepo) conflict(ctx context.Context, userID, area string, expec
 	return store.VersionConflict(expected, &current.Version, current)
 }
 
-// write saves bodyMarkdown, or the default when reset.
-func (r *templatesRepo) write(ctx context.Context, userID, area, bodyMarkdown string, reset bool, expected api.Expected) (DailyTemplate, error) {
+// templateEdit is a save; keepSection leaves the stored carry-over section
+// as it is, for clients that don't send one.
+type templateEdit struct {
+	bodyMarkdown string
+	section      *string
+	keepSection  bool
+}
+
+// write saves edit, or the default when reset.
+func (r *templatesRepo) write(ctx context.Context, userID, area string, edit templateEdit, reset bool, expected api.Expected) (DailyTemplate, error) {
 	existing, err := r.stored(ctx, userID, area)
 	if err != nil {
 		return DailyTemplate{}, err
@@ -121,8 +132,12 @@ func (r *templatesRepo) write(ctx context.Context, userID, area, bodyMarkdown st
 	if existing != nil {
 		createdAt = existing.createdAt
 	}
+	bodyMarkdown, section := edit.bodyMarkdown, edit.section
+	if edit.keepSection && existing != nil {
+		section = existing.CarryOverSection
+	}
 	if reset {
-		bodyMarkdown = ""
+		bodyMarkdown, section = "", nil
 	}
 	item := templateKey(userID, area)
 	item["entityType"] = data.S("dailyTemplate")
@@ -130,6 +145,9 @@ func (r *templatesRepo) write(ctx context.Context, userID, area, bodyMarkdown st
 	item["area"] = data.S(area)
 	item["isDefault"] = data.Bool(reset)
 	item["bodyMarkdown"] = data.S(bodyMarkdown)
+	if section != nil {
+		item["carryOverSection"] = data.S(*section)
+	}
 	item["version"] = data.N(int64(base + 1))
 	item["createdAt"] = data.S(createdAt)
 	item["updatedAt"] = data.S(now)
@@ -146,7 +164,7 @@ func (r *templatesRepo) write(ctx context.Context, userID, area, bodyMarkdown st
 		}
 		return DailyTemplate{}, err
 	}
-	saved := DailyTemplate{Area: area, BodyMarkdown: bodyMarkdown, IsDefault: reset, Version: base + 1, UpdatedAt: &now}
+	saved := DailyTemplate{Area: area, BodyMarkdown: bodyMarkdown, CarryOverSection: section, IsDefault: reset, Version: base + 1, UpdatedAt: &now}
 	if reset {
 		saved.BodyMarkdown = contract.Data.Notebook.DailyTemplates[area]
 	}

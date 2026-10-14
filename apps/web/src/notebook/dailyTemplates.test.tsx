@@ -12,6 +12,7 @@ import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 type Template = {
   area: 'work' | 'personal';
   bodyMarkdown: string;
+  carryOverSection: string | null;
   isDefault: boolean;
   version: number;
   updatedAt: string | null;
@@ -51,6 +52,7 @@ vi.mock('../kit/markdown/MarkdownPreview', () => ({
 const defaultTemplate = (area: 'work' | 'personal'): Template => ({
   area,
   bodyMarkdown: DEFAULT_DAILY_TEMPLATES[area],
+  carryOverSection: null,
   isDefault: true,
   version: 0,
   updatedAt: null,
@@ -109,6 +111,10 @@ vi.mock('../workspace/api/client', () => ({
           state.templates[area] = {
             area,
             bodyMarkdown: String(body.bodyMarkdown),
+            carryOverSection:
+              'carryOverSection' in body
+                ? (body.carryOverSection as string | null)
+                : prev.carryOverSection,
             isDefault: false,
             version: prev.version + 1,
             updatedAt: '2026-10-16T12:00:00.000Z',
@@ -255,6 +261,52 @@ describe('daily templates', () => {
       expect(editor).toHaveValue(DEFAULT_DAILY_TEMPLATES.personal),
     );
     expect(state.resets).toBe(1);
+  });
+
+  test('the carried-in section select lists the template’s headings and saves the choice', async () => {
+    const user = userEvent.setup();
+    renderAt('/settings/templates?area=work');
+    const editor = await screen.findByRole('textbox', {
+      name: 'Work template',
+    });
+    const select = screen.getByRole('combobox', {
+      name: /^Carried-in tasks go under/,
+    });
+    expect(select).toHaveValue('');
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'First section',
+      'Focus for {{weekday}}',
+      'Standup',
+      'Meetings',
+      'Notes',
+      'Tomorrow',
+    ]);
+
+    await user.selectOptions(select, 'Meetings');
+    await waitFor(() =>
+      expect(state.templatePuts.at(-1)).toMatchObject({
+        bodyMarkdown: DEFAULT_DAILY_TEMPLATES.work,
+        carryOverSection: 'Meetings',
+      }),
+    );
+
+    await user.clear(editor);
+    await user.type(editor, '## Plan');
+    expect(select).toHaveValue('');
+    await waitFor(() =>
+      expect(state.templatePuts.at(-1)).toMatchObject({
+        bodyMarkdown: '## Plan',
+        carryOverSection: null,
+      }),
+    );
+
+    await user.clear(editor);
+    await user.type(editor, 'no headings');
+    expect(select).toBeDisabled();
   });
 
   test('the Work / Personal switch defaults to the current area', async () => {

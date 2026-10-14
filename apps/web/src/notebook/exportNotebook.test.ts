@@ -213,6 +213,7 @@ describe('exportNotebook', () => {
         {
           area: 'work',
           bodyMarkdown: '## Focus for {{weekday}}\n',
+          carryOverSection: null,
           isDefault: true,
           version: 0,
           updatedAt: null,
@@ -220,6 +221,7 @@ describe('exportNotebook', () => {
         {
           area: 'personal',
           bodyMarkdown: '## Errands\n- [ ] \n',
+          carryOverSection: null,
           isDefault: false,
           version: 2,
           updatedAt: '2026-10-09T12:00:00.000Z',

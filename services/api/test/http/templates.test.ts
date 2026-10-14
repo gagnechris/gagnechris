@@ -25,6 +25,7 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
     expect(res.body).toEqual({
       area: 'work',
       bodyMarkdown: DEFAULT_DAILY_TEMPLATES.work,
+      carryOverSection: null,
       isDefault: true,
       version: 0,
       updatedAt: null,
@@ -48,6 +49,7 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
     expect(saved.body).toEqual({
       area: 'work',
       bodyMarkdown: '## Focus\n- [ ] inbox zero\n',
+      carryOverSection: null,
       isDefault: false,
       version: 1,
       updatedAt: ISO,
@@ -104,6 +106,7 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
     expect(unchanged.body).toEqual({
       area: 'personal',
       bodyMarkdown: DEFAULT_DAILY_TEMPLATES.personal,
+      carryOverSection: null,
       isDefault: true,
       version: 0,
       updatedAt: null,
@@ -115,6 +118,7 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
     expect(reset.body).toEqual({
       area: 'work',
       bodyMarkdown: DEFAULT_DAILY_TEMPLATES.work,
+      carryOverSection: null,
       isDefault: true,
       version: 2,
       updatedAt: ISO,
@@ -141,6 +145,66 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
       bodyMarkdown: 'New',
       isDefault: false,
     });
+  });
+
+  it('keeps the carry-over section a heading of the template, kept when a save leaves it out', async () => {
+    const stored = async () =>
+      (
+        await h.doc.send(
+          new GetCommand({
+            TableName: h.tableName,
+            Key: keys.notebook.dailyTemplate(USER, 'work'),
+          }),
+        )
+      ).Item;
+    const body = '## Focus for {{weekday}}\n\n## Meetings\n';
+
+    const missing = await call('PUT', WORK, {
+      body: { version: 0, bodyMarkdown: body, carryOverSection: 'Standup' },
+    });
+    expect(missing.status).toBe(400);
+    expect(missing.body).toEqual({
+      error: 'bad_request',
+      message: 'Invalid request body',
+      fields: { carryOverSection: 'custom' },
+    });
+    expect(await stored()).toBeUndefined();
+
+    const saved = await call('PUT', WORK, {
+      body: { version: 0, bodyMarkdown: body, carryOverSection: 'Meetings' },
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ carryOverSection: 'Meetings' });
+    expect(await stored()).toMatchObject({ carryOverSection: 'Meetings' });
+
+    // The iOS editor saves the text alone.
+    const textOnly = await call('PUT', WORK, {
+      body: { version: 1, bodyMarkdown: `${body}\n## Notes\n` },
+    });
+    expect(textOnly.status).toBe(200);
+    expect(textOnly.body).toMatchObject({
+      version: 2,
+      carryOverSection: 'Meetings',
+    });
+    expect((await call('GET', WORK)).body).toMatchObject({
+      carryOverSection: 'Meetings',
+    });
+
+    const cleared = await call('PUT', WORK, {
+      body: { version: 2, bodyMarkdown: body, carryOverSection: null },
+    });
+    expect(cleared.body).toMatchObject({ version: 3, carryOverSection: null });
+    expect(await stored()).not.toHaveProperty('carryOverSection');
+
+    await call('PUT', WORK, {
+      body: { version: 3, bodyMarkdown: body, carryOverSection: 'Meetings' },
+    });
+    const reset = await call('DELETE', WORK, { body: { version: 4 } });
+    expect(reset.body).toMatchObject({
+      isDefault: true,
+      carryOverSection: null,
+    });
+    expect(await stored()).not.toHaveProperty('carryOverSection');
   });
 
   it('rejects task lines and embeds but allows checklists and code', async () => {

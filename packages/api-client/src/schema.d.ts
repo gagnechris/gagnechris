@@ -6935,7 +6935,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Open the daily note; on first open, creates it with open tasks from earlier days under Carried in */
+        /** Open the daily note; on first open, creates it from the template with open tasks from earlier days in its carry-over section */
         post: {
             parameters: {
                 query?: never;
@@ -9738,6 +9738,8 @@ export interface paths {
                             /** @enum {string} */
                             area: "work" | "personal";
                             bodyMarkdown: string;
+                            /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
+                            carryOverSection: string | null;
                             /** @description True when the built-in template applies (never saved, or reset) */
                             isDefault: boolean;
                             /** @description 0 until the template is first saved or reset */
@@ -9843,6 +9845,8 @@ export interface paths {
                         version?: number;
                         /** @description Up to 10 KB (UTF-8; larger → 413); no task lines or embeds */
                         bodyMarkdown: string;
+                        /** @description A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one */
+                        carryOverSection?: string | null;
                     };
                 };
             };
@@ -9859,6 +9863,8 @@ export interface paths {
                             /** @enum {string} */
                             area: "work" | "personal";
                             bodyMarkdown: string;
+                            /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
+                            carryOverSection: string | null;
                             /** @description True when the built-in template applies (never saved, or reset) */
                             isDefault: boolean;
                             /** @description 0 until the template is first saved or reset */
@@ -10030,6 +10036,8 @@ export interface paths {
                             /** @enum {string} */
                             area: "work" | "personal";
                             bodyMarkdown: string;
+                            /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
+                            carryOverSection: string | null;
                             /** @description True when the built-in template applies (never saved, or reset) */
                             isDefault: boolean;
                             /** @description 0 until the template is first saved or reset */
@@ -11168,6 +11176,8 @@ export interface components {
             /** @enum {string} */
             area: "work" | "personal";
             bodyMarkdown: string;
+            /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
+            carryOverSection: string | null;
             /** @description True when the built-in template applies (never saved, or reset) */
             isDefault: boolean;
             /** @description 0 until the template is first saved or reset */
@@ -11179,6 +11189,8 @@ export interface components {
             version?: number;
             /** @description Up to 10 KB (UTF-8; larger → 413); no task lines or embeds */
             bodyMarkdown: string;
+            /** @description A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one */
+            carryOverSection?: string | null;
         };
         Task: {
             id: string;
