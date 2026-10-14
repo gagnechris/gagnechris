@@ -289,7 +289,9 @@ Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
 client-controlled**: a bot can omit or inflate the value. The hard caps are
 the per-IP contact rate limit and the global SES daily cap
 (`SES_GLOBAL_DAILY_CAP`, one counter for contact mail and resume-download
-notices). Resume notices stop once that counter reaches
+notices). Per-IP limits count an IPv6 caller by its /64 prefix, since a
+client can rotate addresses within it. Once the daily cap is used up, the
+contact form answers 429 without saving the message. Resume notices stop once that counter reaches
 `RESUME_NOTIFY_SES_DAILY_CAP`, so the rest of the day's mail is left for the
 contact form.
 
