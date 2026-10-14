@@ -108,22 +108,46 @@ func (a admin) invite(ctx context.Context, email string, name *string, level str
 		if err != nil {
 			return inviteResult{}, err
 		}
-		if rec == nil {
+		if rec != nil {
+			user, err := a.restore(ctx, existing.ID, &level)
+			return inviteResult{User: user, Restored: true}, err
+		}
+		if !inviteUnfinished(*existing, level) {
 			return inviteResult{}, &conflictError{"user_exists", "Someone with this email already has an account."}
 		}
-		user, err := a.restore(ctx, existing.ID, &level)
-		return inviteResult{User: user, Restored: true}, err
+		return a.grantInvite(ctx, existing.ID, level)
 	}
 	created, err := a.dir.InviteUser(ctx, email, name)
 	if err != nil {
 		return inviteResult{}, err
 	}
+	return a.grantInvite(ctx, created.ID, level)
+}
+
+// inviteUnfinished is an invite whose account was created but whose groups
+// were not all added, so inviting again at that level finishes it.
+func inviteUnfinished(u DirectoryUser, level string) bool {
+	want := accessLevelGroups[level]
+	held := 0
+	for _, g := range u.Groups {
+		if !slices.Contains(accessGroups, g) {
+			continue
+		}
+		if !slices.Contains(want, g) {
+			return false
+		}
+		held++
+	}
+	return u.Enabled && u.Status == invitedStatus && held < len(want)
+}
+
+func (a admin) grantInvite(ctx context.Context, id, level string) (inviteResult, error) {
 	for _, group := range accessLevelGroups[level] {
-		if err := a.dir.AddToGroup(ctx, created.ID, group); err != nil {
+		if err := a.dir.AddToGroup(ctx, id, group); err != nil {
 			return inviteResult{}, err
 		}
 	}
-	user, err := a.managedUser(ctx, created.ID)
+	user, err := a.managedUser(ctx, id)
 	return inviteResult{User: user}, err
 }
 

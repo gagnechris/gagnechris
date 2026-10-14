@@ -341,8 +341,12 @@ describe('users and access', () => {
     ).toMatchObject({ status: 'active' });
   });
 
-  it('access changes need a recent sign-in; reads, invites and resends do not', async () => {
+  it('access changes and invites need a recent sign-in; reads and resends do not', async () => {
     const target = await invite('reauth@example.com');
+    const gone = await invite('reauth-gone@example.com');
+    expect((await call('POST', `/admin/users/${gone.id}/remove`)).status).toBe(
+      200,
+    );
     const reauth = {
       status: 403,
       body: {
@@ -358,21 +362,23 @@ describe('users and access', () => {
         ['POST', `/admin/users/${target.id}/sign-out`, undefined],
         ['POST', `/admin/users/${target.id}/remove`, undefined],
         ['POST', `/admin/users/${target.id}/restore`, {}],
+        ['POST', '/admin/users', { email: 'late@example.com', level: 'full' }],
+        [
+          'POST',
+          '/admin/users',
+          { email: 'late-notebook@example.com', level: 'notebook' },
+        ],
+        ['POST', '/admin/users', { email: gone.email, level: 'cms' }],
       ] as const) {
         expect(await call(method, path, { body, claims })).toEqual(reauth);
       }
     }
-    expect(
-      (await call('GET', '/admin/users', { claims: stale() })).status,
-    ).toBe(200);
-    expect(
-      (
-        await call('POST', '/admin/users', {
-          body: { email: 'late@example.com', level: 'cms' },
-          claims: stale(),
-        })
-      ).status,
-    ).toBe(200);
+    const listed = (await call('GET', '/admin/users', { claims: stale() })).body
+      .users as ManagedUser[];
+    expect(listed.map((u) => u.email)).not.toContain('late@example.com');
+    expect(listed.find((u) => u.id === gone.id)).toMatchObject({
+      status: 'removed',
+    });
     expect(
       (
         await call('POST', `/admin/users/${target.id}/resend-invite`, {
@@ -380,6 +386,13 @@ describe('users and access', () => {
         })
       ).status,
     ).toBe(200);
+    const restored = await call('POST', '/admin/users', {
+      body: { email: gone.email, level: 'cms' },
+    });
+    expect(restored.body).toMatchObject({
+      user: { id: gone.id, level: 'cms' },
+      restored: true,
+    });
   });
 
   it('needs the user-admin group, from the admin web or iOS client', async () => {

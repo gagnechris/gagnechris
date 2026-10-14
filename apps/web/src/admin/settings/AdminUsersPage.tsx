@@ -17,7 +17,6 @@ import { UserAvatar } from './UserAvatar';
 import { useUserChange } from './useUserChange';
 import { takePendingChange } from './userChange';
 import {
-  changeToast,
   formatAdded,
   hasApp,
   LEVEL_APPS,
@@ -89,8 +88,8 @@ export default function AdminUsersPage() {
       const change = takePendingChange(await getAuthTime().catch(() => null));
       if (!change) return;
       try {
-        await perform(change, { confirmed: true });
-        setToast(changeToast(change));
+        const outcome = await perform(change, { confirmed: true });
+        if (outcome.status === 'done') setToast(outcome.toast);
       } catch (err) {
         setRowError(userErrorMessage(err, 'Could not finish that change.'));
       }

@@ -24,8 +24,8 @@ export const makeUser = (
 });
 
 /**
- * The admin Users API. While `needsSignIn` is set, changes other than an
- * invite or resend are refused as the server does for an old sign-in.
+ * The admin Users API. While `needsSignIn` is set, changes other than a
+ * resend are refused as the server does for an old sign-in.
  */
 export function usersServer(users: ManagedUser[]) {
   const state = {
@@ -43,6 +43,9 @@ export function usersServer(users: ManagedUser[]) {
       return json(200, { users: [...state.users.values()] });
     }
     if (route === 'POST /api/admin/users') {
+      if (state.needsSignIn) {
+        return json(403, { error: REAUTH_REQUIRED, message: 'Sign in again' });
+      }
       const body = (await input.json()) as {
         email: string;
         name?: string;

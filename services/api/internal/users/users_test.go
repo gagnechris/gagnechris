@@ -87,3 +87,42 @@ func TestRemoveKeepsTheFirstLevelAndRestoreBringsItBack(t *testing.T) {
 		t.Errorf("own access: %v", err)
 	}
 }
+
+type failingGroups struct {
+	*MemoryDirectory
+	// adds is how many AddToGroup calls succeed before the rest fail; -1 never fails.
+	adds int
+}
+
+func (d *failingGroups) AddToGroup(ctx context.Context, id, group string) error {
+	if d.adds == 0 {
+		return errors.New("cognito down")
+	}
+	d.adds--
+	return d.MemoryDirectory.AddToGroup(ctx, id, group)
+}
+
+func TestInviteAgainFinishesAnInviteThatFailedBeforeItsGroups(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		level string
+		adds  int
+	}{{"cms", 0}, {"full", 0}, {"full", 1}, {"full", 2}} {
+		dir := &failingGroups{MemoryDirectory: NewMemoryDirectory(localSeed(), time.Now), adds: tc.adds}
+		a := admin{dir: dir, removed: memRemoved{}, actor: "owner"}
+		if _, err := a.invite(ctx, "half@example.com", nil, tc.level); err == nil {
+			t.Fatalf("%+v: invite with failing groups succeeded", tc)
+		}
+		dir.adds = -1
+		got, err := a.invite(ctx, "half@example.com", nil, tc.level)
+		if err != nil || got.Restored || got.User.Status != "invited" || deref(got.User.Level) != tc.level {
+			t.Fatalf("%+v: retry: %+v %v", tc, got, err)
+		}
+		for _, level := range []string{tc.level, "notebook"} {
+			var conflict *conflictError
+			if _, err := a.invite(ctx, "half@example.com", nil, level); !errors.As(err, &conflict) || conflict.code != "user_exists" {
+				t.Errorf("%+v: inviting a finished invite at %s: %v", tc, level, err)
+			}
+		}
+	}
+}
