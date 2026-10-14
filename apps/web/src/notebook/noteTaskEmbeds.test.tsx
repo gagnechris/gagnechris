@@ -137,7 +137,13 @@ vi.mock('../workspace/api/client', () => ({
         if (path === '/api/notebook/tasks/{id}') {
           api.taskPuts.push(body);
           const prev = api.tasks.get(p.id!)!;
-          if (body.version !== prev.version) return fail(409, 'conflict');
+          if (body.version !== prev.version) {
+            return {
+              data: undefined,
+              error: { error: 'conflict', message: 'conflict', current: prev },
+              response: { status: 409 },
+            };
+          }
           const { version: _version, ...fields } = body;
           const next = { ...prev, ...fields, version: prev.version + 1 };
           api.tasks.set(next.id, next);
@@ -1295,6 +1301,53 @@ describe('task details under the row', () => {
     expect(row).toHaveClass('task-embed--dropped');
   });
 
+  test('a chip saves over a newer version when another field made it', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    await user.click(await chevronIn(noteA()));
+    const panel = panelIn(noteA())!;
+    api.tasks.set(TASK_ID, {
+      ...api.tasks.get(TASK_ID)!,
+      description: 'From the phone',
+      version: 2,
+    });
+
+    await user.selectOptions(
+      within(panel).getByRole('combobox', { name: 'Priority' }),
+      'Low priority',
+    );
+
+    await waitFor(() => expect(api.tasks.get(TASK_ID)?.priority).toBe('low'));
+    expect(api.taskPuts.map((b) => b.version)).toEqual([1, 2]);
+    expect(api.tasks.get(TASK_ID)?.description).toBe('From the phone');
+    expect(within(noteA()).queryByText(/Could not update/)).toBeNull();
+  });
+
+  test('a chip does not save over the same field changed elsewhere', async () => {
+    seedTask();
+    renderNotes(tokenLine(TASK_ID));
+    const user = userEvent.setup();
+    await user.click(await chevronIn(noteA()));
+    const panel = panelIn(noteA())!;
+    api.tasks.set(TASK_ID, {
+      ...api.tasks.get(TASK_ID)!,
+      priority: 'med',
+      version: 2,
+    });
+
+    await user.selectOptions(
+      within(panel).getByRole('combobox', { name: 'Priority' }),
+      'Low priority',
+    );
+
+    expect(
+      await within(noteA()).findByText(/changed on another device/),
+    ).toBeTruthy();
+    expect(api.taskPuts.map((b) => b.version)).toEqual([1]);
+    expect(api.tasks.get(TASK_ID)?.priority).toBe('med');
+  });
+
   test('⌘. in the title toggles the details; Esc inside them closes them and returns to the title', async () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
@@ -1482,6 +1535,28 @@ describe('moving tasks in a note', () => {
     );
     expect(screen.queryByRole('menu')).toBeNull();
     expect(api.taskPuts).toEqual([]);
+  });
+
+  test('Move to the section the task is already last in announces nothing', async () => {
+    seedTask();
+    const body = `## Today\nnotes\n${tokenLine(TASK_ID)}\n\n## Meetings\nagenda`;
+    const { body: current } = renderNote(body);
+    const user = userEvent.setup();
+    const row = (await handle()).closest('.task-embed')!;
+
+    fireEvent.contextMenu(row);
+    const menu = screen.getByRole('menu', { name: 'Move to' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Today' }));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(current()).toBe(body);
+    expect(
+      document.querySelector(
+        '[role="status"][aria-live="polite"].kit-visually-hidden',
+      )?.textContent ?? '',
+    ).not.toContain('Moved to Today');
   });
 
   test('Move to → another day’s note → tomorrow moves the lines to that day and points the tasks at it', async () => {

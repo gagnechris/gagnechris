@@ -236,9 +236,8 @@ func indentWidth(line string) int {
 	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
-// TaskEmbedParents is taskEmbedParents: each subtask in the note, first line
-// per task, with its parent. A line is under the nearest line above it with
-// less indent and no blank line between; subtasks are one level deep.
+// First line per task. A line is under the nearest line above it with less
+// indent and no blank line between; subtasks are one level deep.
 func TaskEmbedParents(markdown string) []TaskSubtask {
 	lines := strings.Split(markdown, "\n")
 	for i, line := range lines {

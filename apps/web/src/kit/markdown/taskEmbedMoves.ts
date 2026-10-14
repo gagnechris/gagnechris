@@ -178,7 +178,8 @@ export function moveTaskEmbedToSection(
   if (!heading) return;
   const block = blockAt(view.state.doc, lineOf(view, widget));
   const spec = moveBlockToSection(view.state, block, heading);
-  if (spec) view.dispatch(spec);
+  if (!spec) return;
+  view.dispatch(spec);
   announceMove(`Moved to ${heading.title}`);
 }
 

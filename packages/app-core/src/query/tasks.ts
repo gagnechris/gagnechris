@@ -7,7 +7,7 @@ import {
   type QueryKey,
 } from '@tanstack/react-query';
 import { taskEmbedIds, taskEmbedParents } from '@gagnechris/shared';
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
   completeTask,
@@ -104,12 +104,17 @@ export const useTaskParents = (
   const ids = [
     ...new Set(tasks.flatMap((t) => (t.parentId ? [t.parentId] : []))),
   ];
-  const results = useTasksByIds(ids);
-  return useMemo(
-    () =>
-      new Map(results.flatMap((r) => (r.data ? [[r.data.id, r.data]] : []))),
-    [results],
-  );
+  const found = useTasksByIds(ids).flatMap((r) => (r.data ? [r.data] : []));
+  // The by-id results are a new array each render; consumers need a stable map.
+  const key = found.map((t) => `${t.id}:${t.version}`).join(',');
+  const [parents, setParents] = useState(() => ({
+    key,
+    map: new Map(found.map((t) => [t.id, t])),
+  }));
+  if (parents.key === key) return parents.map;
+  const next = { key, map: new Map(found.map((t) => [t.id, t])) };
+  setParents(next);
+  return next.map;
 };
 
 // A list's first fetch absorbs an invalidation instead of restarting, so one
@@ -359,8 +364,24 @@ export const usePatchTaskMutation = () => {
         ? { ...snapshot, removeDetail: queryKeys.tasks.detail(id) }
         : snapshot;
     },
-    onError: (_error, _vars, snapshot) => {
+    onError: (_error, { id }, snapshot) => {
+      // A patch never sends the description, so one saved meanwhile stays.
+      const description = findCachedTask(queryClient, id)?.description;
       rollbackTask(queryClient, snapshot);
+      if (description === undefined) return;
+      const keep = (t: Task) =>
+        t.description === description ? t : { ...t, description };
+      queryClient.setQueryData<Task>(
+        queryKeys.tasks.detail(id),
+        (current) => current && keep(current),
+      );
+      for (const [queryKey] of queryClient.getQueriesData<TasksListData>({
+        queryKey: [...queryKeys.tasks.all, 'list'],
+      })) {
+        queryClient.setQueryData<TasksListData>(queryKey, (current) =>
+          patchTaskInListPages(current, id, keep),
+        );
+      }
     },
     onSuccess: (task) => {
       setCachedTask(queryClient, task);

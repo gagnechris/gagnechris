@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import {
+  ApiError,
   taskActionError,
   usePatchTaskMutation,
   useTaskDescriptionEditor,
@@ -8,6 +9,7 @@ import {
   type TaskPatch,
 } from '@gagnechris/app-core';
 import {
+  deepEqual,
   formatTaskDay,
   parseTagsText,
   taskScheduleLabel,
@@ -29,6 +31,18 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   high: 'High priority',
   med: 'Medium priority',
   low: 'Low priority',
+};
+
+const staleCurrent = (err: unknown): Task | null => {
+  if (!(err instanceof ApiError)) return null;
+  const stale =
+    err.status === 412 ||
+    (err.status === 409 &&
+      (err.error === undefined ||
+        err.error === 'conflict' ||
+        err.error === 'version_conflict'));
+  const current = err.current as Task | undefined;
+  return stale && current && !current.deleted ? current : null;
 };
 
 function TagsChip({
@@ -105,10 +119,24 @@ export function TaskDetailsPanel({
 
   const patch = (changes: TaskPatch) => {
     setPatchError(null);
-    patchTask({ id: task.id, version: task.version, patch: changes }).catch(
-      (err: unknown) =>
+    const send = (version: number) =>
+      patchTask({ id: task.id, version, patch: changes });
+    send(task.version)
+      .catch((err: unknown) => {
+        // A newer version that leaves these fields as they were, such as a
+        // description save, is safe to write on.
+        const current = staleCurrent(err);
+        const untouched =
+          current &&
+          (Object.keys(changes) as (keyof TaskPatch)[]).every((key) =>
+            deepEqual(current[key], task[key]),
+          );
+        if (!untouched) throw err;
+        return send(current.version);
+      })
+      .catch((err: unknown) =>
         setPatchError(taskActionError('update', task.title, err)),
-    );
+      );
   };
 
   const setStatus = (status: TaskStatus) => {

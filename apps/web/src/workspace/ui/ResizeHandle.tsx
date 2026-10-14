@@ -21,7 +21,8 @@ type Props = {
   max: number;
   /** Which edge of the target the handle sits on. */
   edge: 'left' | 'right';
-  onChange: (width: number | null) => void;
+  /** `live` while a drag moves; the drag's last width follows without it. */
+  onChange: (width: number | null, live?: boolean) => void;
   /** Dragging well past the minimum, or shrinking from it by key, calls this. */
   onCollapse?: () => void;
 };
@@ -42,6 +43,7 @@ export function ResizeHandle({
     x: number;
     width: number;
     initial: number | null;
+    last: number | null;
   } | null>(null);
   const sign = edge === 'right' ? 1 : -1;
   const current = () =>
@@ -65,7 +67,12 @@ export function ResizeHandle({
     if (e.button !== 0) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { x: e.clientX, width: current(), initial: width };
+    drag.current = {
+      x: e.clientX,
+      width: current(),
+      initial: width,
+      last: null,
+    };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const start = drag.current;
@@ -81,10 +88,13 @@ export function ResizeHandle({
       onCollapse();
       return;
     }
-    onChange(next);
+    start.last = next;
+    onChange(next, true);
   };
   const endDrag = () => {
+    const last = drag.current?.last ?? null;
     drag.current = null;
+    if (last !== null) onChange(last);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : null;

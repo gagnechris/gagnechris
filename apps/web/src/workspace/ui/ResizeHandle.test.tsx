@@ -107,3 +107,20 @@ test('shrinking by key from the minimum collapses', () => {
   fireEvent.keyDown(handle, { key: 'ArrowRight' });
   expect(onCollapse).toHaveBeenCalledTimes(1);
 });
+
+test('a drag stores the width once, when it ends', () => {
+  localStorage.setItem(KEY, '300');
+  render(<Panel />);
+  const handle = screen.getByRole('separator');
+  handle.setPointerCapture = () => {};
+  const setItem = vi.spyOn(Storage.prototype, 'setItem');
+  fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 480, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 450, pointerId: 1 });
+  expect(handle).toHaveAttribute('aria-valuenow', '350');
+  expect(setItem).not.toHaveBeenCalled();
+  fireEvent.pointerUp(handle, { clientX: 450, pointerId: 1 });
+  expect(setItem).toHaveBeenCalledTimes(1);
+  expect(localStorage.getItem(KEY)).toBe('350');
+  setItem.mockRestore();
+});
