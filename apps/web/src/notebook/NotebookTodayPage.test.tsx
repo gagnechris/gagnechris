@@ -395,6 +395,30 @@ describe('NotebookTodayPage', () => {
     expect(show).toHaveFocus();
   });
 
+  test('the edge strip brings a hidden panel back by click or drag', async () => {
+    const user = userEvent.setup();
+    renderToday();
+    await user.click(await screen.findByRole('button', { name: /Hide tasks/ }));
+    await user.click(
+      screen.getByRole('button', { name: 'Open the task panel' }),
+    );
+    expect(screen.getByRole('button', { name: /Hide tasks/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Open the task panel' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Hide tasks/ }));
+    const rail = screen.getByRole('button', { name: 'Open the task panel' });
+    fireEvent.pointerDown(rail, { button: 0, clientX: 900, pointerId: 1 });
+    fireEvent.pointerMove(rail, { clientX: 860, pointerId: 1 });
+    expect(
+      screen.getByRole('button', { name: /Hide tasks/ }),
+    ).toBeInTheDocument();
+  });
+
   test('surfaces version conflict instead of silent overwrite', async () => {
     const user = userEvent.setup();
     state.note = {

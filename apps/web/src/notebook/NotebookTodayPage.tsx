@@ -36,6 +36,7 @@ import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
+import { TodaySideRail } from './TodaySideRail';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
 import { readTodaySideOpen, writeTodaySideOpen } from './todaySidePreference';
 
@@ -417,6 +418,13 @@ export default function NotebookTodayPage() {
             />
             <TaskSyntaxCheatSheet />
           </aside>
+          {sideOpen ? null : (
+            <TodaySideRail
+              controls="notebook-today-side"
+              openCount={stillOpenRows.length}
+              onOpen={() => setSide(true)}
+            />
+          )}
         </div>
         {sheetOpen ? (
           <TodaySheet
