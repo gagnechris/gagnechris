@@ -1728,6 +1728,46 @@ describe('subtasks in a note', () => {
     ).toBeNull();
   });
 
+  test('deleting a parent’s line takes its subtasks out a level instead of under the task above', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book flights',
+    });
+    const { body } = renderNote(
+      `${tokenLine(OTHER)}\n${nested(SUB_1, SUB_2)}\n    under them\nafter`,
+    );
+    const user = userEvent.setup();
+    const field = await screen.findByDisplayValue('Plan offsite');
+
+    await user.clear(field);
+    await user.keyboard('{Backspace}');
+    expect(body()).toBe(
+      [
+        tokenLine(OTHER),
+        tokenLine(SUB_1),
+        tokenLine(SUB_2),
+        '  under them',
+        'after',
+      ].join('\n'),
+    );
+  });
+
+  test('deleting a parent on the first line takes its subtasks out a level', async () => {
+    seed([{ id: SUB_1, title: 'Pick dates' }]);
+    const { body } = renderNote(`${nested(SUB_1)}\nafter`);
+    const user = userEvent.setup();
+    const field = await screen.findByDisplayValue('Plan offsite');
+
+    await user.clear(field);
+    await user.keyboard('{Backspace}');
+    expect(body()).toBe(`${tokenLine(SUB_1)}\nafter`);
+  });
+
   test('a subtask away from its parent shows the parent’s title above its own, muted when the parent is done', async () => {
     seed([{ id: SUB_1, title: 'Pick dates' }]);
     api.tasks.set(PARENT, { ...api.tasks.get(PARENT)!, status: 'done' });
