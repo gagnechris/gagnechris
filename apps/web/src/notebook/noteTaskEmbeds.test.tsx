@@ -1868,4 +1868,40 @@ describe('subtasks in a note', () => {
     const label = await screen.findByText('Plan offsite');
     expect(label).toHaveClass('task-embed__parent--finished');
   });
+
+  test('arrow keys out of a folded parent step over its hidden lines', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book flights',
+    });
+    renderNote(`${nested(SUB_1, SUB_2)}\n${tokenLine(OTHER)}\nafter`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+
+    await user.click(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book flights')).toHaveFocus(),
+    );
+
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Plan offsite')).toHaveFocus(),
+    );
+
+    await user.keyboard('{End}{ArrowRight}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book flights')).toHaveFocus(),
+    );
+  });
 });
