@@ -116,7 +116,11 @@ export const NoteBodyEditor = ({
   const { onCreate, stateOf, error } = embeds;
   const details = useTaskDetailsStore();
   const peeking = note ? details.peek.has(note.id) : false;
-  const segments = useMemo(() => noteSegments(markdown), [markdown]);
+  const subtasks = useNoteSubtasks(markdown, stateOf);
+  const segments = useMemo(
+    () => noteSegments(markdown, subtasks.foldBreaks),
+    [markdown, subtasks.foldBreaks],
+  );
   const inputs = useRef(new Map<string, LiveMarkdownHandle>());
   const [focus, setFocus] = useState<Focus | null>(null);
   const [picking, setPicking] = useState<{
@@ -136,7 +140,12 @@ export const NoteBodyEditor = ({
   // so the text view has taken every keystroke before its text changes.
   const queued = useRef(new Map<number, string>());
   const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useLatest({ markdown, segments, focus });
+  const latest = useLatest({
+    markdown,
+    segments,
+    focus,
+    foldBreaks: subtasks.foldBreaks,
+  });
 
   const caretOf = (f: Focus) => {
     const segment = textSegment(latest.current.segments, f.key);
@@ -160,7 +169,7 @@ export const NoteBodyEditor = ({
     if (!result) return;
     result.creates.forEach(onCreate);
     onChange(result.markdown);
-    const next = noteSegments(result.markdown);
+    const next = noteSegments(result.markdown, latest.current.foldBreaks);
     const key = latest.current.focus?.key;
     const before = key && textSegment(latest.current.segments, key);
     const after = key && textSegment(next, key);
@@ -381,7 +390,6 @@ export const NoteBodyEditor = ({
       },
     );
 
-  const subtasks = useNoteSubtasks(markdown, stateOf);
   const rowDrag = useRowDrag({
     markdown: () => latest.current.markdown,
     segments,
