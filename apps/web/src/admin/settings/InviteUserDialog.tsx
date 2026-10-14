@@ -11,12 +11,17 @@ import { useUserChange } from './useUserChange';
 type Props = {
   onClose: () => void;
   onToast: (message: string) => void;
+  requesterId: string;
 };
 
-export default function InviteUserDialog({ onClose, onToast }: Props) {
+export default function InviteUserDialog({
+  onClose,
+  onToast,
+  requesterId,
+}: Props) {
   const id = useId();
   const phone = useMediaQuery(PHONE_QUERY);
-  const { perform, isPending } = useUserChange();
+  const { perform, isPending } = useUserChange(requesterId);
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

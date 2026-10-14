@@ -19,7 +19,7 @@ export type ChangeOutcome =
  * saved and managed login asks the user to sign in again (their passkey);
  * the page applies it when they come back.
  */
-export function useUserChange() {
+export function useUserChange(requesterId: string) {
   const { mutateAsync: invite, isPending: inviting } = useInviteUserMutation();
   const { mutateAsync: setAccess, isPending: settingAccess } =
     useSetUserAccessMutation();
@@ -32,7 +32,7 @@ export function useUserChange() {
       { confirmed = false } = {},
     ): Promise<ChangeOutcome> => {
       const confirm = async () => {
-        savePendingChange(change);
+        savePendingChange(change, requesterId);
         await redirectToSignIn({ prompt: 'LOGIN' });
         return { status: 'confirming' } as const;
       };
@@ -61,7 +61,7 @@ export function useUserChange() {
         throw error;
       }
     },
-    [invite, setAccess, runAction],
+    [invite, setAccess, runAction, requesterId],
   );
 
   return { perform, isPending: inviting || settingAccess || runningAction };
