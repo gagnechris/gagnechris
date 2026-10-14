@@ -5,9 +5,10 @@
 }
 
 .workspace-shell {
-  /* Notebook writing column; the min matches NOTE_COLUMN_MIN. */
-  --note-column-max: 45rem;
+  /* Matches NOTE_COLUMN_MIN. */
   --note-column-min: 30rem;
+  /* The main area's side padding of white, then the Today panel's own inset. */
+  --today-side-gap: calc(2.5rem + var(--space-4));
   /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
      --vv-height accounts for the on-screen keyboard. */
   min-height: 100vh;
@@ -800,9 +801,23 @@
     grid-template-columns: minmax(0, 1fr) clamp(
         14rem,
         var(--today-side-width, 22rem),
-        100% - var(--note-column-min) - var(--space-6)
+        100% - var(--note-column-min) - var(--today-side-gap)
       );
+    column-gap: var(--today-side-gap);
     align-items: start;
+  }
+
+  /* The panel's side of the page is chrome: the fill reaches past the panel
+     to the window's right edge and the page's top and bottom without moving
+     anything. */
+  .notebook-today:not(.notebook-today--overlay) > .notebook-today__side {
+    align-self: stretch;
+    border-image: linear-gradient(
+        to right,
+        var(--neutral-200) 1px,
+        var(--neutral-50) 1px
+      )
+      fill 0 / 0 / 1.75rem 100vw calc(3rem + 100vh) var(--space-4);
   }
 }
 
@@ -810,10 +825,16 @@
   min-width: 0;
 }
 
-/* Up to --note-column-max wide, centred; space past that becomes margin. */
-.notebook-column {
-  box-sizing: border-box;
-  padding-inline: max(0px, (100% - var(--note-column-max)) / 2);
+/* A writing page is white between the panels; the sidebar and the Today
+   panel stay on the chrome colour. */
+.workspace-main:has(.notebook-column) {
+  --workspace-surface: white;
+  max-width: none;
+  background: var(--workspace-surface);
+}
+
+.workspace-shell:has(.notebook-column) .workspace-sidebar {
+  background: var(--neutral-50);
 }
 
 /* The sidebar gives way too, once the Today panel is at its own minimum. A
@@ -837,7 +858,7 @@
   .workspace-shell:has(
     .notebook-today:not(.notebook-today--side-closed, .notebook-today--overlay)
   ) {
-    --note-column-beside: calc(14rem + var(--space-6));
+    --note-column-beside: calc(14rem + var(--today-side-gap));
   }
 }
 
@@ -980,13 +1001,13 @@
   }
 }
 
-/* In the grid gap, so it never covers the panel's cards. */
+/* On the panel's edge in the grid gap, so it never covers the cards. */
 .notebook-today__side-resize {
-  left: calc(-1 * var(--space-6) / 2 - 3px);
+  left: calc(-1 * var(--space-4) - 3px);
 }
 
 .notebook-today__side-edge {
-  left: calc(-1 * var(--space-6) / 2 - 11px);
+  left: calc(-1 * var(--space-4) - 11px);
 }
 
 @media (max-width: 999px) {
@@ -1492,13 +1513,13 @@
   gap: var(--space-3);
   margin: 0 0 var(--space-4);
   padding: var(--space-3) 0;
-  background: var(--neutral-50);
+  background: var(--workspace-surface, var(--neutral-50));
   border-bottom: 1px solid var(--neutral-200);
   /* Paints past both edges without widening the box, so the borders of an
      editor scrolling under it are covered too. */
   box-shadow:
-    calc(-1 * var(--space-2)) 0 var(--neutral-50),
-    var(--space-2) 0 var(--neutral-50);
+    calc(-1 * var(--space-2)) 0 var(--workspace-surface, var(--neutral-50)),
+    var(--space-2) 0 var(--workspace-surface, var(--neutral-50));
 }
 
 .workspace-action-bar__status {
