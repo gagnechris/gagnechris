@@ -1092,6 +1092,11 @@ export type NotebookSearchHit = z.infer<typeof NotebookSearchHitSchema>;
 export const NotebookSearchResponseSchema = z.object({
   notes: z.array(NotebookSearchHitSchema),
   tasks: z.array(NotebookSearchHitSchema),
+  truncated: z
+    .boolean()
+    .describe(
+      'True when the notebook held more notes or tasks than one search reads; the oldest went unsearched',
+    ),
 });
 
 export type NotebookSearchResponse = z.infer<

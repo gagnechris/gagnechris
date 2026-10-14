@@ -278,6 +278,11 @@ const SearchScreen = () => {
             ) : null}
           </>
         )}
+        {searching && search.truncated && !search.pending ? (
+          <Text style={styles.status}>
+            Only your most recent notes and tasks were searched.
+          </Text>
+        ) : null}
       </ScrollView>
     </View>
   );

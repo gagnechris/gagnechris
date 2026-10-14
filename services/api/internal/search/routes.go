@@ -15,7 +15,8 @@ import (
 
 const (
 	scanPage = 100
-	// scanCap is per type; a personal notebook stays well under it.
+	// scanCap is per type. Notes are read newest first and open tasks before
+	// done ones, so what a full notebook leaves unread is the oldest.
 	scanCap      = 2000
 	defaultLimit = 20
 )
@@ -68,16 +69,36 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 
 	rd := notebook.Reader{Table: h.table, OnCorrupt: store.LogCorrupt(r.Log, r.Metrics)}
 	userID := r.UserID()
-	notes, err := notebook.CollectPages(scanCap, func(cursor string) (store.Page[notebook.Note], error) {
-		return rd.NotesPage(ctx, userID, area, cursor, scanPage)
-	}, func(n notebook.Note) bool { return !n.Deleted })
+	areas := notebook.Areas
+	if area != "" {
+		areas = []string{area}
+	}
+	var noteSources []source[notebook.Note]
+	for _, a := range areas {
+		noteSources = append(noteSources, func(cursor string, limit, limitBytes int) (store.Page[notebook.Note], error) {
+			return rd.AreaNotesNewestFirst(ctx, userID, a, cursor, limit, limitBytes)
+		})
+	}
+	notes, notesCut, err := scan([][]source[notebook.Note]{noteSources})
 	if err != nil {
 		return nil, err
 	}
 	today := h.now().UTC().Format("2006-01-02")
-	tasks, err := notebook.CollectPages(scanCap, func(cursor string) (store.Page[notebook.Task], error) {
-		return rd.TasksPage(ctx, userID, area, cursor, scanPage, today)
-	}, func(t notebook.Task) bool { return !t.Deleted })
+	taskPhases := make([][]source[notebook.Task], 2)
+	for _, status := range notebook.TaskStatuses {
+		phase := 1
+		if status == "todo" || status == "in_progress" {
+			phase = 0
+		}
+		for _, a := range areas {
+			taskPhases[phase] = append(taskPhases[phase], func(cursor string, limit, limitBytes int) (store.Page[notebook.Task], error) {
+				page, err := rd.AreaStatusTasks(ctx, userID, a, status, cursor, limit, limitBytes)
+				notebook.SortTasksForList(page.Items, today)
+				return page, err
+			})
+		}
+	}
+	tasks, tasksCut, err := scan(taskPhases)
 	if err != nil {
 		return nil, err
 	}
@@ -100,10 +121,47 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 		}
 	}
 
-	return api.JSON(http.StatusOK, map[string][]Hit{
-		"notes": top(noteHits, int(limit)),
-		"tasks": top(taskHits, int(limit)),
+	return api.JSON(http.StatusOK, response{
+		Notes:     top(noteHits, int(limit)),
+		Tasks:     top(taskHits, int(limit)),
+		Truncated: notesCut || tasksCut,
 	}), nil
+}
+
+type response struct {
+	Notes     []Hit `json:"notes"`
+	Tasks     []Hit `json:"tasks"`
+	Truncated bool  `json:"truncated"`
+}
+
+type source[T any] func(cursor string, limit, limitBytes int) (store.Page[T], error)
+
+// scan reads up to scanCap rows, phase by phase, a page from each source in
+// turn so no one area or status uses up the cap; truncated reports rows it
+// left unread.
+func scan[T any](phases [][]source[T]) (rows []T, truncated bool, err error) {
+	for _, sources := range phases {
+		cursors := make([]string, len(sources))
+		done := make([]bool, len(sources))
+		for slices.Contains(done, false) {
+			for i, fetch := range sources {
+				if done[i] {
+					continue
+				}
+				if len(rows) >= scanCap {
+					return rows, true, nil
+				}
+				page, err := fetch(cursors[i], min(scanPage, scanCap-len(rows)), store.PageByteBudget)
+				if err != nil {
+					return nil, false, err
+				}
+				rows = append(rows, page.Items...)
+				cursors[i] = page.NextCursor
+				done[i] = page.NextCursor == ""
+			}
+		}
+	}
+	return rows, false, nil
 }
 
 func noteHit(q string, n notebook.Note, tasksByID map[string]*notebook.Task) (Hit, bool) {

@@ -20,20 +20,13 @@ type Reader struct {
 	OnCorrupt func(*api.DataIntegrityError)
 }
 
-func areasOf(area string) []string {
-	if area != "" {
-		return []string{area}
-	}
-	return Areas
-}
-
-func queryPartition[T any](ctx context.Context, rd Reader, pk, cursor string, remaining, remainingBytes int, parse func(data.Item) (T, error), deleted func(T) bool) (store.Page[T], error) {
+func queryPartition[T any](ctx context.Context, rd Reader, pk string, forward bool, cursor string, remaining, remainingBytes int, parse func(data.Item) (T, error), deleted func(T) bool) (store.Page[T], error) {
 	return store.QueryPage(ctx, rd.Table, store.PageQuery{
 		Input: dynamodb.QueryInput{
 			IndexName:                 aws.String(keys.GSI1),
 			KeyConditionExpression:    aws.String("gsi1pk = :pk"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
-			ScanIndexForward:          aws.Bool(true),
+			ScanIndexForward:          aws.Bool(forward),
 		},
 		Cursor:         cursor,
 		Limit:          remaining,
@@ -47,29 +40,15 @@ func queryPartition[T any](ctx context.Context, rd Reader, pk, cursor string, re
 	}, rd.OnCorrupt)
 }
 
-// NotesPage is a page of a user's notes, area by area in key order.
-func (rd Reader) NotesPage(ctx context.Context, userID, area, cursor string, limit int) (store.Page[Note], error) {
-	return store.WalkPartitions(areasOf(area), cursor, limit, func(area, cursor string, remaining, remainingBytes int) (store.Page[Note], error) {
-		return queryPartition(ctx, rd, keys.NotebookAreaGSI1Pk(userID, area), cursor, remaining, remainingBytes, ParseNote, func(n Note) bool { return n.Deleted })
-	})
+// AreaNotesNewestFirst is a page of one area's notes: pages by last update,
+// then daily notes by date, newest first.
+func (rd Reader) AreaNotesNewestFirst(ctx context.Context, userID, area, cursor string, limit, limitBytes int) (store.Page[Note], error) {
+	return queryPartition(ctx, rd, keys.NotebookAreaGSI1Pk(userID, area), false, cursor, limit, limitBytes, ParseNote, func(n Note) bool { return n.Deleted })
 }
 
-type taskPartition struct{ area, status string }
-
-// TasksPage is a page of a user's tasks by area, then status, each page
-// sorted for the list.
-func (rd Reader) TasksPage(ctx context.Context, userID, area, cursor string, limit int, today string) (store.Page[Task], error) {
-	var partitions []taskPartition
-	for _, a := range areasOf(area) {
-		for _, s := range TaskStatuses {
-			partitions = append(partitions, taskPartition{a, s})
-		}
-	}
-	page, err := store.WalkPartitions(partitions, cursor, limit, func(p taskPartition, cursor string, remaining, remainingBytes int) (store.Page[Task], error) {
-		return queryPartition(ctx, rd, keys.TaskAreaStatusGSI1Pk(userID, p.area, p.status), cursor, remaining, remainingBytes, ParseTask, func(t Task) bool { return t.Deleted })
-	})
-	SortTasksForList(page.Items, today)
-	return page, err
+// AreaStatusTasks is a page of one area's tasks in one status.
+func (rd Reader) AreaStatusTasks(ctx context.Context, userID, area, status, cursor string, limit, limitBytes int) (store.Page[Task], error) {
+	return queryPartition(ctx, rd, keys.TaskAreaStatusGSI1Pk(userID, area, status), true, cursor, limit, limitBytes, ParseTask, func(t Task) bool { return t.Deleted })
 }
 
 // CollectPages reads pages until they run out or limit rows pass keep,

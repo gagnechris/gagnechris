@@ -92,6 +92,7 @@ const searchResponse = vi.hoisted(() => ({
         matches: [{ start: 5, end: 12 }],
       },
     ],
+    truncated: false,
   },
   error: undefined,
   response: { status: 200 },
@@ -238,6 +239,29 @@ describe('NotebookSearchPalette', () => {
     expect(all).toHaveFocus();
     await screen.findAllByText('work');
     expect(server.searches[server.searches.length - 1]?.area).toBeUndefined();
+  });
+
+  test('says when the notebook was too large to search in full', async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    const input = screen.getByRole('combobox', {
+      name: 'Search notes and tasks',
+    });
+    await user.type(input, 'standup');
+    await screen.findByRole('listbox', { name: 'Results' });
+    expect(screen.queryByText(/most recent notes and tasks/)).toBeNull();
+
+    searchResponse.data.truncated = true;
+    try {
+      await user.type(input, ' notes');
+      expect(
+        await screen.findByText(
+          'Only your most recent notes and tasks were searched.',
+        ),
+      ).toBeInTheDocument();
+    } finally {
+      searchResponse.data.truncated = false;
+    }
   });
 
   test('a task hit is checkable, and ⌘⏎ checks off the selected one, with no task reads', async () => {

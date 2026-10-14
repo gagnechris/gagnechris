@@ -216,11 +216,12 @@ describe('POST /api/notebook/search', () => {
           matches: [{ start: 9, end: 14 }],
         },
       ],
+      truncated: false,
     });
     expect((await search({ q: 'offsite' })).tasks[0]?.snippet).toBe('offsite');
   });
 
-  it('breaks ties in list order: notes by key, tasks by each sorted page of 100', async () => {
+  it('breaks ties in read order: notes newest first in each area, tasks by each sorted page of 100', async () => {
     const taskIds = Array.from({ length: 130 }, () => ulid()).sort();
     for (let i = taskIds.length; i > 0; i -= 10) {
       await Promise.all(
@@ -252,7 +253,14 @@ describe('POST /api/notebook/search', () => {
         .slice(0, NOTEBOOK_SEARCH_LIMIT_MAX)
         .map((t) => t.id),
     );
-    expect(found.notes.map((n) => n.id)).toEqual(notes.map((n) => n.id));
+    expect(found.notes.map((n) => n.id)).toEqual(
+      ['work', 'personal'].flatMap((area) =>
+        notes
+          .filter((n) => n.area === area)
+          .reverse()
+          .map((n) => n.id),
+      ),
+    );
   });
 
   it.each([

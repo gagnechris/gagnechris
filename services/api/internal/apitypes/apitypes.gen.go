@@ -6979,6 +6979,9 @@ type NotebookSearchRequestArea string
 type NotebookSearchResponse struct {
 	Notes []NotebookSearchResponse_Notes `json:"notes"`
 	Tasks []NotebookSearchResponse_Tasks `json:"tasks"`
+
+	// Truncated True when the notebook held more notes or tasks than one search reads; the oldest went unsearched
+	Truncated bool `json:"truncated"`
 }
 
 // NotebookSearchResponseNotesArea defines model for NotebookSearchResponse.Notes.Area.
@@ -12209,6 +12212,9 @@ type PostAPINotebookSearch200JSONResponseBody_Tasks struct {
 type PostAPINotebookSearch200JSONResponseBody struct {
 	Notes []PostAPINotebookSearch200JSONResponseBody_Notes `json:"notes"`
 	Tasks []PostAPINotebookSearch200JSONResponseBody_Tasks `json:"tasks"`
+
+	// Truncated True when the notebook held more notes or tasks than one search reads; the oldest went unsearched
+	Truncated bool `json:"truncated"`
 }
 
 // PostAPINotebookSearch400JSONResponseBody defines parameters for PostAPINotebookSearch.

@@ -26,8 +26,9 @@ func TestResponsesMatchGeneratedTypes(t *testing.T) {
 	if !ok {
 		t.Fatal("no task hit")
 	}
-	apitypestest.Conforms[apitypes.NotebookSearchResponse](t, map[string][]Hit{
-		"notes": {noteMatch},
-		"tasks": {taskMatch},
+	apitypestest.Conforms[apitypes.NotebookSearchResponse](t, response{
+		Notes:     []Hit{noteMatch},
+		Tasks:     []Hit{taskMatch},
+		Truncated: true,
 	})
 }
