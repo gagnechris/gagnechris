@@ -82,7 +82,12 @@ test('after local midnight, yesterday’s unchecked task is carried into the new
     page.getByRole('heading', { level: 1, name: /October 2/ }),
   ).toBeVisible();
   await panelsLoaded(page);
-  await expect(page.locator('.markdown-editor')).toContainText('Carried in');
+  await expect(page.locator('.markdown-editor')).toContainText(
+    'Focus for Friday',
+  );
+  await expect(page.locator('.markdown-editor')).not.toContainText(
+    'Carried in',
+  );
   await expect.poll(() => placesOf(page, title)).toEqual(['note']);
 
   await page.reload();

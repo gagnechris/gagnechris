@@ -179,10 +179,9 @@ type CarriedInTask struct {
 	ParentID *string `json:"parentId"`
 }
 
-// CarriedInMarkdown is the block a new daily note opens with: open tasks
-// from earlier days. A subtask whose parent carries in too sits indented
-// under it.
-func CarriedInMarkdown(tasks []CarriedInTask) string {
+// carriedInLines is one embed line per task; a subtask whose parent carries
+// in too sits indented under it.
+func carriedInLines(tasks []CarriedInTask) []string {
 	ids := map[string]CarriedInTask{}
 	for _, t := range tasks {
 		ids[strings.ToUpper(t.ID)] = t
@@ -223,7 +222,13 @@ func CarriedInMarkdown(tasks []CarriedInTask) string {
 			lines = append(lines, "  "+token(c.ID))
 		}
 	}
-	return carriedInHeading + "\n\n" + strings.Join(lines, "\n") + "\n\n"
+	return lines
+}
+
+// CarriedInMarkdown is the block a new daily note opens with when its
+// template has no heading to carry tasks into.
+func CarriedInMarkdown(tasks []CarriedInTask) string {
+	return carriedInHeading + "\n\n" + strings.Join(carriedInLines(tasks), "\n") + "\n\n"
 }
 
 // TaskSubtask is a subtask line and the task it sits under.
@@ -324,6 +329,80 @@ func FillDailyTemplate(markdown, area, date string) string {
 	return templateToken.ReplaceAllStringFunc(markdown, func(token string) string {
 		return values[token[2:len(token)-2]]
 	})
+}
+
+var (
+	templateHeading = regexp.MustCompile(`^ {0,3}#{1,6}(?:[ \t]+|$)`)
+	closingHashes   = regexp.MustCompile(`(?:^|[ \t]+)#+$`)
+)
+
+type templateHeadingLine struct {
+	line int
+	text string
+}
+
+func templateHeadings(lines []string) []templateHeadingLine {
+	fences := ScanFences(lines)
+	var out []templateHeadingLine
+	for i, raw := range lines {
+		line := strings.TrimSuffix(raw, "\r")
+		marker := templateHeading.FindString(line)
+		if marker != "" && !InFence(fences, i) {
+			text := closingHashes.ReplaceAllString(api.TrimJS(line[len(marker):]), "")
+			out = append(out, templateHeadingLine{line: i, text: text})
+		}
+	}
+	return out
+}
+
+// DailyTemplateHeadings is the template's heading texts, unfilled, in order
+// and without repeats: the sections carried-in tasks can go under.
+func DailyTemplateHeadings(markdown string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, h := range templateHeadings(strings.Split(markdown, "\n")) {
+		if h.text != "" && !seen[h.text] {
+			seen[h.text] = true
+			out = append(out, h.text)
+		}
+	}
+	return out
+}
+
+// CarryIntoDailyTemplate puts carried-in task embeds at the end of the
+// template's section (the first heading when that one is unset or gone). A
+// template with no heading gets a Carried in section on top instead.
+func CarryIntoDailyTemplate(markdown string, tasks []CarriedInTask, section *string) string {
+	if len(tasks) == 0 {
+		return markdown
+	}
+	lines := strings.Split(markdown, "\n")
+	headings := templateHeadings(lines)
+	if len(headings) == 0 {
+		return CarriedInMarkdown(tasks) + markdown
+	}
+	target := 0
+	for i, h := range headings {
+		if section != nil && h.text == *section {
+			target = i
+			break
+		}
+	}
+	at := headings[target].line
+	end := len(lines)
+	if target+1 < len(headings) {
+		end = headings[target+1].line
+	}
+	last := end - 1
+	for last > at && api.TrimJS(lines[last]) == "" {
+		last--
+	}
+	out := append([]string{}, lines[:last+1]...)
+	out = append(out, "")
+	out = append(out, carriedInLines(tasks)...)
+	out = append(out, "")
+	out = append(out, lines[end:]...)
+	return strings.Join(out, "\n")
 }
 
 var templateTaskLine = regexp.MustCompile(`^[ \t]*\[ \][ \t]+\S`)

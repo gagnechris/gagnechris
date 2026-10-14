@@ -667,6 +667,8 @@ export const DailyTemplateItemSchema = z.object({
   /** A reset keeps the row, so versions only grow, and serves the built-in text. */
   isDefault: z.boolean(),
   bodyMarkdown: z.string(),
+  /** Absent means the first heading; a reset drops it. */
+  carryOverSection: z.string().min(1).optional(),
   version: z.number().int().positive(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
@@ -679,10 +681,11 @@ export function buildDailyTemplateItem(
   template: Pick<
     DailyTemplate,
     'area' | 'bodyMarkdown' | 'isDefault' | 'version'
-  > & {
-    createdAt: string;
-    updatedAt: string;
-  },
+  > &
+    Partial<Pick<DailyTemplate, 'carryOverSection'>> & {
+      createdAt: string;
+      updatedAt: string;
+    },
 ): DailyTemplateItem {
   return {
     pk: dailyTemplatePk(userId, template.area),
@@ -692,6 +695,9 @@ export function buildDailyTemplateItem(
     area: template.area,
     isDefault: template.isDefault,
     bodyMarkdown: template.isDefault ? '' : template.bodyMarkdown,
+    ...(template.carryOverSection && !template.isDefault
+      ? { carryOverSection: template.carryOverSection }
+      : {}),
     version: template.version,
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,

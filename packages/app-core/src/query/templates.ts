@@ -34,6 +34,10 @@ export const dailyTemplateResource = createVersionedResource<
     updateDailyTemplate(client, area, {
       version: body.version,
       bodyMarkdown: String(body.bodyMarkdown ?? ''),
+      // Left out when the editor doesn't offer it, so the saved one stays.
+      ...('carryOverSection' in body
+        ? { carryOverSection: body.carryOverSection as string | null }
+        : {}),
     }),
   setCache: setCachedTemplate,
   tooLargeMessage: 'This template is over the 10 KB limit.',

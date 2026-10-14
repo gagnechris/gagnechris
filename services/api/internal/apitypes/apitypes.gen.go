@@ -6563,6 +6563,9 @@ type DailyTemplate struct {
 	Area         DailyTemplateArea `json:"area"`
 	BodyMarkdown string            `json:"bodyMarkdown"`
 
+	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
+
 	// IsDefault True when the built-in template applies (never saved, or reset)
 	IsDefault bool                      `json:"isDefault"`
 	UpdatedAt nullable.Nullable[string] `json:"updatedAt"`
@@ -7570,7 +7573,10 @@ type TaskSyncChange_1 struct {
 type UpdateDailyTemplateRequest struct {
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); no task lines or embeds
 	BodyMarkdown string `json:"bodyMarkdown"`
-	Version      *int   `json:"version,omitempty"`
+
+	// CarryOverSection A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection,omitempty"`
+	Version          *int                      `json:"version,omitempty"`
 }
 
 // UpdateHomeRequest defines model for UpdateHomeRequest.
@@ -13264,6 +13270,9 @@ type DeleteAPINotebookTemplatesDailyArea200JSONResponseBody struct {
 	Area         DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                                     `json:"bodyMarkdown"`
 
+	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
+
 	// IsDefault True when the built-in template applies (never saved, or reset)
 	IsDefault bool                      `json:"isDefault"`
 	UpdatedAt nullable.Nullable[string] `json:"updatedAt"`
@@ -13342,6 +13351,9 @@ type GetAPINotebookTemplatesDailyArea200JSONResponseBody struct {
 	Area         GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                                  `json:"bodyMarkdown"`
 
+	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
+
 	// IsDefault True when the built-in template applies (never saved, or reset)
 	IsDefault bool                      `json:"isDefault"`
 	UpdatedAt nullable.Nullable[string] `json:"updatedAt"`
@@ -13389,7 +13401,10 @@ type GetAPINotebookTemplatesDailyArea503JSONResponseBody struct {
 type PutAPINotebookTemplatesDailyAreaJSONBody struct {
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); no task lines or embeds
 	BodyMarkdown string `json:"bodyMarkdown"`
-	Version      *int   `json:"version,omitempty"`
+
+	// CarryOverSection A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection,omitempty"`
+	Version          *int                      `json:"version,omitempty"`
 }
 
 // PutAPINotebookTemplatesDailyAreaParams defines parameters for PutAPINotebookTemplatesDailyArea.
@@ -13408,6 +13423,9 @@ type PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea string
 type PutAPINotebookTemplatesDailyArea200JSONResponseBody struct {
 	Area         PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                                  `json:"bodyMarkdown"`
+
+	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
+	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
 
 	// IsDefault True when the built-in template applies (never saved, or reset)
 	IsDefault bool                      `json:"isDefault"`

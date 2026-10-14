@@ -14,6 +14,11 @@ const MON = '2026-10-05';
 const id = (n: number) =>
   `01ARZ3NDEKTSV4RRFFQ69G5H${String(n).padStart(2, '0')}`;
 
+const embedLines = (markdown: string) =>
+  taskEmbedIds(markdown)
+    .map((taskId) => `{{task:${taskId}}}`)
+    .join('\n');
+
 describe('opening a daily note carries in open tasks', () => {
   const h = useApi('carry-in');
   const { call } = apiCalls(h, { user: USER });
@@ -66,17 +71,79 @@ describe('opening a daily note carries in open tasks', () => {
     expect(monday.status).toBe(200);
     expect(monday.body).toMatchObject({ id: id(81), date: MON, version: 1 });
     const body = String(monday.body.bodyMarkdown);
-    expect(body.startsWith('## Carried in\n\n')).toBe(true);
-    expect(
-      body.endsWith(
-        fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
-          area: 'work',
-          date: MON,
-        }),
+    expect(body).toBe(
+      fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
+        area: 'work',
+        date: MON,
+      }).replace(
+        '## Focus for Monday\n- \n\n',
+        `## Focus for Monday\n- \n\n${embedLines(body)}\n\n`,
       ),
-    ).toBe(true);
+    );
+    expect(body).not.toContain('Carried in');
     expect(new Set(taskEmbedIds(body))).toEqual(new Set([id(1), id(6)]));
     expect(monday.body.taskIds).toHaveLength(2);
+  });
+
+  it('carries into Plans with the default Personal template', async () => {
+    await task(7, { area: 'personal' });
+    const monday = await open(MON, id(81), 'personal');
+    expect(monday.body.bodyMarkdown).toBe(
+      DEFAULT_DAILY_TEMPLATES.personal.replace(
+        '## Plans\n- \n\n',
+        `## Plans\n- \n\n{{task:${id(7)}}}\n\n`,
+      ),
+    );
+  });
+
+  it('carries into the section the template names, nesting subtasks', async () => {
+    const friday = `/api/notebook/notes/daily/work/${FRI}`;
+    await call('PUT', friday, { body: { id: id(80), bodyMarkdown: '' } });
+    await task(1, { noteId: id(80) });
+    await task(2, { noteId: id(80) });
+    const nested = await call('PUT', friday, {
+      body: {
+        id: id(80),
+        version: 1,
+        bodyMarkdown: `{{task:${id(1)}}}\n  {{task:${id(2)}}}`,
+      },
+    });
+    expect(nested.status).toBe(200);
+    const template = await call('PUT', '/api/notebook/templates/daily/work', {
+      body: {
+        version: 0,
+        bodyMarkdown:
+          '## Focus for {{weekday}}\n- \n\n## Meetings\nnone yet\n\n## Notes\n',
+        carryOverSection: 'Meetings',
+      },
+    });
+    expect(template.status).toBe(200);
+
+    const monday = await open(MON, id(81));
+    expect(monday.body.bodyMarkdown).toBe(
+      `## Focus for Monday\n- \n\n## Meetings\nnone yet\n\n{{task:${id(1)}}}\n  {{task:${id(2)}}}\n\n## Notes\n`,
+    );
+  });
+
+  it('adds a Carried in section when the template has no heading or is blank', async () => {
+    await task(1);
+    await task(7, { area: 'personal' });
+    for (const [area, bodyMarkdown] of [
+      ['work', 'Just a line\n'],
+      ['personal', ''],
+    ] as const) {
+      const saved = await call('PUT', `/api/notebook/templates/daily/${area}`, {
+        body: { version: 0, bodyMarkdown },
+      });
+      expect(saved.status).toBe(200);
+    }
+
+    expect((await open(MON, id(81))).body.bodyMarkdown).toBe(
+      `## Carried in\n\n{{task:${id(1)}}}\n\nJust a line\n`,
+    );
+    expect((await open(MON, id(82), 'personal')).body.bodyMarkdown).toBe(
+      `## Carried in\n\n{{task:${id(7)}}}\n\n`,
+    );
   });
 
   it('opening again, or on two devices at once, inserts the block once', async () => {
@@ -98,9 +165,7 @@ describe('opening a daily note carries in open tasks', () => {
       version: 1,
       bodyMarkdown: phone.body.bodyMarkdown,
     });
-    expect(
-      String(again.body.bodyMarkdown).match(/## Carried in/g),
-    ).toHaveLength(1);
+    expect(String(again.body.bodyMarkdown).match(/\{\{task:/g)).toHaveLength(2);
     expect(await dailyClaims()).toBe(1);
   });
 

@@ -13,18 +13,20 @@ import (
 
 // Owners names the package whose test replays each helper's cases.
 var Owners = map[string]string{
-	"taskEmbedIds":          "notebook",
-	"carriedInMarkdown":     "notebook",
-	"taskEmbedParents":      "notebook",
-	"normalizeTags":         "notebook",
-	"fillDailyTemplate":     "notebook",
-	"dailyTemplateHasTasks": "notebook",
-	"markdownPlainText":     "notebook",
-	"formatCalendarDayLong": "notebook",
-	"noteDisplayTitle":      "notebook",
-	"slugify":               "store",
-	"isSafeLinkHrefPost":    "projects",
-	"isSafeLinkHrefProject": "projects",
+	"taskEmbedIds":           "notebook",
+	"carriedInMarkdown":      "notebook",
+	"taskEmbedParents":       "notebook",
+	"normalizeTags":          "notebook",
+	"fillDailyTemplate":      "notebook",
+	"dailyTemplateHasTasks":  "notebook",
+	"dailyTemplateHeadings":  "notebook",
+	"carryIntoDailyTemplate": "notebook",
+	"markdownPlainText":      "notebook",
+	"formatCalendarDayLong":  "notebook",
+	"noteDisplayTitle":       "notebook",
+	"slugify":                "store",
+	"isSafeLinkHrefPost":     "projects",
+	"isSafeLinkHrefProject":  "projects",
 }
 
 // Replay runs every case of the helpers pkg owns through run[helper] and

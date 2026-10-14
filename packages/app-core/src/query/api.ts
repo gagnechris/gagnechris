@@ -557,7 +557,9 @@ export const fetchDailyTemplate = async (
 export const updateDailyTemplate = async (
   client: ApiClient,
   area: NotebookArea,
-  body: { version: number; bodyMarkdown: string },
+  body: components['schemas']['UpdateDailyTemplateRequest'] & {
+    version: number;
+  },
 ): Promise<DailyTemplate> => {
   const result = await client.PUT('/api/notebook/templates/daily/{area}', {
     params: { path: { area } },

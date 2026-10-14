@@ -29,11 +29,8 @@ export const CARRIED_IN_HEADING = '## Carried in';
 
 export type CarriedInTask = { id: string; parentId?: string | null };
 
-/**
- * The block a new daily note opens with: open tasks from earlier days. A
- * subtask whose parent carries in too sits indented under it.
- */
-export function carriedInMarkdown(tasks: readonly CarriedInTask[]): string {
+/** One embed line per task; a subtask whose parent carries in too sits indented under it. */
+export function carriedInLines(tasks: readonly CarriedInTask[]): string[] {
   const ids = new Set(tasks.map((t) => t.id.toUpperCase()));
   const parentOf = (t: CarriedInTask) => t.parentId?.toUpperCase() ?? null;
   const byId = new Map(tasks.map((t) => [t.id.toUpperCase(), t]));
@@ -58,7 +55,12 @@ export function carriedInMarkdown(tasks: readonly CarriedInTask[]): string {
       lines.push(`  ${taskEmbedToken(child.id)}`);
     }
   }
-  return `${CARRIED_IN_HEADING}\n\n${lines.join('\n')}\n\n`;
+  return lines;
+}
+
+/** The block a new daily note opens with when its template has no heading to carry tasks into. */
+export function carriedInMarkdown(tasks: readonly CarriedInTask[]): string {
+  return `${CARRIED_IN_HEADING}\n\n${carriedInLines(tasks).join('\n')}\n\n`;
 }
 
 export function parseTaskEmbedLine(

@@ -2437,6 +2437,11 @@
           "bodyMarkdown": {
             "type": "string"
           },
+          "carryOverSection": {
+            "type": "string",
+            "nullable": true,
+            "description": "Heading text, unfilled, whose section new days carry open tasks into; null means the first heading"
+          },
           "isDefault": {
             "type": "boolean",
             "description": "True when the built-in template applies (never saved, or reset)"
@@ -2455,6 +2460,7 @@
         "required": [
           "area",
           "bodyMarkdown",
+          "carryOverSection",
           "isDefault",
           "version",
           "updatedAt"
@@ -2470,6 +2476,11 @@
           "bodyMarkdown": {
             "type": "string",
             "description": "Up to 10 KB (UTF-8; larger → 413); no task lines or embeds"
+          },
+          "carryOverSection": {
+            "type": "string",
+            "nullable": true,
+            "description": "A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one"
           }
         },
         "required": [
@@ -18095,7 +18106,7 @@
     },
     "/api/notebook/notes/daily/{area}/{date}/open": {
       "post": {
-        "summary": "Open the daily note; on first open, creates it with open tasks from earlier days under Carried in",
+        "summary": "Open the daily note; on first open, creates it from the template with open tasks from earlier days in its carry-over section",
         "tags": [
           "Notebook"
         ],
@@ -24083,6 +24094,11 @@
                     "bodyMarkdown": {
                       "type": "string"
                     },
+                    "carryOverSection": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Heading text, unfilled, whose section new days carry open tasks into; null means the first heading"
+                    },
                     "isDefault": {
                       "type": "boolean",
                       "description": "True when the built-in template applies (never saved, or reset)"
@@ -24101,6 +24117,7 @@
                   "required": [
                     "area",
                     "bodyMarkdown",
+                    "carryOverSection",
                     "isDefault",
                     "version",
                     "updatedAt"
@@ -24294,6 +24311,11 @@
                   "bodyMarkdown": {
                     "type": "string",
                     "description": "Up to 10 KB (UTF-8; larger → 413); no task lines or embeds"
+                  },
+                  "carryOverSection": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "A heading of bodyMarkdown, or null for the first heading; omitted keeps the saved one"
                   }
                 },
                 "required": [
@@ -24331,6 +24353,11 @@
                     "bodyMarkdown": {
                       "type": "string"
                     },
+                    "carryOverSection": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Heading text, unfilled, whose section new days carry open tasks into; null means the first heading"
+                    },
                     "isDefault": {
                       "type": "boolean",
                       "description": "True when the built-in template applies (never saved, or reset)"
@@ -24349,6 +24376,7 @@
                   "required": [
                     "area",
                     "bodyMarkdown",
+                    "carryOverSection",
                     "isDefault",
                     "version",
                     "updatedAt"
@@ -24679,6 +24707,11 @@
                     "bodyMarkdown": {
                       "type": "string"
                     },
+                    "carryOverSection": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "Heading text, unfilled, whose section new days carry open tasks into; null means the first heading"
+                    },
                     "isDefault": {
                       "type": "boolean",
                       "description": "True when the built-in template applies (never saved, or reset)"
@@ -24697,6 +24730,7 @@
                   "required": [
                     "area",
                     "bodyMarkdown",
+                    "carryOverSection",
                     "isDefault",
                     "version",
                     "updatedAt"

@@ -352,7 +352,8 @@
       "personal": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n"
     },
     "dailyTemplateMaxBytes": 10000,
-    "dailyTemplateTaskMessage": "Templates can’t hold tasks, or a new one would be added every day. Use - [ ] for a checklist."
+    "dailyTemplateTaskMessage": "Templates can’t hold tasks, or a new one would be added every day. Use - [ ] for a checklist.",
+    "dailyTemplateSectionMessage": "Carried-in tasks must go under a heading in this template."
   },
   "sync": {
     "changeTypes": [
@@ -1595,6 +1596,10 @@
         "bodyMarkdown": {
           "type": "string"
         },
+        "carryOverSection": {
+          "type": "string",
+          "minLength": 1
+        },
         "version": {
           "type": "integer",
           "exclusiveMinimum": 0,
@@ -2311,7 +2316,8 @@
       "userId": "user-sub-1",
       "area": "work",
       "isDefault": false,
-      "bodyMarkdown": "## Today",
+      "bodyMarkdown": "## Today\n\n## Later",
+      "carryOverSection": "Later",
       "version": 2,
       "createdAt": "2026-10-01T12:00:00.000Z",
       "updatedAt": "2026-10-01T12:00:00.000Z"
@@ -2619,6 +2625,449 @@
           "date": "2027-01-01"
         },
         "want": "# Friday Friday, January 1 (Work) {{other}} Friday, January 1"
+      }
+    ],
+    "dailyTemplateHeadings": [
+      {
+        "input": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+        "want": [
+          "Focus for {{weekday}}",
+          "Standup",
+          "Meetings",
+          "Notes",
+          "Tomorrow"
+        ]
+      },
+      {
+        "input": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n",
+        "want": [
+          "Plans",
+          "Errands",
+          "Notes"
+        ]
+      },
+      {
+        "input": "",
+        "want": []
+      },
+      {
+        "input": "no headings\n- [ ] list",
+        "want": []
+      },
+      {
+        "input": "# One\r\n##\tTwo  \n#Three\n    #### Code\n   ### Four\n####### Seven\n## One\n##\n##  \n## Closed ##\n## # #\n## C#",
+        "want": [
+          "One",
+          "Two",
+          "Four",
+          "Closed",
+          "#",
+          "C#"
+        ]
+      },
+      {
+        "input": "```\n## Fenced\n```\n## After\n~~~\n## Unclosed",
+        "want": [
+          "After"
+        ]
+      }
+    ],
+    "carryIntoDailyTemplate": [
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Meetings"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Meetings"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [],
+          "section": "Meetings"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Tomorrow"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Tomorrow"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [],
+          "section": "Tomorrow"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Gone"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Gone"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n",
+          "tasks": [],
+          "section": "Gone"
+        },
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Plans\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Errands\n- [ ] \n\n## Notes\n"
+      },
+      {
+        "input": {
+          "markdown": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Plans\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Errands\n- [ ] \n\n## Notes\n"
+      },
+      {
+        "input": {
+          "markdown": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n"
+      },
+      {
+        "input": {
+          "markdown": "",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n"
+      },
+      {
+        "input": {
+          "markdown": "",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n"
+      },
+      {
+        "input": {
+          "markdown": "",
+          "tasks": [],
+          "section": null
+        },
+        "want": ""
+      },
+      {
+        "input": {
+          "markdown": "Just text\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Just text"
+        },
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\nJust text\n"
+      },
+      {
+        "input": {
+          "markdown": "Just text\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "Just text"
+        },
+        "want": "## Carried in\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\nJust text\n"
+      },
+      {
+        "input": {
+          "markdown": "Just text\n",
+          "tasks": [],
+          "section": "Just text"
+        },
+        "want": "Just text\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only\n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## Only\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## Only",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## Only"
+      },
+      {
+        "input": {
+          "markdown": "intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "A"
+        },
+        "want": "intro\n\n## A\ntext\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n### B\n```\n## not a heading\n```\n"
+      },
+      {
+        "input": {
+          "markdown": "intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "A"
+        },
+        "want": "intro\n\n## A\ntext\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n### B\n```\n## not a heading\n```\n"
+      },
+      {
+        "input": {
+          "markdown": "intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n",
+          "tasks": [],
+          "section": "A"
+        },
+        "want": "intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\nline\r\n## B\r\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "B"
+        },
+        "want": "## A\r\nline\r\n## B\r\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\nline\r\n## B\r\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": "B"
+        },
+        "want": "## A\r\nline\r\n## B\r\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\nline\r\n## B\r\n",
+          "tasks": [],
+          "section": "B"
+        },
+        "want": "## A\r\nline\r\n## B\r\n"
       }
     ],
     "dailyTemplateHasTasks": [

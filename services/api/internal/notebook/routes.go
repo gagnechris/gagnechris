@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 	"unicode/utf8"
@@ -381,7 +382,7 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	body := CarriedInMarkdown(carried) + FillDailyTemplate(template.BodyMarkdown, area, date)
+	body := FillDailyTemplate(CarryIntoDailyTemplate(template.BodyMarkdown, carried, template.CarryOverSection), area, date)
 	n, err := h.notes.createDaily(ctx, userID, area, date, dailyFields{id: id, noteFields: noteFields{bodyMarkdown: &body}})
 	var conflict *api.ConflictError
 	if errors.As(err, &conflict) {
@@ -775,6 +776,10 @@ func (h handlers) updateTemplate(ctx context.Context, r *api.Request) (*api.Resp
 			v.FailWith("bodyMarkdown", api.CodeCustom, nb.DailyTemplateTaskMessage)
 		}
 	}
+	section, sectionSent := v.NullableString("carryOverSection")
+	if section != nil && !slices.Contains(DailyTemplateHeadings(body), *section) {
+		v.FailWith("carryOverSection", api.CodeCustom, nb.DailyTemplateSectionMessage)
+	}
 	if err := v.ErrMaybeTooLarge(); err != nil {
 		return nil, err
 	}
@@ -786,7 +791,7 @@ func (h handlers) updateTemplate(ctx context.Context, r *api.Request) (*api.Resp
 	if err != nil {
 		return nil, err
 	}
-	t, err := h.templates.write(ctx, r.UserID(), area, body, false, e)
+	t, err := h.templates.write(ctx, r.UserID(), area, templateEdit{bodyMarkdown: body, section: section, keepSection: !sectionSent}, false, e)
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
 	}
@@ -810,7 +815,7 @@ func (h handlers) resetTemplate(ctx context.Context, r *api.Request) (*api.Respo
 	if err != nil {
 		return nil, err
 	}
-	t, err := h.templates.write(ctx, r.UserID(), area, "", true, e)
+	t, err := h.templates.write(ctx, r.UserID(), area, templateEdit{}, true, e)
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
 	}

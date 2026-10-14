@@ -1045,6 +1045,11 @@
   color: var(--neutral-700);
 }
 
+.notebook-templates__carry {
+  max-width: 24rem;
+  margin-top: var(--space-4);
+}
+
 .notebook-templates__actions {
   display: flex;
   flex-wrap: wrap;

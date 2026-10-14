@@ -117,9 +117,12 @@ import {
   APEX_DOMAIN,
   CLIENT_VERSION_HEADER,
   DAILY_TEMPLATE_MAX_BYTES,
+  DAILY_TEMPLATE_SECTION_MESSAGE,
   DAILY_TEMPLATE_TASK_MESSAGE,
   DEFAULT_DAILY_TEMPLATES,
   carriedInMarkdown,
+  carryIntoDailyTemplate,
+  dailyTemplateHeadings,
   taskEmbedParents,
   dailyTemplateHasTasks,
   fillDailyTemplate,
@@ -377,7 +380,8 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
   dailyNoteClaim: buildDailyNoteClaimItem(USER, 'work', '2026-10-01', '01NOTE'),
   dailyTemplate: buildDailyTemplateItem(USER, {
     area: 'work',
-    bodyMarkdown: '## Today',
+    bodyMarkdown: '## Today\n\n## Later',
+    carryOverSection: 'Later',
     isDefault: false,
     version: 2,
     createdAt: TS,
@@ -584,6 +588,38 @@ const TEXT_CASES = {
     input: { markdown: TEMPLATE_WITH_TOKENS, area, date },
     want: fillDailyTemplate(TEMPLATE_WITH_TOKENS, { area, date }),
   })),
+  dailyTemplateHeadings: [
+    DEFAULT_DAILY_TEMPLATES.work,
+    DEFAULT_DAILY_TEMPLATES.personal,
+    '',
+    'no headings\n- [ ] list',
+    '# One\r\n##\tTwo  \n#Three\n    #### Code\n   ### Four\n####### Seven\n## One\n##\n## \u00a0\n## Closed ##\n## # #\n## C#',
+    '```\n## Fenced\n```\n## After\n~~~\n## Unclosed',
+  ].map((input) => ({ input, want: dailyTemplateHeadings(input) })),
+  carryIntoDailyTemplate: (
+    [
+      [DEFAULT_DAILY_TEMPLATES.work, null],
+      [DEFAULT_DAILY_TEMPLATES.work, 'Meetings'],
+      [DEFAULT_DAILY_TEMPLATES.work, 'Tomorrow'],
+      [DEFAULT_DAILY_TEMPLATES.work, 'Gone'],
+      [DEFAULT_DAILY_TEMPLATES.personal, null],
+      ['', null],
+      ['Just text\n', 'Just text'],
+      ['## Only\n', null],
+      ['## Only', null],
+      ['intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n', 'A'],
+      ['## A\r\nline\r\n## B\r\n', 'B'],
+    ] as const
+  ).flatMap(([markdown, section]) =>
+    [
+      [{ id: EMBED_ID }],
+      [{ id: EMBED_ID_2, parentId: EMBED_ID }, { id: EMBED_ID }],
+      [],
+    ].map((tasks) => ({
+      input: { markdown, tasks, section },
+      want: carryIntoDailyTemplate(markdown, tasks, section),
+    })),
+  ),
   dailyTemplateHasTasks: [
     '- [ ] checklist\n* [x] done',
     '[ ] task line',
@@ -718,6 +754,7 @@ const contract = {
     dailyTemplates: DEFAULT_DAILY_TEMPLATES,
     dailyTemplateMaxBytes: DAILY_TEMPLATE_MAX_BYTES,
     dailyTemplateTaskMessage: DAILY_TEMPLATE_TASK_MESSAGE,
+    dailyTemplateSectionMessage: DAILY_TEMPLATE_SECTION_MESSAGE,
   },
   sync: {
     changeTypes: SYNC_CHANGE_TYPES,
