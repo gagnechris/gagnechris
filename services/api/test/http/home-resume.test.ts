@@ -123,14 +123,14 @@ describe('PUT /api/admin/home', () => {
     });
   });
 
-  it('answers 409 conflict with the current home for a stale version', async () => {
+  it('answers 409 version_conflict with the current home for a stale version', async () => {
     const home: Home = await ok('GET', '/api/admin/home');
     const res = await call('PUT', '/api/admin/home', {
       body: { version: 7, about: 'Nope' },
     });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      error: 'conflict',
+      error: 'version_conflict',
       message: 'Version conflict: expected 7, current 1',
       currentVersion: 1,
       current: home,

@@ -113,9 +113,21 @@ export const baseOf = (body: Body, current: Entity | undefined): Body => {
   );
 };
 
+// A daily write without a version is the day's first save.
+const createsEntity = (op: Op) =>
+  op.kind === 'create' ||
+  (op.kind === 'daily' && baseVersion(op.body) === undefined);
+
 export type EnqueuePlan =
   /** Rewrite `seq`'s body; the new op is absorbed into it. */
-  | { type: 'merge'; seq: number; body: Body; base: Body; path?: string }
+  | {
+      type: 'merge';
+      seq: number;
+      kind: OpKind;
+      body: Body;
+      base: Body;
+      path?: string;
+    }
   /** Append the op, after dropping `drop`. */
   | { type: 'append'; drop: number[]; body: Body }
   /** A create and delete that never left the phone: drop both, send nothing. */
@@ -140,8 +152,7 @@ export const planEnqueue = (
     while (from > 0 && editable(mine[from - 1]!)) from -= 1;
     const tail = mine.slice(from);
     const drop = tail.map((op) => op.seq);
-    if (tail.some((op) => op.kind === 'create'))
-      return { type: 'vanish', drop };
+    if (tail.some(createsEntity)) return { type: 'vanish', drop };
     const base = tail[0] && baseVersion(tail[0].body);
     const body =
       base === undefined ? next.body : { ...next.body, version: base };
@@ -153,6 +164,7 @@ export const planEnqueue = (
       return {
         type: 'merge',
         seq: last.seq,
+        kind: last.kind,
         body: { ...last.body, ...fieldsOf(next.body) },
         // The earliest base of each field: what the server held before any of it.
         base: { ...next.base, ...last.base },
@@ -165,6 +177,7 @@ export const planEnqueue = (
       return {
         type: 'merge',
         seq: last.seq,
+        kind: next.kind,
         body: last.body,
         base: last.base,
         path: next.path,

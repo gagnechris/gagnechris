@@ -365,14 +365,14 @@ describe('PUT /api/admin/posts/:id', () => {
     ).toMatchObject({ slug: 'other', version: 1 });
   });
 
-  it('answers 409 conflict with the current post for a stale version', async () => {
+  it('answers 409 version_conflict with the current post for a stale version', async () => {
     const post = await create();
     const res = await call('PUT', `/api/admin/posts/${post.id}`, {
       body: { version: 7, title: 'Nope' },
     });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      error: 'conflict',
+      error: 'version_conflict',
       message: 'Version conflict: expected 7, current 1',
       currentVersion: 1,
       current: post,
@@ -551,7 +551,7 @@ describe('publish, unpublish, discard and delete', () => {
     expect((await create({ slug: 'gone' })).slug).toBe('gone');
   });
 
-  it('answers 409 conflict with the current post for a stale version', async () => {
+  it('answers 409 version_conflict with the current post for a stale version', async () => {
     const post = await create();
     for (const verb of ['publish', 'unpublish', 'discard']) {
       const res = await call('POST', `/api/admin/posts/${post.id}/${verb}`, {
@@ -559,7 +559,7 @@ describe('publish, unpublish, discard and delete', () => {
       });
       expect(res.status, verb).toBe(409);
       expect(res.body).toEqual({
-        error: 'conflict',
+        error: 'version_conflict',
         message: 'Version conflict: expected 0, current 1',
         currentVersion: 1,
         current: post,
