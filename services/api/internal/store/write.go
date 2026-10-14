@@ -52,6 +52,8 @@ func MapWriteError(err error, conflictMessage string, claim ClaimWrite) error {
 		return &api.ConflictError{Message: conflictMessage, Code: api.CodeConflict, Cause: err}
 	case data.WriteThrottled:
 		return &api.ServiceUnavailableError{Message: "DynamoDB is throttling; please retry shortly"}
+	case data.WriteTooLarge:
+		return &api.PayloadTooLargeError{Message: "Too large to save: over the 400 KB item size limit", Fields: map[string]string{}}
 	}
 	return err
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -58,6 +59,8 @@ const (
 	WriteOther WriteErrorKind = iota
 	WriteConflict
 	WriteThrottled
+	// WriteTooLarge is an item over DynamoDB's 400 KB item size limit.
+	WriteTooLarge
 )
 
 // CancellationCodes are a canceled transaction's per-item codes, in
@@ -80,6 +83,10 @@ func ClassifyWriteError(err error) WriteErrorKind {
 		return WriteOther
 	}
 	switch apiErr.ErrorCode() {
+	case "ValidationException":
+		if isItemSizeMessage(apiErr.ErrorMessage()) {
+			return WriteTooLarge
+		}
 	case "ThrottlingException", "ThrottlingError", "ProvisionedThroughputExceededException", "RequestLimitExceeded":
 		return WriteThrottled
 	// TransactionConflictException: a single-item write hit an item another
@@ -87,6 +94,14 @@ func ClassifyWriteError(err error) WriteErrorKind {
 	case "ConditionalCheckFailedException", "TransactionConflictException":
 		return WriteConflict
 	case "TransactionCanceledException":
+		var canceled *types.TransactionCanceledException
+		if errors.As(err, &canceled) {
+			for _, r := range canceled.CancellationReasons {
+				if aws.ToString(r.Code) == "ValidationError" && isItemSizeMessage(aws.ToString(r.Message)) {
+					return WriteTooLarge
+				}
+			}
+		}
 		codes := CancellationCodes(err)
 		known := 0
 		conflict := false
@@ -107,6 +122,13 @@ func ClassifyWriteError(err error) WriteErrorKind {
 		}
 	}
 	return WriteOther
+}
+
+// isItemSizeMessage matches PutItem's "Item size has exceeded the maximum
+// allowed size" and UpdateItem's "Item size to update has exceeded ...".
+func isItemSizeMessage(m string) bool {
+	m = strings.ToLower(m)
+	return strings.Contains(m, "item size") && strings.Contains(m, "exceeded the maximum allowed size")
 }
 
 func hasCode(codes []string, code string) bool {

@@ -40,6 +40,10 @@ func TestClassifyWriteError(t *testing.T) {
 		{"canceled on request limit", canceled("RequestLimitExceeded"), data.WriteThrottled},
 		{"throttle outranks a conflict", canceled("ConditionalCheckFailed", "ThrottlingError"), data.WriteThrottled},
 		{"canceled on validation", canceled("None", "ValidationError"), data.WriteOther},
+		{"item over the size limit", &smithy.GenericAPIError{Code: "ValidationException", Message: "Item size has exceeded the maximum allowed size"}, data.WriteTooLarge},
+		{"update over the size limit", &smithy.GenericAPIError{Code: "ValidationException", Message: "Item size to update has exceeded the maximum allowed size"}, data.WriteTooLarge},
+		{"canceled on an item over the size limit", canceledWith("Item size has exceeded the maximum allowed size", "None", "ValidationError"), data.WriteTooLarge},
+		{"other validation", &smithy.GenericAPIError{Code: "ValidationException", Message: "One or more parameter values were invalid"}, data.WriteOther},
 		{"other API error", &types.ResourceNotFoundException{}, data.WriteOther},
 		{"not an API error", errors.New("dial tcp: timeout"), data.WriteOther},
 	}
@@ -48,6 +52,17 @@ func TestClassifyWriteError(t *testing.T) {
 			t.Errorf("%s: got %v, want %v", c.name, got, c.want)
 		}
 	}
+}
+
+func canceledWith(message string, codes ...string) error {
+	var err *types.TransactionCanceledException
+	errors.As(datatest.Canceled(codes...), &err)
+	for i := range err.CancellationReasons {
+		if aws.ToString(err.CancellationReasons[i].Code) == "ValidationError" {
+			err.CancellationReasons[i].Message = aws.String(message)
+		}
+	}
+	return err
 }
 
 func TestFailedCondition(t *testing.T) {
