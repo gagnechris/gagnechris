@@ -1693,6 +1693,64 @@ describe('subtasks in a note', () => {
     ).not.toBeChecked();
   });
 
+  test('Delete and Backspace next to a folded parent leave its hidden lines alone', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const note = `${nested(SUB_1, SUB_2)}\nafter`;
+    const { body } = renderNote(note);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+    const view = await editorView(document.body);
+
+    await user.click(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{Escape}');
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+    press(view, 'Delete');
+    expect(body()).toBe(note);
+
+    act(() => {
+      view.dispatch({ selection: { anchor: view.state.doc.line(4).from } });
+    });
+    press(view, 'Backspace');
+    expect(body()).toBe(note);
+
+    act(() => {
+      view.dispatch({
+        selection: { anchor: 0, head: view.state.doc.length },
+      });
+    });
+    press(view, 'Delete');
+    expect(body()).toBe(note);
+  });
+
+  test('a folded parent’s line can still be deleted, keeping its subtasks', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`before\n${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+
+    await user.clear(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{Backspace}');
+    expect(body()).not.toContain(tokenLine(PARENT));
+    expect(body()).toContain(tokenLine(SUB_1));
+    expect(body()).toContain(tokenLine(SUB_2));
+  });
+
   test('checking a parent with open subtasks asks; Complete all completes them, Undo reopens the parent', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates' },
