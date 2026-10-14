@@ -155,7 +155,7 @@ test('at 1280px with both panels open the note fills the space between them, and
   await hideTasks(page);
   const closed = await layout(page);
   expect(closed.main.right - closed.cell.right).toBeCloseTo(PAGE_PADDING, 0);
-  expect(closed.cell.width).toBeGreaterThan(open.cell.width + open.side);
+  expect(closed.lineWidth).toBeGreaterThan(open.lineWidth + open.side);
 });
 
 test('the writing area is white, and the sidebar and task panel stay on the chrome colour', async ({
