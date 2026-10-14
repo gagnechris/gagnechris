@@ -157,7 +157,7 @@ function styleDecoration(mark: LiveMark): Decoration | null {
     case 'link':
       return Decoration.mark({
         class: 'cm-md-link',
-        attributes: { title: mark.href ?? '' },
+        attributes: { title: mark.href ?? '', 'data-href': mark.href ?? '' },
       });
   }
 }
@@ -321,6 +321,40 @@ const plugin = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
+/** Hrefs a click may open; anything else (`javascript:` and the like) stays text. */
+export function openableHref(href: string, base: string): string | null {
+  try {
+    const url = new URL(href, base);
+    return ['http:', 'https:', 'mailto:'].includes(url.protocol)
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A click on a rendered link opens it in a new tab. On the lines being
+ * edited, where the syntax shows, only Cmd/Ctrl+click does, so a plain click
+ * still places the caret.
+ */
+const openLinks = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    if (event.button !== 0 || !(event.target instanceof Element)) return false;
+    const link = event.target.closest<HTMLElement>('.cm-md-link');
+    const href = link?.dataset.href;
+    if (!link || !href) return false;
+    const line = view.state.doc.lineAt(view.posAtDOM(link)).number;
+    const editing = activeLines(view.state).has(line) && view.hasFocus;
+    if (editing && !event.metaKey && !event.ctrlKey) return false;
+    const url = openableHref(href, window.location.href);
+    if (!url) return false;
+    event.preventDefault();
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return true;
+  },
+});
+
 /**
  * Renders markdown in place. The lines a selection touches keep their
  * formatting and show their syntax, dimmed; code fences show only while the
@@ -328,5 +362,9 @@ const plugin = ViewPlugin.fromClass(
  * editor chunk small.
  */
 export function livePreview(): Extension {
-  return [plugin, EditorView.editorAttributes.of({ class: 'cm-live' })];
+  return [
+    plugin,
+    openLinks,
+    EditorView.editorAttributes.of({ class: 'cm-live' }),
+  ];
 }
