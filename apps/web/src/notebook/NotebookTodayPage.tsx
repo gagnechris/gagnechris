@@ -37,6 +37,7 @@ import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
+import { readTodaySideOpen, writeTodaySideOpen } from './todaySidePreference';
 
 function resolveDate(param: string | null, today: string): string {
   if (param && isCalendarDay(param)) return param;
@@ -60,6 +61,11 @@ export default function NotebookTodayPage() {
     SIDE_MIN,
     SIDE_MAX,
   );
+  const [sideOpen, setSideOpen] = useState(readTodaySideOpen);
+  const toggleSide = () => {
+    writeTodaySideOpen(!sideOpen);
+    setSideOpen(!sideOpen);
+  };
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -173,7 +179,7 @@ export default function NotebookTodayPage() {
     <TaskParentsProvider tasks={listed}>
       <section className="workspace-panel workspace-panel--editor">
         <div
-          className="notebook-today"
+          className={`notebook-today${sideOpen ? '' : ' notebook-today--side-closed'}`}
           style={
             sideWidth === null
               ? undefined
@@ -245,6 +251,31 @@ export default function NotebookTodayPage() {
                   onMonthChange={setCalendarMonth}
                 />
               </details>
+              <button
+                type="button"
+                className="kit-btn notebook-today__side-toggle"
+                aria-controls="notebook-today-side"
+                aria-expanded={sideOpen}
+                title={sideOpen ? 'Hide the task panel' : 'Show the task panel'}
+                onClick={toggleSide}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM15 4v16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {sideOpen ? 'Hide tasks' : 'Show tasks'}
+              </button>
               <span className="notebook-today__phone-tools">
                 <select
                   className="kit-input notebook-today__area"
@@ -341,6 +372,7 @@ export default function NotebookTodayPage() {
             ) : null}
           </div>
           <aside
+            id="notebook-today-side"
             className="notebook-today__side"
             aria-label="Today tasks"
             ref={sideRef}

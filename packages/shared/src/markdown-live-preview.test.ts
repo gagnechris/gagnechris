@@ -33,6 +33,27 @@ describe('liveMarkdownLine', () => {
     ]);
   });
 
+  it('links bare URLs, leaving trailing punctuation and _ inside them alone', () => {
+    const text = 'see https://a.io/x_y_z, or (http://b.io/q?s=1).';
+    expect(
+      liveMarkdownLine(text)
+        .marks.filter((m) => m.kind !== 'hide')
+        .map((m) => [m.kind, text.slice(m.from, m.to), m.href]),
+    ).toEqual([
+      ['link', 'https://a.io/x_y_z', 'https://a.io/x_y_z'],
+      ['link', 'http://b.io/q?s=1', 'http://b.io/q?s=1'],
+    ]);
+  });
+
+  it('leaves a URL inside a markdown link or code span to that syntax', () => {
+    const text = '[https://a.io](https://a.io) `https://b.io`';
+    expect(
+      liveMarkdownLine(text)
+        .marks.filter((m) => m.kind === 'link')
+        .map((m) => text.slice(m.from, m.to)),
+    ).toEqual(['https://a.io']);
+  });
+
   it('leaves syntax inside a code span alone', () => {
     expect(visible('`**x**`')).toBe('**x**');
   });
