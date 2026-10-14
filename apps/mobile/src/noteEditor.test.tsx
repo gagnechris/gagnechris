@@ -640,6 +640,7 @@ describe('note editor', () => {
     expect(allText(renderer)).toContain('Ship it');
 
     act(() => field().props.onChangeText(''));
+    vi.setSystemTime(Date.now() + 1_000);
     act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
     expect(() => byLabel(renderer, 'Task title')).toThrow();
     await vi.waitFor(
@@ -651,6 +652,31 @@ describe('note editor', () => {
       { timeout: EMBED_DELETE_GRACE_MS * 2 },
     );
     expect(server.state.taskStore.get(TASK)!.title).toBe('Ship it');
+  }, 15_000);
+
+  it('keeps a task whose title a held Backspace just emptied', async () => {
+    serve(
+      [makeNote(NOTE, `a\n{{task:${TASK}}}\nb`)],
+      [makeTask(TASK, 'Ship it')],
+    );
+    const renderer = await renderNote();
+    const field = () => byLabel(renderer, 'Task title');
+    const backspace = () =>
+      act(() =>
+        field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }),
+      );
+    act(() => field().props.onFocus());
+    backspace();
+    act(() => field().props.onChangeText(''));
+    for (let i = 0; i < 10; i++) {
+      vi.setSystemTime(Date.now() + 100);
+      backspace();
+    }
+    expect(field().props.value).toBe('');
+
+    vi.setSystemTime(Date.now() + 1_000);
+    backspace();
+    expect(() => byLabel(renderer, 'Task title')).toThrow();
   }, 15_000);
 
   it('takes the line of a task deleted elsewhere out of the note', async () => {
