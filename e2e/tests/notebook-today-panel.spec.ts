@@ -90,7 +90,7 @@ test('the Tasks toggle sits on the sticky title row, counts Still open and leave
   });
   expect(edges.main).toBeCloseTo(edges.grid, 0);
   expect(edges.children).toEqual([
-    'notebook-today__main',
+    'notebook-today__main notebook-column',
     'notebook-today__side',
   ]);
 });

@@ -651,10 +651,6 @@
 }
 
 @media (min-width: 1000px) {
-  .workspace-shell:has(.notebook-today) {
-    --note-column-beside: calc(2.75rem + var(--space-6));
-  }
-
   .workspace-shell:has(.notebook-today:not(.notebook-today--side-closed)) {
     --note-column-beside: calc(14rem + var(--space-6));
   }
@@ -791,7 +787,7 @@
    tab order. */
 @media (min-width: 1000px) {
   .notebook-today--side-closed {
-    grid-template-columns: minmax(0, 1fr) minmax(0px, 0px);
+    grid-template-columns: minmax(0, 1fr) 0px;
     column-gap: 0;
   }
 
