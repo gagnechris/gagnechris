@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import { AUTOSAVE_RETRY_DELAYS_MS } from '@gagnechris/app-core';
+import { NOTEBOOK_AREA_STORAGE_KEY } from '@gagnechris/shared';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
@@ -361,28 +362,65 @@ describe('NotebookTodayPage', () => {
     expect(await screen.findByDisplayValue(/hello daily/)).toBeInTheDocument();
   });
 
-  test('hides the task panel and remembers it', async () => {
+  test('the Tasks toggle on the title row hides the panel and remembers it', async () => {
     const user = userEvent.setup();
     const { unmount } = renderToday();
-    const hide = await screen.findByRole('button', { name: /Hide tasks/ });
+    await screen.findByRole('textbox', { name: 'Note body' });
+    const toggle = screen.getByRole('button', { name: /^Tasks/ });
     const side = screen.getByRole('complementary', { name: 'Today tasks' });
-    expect(hide).toHaveAttribute('aria-expanded', 'true');
-    await user.click(hide);
+    expect(toggle.closest('.workspace-action-bar')).not.toBeNull();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-controls', side.id);
+    await user.click(toggle);
     expect(side.parentElement).toHaveClass('notebook-today--side-closed');
-    expect(screen.getByRole('button', { name: /Show tasks/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
+    const closed = screen.getByRole('button', { name: /^Tasks/ });
+    expect(closed).toHaveAttribute('aria-expanded', 'false');
+    expect(closed).toHaveTextContent(/^Tasks$/);
+    expect(side.parentElement!.lastElementChild).toBe(side);
 
     unmount();
     renderToday();
+    await screen.findByRole('textbox', { name: 'Note body' });
+    expect(screen.getByRole('button', { name: /^Tasks/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  test('the Tasks toggle is on the title row with All selected', async () => {
+    localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, 'all');
+    renderToday();
+    await screen.findByText(/All shows both areas/);
     expect(
-      await screen.findByRole('button', { name: /Show tasks/ }),
-    ).toBeInTheDocument();
+      (await screen.findByRole('button', { name: /^Tasks/ })).closest(
+        '.workspace-action-bar',
+      ),
+    ).not.toBeNull();
+  });
+
+  test('⌥⌘\\ toggles the panel with focus in the editor', async () => {
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    editor.focus();
+    const toggle = () => screen.getByRole('button', { name: /^Tasks/ });
+    const press = (init: KeyboardEventInit) =>
+      fireEvent.keyDown(editor, { code: 'Backslash', key: '«', ...init });
+
+    press({ altKey: true, metaKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(editor).toHaveFocus();
+    press({ altKey: true, ctrlKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+
+    press({ metaKey: true });
+    press({ altKey: true, metaKey: true, shiftKey: true });
+    press({ altKey: true, metaKey: true, ctrlKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('dragging the panel edge past its minimum hides it', async () => {
     renderToday();
+    await screen.findByRole('textbox', { name: 'Note body' });
     const handle = await screen.findByRole('separator', {
       name: 'Resize task panel',
     });
@@ -390,9 +428,16 @@ describe('NotebookTodayPage', () => {
     handle.setPointerCapture = () => {};
     fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 1000, pointerId: 1 });
-    const show = screen.getByRole('button', { name: /Show tasks/ });
+    const show = screen.getByRole('button', { name: /^Tasks/ });
     expect(show).toHaveAttribute('aria-expanded', 'false');
     expect(show).toHaveFocus();
+  });
+
+  test('the carry-over line ends the task panel, not the note', async () => {
+    renderToday(null);
+    const carry = await screen.findByTestId('carry-footer');
+    const side = screen.getByRole('complementary', { name: 'Today tasks' });
+    expect(side.lastElementChild).toBe(carry);
   });
 
   test('surfaces version conflict instead of silent overwrite', async () => {

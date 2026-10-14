@@ -107,6 +107,43 @@ describe('subtasks in a note', () => {
     expect(titled(renderer, 'Pack')).toBe(1);
   });
 
+  it('folds only the lines in the block when the text under the last subtask runs on past it', async () => {
+    serve(
+      [
+        makeNote(
+          NOTE,
+          `{{task:${P}}}\n  {{task:${A}}}\n  {{task:${B}}}\n    why\nafter`,
+        ),
+      ],
+      [
+        makeTask(P, 'Trip', { noteId: NOTE }),
+        makeTask(A, 'Book hotel', { noteId: NOTE, parentId: P }),
+        makeTask(B, 'Pack', { noteId: NOTE, parentId: P }),
+      ],
+    );
+    const renderer = await renderNote();
+    await act(async () =>
+      byLabel(renderer, '0 of 2 subtasks done').props.onPress(),
+    );
+    const bodies = () =>
+      renderer.root.findAll(
+        (node) =>
+          (node.type as string) === 'TextInput' &&
+          node.props.accessibilityLabel === 'Note body',
+      );
+    expect(bodies().map((n) => n.props.value)).toEqual(['', 'after']);
+
+    const after = bodies().find((n) => n.props.value === 'after')!;
+    act(() => after.props.onChangeText('after!'));
+    await vi.waitFor(
+      () =>
+        expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(
+          `{{task:${P}}}\n  {{task:${A}}}\n  {{task:${B}}}\n    why\nafter!`,
+        ),
+      { timeout: 3_000 },
+    );
+  });
+
   it('asks when a parent is checked with subtasks open, and completes them all', async () => {
     family();
     const renderer = await renderNote();

@@ -5,6 +5,9 @@
 }
 
 .workspace-shell {
+  /* Notebook writing column; the min matches NOTE_COLUMN_MIN. */
+  --note-column-max: 45rem;
+  --note-column-min: 30rem;
   /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
      --vv-height accounts for the on-screen keyboard. */
   min-height: 100vh;
@@ -358,6 +361,85 @@
   right: 0;
 }
 
+/* Collapsible sidebar (Notebook): slides out, leaving nothing behind. */
+
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-3);
+}
+
+/* The site-wide button:focus ring would show after a click. */
+.workspace-sidebar-toggle:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:is(.workspace-panel__header, .workspace-action-bar)
+  > .workspace-sidebar-toggle
+  + * {
+  margin-right: auto;
+}
+
+@media not all and (max-width: 767px) {
+  .workspace-sidebar {
+    transition:
+      margin-left 160ms ease,
+      visibility 0s;
+  }
+
+  .workspace--sidebar-closed .workspace-sidebar {
+    margin-left: calc(-1 * var(--workspace-sidebar-width, 15.5rem));
+    visibility: hidden;
+    transition:
+      margin-left 160ms ease,
+      visibility 0s linear 160ms;
+  }
+
+  /* The area switch moves into Today's date row. */
+  .workspace--sidebar-closed .notebook-today__phone-tools {
+    display: flex;
+    margin-left: auto;
+  }
+
+  .workspace--sidebar-closed
+    .notebook-today__side-toggle
+    + .notebook-today__phone-tools {
+    margin-left: 0;
+  }
+
+  .workspace--sidebar-closed .notebook-today__area {
+    width: auto;
+  }
+
+  .workspace--sidebar-closed .notebook-today__search {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-sidebar,
+  .workspace--sidebar-closed .workspace-sidebar {
+    transition: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace-sidebar-toggle {
+    display: none;
+  }
+
+  /* The hidden toggle still counts as the header's first child. */
+  .workspace-panel__header > .workspace-sidebar-toggle + * {
+    flex: 1 0 100%;
+    order: 1;
+  }
+
+  .workspace-panel__header > .workspace-sidebar-toggle + * + * {
+    margin-left: auto;
+  }
+}
+
 /* Focused editors: the sidebar shrinks to a 64px icon rail. */
 
 .workspace--rail .workspace-sidebar {
@@ -611,11 +693,13 @@
   gap: var(--space-6);
 }
 
+/* A remembered width gives way on a small window so the note keeps its minimum. */
 @media (min-width: 1000px) {
   .notebook-today {
-    grid-template-columns: minmax(0, 1fr) var(
-        --today-side-width,
-        minmax(16rem, 22rem)
+    grid-template-columns: minmax(0, 1fr) clamp(
+        14rem,
+        var(--today-side-width, 22rem),
+        100% - var(--note-column-min) - var(--space-6)
       );
     align-items: start;
   }
@@ -625,8 +709,49 @@
   min-width: 0;
 }
 
+/* Up to --note-column-max wide, centred; space past that becomes margin. */
+.notebook-column {
+  box-sizing: border-box;
+  padding-inline: max(0px, (100% - var(--note-column-max)) / 2);
+}
+
+/* The sidebar gives way too, once the Today panel is at its own minimum. A
+   collapsed one keeps its full width so its negative margin hides all of it. */
+@media not all and (max-width: 767px) {
+  .workspace-shell:not(.workspace--rail, .workspace--sidebar-closed):has(
+      .notebook-column
+    )
+    .workspace-sidebar {
+    flex-basis: min(
+      var(--workspace-sidebar-width, 15.5rem),
+      max(
+        12rem,
+        100% - 5rem - var(--note-column-min) - var(--note-column-beside, 0px)
+      )
+    );
+  }
+}
+
+@media (min-width: 1000px) {
+  .workspace-shell:has(.notebook-today:not(.notebook-today--side-closed)) {
+    --note-column-beside: calc(14rem + var(--space-6));
+  }
+}
+
 .notebook-today__header {
   align-items: flex-end;
+}
+
+/* Keeps the Tasks toggle on the title row; the date wraps instead. */
+@media not all and (max-width: 767px) {
+  .workspace-action-bar.notebook-today__header {
+    flex-wrap: nowrap;
+  }
+
+  .notebook-today__header > .workspace-toolbar {
+    flex: none;
+    flex-wrap: nowrap;
+  }
 }
 
 .note-menu {
@@ -705,15 +830,81 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin-left: auto;
 }
 
-.notebook-today--side-closed {
-  grid-template-columns: minmax(0, 1fr);
+.notebook-today__side-toggle:focus:not(:focus-visible) {
+  outline: none;
 }
 
-.notebook-today--side-closed .notebook-today__side {
-  display: none;
+.notebook-today__side-toggle[aria-expanded='true'] {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-800);
+}
+
+.notebook-today__side-toggle[aria-expanded='true']:hover:not(:disabled) {
+  background: var(--primary-100);
+}
+
+.notebook-today__side-count {
+  min-width: 1.25rem;
+  padding: 0 var(--space-1);
+  border-radius: 999px;
+  background: var(--primary-100);
+  color: var(--primary-800);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.25rem;
+  text-align: center;
+}
+
+@media (max-width: 999px) {
+  .notebook-today--side-closed .notebook-today__side {
+    display: none;
+  }
+}
+
+/* The closed panel keeps its column at zero width so opening and closing
+   can slide; visibility flips after the slide so its controls leave the
+   tab order. */
+@media (min-width: 1000px) {
+  .notebook-today--side-closed {
+    grid-template-columns: minmax(0, 1fr) 0px;
+    column-gap: 0;
+  }
+
+  .notebook-today--side-closed .notebook-today__side {
+    visibility: hidden;
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  .notebook-today__side > * {
+    min-width: 14rem;
+  }
+}
+
+@media (min-width: 1000px) and (prefers-reduced-motion: no-preference) {
+  .notebook-today {
+    transition:
+      grid-template-columns 180ms ease,
+      column-gap 180ms ease;
+  }
+
+  .notebook-today__side {
+    transition: opacity 180ms ease;
+  }
+
+  .notebook-today--side-closed .notebook-today__side {
+    transition:
+      opacity 180ms ease,
+      visibility 0s 180ms;
+  }
+
+  /* A drag sets the width on every move; easing each one would lag. */
+  .notebook-today:has(.notebook-today__side-resize:active) {
+    transition: none;
+  }
 }
 
 /* In the grid gap, so it never covers the panel's cards. */

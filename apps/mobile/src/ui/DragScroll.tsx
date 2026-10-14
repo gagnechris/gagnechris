@@ -19,8 +19,11 @@ export type DragScroll = {
   setLocked: (locked: boolean) => void;
   /** The scroll offset now, so a dragged row can follow the content. */
   offset: () => number;
-  /** Scrolls while the finger is near the top or bottom edge; null stops. */
-  edgeScroll: (pageY: number | null) => void;
+  /**
+   * Scrolls while the finger is near the top or bottom edge, calling
+   * `onScroll` after each step; null stops.
+   */
+  edgeScroll: (pageY: number | null, onScroll?: () => void) => void;
 };
 
 const DragScrollContext = createContext<DragScroll | null>(null);
@@ -38,6 +41,7 @@ export function useDragScrollView() {
   const maxOffset = useRef(Infinity);
   const frame = useRef({ top: 0, height: 0 });
   const step = useRef(0);
+  const onStep = useRef<(() => void) | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [locked, setLocked] = useState(false);
 
@@ -45,6 +49,7 @@ export function useDragScrollView() {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
     step.current = 0;
+    onStep.current = undefined;
   };
   useEffect(() => stop, []);
 
@@ -52,7 +57,7 @@ export function useDragScrollView() {
     () => ({
       setLocked,
       offset: () => offset.current,
-      edgeScroll: (pageY) => {
+      edgeScroll: (pageY, onScroll) => {
         const { top, height } = frame.current;
         if (pageY === null || height === 0) return stop();
         const fromTop = pageY - top;
@@ -64,6 +69,7 @@ export function useDragScrollView() {
               ? MAX_STEP * (1 - Math.max(0, fromBottom) / EDGE)
               : 0;
         if (step.current === 0) return stop();
+        onStep.current = onScroll;
         timer.current ??= setInterval(() => {
           const next = Math.min(
             maxOffset.current,
@@ -72,6 +78,7 @@ export function useDragScrollView() {
           if (next === offset.current) return;
           offset.current = next;
           ref.current?.scrollTo({ y: next, animated: false });
+          onStep.current?.();
         }, 16);
       },
     }),

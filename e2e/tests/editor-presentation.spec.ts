@@ -21,6 +21,8 @@ const focusStyle = (editor: Locator) =>
 
 // --primary-500
 const RING = 'rgb(61, 150, 144)';
+// --primary-50
+const CARET_LINE = 'rgb(240, 247, 247)';
 
 for (const [name, viewport] of [
   ['desktop', { width: 1440, height: 900 }],
@@ -57,7 +59,7 @@ for (const [name, viewport] of [
       expect((await focusStyle(editor)).ring).toContain(RING);
     });
 
-    test('a focused note editor shows the frame ring, not a dotted outline', async ({
+    test('a focused note editor has no frame or dotted outline, and a light teal caret line', async ({
       page,
       apps,
       signIn,
@@ -70,11 +72,14 @@ for (const [name, viewport] of [
       await editor.locator('.cm-content').click();
       await expect
         .poll(() => focusStyle(editor))
-        .toMatchObject({
-          focused: true,
-          outline: 'none',
-          border: RING,
-        });
+        .toMatchObject({ focused: true, outline: 'none', ring: 'none' });
+      expect(
+        await editor.evaluate((el) => getComputedStyle(el).borderTopStyle),
+      ).toBe('none');
+      await expect(editor.locator('.cm-activeLine')).toHaveCSS(
+        'background-color',
+        CARET_LINE,
+      );
 
       const hint = page.locator('.kit-hint', { hasText: 'adds a task' });
       if (name === 'phone') {

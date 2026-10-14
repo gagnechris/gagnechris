@@ -12,6 +12,7 @@ import { Field, Select, TextInput } from '../kit/Field';
 import { SnoozeMenu } from '../kit/tasks/SnoozeMenu';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
+import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
@@ -99,8 +100,9 @@ export default function NotebookTaskPage() {
   const toggleDone = () => toggleTask(entity);
 
   return (
-    <section className="workspace-panel workspace-panel--editor">
+    <section className="workspace-panel workspace-panel--editor notebook-column">
       <div className="workspace-action-bar">
+        <SidebarToggle />
         <div className="workspace-action-bar__status">
           <Link to="/tasks" className="workspace-back">
             ← Tasks

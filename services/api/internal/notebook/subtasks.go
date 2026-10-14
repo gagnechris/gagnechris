@@ -3,8 +3,12 @@ package notebook
 import (
 	"context"
 	"errors"
+	"slices"
+	"time"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
+	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
+	"github.com/gagnechris/gagnechris/services/api/internal/keys"
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
@@ -109,17 +113,21 @@ func (h handlers) renest(ctx context.Context, userID string, t Task) (Task, erro
 }
 
 // clearSubtasks takes deleted parent off its subtasks. A subtask's home
-// note embeds its parent, so only those notes' tasks are read.
+// note embeds its parent and nested it on a save after the parent existed,
+// so only the parent's home note, daily notes from the day before it was
+// created and pages saved since then are read. A subtask homed in an older
+// note keeps the dead parent until that note's next save drops it.
 func (h handlers) clearSubtasks(ctx context.Context, userID string, parent Task, onCorrupt func(*api.DataIntegrityError)) error {
-	notes, err := CollectPages(maxSubtaskScan, func(cursor string) (store.Page[Note], error) {
-		return h.notes.list(ctx, userID, listNotesQuery{area: parent.Area, taskID: parent.ID, cursor: cursor, limit: 100}, onCorrupt)
-	}, keepAll[Note])
+	homes, err := h.notes.embeddingSince(ctx, userID, parent, onCorrupt)
 	if err != nil {
 		return err
 	}
-	for _, n := range notes {
+	if parent.NoteID != nil && !slices.Contains(homes, *parent.NoteID) {
+		homes = append(homes, *parent.NoteID)
+	}
+	for _, noteID := range homes {
 		tasks, err := CollectPages(maxSubtaskScan, func(cursor string) (store.Page[Task], error) {
-			return h.tasks.listByNote(ctx, userID, listTasksQuery{noteID: n.ID, cursor: cursor, limit: 100}, onCorrupt)
+			return h.tasks.listByNote(ctx, userID, listTasksQuery{noteID: noteID, cursor: cursor, limit: 100}, onCorrupt)
 		}, keepAll[Task])
 		if err != nil {
 			return err
@@ -134,6 +142,36 @@ func (h handlers) clearSubtasks(ctx context.Context, userID string, parent Task,
 		}
 	}
 	return nil
+}
+
+// embeddingSince is the ids of notes in task's area that embed it and were
+// dated or saved no earlier than the day before it was created. The day
+// covers daily dates in the user's time zone and clock skew.
+func (r *notesRepo) embeddingSince(ctx context.Context, userID string, task Task, onCorrupt func(*api.DataIntegrityError)) ([]string, error) {
+	created, err := time.Parse(time.RFC3339Nano, task.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	since := created.Add(-24 * time.Hour)
+	ranges := []*skRange{
+		{"DATE#" + since.Format("2006-01-02"), "DATE#\uffff"},
+		{"PAGE#" + jstime.ISO(since), "PAGE#\uffff"},
+	}
+	embeds := listNotesQuery{taskID: task.ID}.keep()
+	var ids []string
+	for _, rng := range ranges {
+		notes, err := CollectPages(maxSubtaskScan, func(cursor string) (store.Page[Note], error) {
+			return gsi1Page(ctx, r.table, keys.NotebookAreaGSI1Pk(userID, task.Area), rng, cursor, 100, store.PageByteBudget,
+				r.base.parse, func(n Note) bool { return n.Deleted }, embeds, onCorrupt)
+		}, keepAll[Note])
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range notes {
+			ids = append(ids, n.ID)
+		}
+	}
+	return ids, nil
 }
 
 func keepAll[T any](T) bool { return true }
