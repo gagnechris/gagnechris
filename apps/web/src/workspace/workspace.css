@@ -658,12 +658,33 @@
   color: var(--neutral-600);
 }
 
+.notebook-today__title {
+  min-width: 0;
+}
+
+/* A last resort under the phone title size below. */
 .notebook-today__title h1 {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .notebook-today__side {
   min-width: 0;
+}
+
+.notebook-today__side-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.notebook-today--side-closed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notebook-today--side-closed .notebook-today__side {
+  display: none;
 }
 
 .notebook-today__template {
@@ -1161,7 +1182,8 @@
 @media (max-width: 767px) {
   .workspace-panel h1,
   .users-page h1 {
-    font-size: 2rem;
+    /* Shrinks on the narrowest phones, where "Wednesday," alone is too wide. */
+    font-size: min(2rem, 13vw);
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: -0.02em;
@@ -1516,6 +1538,7 @@
 /* Phones: the note fills the page; the task lists live in a bottom sheet. */
 
 @media (max-width: 767px) {
+  .notebook-today__side-toggle,
   .notebook-today__side,
   .notebook-today__kicker,
   .notebook-today__day-nav [aria-label='Jump to today']:disabled {

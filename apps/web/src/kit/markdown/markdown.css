@@ -876,6 +876,10 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   text-underline-offset: 2px;
 }
 
+.markdown-editor .cm-live .cm-line:not(.cm-activeLine) .cm-md-link {
+  cursor: pointer;
+}
+
 .markdown-editor .cm-live .cm-md-quote {
   border-left: 3px solid var(--neutral-300);
   padding-left: var(--space-3);
