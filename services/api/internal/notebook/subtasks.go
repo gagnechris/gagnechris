@@ -35,7 +35,8 @@ func (r *tasksRepo) setParent(ctx context.Context, userID, id string, parentID *
 }
 
 // parentsIn is the parent each task gets from note's indentation: a live
-// task in the same area, or none.
+// task in the same area that is not a subtask itself, or none. A parent
+// whose home is note gets no parent from it, so its stored one is stale.
 func (r *tasksRepo) parentsIn(ctx context.Context, userID string, note Note, tasks []Task) (map[string]*string, error) {
 	nesting := map[string]string{}
 	var parentIDs []string
@@ -56,7 +57,7 @@ func (r *tasksRepo) parentsIn(ctx context.Context, userID string, note Note, tas
 	out := map[string]*string{}
 	for _, t := range tasks {
 		var want *string
-		if p, ok := parents[nesting[t.ID]]; ok && p.Area == t.Area {
+		if p, ok := parents[nesting[t.ID]]; ok && p.Area == t.Area && (p.ParentID == nil || sameParent(p.NoteID, &note.ID)) {
 			want = &p.ID
 		}
 		out[t.ID] = want

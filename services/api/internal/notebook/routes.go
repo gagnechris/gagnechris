@@ -701,8 +701,12 @@ func (h handlers) updateTask(ctx context.Context, r *api.Request) (*api.Response
 		return nil, e.IfMatchConflict(err)
 	}
 	if f.hasNote || f.area != nil {
-		if t, err = h.renest(ctx, r.UserID(), t); err != nil {
-			return nil, err
+		// The update is committed: a failed renest is logged, and the next
+		// save of the home note retries it.
+		if nested, err := h.renest(ctx, r.UserID(), t); err != nil {
+			r.Log.Warn("Subtask nesting failed", "taskId", t.ID, "errMessage", err.Error())
+		} else {
+			t = nested
 		}
 	}
 	return taskResponse(http.StatusOK, t)
