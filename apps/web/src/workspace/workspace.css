@@ -5,6 +5,9 @@
 }
 
 .workspace-shell {
+  /* Notebook writing column; the min matches NOTE_COLUMN_MIN. */
+  --note-column-max: 45rem;
+  --note-column-min: 30rem;
   /* 100vh fallback for older browsers; 100dvh tracks mobile Safari chrome.
      --vv-height accounts for the on-screen keyboard. */
   min-height: 100vh;
@@ -690,11 +693,13 @@
   gap: var(--space-6);
 }
 
+/* A remembered width gives way on a small window so the note keeps its minimum. */
 @media (min-width: 1000px) {
   .notebook-today {
-    grid-template-columns: minmax(0, 1fr) var(
-        --today-side-width,
-        minmax(16rem, 22rem)
+    grid-template-columns: minmax(0, 1fr) clamp(
+        14rem,
+        var(--today-side-width, 22rem),
+        100% - var(--note-column-min) - var(--space-6)
       );
     align-items: start;
   }
@@ -702,6 +707,39 @@
 
 .notebook-today__main {
   min-width: 0;
+}
+
+/* Up to --note-column-max wide, centred; space past that becomes margin. */
+.notebook-column {
+  box-sizing: border-box;
+  padding-inline: max(0px, (100% - var(--note-column-max)) / 2);
+}
+
+/* The sidebar gives way too, once the Today panel is at its own minimum. A
+   collapsed one keeps its full width so its negative margin hides all of it. */
+@media not all and (max-width: 767px) {
+  .workspace-shell:not(.workspace--rail, .workspace--sidebar-closed):has(
+      .notebook-column
+    )
+    .workspace-sidebar {
+    flex-basis: min(
+      var(--workspace-sidebar-width, 15.5rem),
+      max(
+        12rem,
+        100% - 5rem - var(--note-column-min) - var(--note-column-beside, 0px)
+      )
+    );
+  }
+}
+
+@media (min-width: 1000px) {
+  .workspace-shell:has(.notebook-today) {
+    --note-column-beside: calc(2.75rem + var(--space-6));
+  }
+
+  .workspace-shell:has(.notebook-today:not(.notebook-today--side-closed)) {
+    --note-column-beside: calc(14rem + var(--space-6));
+  }
 }
 
 .notebook-today__header {

@@ -83,7 +83,7 @@ export default function NotebookNotePage() {
   }
 
   return (
-    <section className="workspace-panel workspace-panel--editor">
+    <section className="workspace-panel workspace-panel--editor notebook-column">
       <div className="workspace-action-bar">
         <SidebarToggle />
         <div className="workspace-action-bar__status">

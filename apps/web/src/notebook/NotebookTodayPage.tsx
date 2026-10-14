@@ -39,6 +39,7 @@ import { useTodayTasks } from './useTodayTasks';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
 import { TodaySideRail } from './TodaySideRail';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
+import { noteColumnRoom } from '../workspace/ui/noteColumn';
 import { readTodaySideOpen, writeTodaySideOpen } from './todaySidePreference';
 
 function resolveDate(param: string | null, today: string): string {
@@ -190,7 +191,7 @@ export default function NotebookTodayPage() {
               : ({ '--today-side-width': `${sideWidth}px` } as CSSProperties)
           }
         >
-          <div className="notebook-today__main" ref={editorRef}>
+          <div className="notebook-today__main notebook-column" ref={editorRef}>
             <div className="notebook-today__day-nav">
               <SidebarToggle />
               <button
@@ -392,6 +393,7 @@ export default function NotebookTodayPage() {
               max={SIDE_MAX}
               edge="left"
               onChange={setSideWidth}
+              room={noteColumnRoom}
               onCollapse={() => {
                 setSide(false);
                 sideToggleRef.current?.focus();

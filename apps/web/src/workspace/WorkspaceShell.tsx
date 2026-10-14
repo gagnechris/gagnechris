@@ -33,6 +33,7 @@ import { visibleNavSections } from './navSections';
 import { ResizeHandle } from './ui/ResizeHandle';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useStoredWidth } from './ui/useStoredWidth';
+import { noteColumnRoom } from './ui/noteColumn';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import { WorkspaceSearchContext } from './workspaceSearch';
 import {
@@ -437,6 +438,7 @@ export function WorkspaceFrame({
                     }
                   : undefined
               }
+              room={noteColumnRoom}
             />
           )}
         </aside>
