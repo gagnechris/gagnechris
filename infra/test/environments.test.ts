@@ -556,6 +556,11 @@ describe('SiteStack', () => {
       certificate,
       appHostsCertificate: certificate,
       alertsTopic,
+      notebookMediaBucket: Bucket.fromBucketName(
+        deps,
+        'NotebookMedia',
+        'notebook-media',
+      ),
     });
     applyStandardTags(site, config);
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
@@ -740,6 +745,7 @@ describe('ApiStack', () => {
       userPool: auth.userPool,
       alertsTopic,
       dataTable: data.table,
+      notebookMediaBucket: data.notebookMediaBucket,
       emailIdentity: email.emailIdentity,
       notifyEmailIdentity: email.notifyEmailIdentity,
       fromEmail: email.fromEmail,

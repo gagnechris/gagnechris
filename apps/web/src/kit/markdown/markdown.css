@@ -995,6 +995,17 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   border-radius: var(--radius-md);
 }
 
+.markdown-editor .cm-md-image--loading,
+.markdown-editor .cm-md-image--broken {
+  width: 12rem;
+  height: 6rem;
+  background: var(--neutral-100);
+}
+
+.markdown-editor .cm-md-image--broken {
+  outline: 1px dashed var(--neutral-300);
+}
+
 @media (max-width: 767px) {
   .markdown-toolbar {
     flex-wrap: wrap;

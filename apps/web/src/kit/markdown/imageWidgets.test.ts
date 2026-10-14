@@ -1,8 +1,8 @@
 import { deleteCharBackward } from '@codemirror/commands';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { afterEach, describe, expect, test } from 'vitest';
-import { markdownImages } from './imageWidgets';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { markdownImages, type ResolveImageSrc } from './imageWidgets';
 
 let view: EditorView | undefined;
 
@@ -12,18 +12,17 @@ afterEach(() => {
   view = undefined;
 });
 
-function setup(doc: string) {
+function setup(
+  doc: string,
+  resolveSrc: ResolveImageSrc = (src) =>
+    src.startsWith('/') ? `https://site.test${src}` : src,
+) {
   view = new EditorView({
     parent: document.body.appendChild(document.createElement('div')),
     state: EditorState.create({
       doc,
       selection: EditorSelection.cursor(doc.length),
-      extensions: [
-        markdownImages({
-          resolveSrc: (src) =>
-            src.startsWith('/') ? `https://site.test${src}` : src,
-        }),
-      ],
+      extensions: [markdownImages({ resolveSrc })],
     }),
   });
   return view;
@@ -47,5 +46,37 @@ describe('markdownImages', () => {
     const v = setup('Intro\n![A chart](/media/a.png)');
     deleteCharBackward(v);
     expect(v.state.doc.toString()).toBe('Intro\n');
+  });
+
+  test('an image whose URL resolves later shows once it does, and edits elsewhere keep it', async () => {
+    let finish!: (url: string) => void;
+    const resolveSrc = vi.fn(
+      () => new Promise<string>((resolve) => (finish = resolve)),
+    );
+    const v = setup(
+      'Intro\n![image](notebook-image:0123456789abcdef.png)',
+      resolveSrc,
+    );
+    const img = v.contentDOM.querySelector('img.cm-md-image')!;
+    expect(img).toHaveClass('cm-md-image--loading');
+    expect(img).not.toHaveAttribute('src');
+
+    finish('https://signed.test/a.png');
+    await vi.waitFor(() =>
+      expect(img).toHaveAttribute('src', 'https://signed.test/a.png'),
+    );
+    expect(img).not.toHaveClass('cm-md-image--loading');
+
+    v.dispatch({ changes: { from: 0, insert: 'More ' } });
+    expect(v.contentDOM.querySelector('img.cm-md-image')).toBe(img);
+    expect(resolveSrc).toHaveBeenCalledTimes(1);
+  });
+
+  test('an image whose URL fails to resolve is marked broken', async () => {
+    const v = setup('![image](notebook-image:0123456789abcdef.png)', () =>
+      Promise.reject(new Error('gone')),
+    );
+    const img = v.contentDOM.querySelector('img.cm-md-image')!;
+    await vi.waitFor(() => expect(img).toHaveClass('cm-md-image--broken'));
   });
 });

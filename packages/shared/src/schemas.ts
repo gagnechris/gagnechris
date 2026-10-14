@@ -242,6 +242,51 @@ export type MediaUploadUrlResponse = z.infer<
   typeof MediaUploadUrlResponseSchema
 >;
 
+/** The markdown `src` of an image in the owner's private Notebook media. */
+export const NOTEBOOK_IMAGE_SRC_PREFIX = 'notebook-image:';
+export const NOTEBOOK_IMAGE_NAME_PATTERN =
+  /^[0-9a-f]{16}\.(?:jpg|png|webp|gif)$/;
+
+export const NotebookImageUploadUrlRequestSchema = z.object({
+  contentType: MediaContentTypeSchema,
+  contentLength: z.number().int().positive().max(MEDIA_MAX_BYTES),
+});
+
+export type NotebookImageUploadUrlRequest = z.infer<
+  typeof NotebookImageUploadUrlRequestSchema
+>;
+
+export const NotebookImageUploadUrlResponseSchema = z.object({
+  uploadUrl: z.string().url(),
+  /** Goes in the note as `![image](<src>)`. */
+  src: z.string().regex(/^notebook-image:[0-9a-f]{16}\.(?:jpg|png|webp|gif)$/),
+  headers: z.object({
+    'Content-Type': z.string(),
+  }),
+  expiresAt: z.string().datetime({ offset: true }),
+});
+
+export type NotebookImageUploadUrlResponse = z.infer<
+  typeof NotebookImageUploadUrlResponseSchema
+>;
+
+export const NotebookImageUrlResponseSchema = z.object({
+  /** A short-lived signed URL, or a `data:` URL from the local stack. */
+  url: z.string().min(1),
+  expiresAt: z.string().datetime({ offset: true }),
+});
+
+export type NotebookImageUrlResponse = z.infer<
+  typeof NotebookImageUrlResponseSchema
+>;
+
+/** The stored image name a markdown `src` points at, if it is a Notebook image. */
+export function notebookImageName(src: string): string | null {
+  if (!src.startsWith(NOTEBOOK_IMAGE_SRC_PREFIX)) return null;
+  const name = src.slice(NOTEBOOK_IMAGE_SRC_PREFIX.length);
+  return NOTEBOOK_IMAGE_NAME_PATTERN.test(name) ? name : null;
+}
+
 /** What the contact form shows for a field error, whichever side caught it. */
 export const CONTACT_FIELD_MESSAGES = {
   name: { missing: 'Name is required', tooLong: 'Name is too long' },

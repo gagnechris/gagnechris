@@ -20,7 +20,7 @@ import type { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket, type IBucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -56,6 +56,7 @@ export interface ApiStackProps extends StackProps {
   readonly userPool: IUserPool;
   readonly alertsTopic: ITopic;
   readonly dataTable: ITable;
+  readonly notebookMediaBucket: IBucket;
   readonly emailIdentity: IEmailIdentity;
   /** Required in the SES sandbox: SendEmail also authorizes the destination identity. */
   readonly notifyEmailIdentity: IEmailIdentity;
@@ -74,6 +75,7 @@ export class ApiStack extends Stack {
       userPool,
       alertsTopic,
       dataTable,
+      notebookMediaBucket,
       emailIdentity,
       notifyEmailIdentity,
       fromEmail,
@@ -116,16 +118,24 @@ export class ApiStack extends Stack {
       alertsTopic,
       alarmNamePrefix: `gagnechris-${config.name}-api-go`,
       iam5NagReason:
-        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, and SES send on the domain identity.',
+        'X-Ray tracing wildcards, DynamoDB index/*, scoped s3:PutObject on media/*, s3:GetObject and s3:PutObject on the Notebook media images/*, and SES send on the domain identity.',
       iam5NagAppliesTo: [
         'Resource::*',
         'Action::s3:Abort*',
         { regex: '/^Resource::.*/index*/g' },
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/*/g' },
+        'Action::s3:GetObject*',
+        'Action::s3:GetBucket*',
+        'Action::s3:List*',
+        {
+          regex:
+            '/^Resource::<NotebookMedia[A-Za-z0-9]+\\.Arn>\\/images\\/\\*$/g',
+        },
       ],
       environment: {
         DATA_TABLE_NAME: dataTable.tableName,
         SITE_BUCKET_NAME: siteBucketName,
+        NOTEBOOK_MEDIA_BUCKET_NAME: notebookMediaBucket.bucketName,
         CONTACT_TO_EMAIL: config.alertsEmail,
         CONTACT_FROM_EMAIL: fromEmail,
         SITE_APEX_DOMAIN: config.domainName,
@@ -138,6 +148,9 @@ export class ApiStack extends Stack {
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only; objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
+    // Presigned PUT and GET; the bucket has no other reader.
+    notebookMediaBucket.grantPut(this.apiFunction, 'images/*');
+    notebookMediaBucket.grantRead(this.apiFunction, 'images/*');
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
     // Users & access. No delete: removing someone keeps their account and Notebook.

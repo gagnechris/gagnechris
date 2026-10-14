@@ -1,16 +1,21 @@
 // What the local stack adds around the API that prod gets from AWS: the
-// site bucket's CORS rule for media PUTs and the publisher's stream trigger.
+// bucket CORS rules for media and Notebook image PUTs and the publisher's
+// stream trigger.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { isPublishRelevantAdminMutation } from '@gagnechris/data';
 import { rebuildPublishedSite } from '@gagnechris/publisher/rebuild';
 
 // Local upload URLs point at the API, so the browser PUT is cross-origin like
-// the prod PUT to the site bucket, which allows it with a CORS rule.
-const MEDIA_OBJECTS_PREFIX = '/api/admin/media/objects/';
+// the prod PUT to a bucket, which allows it with a CORS rule.
+const OBJECT_PREFIXES = [
+  '/api/admin/media/objects/',
+  '/api/notebook/images/objects/',
+];
 
 // Returns true when it answered the request (a preflight).
 export function mediaCors(req: IncomingMessage, res: ServerResponse): boolean {
-  if (!(req.url || '').startsWith(MEDIA_OBJECTS_PREFIX)) return false;
+  const url = req.url || '';
+  if (!OBJECT_PREFIXES.some((prefix) => url.startsWith(prefix))) return false;
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'PUT');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');

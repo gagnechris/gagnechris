@@ -168,6 +168,7 @@ export async function startStack(): Promise<Stack> {
     DATA_TABLE_NAME: `gagnechris-e2e-${runId}`,
     SITE_STORAGE: 'filesystem',
     SITE_BUCKET_NAME: siteRoot,
+    NOTEBOOK_MEDIA_BUCKET_NAME: join(runDir, 'notebook-media'),
     USER_DIRECTORY: 'memory',
     CLOUDFRONT_DISTRIBUTION_ID: 'local',
     LOCAL_KVS_FILE: join(runDir, 'kvs.json'),

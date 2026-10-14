@@ -8,6 +8,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contact"
 	"github.com/gagnechris/gagnechris/services/api/internal/media"
+	"github.com/gagnechris/gagnechris/services/api/internal/noteimages"
 )
 
 // config is everything the API reads from its environment, read once at
@@ -18,6 +19,7 @@ type config struct {
 	clients  api.ClientIDs
 	contact  contact.Config
 	media    media.Config
+	images   noteimages.Config
 	// userPoolID is the Cognito pool; memoryUsers replaces it outside Lambda.
 	userPoolID  string
 	memoryUsers bool
@@ -34,6 +36,7 @@ var lambdaRequired = []string{
 	"NOTEBOOK_WEB_CLIENT_ID",
 	"IOS_CLIENT_ID",
 	"SITE_BUCKET_NAME",
+	"NOTEBOOK_MEDIA_BUCKET_NAME",
 	"CONTACT_FROM_EMAIL",
 	"CONTACT_TO_EMAIL",
 	"USER_POOL_ID",
@@ -55,6 +58,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 			ApexDomain: env("SITE_APEX_DOMAIN"),
 		},
 		media:      media.Config{Bucket: env("SITE_BUCKET_NAME")},
+		images:     noteimages.Config{Bucket: env("NOTEBOOK_MEDIA_BUCKET_NAME")},
 		userPoolID: env("USER_POOL_ID"),
 	}
 	if c.inLambda {
@@ -115,6 +119,8 @@ func loadConfig(getenv func(string) string) (config, error) {
 			}
 			c.media.LocalOrigin = "http://127.0.0.1:" + port
 		}
+		c.images.Filesystem = true
+		c.images.LocalOrigin = c.media.LocalOrigin
 	}
 	return c, nil
 }

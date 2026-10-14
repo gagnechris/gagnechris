@@ -7,6 +7,28 @@ import {
 } from '@gagnechris/app-core';
 import { localDateString } from '@gagnechris/shared';
 import { buildNotebookExportZip, triggerBlobDownload } from './exportNotebook';
+import { notebookImageNames, notebookImageResolver } from './notebookImages';
+
+/** Each image the notes and tasks show; one that no longer loads is left out. */
+async function collectImages(
+  getClient: Parameters<typeof notebookImageResolver>[0],
+  markdown: string[],
+): Promise<Record<string, Uint8Array>> {
+  const resolve = notebookImageResolver(getClient);
+  const names = new Set(markdown.flatMap(notebookImageNames));
+  const images: Record<string, Uint8Array> = {};
+  await Promise.all(
+    [...names].map(async (name) => {
+      try {
+        const res = await fetch(await resolve(`notebook-image:${name}`));
+        if (res.ok) images[name] = new Uint8Array(await res.arrayBuffer());
+      } catch {
+        // Left out of the zip; the note still names it.
+      }
+    }),
+  );
+  return images;
+}
 
 /** Every page of a cursor-paged list. */
 async function collectAllPages<T>(
@@ -42,7 +64,16 @@ export function useNotebookExport() {
         fetchDailyTemplate(client, 'work'),
         fetchDailyTemplate(client, 'personal'),
       ]);
-      const { blob } = buildNotebookExportZip(notes, tasks, [work, personal]);
+      const images = await collectImages(getClient, [
+        ...notes.filter((n) => !n.deleted).map((n) => n.bodyMarkdown),
+        ...tasks.filter((t) => !t.deleted).map((t) => t.description),
+      ]);
+      const { blob } = buildNotebookExportZip(
+        notes,
+        tasks,
+        [work, personal],
+        images,
+      );
       triggerBlobDownload(blob, `notebook-export-${localDateString()}.zip`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Export failed');

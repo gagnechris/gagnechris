@@ -1,3 +1,4 @@
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Aspects, App, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
@@ -43,6 +44,11 @@ function siteTemplate(): Template {
     certificate,
     appHostsCertificate: certificate,
     alertsTopic,
+    notebookMediaBucket: Bucket.fromBucketName(
+      deps,
+      'NotebookMedia',
+      'notebook-media',
+    ),
   });
   applyStandardTags(site, config);
   Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
@@ -50,6 +56,40 @@ function siteTemplate(): Template {
 }
 
 describe('stack Template assertions', () => {
+  it('DataStack keeps Notebook images in a private, versioned bucket the notebook host can PUT to and read', () => {
+    const app = new App();
+    const config = getEnvironment('prod', testEnv);
+    const deps = new Stack(app, 'DataMediaDeps', {
+      env: { account: config.account, region: config.region },
+    });
+    const data = new DataStack(app, 'Data-prod', {
+      env: { account: config.account, region: config.region },
+      config,
+      alertsTopic: new Topic(deps, 'Alerts', { enforceSSL: true }),
+    });
+    const template = Template.fromStack(data);
+    template.hasResource('AWS::S3::Bucket', {
+      DeletionPolicy: 'Retain',
+      Properties: Match.objectLike({
+        PublicAccessBlockConfiguration: {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        },
+        VersioningConfiguration: { Status: 'Enabled' },
+        CorsConfiguration: {
+          CorsRules: [
+            Match.objectLike({
+              AllowedMethods: ['PUT', 'GET'],
+              AllowedOrigins: ['https://notebook.gagnechris.com'],
+            }),
+          ],
+        },
+      }),
+    });
+  });
+
   it('DataStack matches APP_TABLE keys and GSIs', () => {
     const app = new App();
     const config = getEnvironment('prod', testEnv);
@@ -503,6 +543,7 @@ describe('stack Template assertions', () => {
       userPool: auth.userPool,
       alertsTopic,
       dataTable: data.table,
+      notebookMediaBucket: data.notebookMediaBucket,
       emailIdentity: email.emailIdentity,
       notifyEmailIdentity: email.notifyEmailIdentity,
       fromEmail: email.fromEmail,
@@ -578,6 +619,7 @@ describe('stack Template assertions', () => {
           POWERTOOLS_SERVICE_NAME: 'gagnechris-api',
           CONTACT_TO_EMAIL: config.alertsEmail,
           SITE_BUCKET_NAME: Match.anyValue(),
+          NOTEBOOK_MEDIA_BUCKET_NAME: Match.anyValue(),
           USER_POOL_ID: Match.anyValue(),
         }),
       },

@@ -226,7 +226,7 @@ AWS_PROFILE=gagnechris-admin npm run cdk -- deploy Guardrails-prod Site-prod --r
 
 - Two `AppHost` constructs in `Site-prod`, one distribution each on `AppHostsCertificate`. Each has its own private, versioned bucket (access logs under `s3-admin/` / `s3-notebook/`, CloudFront logs under `cloudfront-admin/` / `cloudfront-notebook/` in `AccessLogs`), no AWS Backup (build output only).
 - Behaviours: default (`HtmlCachePolicy`) and `/assets/*` (`AssetsCachePolicy`) from the host's bucket, `/api/*` to the HTTP API (same as the apex, `api-security-headers`). Admin also serves `/media/*` from the **site** bucket, so the site bucket policy grants the admin distribution `GetObject` and `ListBucket`.
-- Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:` (+ `https://gagnechris.com` on admin, for the Home and Resume preview images), `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows only `https://admin.gagnechris.com`, for those PUTs.
+- Response headers: `gagnechris-prod-admin-app-security-headers` / `gagnechris-prod-notebook-app-security-headers`. Same base CSP as the apex plus `script-src 'self'`, `img-src 'self' data:` (+ `https://gagnechris.com` on admin, for the Home and Resume preview images), `connect-src 'self'` + Cognito (+ the site bucket's regional host on admin, for presigned media PUTs). The notebook policy adds the `NotebookMedia` bucket's regional host to `img-src` and `connect-src`, for signed image uploads and reads. No Google hosts. HSTS (preload), nosniff, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`. The site bucket CORS allows only `https://admin.gagnechris.com`, for those PUTs.
 - Viewer-request `gagnechris-prod-app-viewer-request` (`infra/lib/cloudfront/app-viewer-request.js`, no KVS): `/api`, `/assets`, `/media`, `/.well-known` and any path whose last segment has a dot pass through; everything else → `/index.html`. No distribution-wide error pages.
 - Content is the admin and Notebook builds (`apps/web/dist-admin/`, `dist-notebook/`), shipped by `scripts/deploy-web.sh` (see Web deploy pipeline). When a host is created, CDK writes a placeholder `index.html` (no script) to its bucket so the host answers 200 before the first app deploy. It runs on create only, so web deploys are not overwritten.
 - 5xx alarms `gagnechris-prod-admin-cloudfront-5xx`, `gagnechris-prod-notebook-cloudfront-5xx`.
@@ -285,6 +285,8 @@ Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb
 ## DynamoDB data plane
 
 `Data-prod`: on-demand single table `gagnechris-prod` (PITR, deletion protection, `RETAIN`, Streams `NEW_AND_OLD_IMAGES`). Schema (keys + GSIs + billing + stream + TTL attribute) lives in `@gagnechris/data` `APP_TABLE` and is shared with `scripts/local/bootstrap-table.ts` and the HTTP suite through `appTableCreateInput` (creates with stream spec, adds missing GSIs, documents TTL). Key design: `docs/data-model.md`.
+
+`Data-prod` also owns `NotebookMedia`, the private bucket for images pasted into Notebook notes (`images/<user sub>/…`; see `docs/architecture.md`, Notebook images). Block public access, SSE-S3, versioned with noncurrent versions expiring after 90 days, `RETAIN`, no server access logs (the access-logs bucket is in Site, which deploys after Data). Only the API's role can read or write `images/*`; the browser uses URLs the API signs. AWS Backup does not cover it: versioning is the recovery path for an overwritten or deleted image, and the Notebook export includes each image a note shows.
 
 **GSI updates (one index per deploy):** CloudFormation allows at most one GSI create or delete per table update. Key-schema or projection changes count as delete + create and must be split across deploys.
 
@@ -520,6 +522,7 @@ Archive layout:
 
 - `notes/daily/*.md` and `notes/pages/*.md` — one Markdown file per non-deleted note (YAML frontmatter: `id`, `area`, `type`, `date`, `title`, `pinned`, `tags`, `updatedAt`; every string is double-quoted, so any YAML parser reads it back unchanged); task embeds are written as described in `docs/data-model.md` (Task embeds)
 - `tasks.json` — all non-deleted tasks
+- `images/` — each image a note or task shows (`notebook-image:` srcs in notes are rewritten to `../../images/<name>`; one that no longer loads is left out)
 - `templates/work.md` and `templates/personal.md` — the daily note templates, placeholders unfilled
 - `README.md` — short description of the archive
 
@@ -714,7 +717,7 @@ SSM: `/gagnechris/prod/cognito-user-pool-id`, `cognito-admin-web-client-id`, `co
 - Users are managed in Admin under **Settings › Users & access** (`/settings/users`), which calls `/api/admin/users*` (`docs/architecture.md`, Users and access). Removing someone never deletes their Cognito user or Notebook; don't delete pool users by hand either, since a deleted user's Notebook data is orphaned under a `sub` nobody can sign in as. Invite emails come from the Cognito default sender, which has a low daily limit.
 - An ID token minted before you joined a group has no such entry in `cognito:groups`. The API client refreshes the token and retries once on 403. If it still shows 403, sign out and back in.
 - API Gateway has two JWT authorizers on the pool issuer: `CognitoJwtAdmin` on `/api/admin*` (audiences `admin-web` and `ios`) and `CognitoJwtNotebook` on `/api/notebook*` (audiences `notebook-web` and `ios`). The iOS app has Notebook and Admin spaces, so its client is in both audiences; the Lambda's group checks still gate every route. The Lambda gets `ADMIN_WEB_CLIENT_ID`, `NOTEBOOK_WEB_CLIENT_ID` and `IOS_CLIENT_ID`, which Api reads from SSM (not Auth exports).
-- The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API + site bucket) has no localhost origins.
+- The `ios` client trusts only `https://notebook.gagnechris.com/ios/auth/callback` and `/ios/auth/signed-out`. `admin-web` trusts only `https://admin.gagnechris.com/auth/callback` and `https://admin.gagnechris.com/`; `notebook-web` only the same paths on `notebook.gagnechris.com`. Prod CORS (API, site bucket and Notebook media bucket) has no localhost origins.
 - `dev-local` client: localhost:5173, :5174 and :5175 callbacks only, for exercising managed login from local Vite. No API authorizer lists it as an audience, so its tokens can't call prod admin or notebook routes. Local CMS work uses `npm run local:dev` (fake auth).
 
 ### Orphan / leftover user pools

@@ -34,6 +34,7 @@ import {
   Bucket,
   BucketEncryption,
   HttpMethods,
+  type IBucket,
   ObjectOwnership,
   StorageClass,
 } from 'aws-cdk-lib/aws-s3';
@@ -73,6 +74,8 @@ export interface SiteStackProps extends StackProps {
   /** admin. + notebook. */
   readonly appHostsCertificate: ICertificate;
   readonly alertsTopic: ITopic;
+  /** The notebook host's CSP lets its signed upload and image URLs through. */
+  readonly notebookMediaBucket: IBucket;
 }
 
 export class SiteStack extends Stack {
@@ -149,6 +152,7 @@ export class SiteStack extends Stack {
     const cognitoOrigins = `https://auth.${config.domainName} https://cognito-idp.${region}.amazonaws.com`;
     // Presigned media PUTs go to this bucket's regional host only.
     const uploadOrigin = `https://${this.siteBucket.bucketRegionalDomainName}`;
+    const notebookMediaOrigin = `https://${props.notebookMediaBucket.bucketRegionalDomainName}`;
     const securityHeaders = new ResponseHeadersPolicy(this, 'SecurityHeaders', {
       responseHeadersPolicyName: `gagnechris-${config.name}-security-headers`,
       comment: 'HSTS, CSP (GA4), and browser hardening',
@@ -384,7 +388,10 @@ export class SiteStack extends Stack {
       ...appHostCommon,
       appName: 'notebook',
       domainName: NOTEBOOK_HOST,
-      securityHeadersBehavior: appCsp([cognitoOrigins]),
+      securityHeadersBehavior: appCsp(
+        [cognitoOrigins, notebookMediaOrigin],
+        [notebookMediaOrigin],
+      ),
       apiBehavior: apiBehavior(),
       bucketParamKey: 'notebookSiteBucketName',
       distributionParamKey: 'notebookDistributionId',
