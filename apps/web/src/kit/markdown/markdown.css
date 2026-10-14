@@ -1001,8 +1001,8 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   background-color: var(--primary-50);
 }
 
-/* The note sits on the page; its text inset hangs left so it lines up with
-   the title. */
+/* The white page is the note's surface, so no frame; its text inset hangs
+   left so it lines up with the title. */
 .notebook-column
   > .markdown-workspace--single
   > .markdown-single--notebook
