@@ -43,6 +43,7 @@
       "project",
       "home",
       "removedUser",
+      "userRevocation",
       "resume",
       "contact",
       "note",
@@ -91,6 +92,8 @@
     "sitePublishSk()": "META",
     "removedUsersPk()": "REMOVED_USERS",
     "removedUserSk({userId})": "USER#{userId}",
+    "userRevocationsPk()": "USER_REVOCATIONS",
+    "userRevocationSk({userId})": "USER#{userId}",
     "notePk({userId},{noteId})": "USER#{userId}#NOTE#{noteId}",
     "noteMetaSk()": "META",
     "taskPk({userId},{taskId})": "USER#{userId}#TASK#{taskId}",
@@ -884,6 +887,45 @@
         "previousLevel",
         "createdAt",
         "removedBy"
+      ]
+    },
+    "userRevocation": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "userRevocation"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revokedBefore": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ttl": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "userId",
+        "revokedBefore",
+        "ttl"
       ]
     },
     "resume": {
@@ -2377,6 +2419,14 @@
       "previousLevel": null,
       "createdAt": "2026-10-01T12:00:00.000Z",
       "removedBy": "user-sub-1"
+    },
+    "userRevocation": {
+      "pk": "USER_REVOCATIONS",
+      "sk": "USER#user-sub-2",
+      "entityType": "userRevocation",
+      "userId": "user-sub-2",
+      "revokedBefore": "2026-10-01T12:00:00.000Z",
+      "ttl": 1790942400
     }
   },
   "textCases": {

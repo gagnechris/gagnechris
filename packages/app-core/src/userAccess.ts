@@ -58,7 +58,7 @@ export function accessChange(
     gains.length ? `${who} gains ${joinAnd(gains)}.` : null,
     losses.length ? `${who} loses ${joinAnd(losses)}.` : null,
     losses.length
-      ? 'Saving signs them out everywhere, so they can’t start a new session; a tab they already have open stops working within the hour.'
+      ? 'Saving signs them out everywhere, so they can’t start a new session; a tab they already have open stops working within a minute.'
       : 'It applies the next time they open the app.',
   ];
   return {

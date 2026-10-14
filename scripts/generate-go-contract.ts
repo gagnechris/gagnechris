@@ -61,6 +61,8 @@ import {
   rateSesGlobalPk,
   removedUserSk,
   removedUsersPk,
+  userRevocationSk,
+  userRevocationsPk,
   resumePk,
   sitePublishPk,
   sitePublishSk,
@@ -210,6 +212,8 @@ const KEYS: Record<string, string> = {
   'sitePublishSk()': sitePublishSk(),
   'removedUsersPk()': removedUsersPk(),
   'removedUserSk({userId})': removedUserSk('{userId}'),
+  'userRevocationsPk()': userRevocationsPk(),
+  'userRevocationSk({userId})': userRevocationSk('{userId}'),
   'notePk({userId},{noteId})': notePk('{userId}', '{noteId}'),
   'noteMetaSk()': noteMetaSk(),
   'taskPk({userId},{taskId})': taskPk('{userId}', '{taskId}'),
@@ -401,6 +405,14 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     previousLevel: null,
     createdAt: TS,
     removedBy: USER,
+  },
+  userRevocation: {
+    pk: userRevocationsPk(),
+    sk: userRevocationSk('user-sub-2'),
+    entityType: 'userRevocation',
+    userId: 'user-sub-2',
+    revokedBefore: TS,
+    ttl: 1_790_942_400,
   },
 };
 

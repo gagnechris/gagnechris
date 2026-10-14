@@ -48,6 +48,8 @@ export {
   rateSesGlobalPk,
   removedUserSk,
   removedUsersPk,
+  userRevocationSk,
+  userRevocationsPk,
   resumeMetaSk,
   resumePk,
   resumePublishedSk,

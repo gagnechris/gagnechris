@@ -36,6 +36,8 @@ func TestKeysMatchTheTypeScriptBuilders(t *testing.T) {
 		"sitePublishSk()":                                SitePublishSk(),
 		"removedUsersPk()":                               RemovedUsersPk(),
 		"removedUserSk({userId})":                        RemovedUserSk("{userId}"),
+		"userRevocationsPk()":                            UserRevocationsPk(),
+		"userRevocationSk({userId})":                     UserRevocationSk("{userId}"),
 		"notePk({userId},{noteId})":                      NotePk("{userId}", "{noteId}"),
 		"noteMetaSk()":                                   NoteMetaSk(),
 		"taskPk({userId},{taskId})":                      TaskPk("{userId}", "{taskId}"),

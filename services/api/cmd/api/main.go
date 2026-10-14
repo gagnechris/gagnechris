@@ -27,6 +27,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/posts"
 	"github.com/gagnechris/gagnechris/services/api/internal/projects"
 	"github.com/gagnechris/gagnechris/services/api/internal/resume"
+	"github.com/gagnechris/gagnechris/services/api/internal/revocation"
 	"github.com/gagnechris/gagnechris/services/api/internal/search"
 	"github.com/gagnechris/gagnechris/services/api/internal/users"
 )
@@ -55,8 +56,9 @@ func main() {
 		mailer = &contact.Outbox{File: conf.outboxFile, Log: logger}
 	}
 
+	sessions := revocation.New(table, time.Now)
 	app := api.NewApp(
-		api.NewRouter(allRoutes(conf, table, mailer, cfg), conf.clients),
+		api.NewRouter(allRoutes(conf, table, mailer, cfg, sessions), conf.clients).WithRevocations(sessions),
 		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
@@ -68,8 +70,8 @@ func main() {
 	log.Fatal(serveHTTP(app, conf, logger))
 }
 
-func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Config) []api.Route {
-	userDeps := users.Deps{Table: table, AWS: cfg, UserPoolID: conf.userPoolID}
+func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Config, sessions users.Sessions) []api.Route {
+	userDeps := users.Deps{Table: table, Sessions: sessions, AWS: cfg, UserPoolID: conf.userPoolID}
 	if conf.memoryUsers {
 		userDeps.Directory = users.LocalDirectory(time.Now)
 	}

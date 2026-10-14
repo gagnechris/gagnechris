@@ -65,9 +65,25 @@ func (e *conflictError) Error() string { return e.message }
 // admin keeps the pool manageable, whatever the UI allows: nobody changes
 // their own access, and at least one enabled Full Admin always remains.
 type admin struct {
-	dir     Directory
-	removed removedStore
-	actor   string
+	dir      Directory
+	removed  removedStore
+	sessions Sessions
+	actor    string
+}
+
+// Sessions ends the sessions a user already holds, past what signing them
+// out of Cognito does.
+type Sessions interface {
+	Revoke(ctx context.Context, userID string) error
+}
+
+// endSessions: global sign-out stops refreshes, and the revocation refuses
+// the tokens already issued.
+func (a admin) endSessions(ctx context.Context, id string) error {
+	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+		return err
+	}
+	return a.sessions.Revoke(ctx, id)
 }
 
 var byEmail = collate.New(language.Und)
@@ -165,7 +181,7 @@ func (a admin) setAccess(ctx context.Context, id, level string) (ManagedUser, er
 		}
 	}
 	if dropped > 0 {
-		if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+		if err := a.endSessions(ctx, id); err != nil {
 			return ManagedUser{}, err
 		}
 	}
@@ -186,7 +202,7 @@ func (a admin) disable(ctx context.Context, id string) (ManagedUser, error) {
 	if err := a.dir.DisableUser(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)
@@ -199,7 +215,7 @@ func (a admin) signOut(ctx context.Context, id string) (ManagedUser, error) {
 	if _, err := a.requireActive(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)
@@ -248,7 +264,7 @@ func (a admin) remove(ctx context.Context, id string) (ManagedUser, error) {
 	if err := a.dir.DisableUser(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)

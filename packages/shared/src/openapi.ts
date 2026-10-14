@@ -427,7 +427,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     ['enable', 'Enable sign-in'],
     [
       'sign-out',
-      'Sign the user out everywhere; their open sessions end within the hour',
+      'Sign the user out everywhere; tokens they already hold stop working within a minute',
     ],
     [
       'remove',
