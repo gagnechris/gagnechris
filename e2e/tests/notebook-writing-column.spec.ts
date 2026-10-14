@@ -62,6 +62,15 @@ const leftEdges = (page: Page) =>
     };
   });
 
+/** Closes the task panel and waits out its slide. */
+async function hideTasks(page: Page) {
+  await page.getByRole('button', { name: /^Tasks/, expanded: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.notebook-today')!.getAnimations().length === 0,
+  );
+}
+
 test.beforeEach(async ({ seed, signIn, apps, page, prefix }) => {
   await seed.daily(DAY, `${prefix} ${LONG_LINE}`);
   await signIn();
@@ -74,7 +83,7 @@ test('at 1440px with the task panel and sidebar closed, note lines stay within 7
   prefix,
 }) => {
   await openToday(page, apps.notebook, 1440, prefix);
-  await page.getByRole('button', { name: /Hide tasks/ }).click();
+  await hideTasks(page);
   const tasksClosed = await layout(page);
   expect(tasksClosed.column.width).toBeCloseTo(COLUMN_MAX, 0);
 
@@ -114,7 +123,7 @@ test('at 1280px closing the task panel widens the note up to its maximum', async
   await openToday(page, apps.notebook, 1280, prefix);
   const open = await layout(page);
   expect(open.column.width).toBeLessThan(COLUMN_MAX - 100);
-  await page.getByRole('button', { name: /Hide tasks/ }).click();
+  await hideTasks(page);
   await expect
     .poll(async () => (await layout(page)).column.width)
     .toBeCloseTo(COLUMN_MAX, 0);
@@ -128,7 +137,7 @@ test('the date row, title and note text share one left edge', async ({
 }) => {
   await openToday(page, apps.notebook, 1440, prefix);
   for (const open of [true, false]) {
-    if (!open) await page.getByRole('button', { name: /Hide tasks/ }).click();
+    if (!open) await hideTasks(page);
     const { date, title, note } = await leftEdges(page);
     const { column } = await layout(page);
     expect(Math.abs(date - column.left)).toBeLessThanOrEqual(2);
