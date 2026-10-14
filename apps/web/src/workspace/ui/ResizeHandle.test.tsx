@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useRef } from 'react';
-import { beforeEach, expect, test } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { ResizeHandle } from './ResizeHandle';
 import { useStoredWidth } from './useStoredWidth';
 
@@ -56,4 +56,54 @@ test('reports a value before any resize, as a focusable separator must', () => {
   expect(
     screen.getByRole('separator', { name: 'Resize panel' }),
   ).toHaveAttribute('aria-valuenow', '200');
+});
+
+function CollapsiblePanel({ onCollapse }: { onCollapse: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useStoredWidth(KEY, 200, 400);
+  return (
+    <div ref={ref}>
+      <ResizeHandle
+        label="Resize panel"
+        className=""
+        target={ref}
+        width={width}
+        min={200}
+        max={400}
+        edge="left"
+        onChange={setWidth}
+        onCollapse={onCollapse}
+      />
+    </div>
+  );
+}
+
+test('dragging well past the minimum collapses and keeps the earlier width', () => {
+  localStorage.setItem(KEY, '300');
+  const onCollapse = vi.fn();
+  render(<CollapsiblePanel onCollapse={onCollapse} />);
+  const handle = screen.getByRole('separator');
+  // jsdom has no pointer capture.
+  handle.setPointerCapture = () => {};
+  fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 640, pointerId: 1 });
+  expect(handle).toHaveAttribute('aria-valuenow', '200');
+  expect(onCollapse).not.toHaveBeenCalled();
+  fireEvent.pointerMove(handle, { clientX: 700, pointerId: 1 });
+  expect(onCollapse).toHaveBeenCalledTimes(1);
+  expect(handle).toHaveAttribute('aria-valuenow', '300');
+  fireEvent.pointerMove(handle, { clientX: 720, pointerId: 1 });
+  expect(onCollapse).toHaveBeenCalledTimes(1);
+});
+
+test('shrinking by key from the minimum collapses', () => {
+  localStorage.setItem(KEY, '210');
+  const onCollapse = vi.fn();
+  render(<CollapsiblePanel onCollapse={onCollapse} />);
+  const handle = screen.getByRole('separator');
+  fireEvent.keyDown(handle, { key: 'ArrowRight' });
+  expect(handle).toHaveAttribute('aria-valuenow', '200');
+  expect(onCollapse).not.toHaveBeenCalled();
+  fireEvent.keyDown(handle, { key: 'ArrowRight' });
+  expect(onCollapse).toHaveBeenCalledTimes(1);
 });

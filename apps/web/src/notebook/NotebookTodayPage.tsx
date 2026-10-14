@@ -56,16 +56,18 @@ export default function NotebookTodayPage() {
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
   const [editorGeneration, setEditorGeneration] = useState(0);
   const sideRef = useRef<HTMLElement>(null);
+  const sideToggleRef = useRef<HTMLButtonElement>(null);
   const [sideWidth, setSideWidth] = useStoredWidth(
     'gagnechris.notebook.todaySideWidth',
     SIDE_MIN,
     SIDE_MAX,
   );
   const [sideOpen, setSideOpen] = useState(readTodaySideOpen);
-  const toggleSide = () => {
-    writeTodaySideOpen(!sideOpen);
-    setSideOpen(!sideOpen);
+  const setSide = (open: boolean) => {
+    writeTodaySideOpen(open);
+    setSideOpen(open);
   };
+  const toggleSide = () => setSide(!sideOpen);
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -253,6 +255,7 @@ export default function NotebookTodayPage() {
               </details>
               <button
                 type="button"
+                ref={sideToggleRef}
                 className="kit-btn notebook-today__side-toggle"
                 aria-controls="notebook-today-side"
                 aria-expanded={sideOpen}
@@ -386,6 +389,10 @@ export default function NotebookTodayPage() {
               max={SIDE_MAX}
               edge="left"
               onChange={setSideWidth}
+              onCollapse={() => {
+                setSide(false);
+                sideToggleRef.current?.focus();
+              }}
             />
             <StillOpenPanel
               rows={stillOpenRows}

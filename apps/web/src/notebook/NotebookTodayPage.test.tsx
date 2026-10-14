@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -373,6 +379,20 @@ describe('NotebookTodayPage', () => {
     expect(
       await screen.findByRole('button', { name: /Show tasks/ }),
     ).toBeInTheDocument();
+  });
+
+  test('dragging the panel edge past its minimum hides it', async () => {
+    renderToday();
+    const handle = await screen.findByRole('separator', {
+      name: 'Resize task panel',
+    });
+    // jsdom has no pointer capture.
+    handle.setPointerCapture = () => {};
+    fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 1000, pointerId: 1 });
+    const show = screen.getByRole('button', { name: /Show tasks/ });
+    expect(show).toHaveAttribute('aria-expanded', 'false');
+    expect(show).toHaveFocus();
   });
 
   test('surfaces version conflict instead of silent overwrite', async () => {
