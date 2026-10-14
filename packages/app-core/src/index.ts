@@ -136,6 +136,7 @@ export {
   discardResume,
   fetchDailyNote,
   fetchDailyTemplate,
+  fetchNoteTemplates,
   fetchHome,
   fetchNote,
   fetchNotesBatch,
@@ -177,6 +178,7 @@ export {
   type CreateTaskRequest,
   type DailyNoteGetResponse,
   type DailyTemplate,
+  type NoteTemplate,
   type EmptyDailyNote,
   type ExpectedVersionRequest,
   type Home,
@@ -281,6 +283,13 @@ export {
   useResetDailyTemplateMutation,
   type DailyTemplateResourceParams,
 } from './query/templates.js';
+export {
+  noteTemplateResource,
+  useCreateNoteTemplateMutation,
+  useDeleteNoteTemplateMutation,
+  useNoteTemplatesQuery,
+  type NoteTemplateResourceParams,
+} from './query/noteTemplates.js';
 export {
   applyTaskPatch,
   taskResource,

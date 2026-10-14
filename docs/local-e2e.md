@@ -118,15 +118,15 @@ other run is active).
 
 Import `test` and `expect` from `e2e/fixtures.ts`:
 
-| Fixture  | What it gives you                                                                                                                                                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')`                                                                                                                                              |
-| `prefix` | Unique per test; slugs and titles from `seed` start with it                                                                                                                                                                          |
-| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)                                                                                                                                                           |
-| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                                                                                                                                                                  |
-| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                                                                                                                                                                  |
-| `seed`   | API seeding as `users.owner`: `post`, `publishedPost`, `project`, `publishedProject`, `note`, `daily`, `dailyTemplate`, `blankDailyTemplates`, `task` (inputs typed from `@gagnechris/api-client`), and `seed.api` for anything else |
-| `seedAs` | `seedAs(user)` seeds as another user                                                                                                                                                                                                 |
+| Fixture  | What it gives you                                                                                                                                                                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps`   | `{ public, admin, notebook }` dev-server origins; `page.goto(apps.notebook + '/today')`                                                                                                                                                              |
+| `prefix` | Unique per test; slugs and titles from `seed` start with it                                                                                                                                                                                          |
+| `users`  | `owner` and `other`, two distinct admins (`sub` = `<prefix>-owner/-other`)                                                                                                                                                                           |
+| `signIn` | `await signIn(user?)` before `page.goto`; defaults to `users.owner`                                                                                                                                                                                  |
+| `pageAs` | `await pageAs(user)` returns a page in a separate signed-in context                                                                                                                                                                                  |
+| `seed`   | API seeding as `users.owner`: `post`, `publishedPost`, `project`, `publishedProject`, `note`, `daily`, `dailyTemplate`, `blankDailyTemplates`, `noteTemplate`, `task` (inputs typed from `@gagnechris/api-client`), and `seed.api` for anything else |
+| `seedAs` | `seedAs(user)` seeds as another user                                                                                                                                                                                                                 |
 
 Fake sign-in writes `{ userId, label, groups? }` to `localStorage['gagnechris.localAuthUser']`; without `groups` the user is in `site-admin`, `notebook` and `user-admin` (Full Admin).
 In `VITE_AUTH_MODE=local` the admin and Notebook apps read that user (default `local-dev-user`)

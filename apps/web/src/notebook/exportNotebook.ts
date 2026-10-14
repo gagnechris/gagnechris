@@ -1,4 +1,9 @@
-import type { DailyTemplate, Note, Task } from '@gagnechris/app-core';
+import type {
+  DailyTemplate,
+  Note,
+  NoteTemplate,
+  Task,
+} from '@gagnechris/app-core';
 import {
   NOTEBOOK_IMAGE_SRC_PREFIX,
   replaceTaskEmbeds,
@@ -136,14 +141,17 @@ updatedAt: ${q(note.updatedAt)}
   return `${frontmatter}${body.trimEnd()}\n`;
 }
 
-export function noteExportPath(note: Note): string {
-  const safe = (note.title.trim() || 'untitled')
+const fileSlug = (title: string) =>
+  (title.trim() || 'untitled')
     .normalize('NFKD')
     .replace(/\p{M}+/gu, '')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 60);
+
+export function noteExportPath(note: Note): string {
+  const safe = fileSlug(note.title);
   const folder = note.type === 'daily' ? 'daily' : 'pages';
   const stamp = note.date ?? note.id.slice(0, 8);
   return `notes/${folder}/${stamp}-${safe || 'note'}-${note.id.slice(-6)}.md`;
@@ -154,6 +162,7 @@ export function buildNotebookExportZip(
   tasks: Task[],
   templates: readonly DailyTemplate[] = [],
   images: Readonly<Record<string, Uint8Array>> = {},
+  noteTemplates: readonly NoteTemplate[] = [],
 ): { blob: Blob; fileCount: number } {
   const files: Record<string, string | Uint8Array> = {};
   for (const [name, bytes] of Object.entries(images)) {
@@ -161,6 +170,11 @@ export function buildNotebookExportZip(
   }
   for (const template of templates) {
     files[`templates/${template.area}.md`] = template.bodyMarkdown;
+  }
+  for (const template of noteTemplates) {
+    files[
+      `templates/notes/${fileSlug(template.name) || 'template'}-${template.id.slice(-6)}.md`
+    ] = template.bodyMarkdown;
   }
   const liveTasks = tasks.filter((t) => !t.deleted);
   const tasksById = new Map(liveTasks.map((t) => [t.id, t]));
@@ -176,6 +190,7 @@ Generated for personal backup / migration.
 - \`images/\` — the images pasted into notes, which the notes link to
 - \`tasks.json\` — all non-deleted tasks
 - \`templates/work.md\` and \`templates/personal.md\` — the daily note templates, with \`{{weekday}}\`, \`{{date}}\` and \`{{area}}\` unfilled
+- \`templates/notes/\` — the note templates, one file each, named after the template and unfilled
 
 This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).
 `;

@@ -53,12 +53,13 @@ func sample(t *testing.T, name string) json.RawMessage {
 
 func TestEntitiesRoundTrip(t *testing.T) {
 	cases := map[string]func(*testing.T, json.RawMessage){
-		"post":    func(t *testing.T, b json.RawMessage) { roundTrip[Post](t, b) },
-		"project": func(t *testing.T, b json.RawMessage) { roundTrip[Project](t, b) },
-		"home":    func(t *testing.T, b json.RawMessage) { roundTrip[Home](t, b) },
-		"resume":  func(t *testing.T, b json.RawMessage) { roundTrip[Resume](t, b) },
-		"note":    func(t *testing.T, b json.RawMessage) { roundTrip[Note](t, b) },
-		"task":    func(t *testing.T, b json.RawMessage) { roundTrip[Task](t, b) },
+		"post":         func(t *testing.T, b json.RawMessage) { roundTrip[Post](t, b) },
+		"project":      func(t *testing.T, b json.RawMessage) { roundTrip[Project](t, b) },
+		"home":         func(t *testing.T, b json.RawMessage) { roundTrip[Home](t, b) },
+		"resume":       func(t *testing.T, b json.RawMessage) { roundTrip[Resume](t, b) },
+		"note":         func(t *testing.T, b json.RawMessage) { roundTrip[Note](t, b) },
+		"task":         func(t *testing.T, b json.RawMessage) { roundTrip[Task](t, b) },
+		"noteTemplate": func(t *testing.T, b json.RawMessage) { roundTrip[NoteTemplate](t, b) },
 	}
 	for name, check := range cases {
 		t.Run(name, func(t *testing.T) { check(t, sample(t, name)) })

@@ -136,6 +136,10 @@ type Notebook struct {
 	DailyTemplateMaxBytes       int               `json:"dailyTemplateMaxBytes"`
 	DailyTemplateTaskMessage    string            `json:"dailyTemplateTaskMessage"`
 	DailyTemplateSectionMessage string            `json:"dailyTemplateSectionMessage"`
+	NoteTemplateMaxBytes        int               `json:"noteTemplateMaxBytes"`
+	NoteTemplateNameMaxLength   int               `json:"noteTemplateNameMaxLength"`
+	NoteTemplateMaxCount        int               `json:"noteTemplateMaxCount"`
+	NoteTemplateLimitMessage    string            `json:"noteTemplateLimitMessage"`
 }
 
 type Sync struct {

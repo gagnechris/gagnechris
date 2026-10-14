@@ -128,6 +128,11 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
               tabLabel: 'Templates',
               icon: 'templates',
             },
+            {
+              to: withArea('/settings/note-templates'),
+              label: 'Note templates',
+              icon: 'templates',
+            },
           ],
         },
       ]}

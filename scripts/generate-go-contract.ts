@@ -18,6 +18,7 @@ import {
   SYNC_TOMBSTONE_TTL_DAYS,
   buildDailyNoteClaimItem,
   buildDailyTemplateItem,
+  buildNoteTemplateItem,
   buildHomeMetaItem,
   buildNoteMetaItem,
   buildProjectMetaItem,
@@ -32,6 +33,8 @@ import {
   dailyNoteClaimSk,
   dailyTemplatePk,
   dailyTemplateSk,
+  noteTemplateSk,
+  noteTemplatesPk,
   homePk,
   metaToHome,
   metaToNote,
@@ -120,6 +123,11 @@ import {
   DAILY_TEMPLATE_SECTION_MESSAGE,
   DAILY_TEMPLATE_TASK_MESSAGE,
   DEFAULT_DAILY_TEMPLATES,
+  NOTE_TEMPLATE_LIMIT_MESSAGE,
+  NOTE_TEMPLATE_MAX_BYTES,
+  NOTE_TEMPLATE_MAX_COUNT,
+  NOTE_TEMPLATE_NAME_MAX_LENGTH,
+  NoteTemplateSchema,
   carriedInMarkdown,
   carryIntoDailyTemplate,
   dailyTemplateHeadings,
@@ -263,6 +271,8 @@ const KEYS: Record<string, string> = {
   'syncCreateClaimSk()': syncCreateClaimSk(),
   'dailyTemplatePk({userId},{area})': dailyTemplatePk('{userId}', '{area}'),
   'dailyTemplateSk()': dailyTemplateSk(),
+  'noteTemplatesPk({userId})': noteTemplatesPk('{userId}'),
+  'noteTemplateSk({templateId})': noteTemplateSk('{templateId}'),
   'rateContactIpPk({ip})': rateContactIpPk('{ip}'),
   'rateResumeIpPk({ip})': rateResumeIpPk('{ip}'),
   'rateNotebookImageUserPk({userId})': rateNotebookImageUserPk('{userId}'),
@@ -345,6 +355,15 @@ const legacyResume = {
   version: 1,
 };
 
+const noteTemplate = {
+  id: '01K6G0000000000000000TMPA0',
+  name: 'HM Screen Interview',
+  bodyMarkdown: '## {{date}}\n\n[ ] Send feedback',
+  version: 3,
+  createdAt: TS,
+  updatedAt: '2026-10-02T09:30:00.000Z',
+};
+
 const SAMPLES: Record<string, Record<string, unknown>> = {
   home: buildHomeMetaItem({ ...DEFAULT_HOME, updatedAt: TS, version: 1 }),
   resume: buildResumeMetaItem({ ...DEFAULT_RESUME, updatedAt: TS, version: 1 }),
@@ -387,6 +406,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     createdAt: TS,
     updatedAt: TS,
   }),
+  noteTemplate: buildNoteTemplateItem(USER, noteTemplate),
   project: buildProjectMetaItem(project),
   projectPublished: buildProjectPublishedItem(project),
   postTagged: taggedPost,
@@ -459,6 +479,7 @@ const API_SAMPLES: Record<string, [z.ZodType, unknown]> = {
     metaToResume(SAMPLES.resume as Parameters<typeof metaToResume>[0]),
   ],
   note: [NoteSchema, apiNote],
+  noteTemplate: [NoteTemplateSchema, noteTemplate],
   task: [TaskSchema, apiTask],
   syncNote: [
     SyncChangeSchema,
@@ -755,6 +776,10 @@ const contract = {
     dailyTemplateMaxBytes: DAILY_TEMPLATE_MAX_BYTES,
     dailyTemplateTaskMessage: DAILY_TEMPLATE_TASK_MESSAGE,
     dailyTemplateSectionMessage: DAILY_TEMPLATE_SECTION_MESSAGE,
+    noteTemplateMaxBytes: NOTE_TEMPLATE_MAX_BYTES,
+    noteTemplateNameMaxLength: NOTE_TEMPLATE_NAME_MAX_LENGTH,
+    noteTemplateMaxCount: NOTE_TEMPLATE_MAX_COUNT,
+    noteTemplateLimitMessage: NOTE_TEMPLATE_LIMIT_MESSAGE,
   },
   sync: {
     changeTypes: SYNC_CHANGE_TYPES,
