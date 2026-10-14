@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"math"
 	"net/http"
 	"regexp"
 	"slices"
@@ -126,6 +127,20 @@ func authorize(auth Auth, clients ClientIDs, claims map[string]string) *Response
 		return forbidden("Requires the " + policy.group + " group")
 	}
 	return forbidden("Token is not from the " + policy.prefix[1:] + " app client")
+}
+
+// tokenIssuedAt is the token's iat, or its auth_time when it has none; 0
+// when neither is a number.
+func tokenIssuedAt(claims map[string]string) int64 {
+	for _, name := range []string{"iat", "auth_time"} {
+		if raw, ok := claims[name]; ok && strings.TrimSpace(raw) != "" {
+			if t := JSNumber(raw); !math.IsNaN(t) && !math.IsInf(t, 0) {
+				return int64(t)
+			}
+			return 0
+		}
+	}
+	return 0
 }
 
 func forbidden(message string) *Response {

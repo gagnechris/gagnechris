@@ -79,6 +79,12 @@ const fail = (status: number, error: string) => ({
   response: { status },
 });
 
+vi.mock('./notebookImages', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./notebookImages')>()),
+  uploadNotebookImages: async (_client: unknown, files: File[]) =>
+    files.map((file) => `notebook-image:${file.name}`),
+}));
+
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () =>
     openDailyViaGet({
@@ -1151,6 +1157,35 @@ describe('editing an embedded task title in place', () => {
     ).toBeTruthy();
     await waitFor(() => expect(field).toHaveValue('Call Sam'));
   });
+
+  test('an image pasted at the end of the embed line goes on a line of its own', async () => {
+    seedTask();
+    const { onChange } = renderNotes(`Standup\n${tokenLine(TASK_ID)}\nnotes`);
+    await titleIn(noteA());
+    const view = await editorView(noteA());
+    act(() => {
+      view.focus();
+      view.dispatch({ selection: { anchor: view.state.doc.line(2).to } });
+    });
+    const file = new File(['png'], 'pasted.png', { type: 'image/png' });
+
+    fireEvent.paste(view.contentDOM, {
+      clipboardData: {
+        items: [{ kind: 'file', type: file.type, getAsFile: () => file }],
+      },
+    });
+
+    await waitFor(() =>
+      expect(view.state.doc.toString()).toContain('notebook-image:pasted.png'),
+    );
+    expect(view.state.doc.line(2).text).toBe(tokenLine(TASK_ID));
+    expect(view.state.doc.line(3).text).toBe(
+      '![image](notebook-image:pasted.png)',
+    );
+    expect(last(onChange.mock.calls)?.[0]).toContain(
+      `${tokenLine(TASK_ID)}\n![image]`,
+    );
+  });
 });
 
 describe('task details under the row', () => {
@@ -1658,6 +1693,25 @@ describe('subtasks in a note', () => {
     expect(await screen.findByDisplayValue('Book venue')).toBeInTheDocument();
   });
 
+  test('Enter in a parent or subtask title opens a line after the whole block', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByDisplayValue('Plan offsite'));
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+
+    await user.click(await screen.findByDisplayValue('Pick dates'));
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+    const view = await editorView(document.body);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(4).from);
+  });
+
   test('checking the last subtask leaves the parent open with All done', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates', status: 'done' },
@@ -1672,6 +1726,64 @@ describe('subtasks in a note', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Complete Plan offsite' }),
     ).not.toBeChecked();
+  });
+
+  test('Delete and Backspace next to a folded parent leave its hidden lines alone', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const note = `${nested(SUB_1, SUB_2)}\nafter`;
+    const { body } = renderNote(note);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+    const view = await editorView(document.body);
+
+    await user.click(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{Escape}');
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+    press(view, 'Delete');
+    expect(body()).toBe(note);
+
+    act(() => {
+      view.dispatch({ selection: { anchor: view.state.doc.line(4).from } });
+    });
+    press(view, 'Backspace');
+    expect(body()).toBe(note);
+
+    act(() => {
+      view.dispatch({
+        selection: { anchor: 0, head: view.state.doc.length },
+      });
+    });
+    press(view, 'Delete');
+    expect(body()).toBe(note);
+  });
+
+  test('a folded parent’s line can still be deleted, keeping its subtasks', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`before\n${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+
+    await user.clear(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{Backspace}');
+    expect(body()).not.toContain(tokenLine(PARENT));
+    expect(body()).toContain(tokenLine(SUB_1));
+    expect(body()).toContain(tokenLine(SUB_2));
   });
 
   test('checking a parent with open subtasks asks; Complete all completes them, Undo reopens the parent', async () => {
@@ -1709,11 +1821,87 @@ describe('subtasks in a note', () => {
     ).toBeNull();
   });
 
+  test('deleting a parent’s line takes its subtasks out a level instead of under the task above', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book flights',
+    });
+    const { body } = renderNote(
+      `${tokenLine(OTHER)}\n${nested(SUB_1, SUB_2)}\n    under them\nafter`,
+    );
+    const user = userEvent.setup();
+    const field = await screen.findByDisplayValue('Plan offsite');
+
+    await user.clear(field);
+    await user.keyboard('{Backspace}');
+    expect(body()).toBe(
+      [
+        tokenLine(OTHER),
+        tokenLine(SUB_1),
+        tokenLine(SUB_2),
+        '  under them',
+        'after',
+      ].join('\n'),
+    );
+  });
+
+  test('deleting a parent on the first line takes its subtasks out a level', async () => {
+    seed([{ id: SUB_1, title: 'Pick dates' }]);
+    const { body } = renderNote(`${nested(SUB_1)}\nafter`);
+    const user = userEvent.setup();
+    const field = await screen.findByDisplayValue('Plan offsite');
+
+    await user.clear(field);
+    await user.keyboard('{Backspace}');
+    expect(body()).toBe(`${tokenLine(SUB_1)}\nafter`);
+  });
+
   test('a subtask away from its parent shows the parent’s title above its own, muted when the parent is done', async () => {
     seed([{ id: SUB_1, title: 'Pick dates' }]);
     api.tasks.set(PARENT, { ...api.tasks.get(PARENT)!, status: 'done' });
     renderNote(`## Carried in\n${tokenLine(SUB_1)}`);
     const label = await screen.findByText('Plan offsite');
     expect(label).toHaveClass('task-embed__parent--finished');
+  });
+
+  test('arrow keys out of a folded parent step over its hidden lines', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book flights',
+    });
+    renderNote(`${nested(SUB_1, SUB_2)}\n${tokenLine(OTHER)}\nafter`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+
+    await user.click(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book flights')).toHaveFocus(),
+    );
+
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Plan offsite')).toHaveFocus(),
+    );
+
+    await user.keyboard('{End}{ArrowRight}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book flights')).toHaveFocus(),
+    );
   });
 });

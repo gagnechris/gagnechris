@@ -25,7 +25,10 @@ import (
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
+	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
+	"github.com/gagnechris/gagnechris/services/api/internal/keys"
+	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
 const (
@@ -43,12 +46,13 @@ var extByType = map[string]string{
 	"image/gif":  "gif",
 }
 
-var typeByExt = map[string]string{
-	"jpg":  "image/jpeg",
-	"png":  "image/png",
-	"webp": "image/webp",
-	"gif":  "image/gif",
-}
+var typeByExt = func() map[string]string {
+	m := make(map[string]string, len(extByType))
+	for contentType, ext := range extByType {
+		m[ext] = contentType
+	}
+	return m
+}()
 
 var namePattern = regexp.MustCompile(`^[0-9a-f]{16}\.(jpg|png|webp|gif)$`)
 
@@ -65,11 +69,11 @@ type Config struct {
 	LocalOrigin string
 }
 
-func Routes(presign *s3.PresignClient, cfg Config, now func() time.Time) []api.Route {
+func Routes(presign *s3.PresignClient, table *data.Table, cfg Config, now func() time.Time) []api.Route {
 	if now == nil {
 		now = time.Now
 	}
-	h := handlers{presign: presign, cfg: cfg, now: now}
+	h := handlers{presign: presign, table: table, cfg: cfg, now: now}
 	return []api.Route{
 		{Method: http.MethodPost, Pattern: "/notebook/images/upload-url", Auth: api.Notebook, Metric: "NotebookImageUploadUrl", Handler: h.uploadURL},
 		{Method: http.MethodGet, Pattern: "/notebook/images/:name", Auth: api.Notebook, Metric: "NotebookImageUrl", Handler: h.imageURL},
@@ -79,6 +83,7 @@ func Routes(presign *s3.PresignClient, cfg Config, now func() time.Time) []api.R
 
 type handlers struct {
 	presign *s3.PresignClient
+	table   *data.Table
 	cfg     Config
 	now     func() time.Time
 }
@@ -122,6 +127,14 @@ func (h handlers) uploadURL(ctx context.Context, r *api.Request) (*api.Response,
 		return nil, err
 	}
 	now := h.now()
+	ok, err := store.TryIncrement(ctx, h.table, keys.RateNotebookImageUserPk(r.UserID()), keys.RateDaySk(now),
+		contract.Data.API.NotebookImageUploadsPerUserPerDay, keys.TTLEndOfUTCDay(now))
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, &api.RateLimitedError{Message: "Too many image uploads today. Try again tomorrow."}
+	}
 	name := newName(contentType)
 	key := objectKey(r.UserID(), name)
 	res := uploadURLResponse{
@@ -195,10 +208,7 @@ func (h handlers) imageURL(ctx context.Context, r *api.Request) (*api.Response, 
 
 func (h handlers) putObject(_ context.Context, r *api.Request) (*api.Response, error) {
 	if !h.cfg.Filesystem || h.cfg.Bucket == "" {
-		return api.JSON(http.StatusNotFound, map[string]string{
-			"error":   "not_found",
-			"message": "Local image PUT is only available in filesystem mode",
-		}), nil
+		return nil, api.NotFound("Local image PUT is only available in filesystem mode")
 	}
 	expected, err := strconv.ParseFloat(strings.TrimSpace(r.Headers["content-length"]), 64)
 	if err != nil || expected < 1 {
@@ -209,7 +219,7 @@ func (h handlers) putObject(_ context.Context, r *api.Request) (*api.Response, e
 		return nil, api.BadRequest("Invalid image key", nil)
 	}
 	if float64(len(r.Body)) != expected {
-		return nil, fmt.Errorf("Content-Length mismatch: expected %v, got %d", expected, len(r.Body))
+		return nil, api.BadRequest(fmt.Sprintf("Content-Length mismatch: expected %v, got %d", expected, len(r.Body)), nil)
 	}
 	dest := filepath.Join(h.cfg.Bucket, key)
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {

@@ -126,12 +126,25 @@ export function removedUserSk(userId: string): string {
   return `USER#${userId}`;
 }
 
+/** One partition: the API reads one row per user, and rows expire. */
+export function userRevocationsPk(): string {
+  return 'USER_REVOCATIONS';
+}
+
+export function userRevocationSk(userId: string): string {
+  return `USER#${userId}`;
+}
+
 export function rateContactIpPk(ip: string): string {
   return `RATE#contact#ip#${ip}`;
 }
 
 export function rateResumeIpPk(ip: string): string {
   return `RATE#resume#ip#${ip}`;
+}
+
+export function rateNotebookImageUserPk(userId: string): string {
+  return `RATE#notebook-image#user#${userId}`;
 }
 
 export function rateSesGlobalPk(): string {
@@ -394,6 +407,10 @@ export const keys = {
   removedUser: (userId: string) => ({
     pk: removedUsersPk(),
     sk: removedUserSk(userId),
+  }),
+  userRevocation: (userId: string) => ({
+    pk: userRevocationsPk(),
+    sk: userRevocationSk(userId),
   }),
   sync: {
     ownerCreateClaim: (userId: string, changeType: string, id: string) => ({

@@ -10059,6 +10059,7 @@
       },
       "post": {
         "summary": "Invite a user by email; an email that belonged to a removed user restores that user",
+        "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
         ],
@@ -11217,7 +11218,7 @@
     },
     "/api/admin/users/{id}/sign-out": {
       "post": {
-        "summary": "Sign the user out everywhere; their open sessions end within the hour",
+        "summary": "Sign the user out everywhere; tokens they already hold stop working within a minute",
         "description": "Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ \"error\": \"reauth_required\" }`.",
         "tags": [
           "Users"
@@ -23288,6 +23289,33 @@
           },
           "410": {
             "description": "Gone — sync watermark older than tombstone horizon (`resync_required`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
             "content": {
               "application/json": {
                 "schema": {

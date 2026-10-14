@@ -90,13 +90,19 @@ const TYPING_GRACE_MS = 200;
 
 const fillPane = EditorView.theme({ '& .cm-scroller': { height: '100%' } });
 
-function insertMarkdownAtCursor(view: EditorView, markdownSnippets: string[]) {
+// A user event, so filters that keep text off special lines (task embeds) see it.
+function insertMarkdownAtCursor(
+  view: EditorView,
+  markdownSnippets: string[],
+  userEvent: 'input.paste' | 'input.drop',
+) {
   if (markdownSnippets.length === 0) return;
   const insert = markdownSnippets.join('\n\n');
   const { from, to } = view.state.selection.main;
   view.dispatch({
     changes: { from, to, insert: `${insert}\n\n` },
     selection: { anchor: from + insert.length + 2 },
+    userEvent,
   });
 }
 
@@ -205,6 +211,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
             insertMarkdownAtCursor(
               view,
               paths.map((path) => `![image](${path})`),
+              'input.paste',
             );
           });
           return true;
@@ -220,6 +227,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
                 const name = files[i]?.name?.replace(/\.[^.]+$/, '') || 'image';
                 return `![${name}](${path})`;
               }),
+              'input.drop',
             );
           });
           return true;

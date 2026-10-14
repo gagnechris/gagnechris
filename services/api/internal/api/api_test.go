@@ -454,7 +454,7 @@ func TestLocalClaims(t *testing.T) {
 	got := LocalClaims("local-dev-token", SiteAdmin, ClientIDs{}, now)
 	want := map[string]string{
 		"sub": "local-dev-user", "email": "local@gagnechris.com", "cognito:username": "local-admin",
-		"token_use": "id", "aud": "local-admin-web", "cognito:groups": "[site-admin]", "auth_time": "1700000000",
+		"token_use": "id", "aud": "local-admin-web", "cognito:groups": "[site-admin]", "auth_time": "1700000000", "iat": "1700000000",
 	}
 	for k, v := range want {
 		if got[k] != v {
@@ -464,5 +464,68 @@ func TestLocalClaims(t *testing.T) {
 	ios := LocalClaims("Bearer local-ios:sam", Notebook, ClientIDs{}, now)
 	if ios["aud"] != "local-ios" || ios["email"] != "sam@local.gagnechris.com" || ios["cognito:groups"] != "[notebook]" {
 		t.Errorf("ios claims %v", ios)
+	}
+}
+
+type fakeRevocations struct {
+	before map[string]int64
+	err    error
+	asked  []int64
+}
+
+func (f *fakeRevocations) Revoked(_ context.Context, userID string, issuedAt int64) (bool, error) {
+	f.asked = append(f.asked, issuedAt)
+	if f.err != nil {
+		return false, f.err
+	}
+	before, ok := f.before[userID]
+	return ok && issuedAt < before, nil
+}
+
+func TestRevokedTokensAreRefused(t *testing.T) {
+	revs := &fakeRevocations{before: map[string]int64{"u1": 1000}}
+	ta := newTestApp(t, Route{Method: "GET", Pattern: "/notebook/x", Auth: Notebook, Handler: ok(map[string]bool{"ok": true})})
+	ta.app.Router().WithRevocations(revs)
+
+	claims := func(extra map[string]string) map[string]string {
+		c := notebookClaims("[notebook]")
+		for k, v := range extra {
+			c[k] = v
+		}
+		return c
+	}
+	for _, tc := range []struct {
+		claims map[string]string
+		status int
+	}{
+		{claims(map[string]string{"iat": "999", "auth_time": "999"}), 401},
+		{claims(map[string]string{"iat": "1000", "auth_time": "900"}), 200},
+		{claims(map[string]string{"auth_time": "999"}), 401},
+		{claims(map[string]string{"auth_time": "1001"}), 200},
+		{claims(nil), 401},
+		{claims(map[string]string{"iat": "soon", "auth_time": "2000"}), 401},
+		{map[string]string{"sub": "u2", "token_use": "id", "aud": "notebook-web", "cognito:groups": "[notebook]"}, 200},
+	} {
+		res := ta.do("GET", "/api/notebook/x", tc.claims, nil)
+		if res.Status != tc.status {
+			t.Errorf("%v: status %d, want %d", tc.claims, res.Status, tc.status)
+		}
+		if tc.status == 401 {
+			if got := bodyOf(t, res); got["error"] != "unauthorized" || got["message"] != "Session ended; sign in again" {
+				t.Errorf("%v: body %v", tc.claims, got)
+			}
+		}
+	}
+
+	if res := ta.do("GET", "/api/health", nil, nil); res.Status != 200 {
+		t.Errorf("public route: %d", res.Status)
+	}
+	if len(revs.asked) != 7 {
+		t.Errorf("checked %d times, want once per protected request", len(revs.asked))
+	}
+
+	revs.err = errors.New("dynamo down")
+	if res := ta.do("GET", "/api/notebook/x", claims(map[string]string{"iat": "2000"}), nil); res.Status != 500 {
+		t.Errorf("failed check: status %d, want 500", res.Status)
 	}
 }

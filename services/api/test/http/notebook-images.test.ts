@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { MEDIA_MAX_BYTES } from '@gagnechris/shared';
+import { NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY } from '@gagnechris/shared/server';
 import { notebookUser } from './support/claims.js';
 import { useApi, type Harness } from './support/harness.js';
 
@@ -30,6 +31,9 @@ const s3 = useApi('notebook-images-s3', {
     SITE_BUCKET_NAME: 'gagnechris-it-media',
     NOTEBOOK_MEDIA_BUCKET_NAME: 'gagnechris-it-notebook-media',
   },
+});
+const unconfigured = useApi('notebook-images-unconfigured', {
+  env: { SITE_STORAGE: 's3', NOTEBOOK_MEDIA_BUCKET_NAME: '' },
 });
 
 const uploadUrl = (h: Harness, body: unknown, user = 'alice') =>
@@ -110,6 +114,17 @@ describe('POST /api/notebook/images/upload-url', () => {
     );
   });
 
+  it('gives each user a daily number of upload URLs', async () => {
+    const body = { contentType: 'image/png', contentLength: 1 };
+    for (let i = 0; i < NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY; i++) {
+      expect((await uploadUrl(local, body, 'busy')).status).toBe(200);
+    }
+    const over = await uploadUrl(local, body, 'busy');
+    expect(over.status).toBe(429);
+    expect(over.body.error).toBe('rate_limited');
+    expect((await uploadUrl(local, body, 'calm')).status).toBe(200);
+  });
+
   it('is a Notebook route', async () => {
     const res = await local.api.request(
       'POST',
@@ -117,6 +132,18 @@ describe('POST /api/notebook/images/upload-url', () => {
       { body: { contentType: 'image/png', contentLength: 1 } },
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe('without a media bucket', () => {
+  it('answers 503 for an upload URL and a read', async () => {
+    const upload = await uploadUrl(unconfigured, {
+      contentType: 'image/png',
+      contentLength: 1,
+    });
+    expect(upload.status).toBe(503);
+    const read = await imageUrl(unconfigured, '0123456789abcdef.png');
+    expect(read.status).toBe(503);
   });
 });
 

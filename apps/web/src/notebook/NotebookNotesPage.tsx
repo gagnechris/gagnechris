@@ -19,6 +19,7 @@ import {
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
@@ -110,6 +111,7 @@ export default function NotebookNotesPage() {
   return (
     <section className="workspace-panel notebook-notes">
       <div className="workspace-panel__header">
+        <SidebarToggle />
         <div>
           <h1>Notes</h1>
           <p className="workspace-panel__lede">

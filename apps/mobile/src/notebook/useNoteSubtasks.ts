@@ -68,6 +68,12 @@ export function useNoteSubtasks(
     });
   }, [markdown, nesting, folded]);
 
+  // Where a text run must split so a fold hides exactly the block's lines.
+  const foldBreaks = useMemo(
+    () => new Set(foldedBlocks.map((b) => b.last + 1)),
+    [foldedBlocks],
+  );
+
   const hidden = (segment: NoteSegment) => {
     const first = segment.start;
     const last =
@@ -146,5 +152,12 @@ export function useNoteSubtasks(
 
   const depthOf = (id: string) => nesting.placed.get(id)?.depth ?? 0;
 
-  return { hidden, subtasksOf, parentLabelOf, withFinishPrompt, depthOf };
+  return {
+    hidden,
+    foldBreaks,
+    subtasksOf,
+    parentLabelOf,
+    withFinishPrompt,
+    depthOf,
+  };
 }

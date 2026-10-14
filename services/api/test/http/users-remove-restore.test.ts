@@ -92,3 +92,76 @@ describe('removing and re-inviting a user keeps their Notebook', () => {
     );
   });
 });
+
+describe('ending access refuses the tokens a user already holds', () => {
+  const seconds = (offset: number) =>
+    String(Math.floor(Date.now() / 1000) + offset);
+  const before = { iat: seconds(-60), auth_time: seconds(-60) };
+  const revoked = {
+    status: 401,
+    body: { error: 'unauthorized', message: 'Session ended; sign in again' },
+  };
+
+  async function inviteAs(email: string, level: string) {
+    const res = await asOwner('POST', '/api/admin/users', { email, level });
+    return (res.body.user as { id: string }).id;
+  }
+
+  const notes = (claims: ReturnType<typeof notebookUser>) =>
+    h.api
+      .request('GET', '/api/notebook/notes', { claims })
+      .then((res) => ({ status: res.status, body: res.body }));
+
+  it('a removed user is refused until they sign in again after a restore', async () => {
+    const id = await inviteAs('gone@example.com', 'notebook');
+    const held = notebookUser(id, before);
+    expect((await notes(held)).status).toBe(200);
+
+    expect(
+      (await asOwner('POST', `/api/admin/users/${id}/remove`)).status,
+    ).toBe(200);
+    expect(await notes(held)).toEqual(revoked);
+
+    expect(
+      (await asOwner('POST', `/api/admin/users/${id}/restore`, {})).status,
+    ).toBe(200);
+    expect(await notes(held)).toEqual(revoked);
+    const fresh = notebookUser(id, { iat: seconds(1), auth_time: seconds(1) });
+    expect((await notes(fresh)).status).toBe(200);
+  });
+
+  it.each([
+    ['disable', 'POST', 'disable', undefined],
+    ['sign-out', 'POST', 'sign-out', undefined],
+    ['lowered access', 'PUT', 'access', { level: 'cms' }],
+  ] as const)('%s refuses held tokens', async (_, method, action, body) => {
+    const id = await inviteAs(`ended-${action}@example.com`, 'full');
+    const held = notebookUser(id, before);
+    expect((await notes(held)).status).toBe(200);
+    expect(
+      (await asOwner(method, `/api/admin/users/${id}/${action}`, body)).status,
+    ).toBe(200);
+    expect(await notes(held)).toEqual(revoked);
+  });
+
+  it('raising access keeps held tokens', async () => {
+    const id = await inviteAs('raised@example.com', 'notebook');
+    const held = notebookUser(id, before);
+    expect(
+      (
+        await asOwner('PUT', `/api/admin/users/${id}/access`, {
+          level: 'full',
+        })
+      ).status,
+    ).toBe(200);
+    expect((await notes(held)).status).toBe(200);
+  });
+
+  it('refuses a held token with no issue time once access ended', async () => {
+    const id = await inviteAs('no-iat@example.com', 'notebook');
+    expect(
+      (await asOwner('POST', `/api/admin/users/${id}/sign-out`)).status,
+    ).toBe(200);
+    expect(await notes(notebookUser(id, { auth_time: '' }))).toEqual(revoked);
+  });
+});

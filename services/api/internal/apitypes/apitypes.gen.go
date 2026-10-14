@@ -11145,6 +11145,13 @@ type PostAPINotebookImagesUploadURL410JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
+// PostAPINotebookImagesUploadURL429JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL429JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PostAPINotebookImagesUploadURL500JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
 type PostAPINotebookImagesUploadURL500JSONResponseBody struct {
 	Error   string             `json:"error"`
