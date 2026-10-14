@@ -990,10 +990,36 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   line-height: var(--line-normal, 1.5);
 }
 
-/* Room left of the text for the task rows' drag grip, inside the border. */
+/* Room left of the text for the task rows' drag grip. */
 @media (hover: hover) {
   .markdown-single--notebook .cm-live .cm-content {
     padding-left: 1.5rem;
+  }
+}
+
+.markdown-single--notebook .cm-editor .cm-activeLine {
+  background-color: var(--primary-50);
+}
+
+/* The note sits on the page; its text inset hangs left so it lines up with
+   the title. */
+.notebook-column
+  > .markdown-workspace--single
+  > .markdown-single--notebook
+  > .markdown-editor {
+  margin-left: calc(-1 * var(--space-2));
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .notebook-column
+    > .markdown-workspace--single
+    > .markdown-single--notebook
+    > .markdown-editor {
+    margin-left: calc(-1.5rem - var(--space-2));
   }
 }
 
