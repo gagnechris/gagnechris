@@ -18,6 +18,8 @@ export interface Workspace {
 export interface Step {
   name: string;
   cmd: string[];
+  // Steps with the same group run one after another.
+  group?: string;
 }
 
 // Changes here can break any workspace.
@@ -32,10 +34,20 @@ const GLOBAL_FILES = [
 
 const LINTABLE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 
+// Inputs outside a workspace's own directory, by workspace directory.
+const EXTRA_INPUTS: Record<string, string[]> = {
+  scripts: ['.github/', '.githooks/'],
+};
+
+// openapi:check and go:generate:check both rewrite the generated Go files that
+// the other and the Go steps read.
+const GO_CODEGEN_GROUP = 'go-codegen';
+
 // Inputs of each generated-file check; a change under any prefix runs it.
-const CODEGEN: Array<{ script: string; inputs: string[] }> = [
+const CODEGEN: Array<{ script: string; inputs: string[]; group?: string }> = [
   {
     script: 'openapi:check',
+    group: GO_CODEGEN_GROUP,
     inputs: [
       'packages/shared/',
       'packages/api-client/',
@@ -44,6 +56,7 @@ const CODEGEN: Array<{ script: string; inputs: string[] }> = [
   },
   {
     script: 'go:generate:check',
+    group: GO_CODEGEN_GROUP,
     inputs: [
       'packages/shared/',
       'packages/data/',
@@ -113,7 +126,15 @@ export function affectedWorkspaces(
 ): Workspace[] {
   if (changed.some((f) => GLOBAL_FILES.includes(f))) return all;
   const hit = new Set(
-    all.filter((w) => changed.some((f) => inDir(f, w.dir))).map((w) => w.name),
+    all
+      .filter((w) =>
+        changed.some(
+          (f) =>
+            inDir(f, w.dir) ||
+            (EXTRA_INPUTS[w.dir] ?? []).some((i) => f.startsWith(i)),
+        ),
+      )
+      .map((w) => w.name),
   );
   let grew = true;
   while (grew) {
@@ -133,14 +154,18 @@ const npmRun = (w: Workspace, script: string): string[] =>
     ? ['npm', 'run', script, '--prefix', w.dir]
     : ['npm', 'run', script, '-w', w.name];
 
+// `deleted` (removed files and the old side of renames) counts for every
+// check except Prettier and ESLint, which get only `existing`.
 export function planSteps(
-  changed: string[],
+  existing: string[],
   added: string[],
   all: Workspace[],
   everything = false,
+  deleted: string[] = [],
 ): Step[] {
   const steps: Step[] = [];
-  const files = everything ? [] : changed;
+  const files = everything ? [] : existing;
+  const changed = [...existing, ...deleted];
 
   if (everything) {
     steps.push({ name: 'Prettier', cmd: ['npm', 'run', 'format:check'] });
@@ -181,13 +206,17 @@ export function planSteps(
   }
 
   const global = changed.some((f) => GLOBAL_FILES.includes(f));
-  for (const { script, inputs } of CODEGEN) {
+  for (const { script, inputs, group } of CODEGEN) {
     if (
       everything ||
       global ||
       changed.some((f) => inputs.some((i) => f.startsWith(i)))
     ) {
-      steps.push({ name: script, cmd: ['npm', 'run', script] });
+      steps.push({
+        name: script,
+        cmd: ['npm', 'run', script],
+        ...(group ? { group } : {}),
+      });
     }
   }
 
@@ -212,8 +241,16 @@ export function planSteps(
     (f) => inDir(f, 'services/api') && !inDir(f, 'services/api/test'),
   );
   if (everything || goChanged) {
-    steps.push({ name: 'Go lint', cmd: ['npm', 'run', 'go:lint'] });
-    steps.push({ name: 'Go test', cmd: ['npm', 'run', 'go:test'] });
+    steps.push({
+      name: 'Go lint',
+      cmd: ['npm', 'run', 'go:lint'],
+      group: GO_CODEGEN_GROUP,
+    });
+    steps.push({
+      name: 'Go test',
+      cmd: ['npm', 'run', 'go:test'],
+      group: GO_CODEGEN_GROUP,
+    });
   }
   return steps;
 }
@@ -227,29 +264,35 @@ function git(args: string[]): string {
 
 const lines = (s: string) => s.split('\n').filter(Boolean);
 
-function changedFiles(): { changed: string[]; added: string[] } | undefined {
+function changedFiles():
+  { changed: string[]; added: string[]; deleted: string[] } | undefined {
   let base: string;
   try {
     base = git(['merge-base', 'origin/main', 'HEAD']);
   } catch {
     return undefined;
   }
-  // Against the working tree, so uncommitted edits count too.
+  // Against the working tree, so uncommitted edits count too. Without rename
+  // detection a rename lists both paths.
   const changed = new Set([
-    ...lines(git(['diff', '--name-only', '--diff-filter=ACMR', base])),
+    ...lines(
+      git(['diff', '--name-only', '--no-renames', '--diff-filter=ACMRD', base]),
+    ),
     ...lines(git(['ls-files', '--others', '--exclude-standard'])),
   ]);
   const added = new Set([
     ...lines(git(['diff', '--name-only', '--diff-filter=AR', base])),
     ...lines(git(['ls-files', '--others', '--exclude-standard'])),
   ]);
+  const exists = (f: string) => existsSync(join(ROOT, f));
   return {
-    changed: [...changed].filter((f) => existsSync(join(ROOT, f))).sort(),
+    changed: [...changed].filter(exists).sort(),
     added: [...added].sort(),
+    deleted: [...changed].filter((f) => !exists(f)).sort(),
   };
 }
 
-interface Result {
+export interface Result {
   step: Step;
   ok: boolean;
   output: string;
@@ -277,17 +320,44 @@ function run(step: Step): Promise<Result> {
   });
 }
 
-async function runAll(steps: Step[], concurrency: number): Promise<Result[]> {
+// A group's steps run in order as one unit of the worker pool.
+export function schedule(steps: Step[]): Step[][] {
+  const units: Step[][] = [];
+  const groups = new Map<string, Step[]>();
+  for (const step of steps) {
+    if (!step.group) {
+      units.push([step]);
+      continue;
+    }
+    let unit = groups.get(step.group);
+    if (!unit) {
+      unit = [];
+      groups.set(step.group, unit);
+      units.push(unit);
+    }
+    unit.push(step);
+  }
+  return units;
+}
+
+export async function runAll(
+  steps: Step[],
+  concurrency: number,
+  runStep: (step: Step) => Promise<Result> = run,
+): Promise<Result[]> {
   const results: Result[] = [];
+  const units = schedule(steps);
   let next = 0;
   const worker = async () => {
-    while (next < steps.length) {
-      const result = await run(steps[next++]!);
-      console.log(
-        `${result.ok ? '✓' : '✗'} ${result.step.name} (${result.seconds}s)`,
-      );
-      if (!result.ok) console.log(result.output);
-      results.push(result);
+    while (next < units.length) {
+      for (const step of units[next++]!) {
+        const result = await runStep(step);
+        console.log(
+          `${result.ok ? '✓' : '✗'} ${result.step.name} (${result.seconds}s)`,
+        );
+        if (!result.ok) console.log(result.output);
+        results.push(result);
+      }
     }
   };
   await Promise.all(Array.from({ length: concurrency }, worker));
@@ -306,6 +376,7 @@ async function main(argv: string[]) {
     diff?.added ?? [],
     all,
     everything || !diff,
+    diff?.deleted ?? [],
   );
   if (steps.length === 0) {
     console.log('verify: nothing to check.');
