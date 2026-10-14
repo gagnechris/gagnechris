@@ -6499,6 +6499,8 @@ type DailyNoteGetResponse0Type string
 
 // DailyNoteGetResponse_0 defines model for DailyNoteGetResponse.0.
 type DailyNoteGetResponse_0 struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                     `json:"archived,omitempty"`
 	Area         DailyNoteGetResponse0Area `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
@@ -6779,6 +6781,8 @@ type MediaUploadURLResponse_Headers struct {
 
 // Note defines model for Note.
 type Note struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                     `json:"archived,omitempty"`
 	Area         NoteArea                  `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
@@ -6817,6 +6821,8 @@ type NoteBatchResponseItemsType string
 
 // NoteBatchResponse_Items defines model for NoteBatchResponse.Items.
 type NoteBatchResponse_Items struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                      `json:"archived,omitempty"`
 	Area         NoteBatchResponseItemsArea `json:"area"`
 	BodyMarkdown string                     `json:"bodyMarkdown"`
 	CreatedAt    string                     `json:"createdAt"`
@@ -6849,6 +6855,8 @@ type NoteListResponseItemsType string
 
 // NoteListResponse_Items defines model for NoteListResponse.Items.
 type NoteListResponse_Items struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                     `json:"archived,omitempty"`
 	Area         NoteListResponseItemsArea `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
@@ -6886,6 +6894,8 @@ type NoteSyncChange0EntityType string
 
 // NoteSyncChange_0_Entity defines model for NoteSyncChange.0.Entity.
 type NoteSyncChange_0_Entity struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                     `json:"archived,omitempty"`
 	Area         NoteSyncChange0EntityArea `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
@@ -7597,7 +7607,9 @@ type UpdateHomeRequest_Seo struct {
 
 // UpdateNoteRequest defines model for UpdateNoteRequest.
 type UpdateNoteRequest struct {
-	Area *UpdateNoteRequestArea `json:"area,omitempty"`
+	// Archived Page notes only; archiving a daily note is a 400
+	Archived *bool                  `json:"archived,omitempty"`
+	Area     *UpdateNoteRequestArea `json:"area,omitempty"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string   `json:"bodyMarkdown,omitempty"`
@@ -11310,6 +11322,8 @@ type GetAPINotebookNotes200JSONResponseBodyItemsType string
 
 // GetAPINotebookNotes200JSONResponseBody_Items defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotes200JSONResponseBody_Items struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                           `json:"archived,omitempty"`
 	Area         GetAPINotebookNotes200JSONResponseBodyItemsArea `json:"area"`
 	BodyMarkdown string                                          `json:"bodyMarkdown"`
 	CreatedAt    string                                          `json:"createdAt"`
@@ -11397,6 +11411,8 @@ type PostAPINotebookNotes201JSONResponseBodyType string
 
 // PostAPINotebookNotes201JSONResponseBody defines parameters for PostAPINotebookNotes.
 type PostAPINotebookNotes201JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                       `json:"archived,omitempty"`
 	Area         PostAPINotebookNotes201JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                      `json:"bodyMarkdown"`
 	CreatedAt    string                                      `json:"createdAt"`
@@ -11482,6 +11498,8 @@ type PostAPINotebookNotesBatch200JSONResponseBodyItemsType string
 
 // PostAPINotebookNotesBatch200JSONResponseBody_Items defines parameters for PostAPINotebookNotesBatch.
 type PostAPINotebookNotesBatch200JSONResponseBody_Items struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                                 `json:"archived,omitempty"`
 	Area         PostAPINotebookNotesBatch200JSONResponseBodyItemsArea `json:"area"`
 	BodyMarkdown string                                                `json:"bodyMarkdown"`
 	CreatedAt    string                                                `json:"createdAt"`
@@ -11555,6 +11573,8 @@ type GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type string
 
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0 defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0 struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                                    `json:"archived,omitempty"`
 	Area         GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area `json:"area"`
 	BodyMarkdown string                                                   `json:"bodyMarkdown"`
 	CreatedAt    string                                                   `json:"createdAt"`
@@ -11684,6 +11704,8 @@ type PutAPINotebookNotesDailyAreaDate200JSONResponseBodyType string
 
 // PutAPINotebookNotesDailyAreaDate200JSONResponseBody defines parameters for PutAPINotebookNotesDailyAreaDate.
 type PutAPINotebookNotesDailyAreaDate200JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                                   `json:"archived,omitempty"`
 	Area         PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                                  `json:"bodyMarkdown"`
 	CreatedAt    string                                                  `json:"createdAt"`
@@ -11795,6 +11817,8 @@ type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type string
 
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0 defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0 struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                                         `json:"archived,omitempty"`
 	Area         PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area `json:"area"`
 	BodyMarkdown string                                                        `json:"bodyMarkdown"`
 	CreatedAt    string                                                        `json:"createdAt"`
@@ -11913,6 +11937,8 @@ type DeleteAPINotebookNotesID200JSONResponseBodyType string
 
 // DeleteAPINotebookNotesID200JSONResponseBody defines parameters for DeleteAPINotebookNotesID.
 type DeleteAPINotebookNotesID200JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                           `json:"archived,omitempty"`
 	Area         DeleteAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                          `json:"bodyMarkdown"`
 	CreatedAt    string                                          `json:"createdAt"`
@@ -12005,6 +12031,8 @@ type GetAPINotebookNotesID200JSONResponseBodyType string
 
 // GetAPINotebookNotesID200JSONResponseBody defines parameters for GetAPINotebookNotesID.
 type GetAPINotebookNotesID200JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                        `json:"archived,omitempty"`
 	Area         GetAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                       `json:"bodyMarkdown"`
 	CreatedAt    string                                       `json:"createdAt"`
@@ -12067,7 +12095,9 @@ type GetAPINotebookNotesID503JSONResponseBody struct {
 
 // PutAPINotebookNotesIDJSONBody defines parameters for PutAPINotebookNotesID.
 type PutAPINotebookNotesIDJSONBody struct {
-	Area *PutAPINotebookNotesIDJSONBodyArea `json:"area,omitempty"`
+	// Archived Page notes only; archiving a daily note is a 400
+	Archived *bool                              `json:"archived,omitempty"`
+	Area     *PutAPINotebookNotesIDJSONBodyArea `json:"area,omitempty"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string   `json:"bodyMarkdown,omitempty"`
@@ -12094,6 +12124,8 @@ type PutAPINotebookNotesID200JSONResponseBodyType string
 
 // PutAPINotebookNotesID200JSONResponseBody defines parameters for PutAPINotebookNotesID.
 type PutAPINotebookNotesID200JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived     *bool                                        `json:"archived,omitempty"`
 	Area         PutAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
 	BodyMarkdown string                                       `json:"bodyMarkdown"`
 	CreatedAt    string                                       `json:"createdAt"`

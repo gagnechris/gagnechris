@@ -436,6 +436,8 @@ export const NoteMetaItemSchema = VersionedMetaFieldsSchema.extend({
   bodyMarkdown: z.string(),
   tags: z.array(z.string()),
   pinned: z.boolean(),
+  /** Absent on rows written before archiving; read as `false`. */
+  archived: z.boolean().optional(),
   /** Absent on rows written before embeds; derived from the body on read. */
   taskIds: z.array(z.string()).optional(),
 });
@@ -489,11 +491,25 @@ export function parseTaskMetaItem(raw: unknown): TaskMetaItem {
 export function noteContentEqual(
   a: Pick<
     Note,
-    'area' | 'type' | 'date' | 'title' | 'bodyMarkdown' | 'tags' | 'pinned'
+    | 'area'
+    | 'type'
+    | 'date'
+    | 'title'
+    | 'bodyMarkdown'
+    | 'tags'
+    | 'pinned'
+    | 'archived'
   >,
   b: Pick<
     Note,
-    'area' | 'type' | 'date' | 'title' | 'bodyMarkdown' | 'tags' | 'pinned'
+    | 'area'
+    | 'type'
+    | 'date'
+    | 'title'
+    | 'bodyMarkdown'
+    | 'tags'
+    | 'pinned'
+    | 'archived'
   >,
 ): boolean {
   return (
@@ -503,6 +519,7 @@ export function noteContentEqual(
     a.title === b.title &&
     a.bodyMarkdown === b.bodyMarkdown &&
     a.pinned === b.pinned &&
+    (a.archived ?? false) === (b.archived ?? false) &&
     deepEqual(a.tags, b.tags)
   );
 }
@@ -566,6 +583,7 @@ export function metaToNote(item: NoteMetaItem): Note {
     bodyMarkdown: item.bodyMarkdown,
     tags: item.tags,
     pinned: item.pinned,
+    archived: item.archived ?? false,
     taskIds: item.taskIds ?? taskEmbedIds(item.bodyMarkdown),
     version: item.version,
     createdAt: item.createdAt,
@@ -624,6 +642,7 @@ export function buildNoteMetaItem(note: Note): NoteMetaItem {
     bodyMarkdown: note.bodyMarkdown,
     tags: note.tags,
     pinned: note.pinned,
+    archived: note.archived ?? false,
     taskIds: note.taskIds,
     version: note.version,
     createdAt: note.createdAt,

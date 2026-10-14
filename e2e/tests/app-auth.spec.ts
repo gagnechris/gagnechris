@@ -258,7 +258,9 @@ test.describe('admin and Notebook sign-in', () => {
     await page.goto(`${notebook()}/notes`);
     await signInThroughPrompt(page, login);
     await expect(page).toHaveURL(`${notebook()}/notes?area=work`);
-    await expect(page.getByRole('button', { name: 'New page' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'New', exact: true }),
+    ).toBeVisible();
     expect(login.prompts).toBe(2);
 
     // Each app keeps its own refresh token, so neither asks again.

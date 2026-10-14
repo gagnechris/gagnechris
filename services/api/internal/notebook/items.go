@@ -26,6 +26,7 @@ type Note struct {
 	BodyMarkdown string   `json:"bodyMarkdown"`
 	Tags         []string `json:"tags"`
 	Pinned       bool     `json:"pinned"`
+	Archived     bool     `json:"archived"`
 	TaskIDs      []string `json:"taskIds"`
 	Version      int      `json:"version"`
 	CreatedAt    string   `json:"createdAt"`
@@ -102,6 +103,9 @@ func ParseNote(item data.Item) (Note, error) {
 	n.BodyMarkdown = r.Str("bodyMarkdown", 0)
 	n.Tags = r.StrList("tags")
 	n.Pinned = r.Bool("pinned")
+	if archived := r.OptBool("archived"); archived != nil {
+		n.Archived = *archived
+	}
 	if _, ok := item["taskIds"]; ok {
 		n.TaskIDs = r.StrList("taskIds")
 	} else {
@@ -163,6 +167,7 @@ func noteItem(n Note) data.Item {
 	item["bodyMarkdown"] = data.S(n.BodyMarkdown)
 	item["tags"] = data.StrList(n.Tags)
 	item["pinned"] = data.Bool(n.Pinned)
+	item["archived"] = data.Bool(n.Archived)
 	item["taskIds"] = data.StrList(n.TaskIDs)
 	item["version"] = data.N(int64(n.Version))
 	item["createdAt"] = data.S(n.CreatedAt)

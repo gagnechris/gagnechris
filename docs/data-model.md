@@ -407,21 +407,22 @@ Dynamo item schemas and mappers live in `@gagnechris/data`
 
 ### Note fields
 
-| Attr                      | Notes                                            |
-| ------------------------- | ------------------------------------------------ |
-| `id`                      | Client ULID                                      |
-| `userId`                  | Cognito `sub`                                    |
-| `area`                    | `work` \| `personal`                             |
-| `type`                    | `daily` \| `page`                                |
-| `date`                    | `yyyy-mm-dd` when `type=daily`; `null` for pages |
-| `title`                   | String (may be empty)                            |
-| `bodyMarkdown`            | Markdown body                                    |
-| `tags`                    | `string[]` (normalized on write)                 |
-| `pinned`                  | Boolean                                          |
-| `taskIds`                 | Embedded task ids; see Task embeds               |
-| `version`                 | Optimistic concurrency                           |
-| `createdAt` / `updatedAt` | ISO-8601 UTC ms                                  |
-| `deleted`                 | Soft-delete flag (tombstone window on GSI3)      |
+| Attr                      | Notes                                              |
+| ------------------------- | -------------------------------------------------- |
+| `id`                      | Client ULID                                        |
+| `userId`                  | Cognito `sub`                                      |
+| `area`                    | `work` \| `personal`                               |
+| `type`                    | `daily` \| `page` (a standing note in the web app) |
+| `date`                    | `yyyy-mm-dd` when `type=daily`; `null` for pages   |
+| `title`                   | String (may be empty)                              |
+| `bodyMarkdown`            | Markdown body                                      |
+| `tags`                    | `string[]` (normalized on write)                   |
+| `pinned`                  | Boolean                                            |
+| `archived`                | Boolean, pages only; absent reads as `false`       |
+| `taskIds`                 | Embedded task ids; see Task embeds                 |
+| `version`                 | Optimistic concurrency                             |
+| `createdAt` / `updatedAt` | ISO-8601 UTC ms                                    |
+| `deleted`                 | Soft-delete flag (tombstone window on GSI3)        |
 
 ### Task embeds
 

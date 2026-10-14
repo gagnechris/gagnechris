@@ -297,14 +297,16 @@ func (h handlers) createNote(ctx context.Context, r *api.Request) (*api.Response
 	return noteResponse(http.StatusCreated, n)
 }
 
-// readNoteFields reads the optional fields of a note write.
-func readNoteFields(v *api.Validator, withArea bool) noteFields {
+// readNoteFields reads the optional fields of a note write; byID is
+// UpdateNoteRequestSchema, which adds area and archived.
+func readNoteFields(v *api.Validator, byID bool) noteFields {
 	var f noteFields
 	f.title = optStr(title(v, "title", 0, false))
 	f.bodyMarkdown = optStr(text(v, "bodyMarkdown", false))
 	f.tags, f.hasTags = tags(v)
 	f.pinned = optBool(v, "pinned")
-	if withArea {
+	if byID {
+		f.archived = optBool(v, "archived")
 		f.area = optStr(v.Enum("area", false, Areas...))
 	}
 	return f

@@ -14,6 +14,7 @@ import {
   type NotebookAreaFilter,
 } from './notebookAreaPreference';
 import NotebookSearchPalette from './NotebookSearchPalette';
+import SidebarStandingNotes from './SidebarStandingNotes';
 import { useLocalToday } from './useLocalToday';
 
 export type NotebookOutletContext = {
@@ -131,6 +132,7 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
           ],
         },
       ]}
+      sidebarBottom={<SidebarStandingNotes areaFilter={areaFilter} />}
       renderSearch={(close) => (
         <NotebookSearchPalette onClose={close} areaFilter={areaFilter} />
       )}

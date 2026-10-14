@@ -234,6 +234,7 @@ export {
   noteOpenTaskCount,
   noteSections,
   noteTitle,
+  sidebarStandingNotes,
   type ListNote,
   type NoteSection,
 } from './note-list-sections.js';

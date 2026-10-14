@@ -9,9 +9,25 @@ import {
   emptyNoteDraft,
   noteDraftFromNote,
   notePayloadFromDraft,
+  type Note,
+  type NoteDraft,
 } from '@gagnechris/shared';
 import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
 import { noteHref } from './noteHref';
+
+type StandingNoteDraft = NoteDraft & { archived: boolean };
+
+const toDraft = (note: Note): StandingNoteDraft => ({
+  ...noteDraftFromNote(note),
+  archived: note.archived ?? false,
+});
+
+// Sent only when it changes, so editing an archived note keeps it archived.
+const toPayload = (draft: StandingNoteDraft, note: Note) => ({
+  ...notePayloadFromDraft(draft),
+  archived:
+    draft.archived === (note.archived ?? false) ? undefined : draft.archived,
+});
 
 export default function NotebookNotePage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -33,10 +49,10 @@ export default function NotebookNotePage() {
     resource: noteResource,
     params: { id },
     enabled: Boolean(id),
-    initialDraft: emptyNoteDraft(),
-    toDraft: noteDraftFromNote,
+    initialDraft: { ...emptyNoteDraft(), archived: false },
+    toDraft,
     getEntityId: (note) => note.id,
-    toPayload: (current) => notePayloadFromDraft(current),
+    toPayload,
     conflictMessage:
       'Conflict — another device updated this note. Reload and try again.',
     conflictMessages: {
@@ -45,7 +61,7 @@ export default function NotebookNotePage() {
     },
     loadErrorFallback: 'Could not load note.',
     delete: {
-      confirm: 'Delete this page? It will disappear from your list.',
+      confirm: 'Delete this note? It will disappear from your list.',
       mutate: async (version) => {
         await deleteMutation.mutateAsync({ id: id, version });
       },
@@ -94,6 +110,10 @@ export default function NotebookNotePage() {
           <NoteDetailsToggle markdown={draft.bodyMarkdown} />
           <NoteMenu
             noteId={entity.id}
+            archived={draft.archived}
+            onArchivedChange={(archived) =>
+              updateDraft((prev) => ({ ...prev, archived }))
+            }
             onDelete={() => void runDelete()}
             deleteDisabled={busy}
           />
@@ -107,10 +127,11 @@ export default function NotebookNotePage() {
       ) : null}
 
       <h1 className="workspace-visually-hidden">
-        {entity.title || 'Untitled page'}
+        {entity.title || 'Untitled note'}
       </h1>
       <p className="workspace-panel__lede">
-        {NOTEBOOK_AREA_LABELS[entity.area]} page
+        {NOTEBOOK_AREA_LABELS[entity.area]} standing note
+        {draft.archived ? ' · Archived' : ''}
       </p>
 
       <Field label="Title">

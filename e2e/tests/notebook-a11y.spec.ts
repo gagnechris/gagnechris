@@ -40,7 +40,9 @@ test('axe finds nothing on Today, Notes, Tasks, a task and the search palette', 
   await expectNoViolations(page, 'Today');
 
   await page.goto(`${apps.notebook}/notes`);
-  await expect(page.getByText(note.data!.title)).toBeVisible();
+  await expect(
+    page.getByRole('main').getByText(note.data!.title),
+  ).toBeVisible();
   await expectNoViolations(page, 'Notes');
 
   await page.goto(`${apps.notebook}/tasks`);

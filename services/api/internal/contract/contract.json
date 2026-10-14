@@ -1306,6 +1306,9 @@
         "pinned": {
           "type": "boolean"
         },
+        "archived": {
+          "type": "boolean"
+        },
         "taskIds": {
           "type": "array",
           "items": {
@@ -2244,6 +2247,7 @@
       "bodyMarkdown": "private text",
       "tags": [],
       "pinned": false,
+      "archived": false,
       "taskIds": [],
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -2265,6 +2269,7 @@
       "bodyMarkdown": "private text",
       "tags": [],
       "pinned": false,
+      "archived": false,
       "taskIds": [],
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -3715,6 +3720,7 @@
       "bodyMarkdown": "private text",
       "tags": [],
       "pinned": false,
+      "archived": false,
       "taskIds": [],
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -3757,6 +3763,7 @@
         "bodyMarkdown": "private text",
         "tags": [],
         "pinned": false,
+        "archived": false,
         "taskIds": [],
         "version": 3,
         "createdAt": "2026-10-01T12:00:00.000Z",

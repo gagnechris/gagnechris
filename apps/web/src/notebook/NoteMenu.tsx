@@ -23,13 +23,18 @@ export function NoteDetailsToggle({ markdown }: { markdown: string }) {
   );
 }
 
-/** The note's ⋯ menu: how task rows show, and Delete. */
+/** The note's ⋯ menu: how task rows show, Archive, and Delete. */
 export function NoteMenu({
   noteId,
+  archived,
+  onArchivedChange,
   onDelete,
   deleteDisabled,
 }: {
   noteId: string;
+  archived?: boolean;
+  /** Without it there is no Archive item. */
+  onArchivedChange?: (archived: boolean) => void;
   /** Without it there is no Delete note item. */
   onDelete?: () => void;
   deleteDisabled?: boolean;
@@ -94,6 +99,18 @@ export function NoteMenu({
               Title and first line
             </label>
           </fieldset>
+          {onArchivedChange ? (
+            <button
+              type="button"
+              className="note-menu__item"
+              onClick={() => {
+                close(true);
+                onArchivedChange(!archived);
+              }}
+            >
+              {archived ? 'Unarchive note' : 'Archive note'}
+            </button>
+          ) : null}
           {onDelete ? (
             <button
               type="button"

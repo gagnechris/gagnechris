@@ -5,6 +5,7 @@ import {
   noteOpenTaskCount,
   noteSections,
   noteTitle,
+  sidebarStandingNotes,
   type ListNote,
 } from './note-list-sections.js';
 import { taskEmbedToken } from './task-embeds.js';
@@ -103,5 +104,22 @@ describe('noteOpenTaskCount', () => {
 
   test('is 0 until the open list has loaded in full', () => {
     expect(noteOpenTaskCount(body, null)).toBe(0);
+  });
+});
+
+describe('sidebarStandingNotes', () => {
+  test('standing notes not archived, pinned first, then most recently updated', () => {
+    const ids = sidebarStandingNotes([
+      note('older', { updatedAt: '2026-09-01T14:00:00.000Z' }),
+      note('day', { type: 'daily', date: FRI }),
+      note('newer', { updatedAt: '2026-10-01T14:00:00.000Z' }),
+      note('archived', { archived: true }),
+      note('pinned-old', {
+        pinned: true,
+        updatedAt: '2026-08-01T14:00:00.000Z',
+      }),
+      note('legacy', { updatedAt: '2026-09-15T14:00:00.000Z' }),
+    ]).map((n) => n.id);
+    expect(ids).toEqual(['pinned-old', 'newer', 'legacy', 'older']);
   });
 });

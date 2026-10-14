@@ -70,6 +70,8 @@ type WorkspaceFrameProps = {
   sections: ShellNavSection[];
   /** Above the nav, and in the phone More sheet. */
   sidebarTop?: ReactNode;
+  /** Below the nav, in the desktop sidebar only. */
+  sidebarBottom?: ReactNode;
   /** Icon rail instead of the full sidebar, for focused editors. */
   rail?: boolean;
   /** The sidebar's edge and ⌘\ hide and show it. */
@@ -131,6 +133,7 @@ export function WorkspaceFrame({
   user,
   sections,
   sidebarTop,
+  sidebarBottom,
   rail = false,
   collapsible = false,
   renderSearch,
@@ -422,6 +425,9 @@ export function WorkspaceFrame({
               <span className="workspace-nav__label">More</span>
             </button>
           </nav>
+          {sidebarBottom ? (
+            <div className="workspace-desktop">{sidebarBottom}</div>
+          ) : null}
           <div className="workspace-sidebar__footer workspace-desktop">
             {yourApps}
             {account}

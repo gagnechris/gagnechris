@@ -84,7 +84,11 @@ vi.mock('../workspace/api/client', () => ({
     POST: async (path: string) =>
       path.endsWith('/batch') ? ok({ items: [] }) : fail(404, 'not_found'),
     PUT: async (_path: string, init?: Init) => {
-      const body = init?.body ?? {};
+      // As JSON on the wire: undefined fields are not sent.
+      const body = JSON.parse(JSON.stringify(init?.body ?? {})) as Record<
+        string,
+        unknown
+      >;
       api.puts.push(body);
       const { version: _version, ...fields } = body;
       return write(body, fields as Partial<Note>);
@@ -155,7 +159,7 @@ describe('NotebookNotePage', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Trip ideas' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Personal page')).toBeInTheDocument();
+    expect(screen.getByText('Personal standing note')).toBeInTheDocument();
     const tags = screen.getByRole('textbox', {
       name: 'Tags (comma-separated)',
     });
@@ -213,7 +217,7 @@ describe('NotebookNotePage', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Delete note' }));
     expect(confirm).toHaveBeenCalledWith(
-      'Delete this page? It will disappear from your list.',
+      'Delete this note? It will disappear from your list.',
       'Delete',
     );
     expect(
@@ -221,6 +225,39 @@ describe('NotebookNotePage', () => {
     ).toBeInTheDocument();
     expect(api.deletes).toEqual([2]);
     expect(router.state.location.pathname).toBe('/notes');
+  });
+
+  test('Archive and Unarchive in the ⋯ menu save archived; other edits leave it alone', async () => {
+    seedNote();
+    renderPage();
+    const user = userEvent.setup();
+    const options = await screen.findByRole('button', {
+      name: 'Note options',
+    });
+
+    await user.click(options);
+    await user.click(screen.getByRole('button', { name: 'Archive note' }));
+    expect(
+      screen.getByText('Personal standing note · Archived'),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(api.note?.archived).toBe(true), {
+      timeout: 4000,
+    });
+    expect(api.puts).toEqual([expect.objectContaining({ archived: true })]);
+
+    await user.type(screen.getByRole('textbox', { name: 'Note body' }), '!');
+    await waitFor(() => expect(api.note?.bodyMarkdown).toBe('Lisbon!'), {
+      timeout: 4000,
+    });
+    expect(api.puts[1]).not.toHaveProperty('archived');
+    expect(api.note?.archived).toBe(true);
+
+    await user.click(options);
+    await user.click(screen.getByRole('button', { name: 'Unarchive note' }));
+    await waitFor(() => expect(api.note?.archived).toBe(false), {
+      timeout: 4000,
+    });
+    expect(screen.getByText('Personal standing note')).toBeInTheDocument();
   });
 
   test('a daily note opens on Today for its date and area', async () => {

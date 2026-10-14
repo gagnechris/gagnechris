@@ -65,7 +65,7 @@ const getTask = async (seed: Seed, id: string) =>
   (await seed.api.GET('/api/notebook/tasks/{id}', { params: { path: { id } } }))
     .data;
 
-test('a page is created, edited and deleted', async ({
+test('a standing note is created, edited and deleted', async ({
   page,
   apps,
   signIn,
@@ -74,7 +74,8 @@ test('a page is created, edited and deleted', async ({
 }) => {
   await signIn();
   await page.goto(`${apps.notebook}/notes`);
-  await page.getByRole('button', { name: 'New page' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('button', { name: 'Standing note' }).click();
   await expect(page).toHaveURL(/\/notes\/[0-9A-Z]{26}(\?|$)/);
   const id = new URL(page.url()).pathname.split('/').at(-1)!;
 
