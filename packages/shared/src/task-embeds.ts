@@ -1,3 +1,4 @@
+import { indentWidth } from './indent-width.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
 import { ULID_PATTERN, type TaskStatus } from './schemas.js';
 
@@ -59,9 +60,6 @@ export function carriedInMarkdown(tasks: readonly CarriedInTask[]): string {
   }
   return `${CARRIED_IN_HEADING}\n\n${lines.join('\n')}\n\n`;
 }
-
-/** Leading spaces and tabs, each counted as one column. */
-export const indentWidth = (text: string) => /^[ \t]*/.exec(text)![0].length;
 
 export function parseTaskEmbedLine(
   line: string,

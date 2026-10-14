@@ -122,7 +122,6 @@ export {
   CARRIED_IN_HEADING,
   carriedInMarkdown,
   findTaskEmbeds,
-  indentWidth,
   parseTaskEmbedLine,
   replaceTaskEmbeds,
   removeTaskEmbedLines,
@@ -136,6 +135,7 @@ export {
   type TaskEmbedMarkdownTask,
   type TaskEmbedNesting,
 } from './task-embeds.js';
+export { indentWidth } from './indent-width.js';
 export {
   isMarkdownItem,
   markdownItemBlock,
