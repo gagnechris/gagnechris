@@ -1,4 +1,11 @@
-import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type RefObject,
+} from 'react';
 
 const STEP = 16;
 
@@ -6,7 +13,7 @@ type Props = {
   label: string;
   className: string;
   /** The element whose width the handle sets. */
-  target: () => HTMLElement | null;
+  target: RefObject<HTMLElement | null>;
   width: number | null;
   min: number;
   max: number;
@@ -28,7 +35,22 @@ export function ResizeHandle({
 }: Props) {
   const drag = useRef<{ x: number; width: number } | null>(null);
   const sign = edge === 'right' ? 1 : -1;
-  const current = () => width ?? target()?.getBoundingClientRect().width ?? min;
+  const current = () =>
+    width ?? target.current?.getBoundingClientRect().width ?? min;
+  // A focusable separator needs aria-valuenow, also while the CSS default
+  // width applies.
+  const [measured, setMeasured] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = target.current;
+    if (!el) return;
+    const measure = () => setMeasured(el.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target]);
+  const now = Math.round(width ?? measured ?? min);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -59,7 +81,7 @@ export function ResizeHandle({
       aria-label={label}
       aria-valuemin={min}
       aria-valuemax={max}
-      aria-valuenow={width ?? undefined}
+      aria-valuenow={Math.min(max, Math.max(min, now))}
       tabIndex={0}
       title={`${label}. Drag, or double-click to reset`}
       onPointerDown={onPointerDown}

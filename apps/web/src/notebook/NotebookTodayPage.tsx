@@ -380,7 +380,7 @@ export default function NotebookTodayPage() {
             <ResizeHandle
               label="Resize task panel"
               className="notebook-today__side-resize"
-              target={() => sideRef.current}
+              target={sideRef}
               width={sideWidth}
               min={SIDE_MIN}
               max={SIDE_MAX}

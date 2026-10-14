@@ -364,7 +364,7 @@ export function WorkspaceFrame({
             <ResizeHandle
               label="Resize sidebar"
               className="workspace-sidebar__resize"
-              target={() => sidebarRef.current}
+              target={sidebarRef}
               width={sidebarWidth}
               min={SIDEBAR_MIN}
               max={SIDEBAR_MAX}

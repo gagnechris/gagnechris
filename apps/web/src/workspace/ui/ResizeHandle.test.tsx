@@ -14,7 +14,7 @@ function Panel() {
       <ResizeHandle
         label="Resize panel"
         className=""
-        target={() => ref.current}
+        target={ref}
         width={width}
         min={200}
         max={400}
@@ -47,6 +47,13 @@ test('double-click goes back to the default width', () => {
   render(<Panel />);
   const handle = screen.getByRole('separator');
   fireEvent.doubleClick(handle);
-  expect(handle).not.toHaveAttribute('aria-valuenow');
+  expect(handle).toHaveAttribute('aria-valuenow', '200');
   expect(localStorage.getItem(KEY)).toBeNull();
+});
+
+test('reports a value before any resize, as a focusable separator must', () => {
+  render(<Panel />);
+  expect(
+    screen.getByRole('separator', { name: 'Resize panel' }),
+  ).toHaveAttribute('aria-valuenow', '200');
 });
