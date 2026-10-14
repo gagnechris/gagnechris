@@ -364,6 +364,36 @@ const foldDecorations = StateField.define<DecorationSet>({
   ],
 });
 
+const unindented = (text: string) => text.replace(/^[ \t]+/gm, '');
+
+/**
+ * A typed or deleted change that would remove or join the lines a fold hides
+ * is dropped: nothing on screen says they would go. Taking out the parent's
+ * whole line, or only changing the hidden lines' indent, is fine.
+ */
+const keepFoldedLines = EditorState.transactionFilter.of((tr) => {
+  if (
+    !tr.docChanged ||
+    !(tr.isUserEvent('input') || tr.isUserEvent('delete'))
+  ) {
+    return tr;
+  }
+  const folds = tr.startState.field(foldDecorations);
+  if (folds.size === 0) return tr;
+  const { doc } = tr.startState;
+  let hidden = false;
+  tr.changes.iterChanges((a, b, _fromB, _toB, inserted) => {
+    if (a === b) return;
+    const reindented =
+      unindented(doc.sliceString(a, b)) === unindented(inserted.toString());
+    folds.between(a, b, (from, to) => {
+      const parentLine = a <= doc.lineAt(from).from && b === from + 1;
+      if (a <= to && b > from && !parentLine && !reindented) hidden = true;
+    });
+  });
+  return hidden ? {} : tr;
+});
+
 function buildDraftLines(view: EditorView) {
   const { doc } = view.state;
   const ranges: Range<Decoration>[] = [];
@@ -597,6 +627,7 @@ export function taskEmbedEditor({
     widgets,
     foldedTasksField,
     foldDecorations,
+    keepFoldedLines,
     guardEmbedLines(widgets),
     embedEdgeKeys(widgets),
     draftLines,
