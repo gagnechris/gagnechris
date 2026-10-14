@@ -14,9 +14,11 @@ import {
   type EmbedNote,
 } from '@gagnechris/app-core';
 import {
+  fillNoteTemplate,
   findTaskEmbeds,
   parseTaskEmbedLine,
   removeTaskEmbedLines,
+  type NotebookArea,
 } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 // Static: only lazy routes render this body, so CodeMirror loads with the
@@ -32,6 +34,7 @@ import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import type { DescriptionEditorProps } from './TaskDetailsPanel';
 import { notebookImageResolver, uploadNotebookImages } from './notebookImages';
+import { useNoteTemplateMenu } from './noteTemplateMenu';
 import { toggleTaskDetails } from './taskDetailsStore';
 import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
@@ -49,6 +52,8 @@ type Props = {
   editorRef?: RefObject<MarkdownEditorHandle | null>;
   label?: string;
   placeholder?: string;
+  /** Turns on `/` templates, filled for this day and area. */
+  templates?: { date: string; area?: NotebookArea };
 };
 
 /** Room under the caret for the accessory bar and the docked date chips. */
@@ -86,6 +91,7 @@ export function NotebookMarkdownBody({
   editorRef: outerEditorRef,
   label = 'Note body',
   placeholder = 'Write in markdown…',
+  templates,
 }: Props) {
   const editorRef = useRef<MarkdownEditorHandle>(null);
   useImperativeHandle(
@@ -140,8 +146,24 @@ export function NotebookMarkdownBody({
     hint: 'Stays in this note. Shows up on Today from that date.',
   });
   const withTasks = note !== undefined;
+  const templateDate = templates?.date;
+  const templateArea = templates?.area;
+  const templateMenu = useNoteTemplateMenu({
+    enabled: templates !== undefined,
+    fill: useCallback(
+      (markdown: string) =>
+        templateDate
+          ? fillNoteTemplate(markdown, {
+              date: templateDate,
+              area: templateArea,
+            })
+          : markdown,
+      [templateDate, templateArea],
+    ),
+  });
   const extensions = useMemo(
     () => [
+      ...templateMenu.extensions,
       livePreview(),
       markdownImages({ resolveSrc: resolveImageSrc }),
       taskListToggle(),
@@ -154,7 +176,14 @@ export function NotebookMarkdownBody({
         ? [EditorView.scrollMargins.of(() => ({ bottom: PHONE_SCROLL_MARGIN }))]
         : []),
     ],
-    [embeds.extensions, dateMenu.extensions, withTasks, phone, resolveImageSrc],
+    [
+      templateMenu.extensions,
+      embeds.extensions,
+      dateMenu.extensions,
+      withTasks,
+      phone,
+      resolveImageSrc,
+    ],
   );
 
   const handledHighlight = useRef<string | null>(null);
@@ -226,6 +255,7 @@ export function NotebookMarkdownBody({
         <EditorAccessoryBar getView={getView} tasks={withTasks} />
       ) : null}
       {withTasks ? dateMenu.menu : null}
+      {templateMenu.menu}
       {uploadError ? (
         <p className="workspace-panel__error" role="alert">
           {uploadError}

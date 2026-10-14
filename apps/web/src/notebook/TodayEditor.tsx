@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
 import {
   dailyNoteResource,
@@ -15,10 +15,12 @@ import {
   notePayloadFromDraft,
   taskEmbedToken,
 } from '@gagnechris/shared';
+import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
+import { useInsertNoteTemplate } from './noteTemplateMenu';
 import {
   NOTEBOOK_AREA_HEADINGS,
   NOTEBOOK_AREA_LABELS,
@@ -121,6 +123,9 @@ export function TodayEditor({
     },
   });
 
+  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const insertTemplate = useInsertNoteTemplate(editorRef, { date, area });
+
   const unsaved = dirty || saveState === 'saving';
   useEffect(() => {
     onUnsavedChange(unsaved);
@@ -178,6 +183,7 @@ export function TodayEditor({
             noteId={entity.id}
             onDelete={entity.version > 0 ? () => void runDelete() : undefined}
             deleteDisabled={busy}
+            onInsertTemplate={insertTemplate}
           />
         </div>
       </div>
@@ -210,6 +216,8 @@ export function TodayEditor({
         </div>
       ) : null}
       <NotebookMarkdownBody
+        editorRef={editorRef}
+        templates={{ date, area }}
         note={entity}
         ensureNoteSaved={save}
         value={draft.bodyMarkdown}

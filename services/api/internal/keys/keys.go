@@ -137,6 +137,11 @@ func DailyTemplatePk(userID, area string) string {
 
 func DailyTemplateSk() string { return SKMeta }
 
+// NoteTemplatesPk is one partition per user, so a Query lists every template.
+func NoteTemplatesPk(userID string) string { return "USER#" + userID + "#NOTE_TEMPLATES" }
+
+func NoteTemplateSk(templateID string) string { return "TEMPLATE#" + templateID }
+
 func RateContactIPPk(ip string) string { return "RATE#contact#ip#" + ip }
 
 func RateResumeIPPk(ip string) string { return "RATE#resume#ip#" + ip }

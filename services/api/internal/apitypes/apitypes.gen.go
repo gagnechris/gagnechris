@@ -6335,6 +6335,126 @@ func (e PutAPINotebookTemplatesDailyArea412JSONResponseBodyError) Valid() bool {
 	}
 }
 
+// Defines values for PostAPINotebookTemplatesNotes409JSONResponseBodyError.
+const (
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorConflict        PostAPINotebookTemplatesNotes409JSONResponseBodyError = "conflict"
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorDailyTaken      PostAPINotebookTemplatesNotes409JSONResponseBodyError = "daily_taken"
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorDeleted         PostAPINotebookTemplatesNotes409JSONResponseBodyError = "deleted"
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorPayloadMismatch PostAPINotebookTemplatesNotes409JSONResponseBodyError = "payload_mismatch"
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorSlugTaken       PostAPINotebookTemplatesNotes409JSONResponseBodyError = "slug_taken"
+	PostAPINotebookTemplatesNotes409JSONResponseBodyErrorVersionConflict PostAPINotebookTemplatesNotes409JSONResponseBodyError = "version_conflict"
+)
+
+// Valid indicates whether the value is a known member of the PostAPINotebookTemplatesNotes409JSONResponseBodyError enum.
+func (e PostAPINotebookTemplatesNotes409JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorConflict:
+		return true
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorDailyTaken:
+		return true
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorDeleted:
+		return true
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorPayloadMismatch:
+		return true
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorSlugTaken:
+		return true
+	case PostAPINotebookTemplatesNotes409JSONResponseBodyErrorVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError.
+const (
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorConflict        DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "conflict"
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorDailyTaken      DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "daily_taken"
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorDeleted         DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "deleted"
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorPayloadMismatch DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "payload_mismatch"
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorSlugTaken       DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "slug_taken"
+	DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorVersionConflict DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError = "version_conflict"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError enum.
+func (e DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError) Valid() bool {
+	switch e {
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorConflict:
+		return true
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorDailyTaken:
+		return true
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorDeleted:
+		return true
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorPayloadMismatch:
+		return true
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorSlugTaken:
+		return true
+	case DeleteAPINotebookTemplatesNotesID409JSONResponseBodyErrorVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError.
+const (
+	DeleteAPINotebookTemplatesNotesID412JSONResponseBodyErrorPreconditionFailed DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError = "precondition_failed"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError enum.
+func (e DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError) Valid() bool {
+	switch e {
+	case DeleteAPINotebookTemplatesNotesID412JSONResponseBodyErrorPreconditionFailed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PutAPINotebookTemplatesNotesID409JSONResponseBodyError.
+const (
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorConflict        PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "conflict"
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorDailyTaken      PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "daily_taken"
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorDeleted         PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "deleted"
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorPayloadMismatch PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "payload_mismatch"
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorSlugTaken       PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "slug_taken"
+	PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorVersionConflict PutAPINotebookTemplatesNotesID409JSONResponseBodyError = "version_conflict"
+)
+
+// Valid indicates whether the value is a known member of the PutAPINotebookTemplatesNotesID409JSONResponseBodyError enum.
+func (e PutAPINotebookTemplatesNotesID409JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorConflict:
+		return true
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorDailyTaken:
+		return true
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorDeleted:
+		return true
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorPayloadMismatch:
+		return true
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorSlugTaken:
+		return true
+	case PutAPINotebookTemplatesNotesID409JSONResponseBodyErrorVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PutAPINotebookTemplatesNotesID412JSONResponseBodyError.
+const (
+	PutAPINotebookTemplatesNotesID412JSONResponseBodyErrorPreconditionFailed PutAPINotebookTemplatesNotesID412JSONResponseBodyError = "precondition_failed"
+)
+
+// Valid indicates whether the value is a known member of the PutAPINotebookTemplatesNotesID412JSONResponseBodyError enum.
+func (e PutAPINotebookTemplatesNotesID412JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PutAPINotebookTemplatesNotesID412JSONResponseBodyErrorPreconditionFailed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PostAPIResumeDownload200JSONResponseBodyOk.
 const (
 	PostAPIResumeDownload200JSONResponseBodyOkTrue PostAPIResumeDownload200JSONResponseBodyOk = true
@@ -6407,6 +6527,14 @@ type CreateNoteRequestArea string
 
 // CreateNoteRequestType defines model for CreateNoteRequest.Type.
 type CreateNoteRequestType string
+
+// CreateNoteTemplateRequest defines model for CreateNoteTemplateRequest.
+type CreateNoteTemplateRequest struct {
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+}
 
 // CreatePostRequest defines model for CreatePostRequest.
 type CreatePostRequest struct {
@@ -6933,6 +7061,32 @@ type NoteSyncChange_1 struct {
 	Type      NoteSyncChange1Type    `json:"type"`
 	UpdatedAt string                 `json:"updatedAt"`
 	Version   int                    `json:"version"`
+}
+
+// NoteTemplate defines model for NoteTemplate.
+type NoteTemplate struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
+}
+
+// NoteTemplateListResponse defines model for NoteTemplateListResponse.
+type NoteTemplateListResponse struct {
+	// Items Every template, oldest first
+	Items []NoteTemplateListResponse_Items `json:"items"`
+}
+
+// NoteTemplateListResponse_Items defines model for NoteTemplateListResponse.Items.
+type NoteTemplateListResponse_Items struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
 }
 
 // NotebookBatchRequest defines model for NotebookBatchRequest.
@@ -7609,6 +7763,14 @@ type UpdateNoteRequest struct {
 
 // UpdateNoteRequestArea defines model for UpdateNoteRequest.Area.
 type UpdateNoteRequestArea string
+
+// UpdateNoteTemplateRequest defines model for UpdateNoteTemplateRequest.
+type UpdateNoteTemplateRequest struct {
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	Version      *int    `json:"version,omitempty"`
+}
 
 // UpdatePostRequest defines model for UpdatePostRequest.
 type UpdatePostRequest struct {
@@ -13501,6 +13663,348 @@ type PutAPINotebookTemplatesDailyArea503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
+// GetAPINotebookTemplatesNotes200JSONResponseBody_Items defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes200JSONResponseBody_Items struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
+}
+
+// GetAPINotebookTemplatesNotes200JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes200JSONResponseBody struct {
+	// Items Every template, oldest first
+	Items []GetAPINotebookTemplatesNotes200JSONResponseBody_Items `json:"items"`
+}
+
+// GetAPINotebookTemplatesNotes401JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotes403JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotes500JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotes503JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
+type GetAPINotebookTemplatesNotes503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotesJSONBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotesJSONBody struct {
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+}
+
+// PostAPINotebookTemplatesNotes201JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes201JSONResponseBody struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
+}
+
+// PostAPINotebookTemplatesNotes400JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes401JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes403JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes409JSONResponseBodyError defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes409JSONResponseBodyError string
+
+// PostAPINotebookTemplatesNotes409JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes409JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                        `json:"current,omitempty"`
+	CurrentVersion *int                                                  `json:"currentVersion,omitempty"`
+	Error          PostAPINotebookTemplatesNotes409JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                    `json:"fields,omitempty"`
+	Message        *string                                               `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes413JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes500JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookTemplatesNotes503JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
+type PostAPINotebookTemplatesNotes503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesIDJSONBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesIDJSONBody struct {
+	Version int `json:"version"`
+}
+
+// DeleteAPINotebookTemplatesNotesIDParams defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesIDParams struct {
+	// IfMatch Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*`
+	IfMatch *string `json:"if-match,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID400JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID401JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID403JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID404JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID404JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError string
+
+// DeleteAPINotebookTemplatesNotesID409JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID409JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                            `json:"current,omitempty"`
+	CurrentVersion *int                                                      `json:"currentVersion,omitempty"`
+	Error          DeleteAPINotebookTemplatesNotesID409JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                        `json:"fields,omitempty"`
+	Message        *string                                                   `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError string
+
+// DeleteAPINotebookTemplatesNotesID412JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID412JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                            `json:"current,omitempty"`
+	CurrentVersion *int                                                      `json:"currentVersion,omitempty"`
+	Error          DeleteAPINotebookTemplatesNotesID412JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                        `json:"fields,omitempty"`
+	Message        *string                                                   `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID500JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// DeleteAPINotebookTemplatesNotesID503JSONResponseBody defines parameters for DeleteAPINotebookTemplatesNotesID.
+type DeleteAPINotebookTemplatesNotesID503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID200JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID200JSONResponseBody struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
+}
+
+// GetAPINotebookTemplatesNotesID400JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID401JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID403JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID404JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID404JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID500JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookTemplatesNotesID503JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
+type GetAPINotebookTemplatesNotesID503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesIDJSONBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesIDJSONBody struct {
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	Version      *int    `json:"version,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesIDParams defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesIDParams struct {
+	// IfMatch Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*`
+	IfMatch *string `json:"if-match,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID200JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID200JSONResponseBody struct {
+	BodyMarkdown string `json:"bodyMarkdown"`
+	CreatedAt    string `json:"createdAt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	UpdatedAt    string `json:"updatedAt"`
+	Version      int    `json:"version"`
+}
+
+// PutAPINotebookTemplatesNotesID400JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID401JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID403JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID404JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID404JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID409JSONResponseBodyError defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID409JSONResponseBodyError string
+
+// PutAPINotebookTemplatesNotesID409JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID409JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                         `json:"current,omitempty"`
+	CurrentVersion *int                                                   `json:"currentVersion,omitempty"`
+	Error          PutAPINotebookTemplatesNotesID409JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                     `json:"fields,omitempty"`
+	Message        *string                                                `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID412JSONResponseBodyError defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID412JSONResponseBodyError string
+
+// PutAPINotebookTemplatesNotesID412JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID412JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                         `json:"current,omitempty"`
+	CurrentVersion *int                                                   `json:"currentVersion,omitempty"`
+	Error          PutAPINotebookTemplatesNotesID412JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                     `json:"fields,omitempty"`
+	Message        *string                                                `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID413JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID500JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookTemplatesNotesID503JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
+type PutAPINotebookTemplatesNotesID503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PostAPIResumeDownloadJSONBody defines parameters for PostAPIResumeDownload.
 type PostAPIResumeDownloadJSONBody struct {
 	Referrer *string `json:"referrer,omitempty"`
@@ -13657,6 +14161,15 @@ type DeleteAPINotebookTemplatesDailyAreaJSONRequestBody DeleteAPINotebookTemplat
 
 // PutAPINotebookTemplatesDailyAreaJSONRequestBody defines body for PutAPINotebookTemplatesDailyArea for application/json ContentType.
 type PutAPINotebookTemplatesDailyAreaJSONRequestBody PutAPINotebookTemplatesDailyAreaJSONBody
+
+// PostAPINotebookTemplatesNotesJSONRequestBody defines body for PostAPINotebookTemplatesNotes for application/json ContentType.
+type PostAPINotebookTemplatesNotesJSONRequestBody PostAPINotebookTemplatesNotesJSONBody
+
+// DeleteAPINotebookTemplatesNotesIDJSONRequestBody defines body for DeleteAPINotebookTemplatesNotesID for application/json ContentType.
+type DeleteAPINotebookTemplatesNotesIDJSONRequestBody DeleteAPINotebookTemplatesNotesIDJSONBody
+
+// PutAPINotebookTemplatesNotesIDJSONRequestBody defines body for PutAPINotebookTemplatesNotesID for application/json ContentType.
+type PutAPINotebookTemplatesNotesIDJSONRequestBody PutAPINotebookTemplatesNotesIDJSONBody
 
 // PostAPIResumeDownloadJSONRequestBody defines body for PostAPIResumeDownload for application/json ContentType.
 type PostAPIResumeDownloadJSONRequestBody PostAPIResumeDownloadJSONBody

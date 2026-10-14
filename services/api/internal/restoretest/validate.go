@@ -141,6 +141,9 @@ var keyRules = map[string]func(Item) bool{
 		return i["pk"] == keys.DailyTemplatePk(str(i["userId"]), str(i["area"])) &&
 			i["sk"] == keys.DailyTemplateSk()
 	},
+	"noteTemplate": func(i Item) bool {
+		return i["pk"] == keys.NoteTemplatesPk(str(i["userId"])) && i["sk"] == keys.NoteTemplateSk(str(i["id"]))
+	},
 }
 
 var requiredKeys = []string{

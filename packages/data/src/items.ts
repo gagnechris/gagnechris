@@ -15,6 +15,7 @@ import {
   type DailyTemplate,
   type Home,
   type Note,
+  type NoteTemplate,
   type Post,
   type Project,
   type Resume,
@@ -36,6 +37,8 @@ import {
   notePk,
   noteTasksGsi2Pk,
   noteTasksGsi2Sk,
+  noteTemplateSk,
+  noteTemplatesPk,
   notebookAreaGsi1Pk,
   postMetaSk,
   postPk,
@@ -704,6 +707,39 @@ export function buildDailyTemplateItem(
   };
 }
 
+export const NoteTemplateItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('noteTemplate'),
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  name: z.string().min(1),
+  bodyMarkdown: z.string(),
+  version: z.number().int().positive(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export type NoteTemplateItem = z.infer<typeof NoteTemplateItemSchema>;
+
+export function buildNoteTemplateItem(
+  userId: string,
+  template: NoteTemplate,
+): NoteTemplateItem {
+  return {
+    pk: noteTemplatesPk(userId),
+    sk: noteTemplateSk(template.id),
+    entityType: 'noteTemplate',
+    id: template.id,
+    userId,
+    name: template.name,
+    bodyMarkdown: template.bodyMarkdown,
+    version: template.version,
+    createdAt: template.createdAt,
+    updatedAt: template.updatedAt,
+  };
+}
+
 function taskGsi1Sk(
   task: Pick<Task, 'id' | 'startDate' | 'someday' | 'updatedAt'>,
 ): string {
@@ -764,4 +800,5 @@ export const ITEM_SCHEMAS: Record<
   task: TaskMetaItemSchema,
   dailyNoteClaim: DailyNoteClaimItemSchema,
   dailyTemplate: DailyTemplateItemSchema,
+  noteTemplate: NoteTemplateItemSchema,
 };
