@@ -1,5 +1,7 @@
 import {
+  useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -33,6 +35,13 @@ import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
 import { useStoredWidth } from './ui/useStoredWidth';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';
 import { WorkspaceSearchContext } from './workspaceSearch';
+import {
+  isSidebarShortcut,
+  readSidebarOpen,
+  WorkspaceSidebarContext,
+  writeSidebarOpen,
+  type WorkspaceSidebar,
+} from './workspaceSidebar';
 import '../kit/kit.css';
 import './workspace.css';
 
@@ -63,6 +72,8 @@ type WorkspaceFrameProps = {
   sidebarTop?: ReactNode;
   /** Icon rail instead of the full sidebar, for focused editors. */
   rail?: boolean;
+  /** Pages can hide the sidebar with a SidebarToggle or ⌘\. */
+  collapsible?: boolean;
   renderSearch: (close: () => void) => ReactNode;
   /** Defaults to the route outlet. */
   children?: ReactNode;
@@ -112,6 +123,7 @@ function ExternalLink({
 
 const SIDEBAR_MIN = 192;
 const SIDEBAR_MAX = 400;
+const SIDEBAR_ID = 'workspace-sidebar';
 
 /** Sidebar, phone tab bar and ⌘K for one signed-in app. */
 export function WorkspaceFrame({
@@ -120,6 +132,7 @@ export function WorkspaceFrame({
   sections,
   sidebarTop,
   rail = false,
+  collapsible = false,
   renderSearch,
   children,
 }: WorkspaceFrameProps) {
@@ -136,6 +149,34 @@ export function WorkspaceFrame({
     `gagnechris.${app}.sidebarWidth`,
     SIDEBAR_MIN,
     SIDEBAR_MAX,
+  );
+  const [sidebarOpenState, setSidebarOpenState] = useState(() =>
+    readSidebarOpen(app),
+  );
+  const sidebarOpen = !collapsible || sidebarOpenState;
+  const sidebarToggleRef = useRef<HTMLButtonElement>(null);
+  const setSidebarOpen = useCallback(
+    (open: boolean) => {
+      writeSidebarOpen(app, open);
+      setSidebarOpenState(open);
+      // Focus inside a sidebar that is going away would drop to the body.
+      if (!open && sidebarRef.current?.contains(document.activeElement)) {
+        sidebarToggleRef.current?.focus();
+      }
+    },
+    [app],
+  );
+  const sidebar = useMemo<WorkspaceSidebar | null>(
+    () =>
+      collapsible
+        ? {
+            id: SIDEBAR_ID,
+            open: sidebarOpen,
+            toggle: () => setSidebarOpen(!sidebarOpen),
+            toggleRef: sidebarToggleRef,
+          }
+        : null,
+    [collapsible, sidebarOpen, setSidebarOpen],
   );
 
   // Editors that already unmounted can still be retrying a save.
@@ -162,6 +203,18 @@ export function WorkspaceFrame({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    if (!sidebar) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!isSidebarShortcut(e)) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      e.preventDefault();
+      sidebar.toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebar]);
 
   const visibleSections = visibleNavSections(sections, user.groups);
   const phoneOverflow = new Set(
@@ -248,11 +301,13 @@ export function WorkspaceFrame({
 
   return (
     <div
-      className={
-        rail
-          ? 'workspace-shell workspace workspace--rail'
-          : 'workspace-shell workspace'
-      }
+      className={[
+        'workspace-shell workspace',
+        rail ? 'workspace--rail' : '',
+        sidebarOpen ? '' : 'workspace--sidebar-closed',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       style={
         sidebarWidth === null
           ? undefined
@@ -269,7 +324,11 @@ export function WorkspaceFrame({
         </div>
       ) : null}
       <div className="workspace__body">
-        <aside className="workspace-sidebar" ref={sidebarRef}>
+        <aside
+          className="workspace-sidebar"
+          id={collapsible ? SIDEBAR_ID : undefined}
+          ref={sidebarRef}
+        >
           <div className="workspace-brand workspace-desktop">
             <span className="workspace-brand__mark" aria-hidden="true">
               CG
@@ -370,12 +429,22 @@ export function WorkspaceFrame({
               max={SIDEBAR_MAX}
               edge="right"
               onChange={setSidebarWidth}
+              onCollapse={
+                collapsible
+                  ? () => {
+                      setSidebarOpen(false);
+                      sidebarToggleRef.current?.focus();
+                    }
+                  : undefined
+              }
             />
           )}
         </aside>
         <main className="workspace-main">
           <WorkspaceSearchContext.Provider value={openSearch}>
-            {children ?? <Outlet />}
+            <WorkspaceSidebarContext.Provider value={sidebar}>
+              {children ?? <Outlet />}
+            </WorkspaceSidebarContext.Provider>
           </WorkspaceSearchContext.Provider>
         </main>
       </div>

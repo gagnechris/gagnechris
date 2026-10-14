@@ -2,6 +2,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { noteResource, useDeleteNoteMutation } from '@gagnechris/app-core';
 import { Field, TextInput } from '../kit/Field';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
+import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
@@ -84,6 +85,7 @@ export default function NotebookNotePage() {
   return (
     <section className="workspace-panel workspace-panel--editor">
       <div className="workspace-action-bar">
+        <SidebarToggle />
         <div className="workspace-action-bar__status">
           <Link to="/notes" className="workspace-back">
             ← Notes

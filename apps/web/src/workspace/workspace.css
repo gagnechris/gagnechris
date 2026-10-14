@@ -358,6 +358,85 @@
   right: 0;
 }
 
+/* Collapsible sidebar (Notebook): slides out, leaving nothing behind. */
+
+.workspace-sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-3);
+}
+
+/* The site-wide button:focus ring would show after a click. */
+.workspace-sidebar-toggle:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:is(.workspace-panel__header, .workspace-action-bar)
+  > .workspace-sidebar-toggle
+  + * {
+  margin-right: auto;
+}
+
+@media not all and (max-width: 767px) {
+  .workspace-sidebar {
+    transition:
+      margin-left 160ms ease,
+      visibility 0s;
+  }
+
+  .workspace--sidebar-closed .workspace-sidebar {
+    margin-left: calc(-1 * var(--workspace-sidebar-width, 15.5rem));
+    visibility: hidden;
+    transition:
+      margin-left 160ms ease,
+      visibility 0s linear 160ms;
+  }
+
+  /* The area switch moves into Today's date row. */
+  .workspace--sidebar-closed .notebook-today__phone-tools {
+    display: flex;
+    margin-left: auto;
+  }
+
+  .workspace--sidebar-closed
+    .notebook-today__side-toggle
+    + .notebook-today__phone-tools {
+    margin-left: 0;
+  }
+
+  .workspace--sidebar-closed .notebook-today__area {
+    width: auto;
+  }
+
+  .workspace--sidebar-closed .notebook-today__search {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-sidebar,
+  .workspace--sidebar-closed .workspace-sidebar {
+    transition: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace-sidebar-toggle {
+    display: none;
+  }
+
+  /* The hidden toggle still counts as the header's first child. */
+  .workspace-panel__header > .workspace-sidebar-toggle + * {
+    flex: 1 0 100%;
+    order: 1;
+  }
+
+  .workspace-panel__header > .workspace-sidebar-toggle + * + * {
+    margin-left: auto;
+  }
+}
+
 /* Focused editors: the sidebar shrinks to a 64px icon rail. */
 
 .workspace--rail .workspace-sidebar {
