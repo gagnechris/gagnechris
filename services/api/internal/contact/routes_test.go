@@ -17,11 +17,13 @@ import (
 type fakeBackend struct {
 	mailCount int
 	statuses  []string
+	saved     int
 }
 
 func (f *fakeBackend) consumeContactIP(context.Context, string) (bool, error) { return true, nil }
 
 func (f *fakeBackend) save(context.Context, string, string, string, string) (string, error) {
+	f.saved++
 	return "C1", nil
 }
 
@@ -118,6 +120,9 @@ func TestContactAtTheDailyCapCounts(t *testing.T) {
 	}
 	if m.sent != 0 {
 		t.Errorf("sent %d mails over the cap", m.sent)
+	}
+	if b.saved != 0 {
+		t.Errorf("saved %d contact rows over the cap", b.saved)
 	}
 	if !strings.Contains(emitted(t, r, &rec), `"`+contract.Data.API.Metrics.SESCapReached+`"`) {
 		t.Errorf("no SesCapReached metric: %s", rec.emf.String())
