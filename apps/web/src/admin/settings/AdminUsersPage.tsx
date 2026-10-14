@@ -80,13 +80,16 @@ export default function AdminUsersPage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const { perform } = useUserChange();
+  const { perform } = useUserChange(me.userId);
   const resumed = useRef(false);
   useEffect(() => {
     if (!allowed || resumed.current) return;
     resumed.current = true;
     void (async () => {
-      const change = takePendingChange(await getAuthTime().catch(() => null));
+      const change = takePendingChange(
+        await getAuthTime().catch(() => null),
+        me.userId,
+      );
       if (!change) return;
       try {
         await perform(change, { confirmed: true });
@@ -95,7 +98,7 @@ export default function AdminUsersPage() {
         setRowError(userErrorMessage(err, 'Could not finish that change.'));
       }
     })();
-  }, [allowed, perform]);
+  }, [allowed, perform, me.userId]);
 
   if (!allowed) return <NoAccess />;
 
@@ -283,6 +286,7 @@ export default function AdminUsersPage() {
           key={editing.id}
           user={editing}
           isSelf={editing.id === me.userId}
+          requesterId={me.userId}
           onClose={() => setEditingId(null)}
           onToast={setToast}
         />

@@ -22,6 +22,7 @@ import {
 type Props = {
   user: ManagedUser;
   isSelf: boolean;
+  requesterId: string;
   onClose: () => void;
   onToast: (message: string) => void;
 };
@@ -31,12 +32,13 @@ type AccountAction = Exclude<UserChange['kind'], 'access'>;
 export default function EditUserDrawer({
   user,
   isSelf,
+  requesterId,
   onClose,
   onToast,
 }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const phone = useMediaQuery(PHONE_QUERY);
-  const { perform, isPending: busy } = useUserChange();
+  const { perform, isPending: busy } = useUserChange(requesterId);
   const [confirming, setConfirming] = useState(false);
   const [draft, setDraft] = useState(user.level);
   const [error, setError] = useState<string | null>(null);

@@ -20,8 +20,13 @@ export function WorkspaceQueryProvider({ children }: { children: ReactNode }) {
         },
       }),
   );
+  // One client, so concurrent 401s share a single token refresh.
+  const [getClient] = useState(() => {
+    const api = createApiClient();
+    return () => api;
+  });
   return (
-    <AppApiProvider getClient={createApiClient}>
+    <AppApiProvider getClient={getClient}>
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     </AppApiProvider>
   );

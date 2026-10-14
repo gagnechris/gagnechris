@@ -336,9 +336,12 @@ describe('AdminUsersPage', () => {
         prompt: 'LOGIN',
       });
       expect(post).not.toHaveBeenCalled();
-      expect(
-        JSON.parse(window.sessionStorage.getItem(PENDING)!).change,
-      ).toEqual({ id: 'sam', name: 'Sam Rivera', kind: 'disable' });
+      expect(JSON.parse(window.sessionStorage.getItem(PENDING)!)).toMatchObject(
+        {
+          change: { id: 'sam', name: 'Sam Rivera', kind: 'disable' },
+          userId: 'me',
+        },
+      );
       expect(screen.getByRole('dialog')).toHaveTextContent(
         'Confirm it’s you with your passkey',
       );
@@ -373,6 +376,7 @@ describe('AdminUsersPage', () => {
             kind: 'access',
             level: 'notebook',
           },
+          userId: 'me',
           at,
         }),
       );
@@ -386,11 +390,28 @@ describe('AdminUsersPage', () => {
       expect(window.sessionStorage.getItem(PENDING)).toBeNull();
     });
 
+    test('a change another user asked for is dropped when someone else signs in', async () => {
+      window.sessionStorage.setItem(
+        PENDING,
+        JSON.stringify({
+          change: { id: 'sam', name: 'Sam Rivera', kind: 'remove' },
+          userId: 'someone-else',
+          at: Date.now() - 30_000,
+        }),
+      );
+      session.authTime = Math.floor(Date.now() / 1000);
+      renderPage();
+      await row('Sam Rivera');
+      expect(post).not.toHaveBeenCalled();
+      expect(window.sessionStorage.getItem(PENDING)).toBeNull();
+    });
+
     test('backing out of the prompt changes nothing', async () => {
       window.sessionStorage.setItem(
         PENDING,
         JSON.stringify({
           change: { id: 'sam', name: 'Sam Rivera', kind: 'remove' },
+          userId: 'me',
           at: Date.now() - 30_000,
         }),
       );

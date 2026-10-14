@@ -4,17 +4,51 @@ import { useLatest } from '@gagnechris/app-core';
 export type DraftPreviewKind = 'post' | 'project';
 export type DraftPreview = { title: string; markdown: string };
 
+const KEY_PREFIX = 'admin.draftPreview.';
+// Entries are never removed by the preview tab (a reload still needs them),
+// so only the most recently opened few are kept.
+const MAX_STORED = 5;
+
 const storageKey = (kind: DraftPreviewKind, id: string) =>
-  `admin.draftPreview.${kind}.${id}`;
+  `${KEY_PREFIX}${kind}.${id}`;
 
 export const draftPreviewPath = (kind: DraftPreviewKind, id: string) =>
   `/preview/${kind}/${encodeURIComponent(id)}`;
 
 function write(kind: DraftPreviewKind, id: string, draft: DraftPreview) {
   try {
-    window.localStorage.setItem(storageKey(kind, id), JSON.stringify(draft));
+    window.localStorage.setItem(
+      storageKey(kind, id),
+      JSON.stringify({ ...draft, at: Date.now() }),
+    );
   } catch {
     // The preview tab then shows that there is nothing to preview.
+  }
+}
+
+function storedAt(key: string): number {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? '') as {
+      at?: unknown;
+    };
+    return typeof value.at === 'number' ? value.at : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Drops all but the newest previews, leaving room for `keep`'s. */
+function prune(keep: string) {
+  try {
+    const others = Object.keys(window.localStorage)
+      .filter((key) => key.startsWith(KEY_PREFIX) && key !== keep)
+      .map((key) => ({ key, at: storedAt(key) }))
+      .sort((a, b) => b.at - a.at);
+    for (const { key } of others.slice(MAX_STORED - 1)) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage disabled: nothing was stored either.
   }
 }
 
@@ -49,6 +83,7 @@ export function useDraftPreview(
   }, [kind, id, title, markdown]);
   const onOpen = useCallback(() => {
     opened.current = true;
+    prune(storageKey(kind, id));
     write(kind, id, latest.current);
   }, [kind, id, latest]);
   return { href: draftPreviewPath(kind, id), onOpen };

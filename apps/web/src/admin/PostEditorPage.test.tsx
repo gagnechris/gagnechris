@@ -893,6 +893,27 @@ describe('PostEditorPage preview', () => {
     expect(screen.queryByTestId('preview')).not.toBeInTheDocument();
   });
 
+  test('keeps only the newest few draft previews in storage', async () => {
+    const key = (id: string) => `admin.draftPreview.post.${id}`;
+    window.localStorage.clear();
+    for (let i = 0; i < 8; i += 1) {
+      window.localStorage.setItem(
+        key(`old-${i}`),
+        JSON.stringify({ title: '', markdown: 'x', at: 1_000 + i }),
+      );
+    }
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+    await openPreviewPage('post', basePost.id);
+
+    const kept = Object.keys(window.localStorage)
+      .filter((k) => k.startsWith('admin.draftPreview.'))
+      .sort();
+    expect(kept).toEqual(
+      [basePost.id, 'old-4', 'old-5', 'old-6', 'old-7'].map(key).sort(),
+    );
+  });
+
   test('root-relative links and images in the body open on the public site', async () => {
     vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://gagnechris.com');
     get.mockResolvedValue({
