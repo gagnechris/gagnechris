@@ -39,7 +39,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { blockEnd } from './lineMoves';
+import { blockEnd, indentOf } from './lineMoves';
 import {
   dragTaskEmbed,
   indentTaskEmbed,
@@ -51,6 +51,7 @@ import {
   taskEmbedBlock,
   taskEmbedSections,
 } from './taskEmbedMoves';
+import { reindent } from './taskBlockMoves';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 
@@ -715,7 +716,11 @@ export function moveFromTaskEmbed(
   });
 }
 
-/** Deletes the embed's line as a user edit; the caret ends the line above. */
+/**
+ * Deletes the embed's line as a user edit; the caret ends the line above. The
+ * lines under it move out to its level, so its subtasks don't nest under the
+ * task above instead.
+ */
 export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
   const at = view.posAtDOM(widget);
   view.focus();
@@ -725,8 +730,18 @@ export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
     line.number > 1
       ? [line.from - 1, line.to]
       : [line.from, Math.min(line.to + 1, doc.length)];
+  const last = blockEnd(doc, line.number);
+  const changes = [{ from, to, insert: '' }];
+  if (last > line.number) {
+    const under = { from: line.to + 1, to: doc.line(last).to };
+    const step = indentOf(doc.line(line.number + 1).text) - indentOf(line.text);
+    changes.push({
+      ...under,
+      insert: reindent(doc.sliceString(under.from, under.to), -step),
+    });
+  }
   view.dispatch({
-    changes: { from, to },
+    changes,
     selection: { anchor: from },
     scrollIntoView: true,
     userEvent: 'delete',
