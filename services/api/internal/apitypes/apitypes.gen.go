@@ -7877,6 +7877,13 @@ type PutAPIAdminHome409JSONResponseBody struct {
 	Message        *string                                 `json:"message,omitempty"`
 }
 
+// PutAPIAdminHome413JSONResponseBody defines parameters for PutAPIAdminHome.
+type PutAPIAdminHome413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PutAPIAdminHome500JSONResponseBody defines parameters for PutAPIAdminHome.
 type PutAPIAdminHome500JSONResponseBody struct {
 	Error   string             `json:"error"`
@@ -8416,6 +8423,13 @@ type PostAPIAdminPosts409JSONResponseBody struct {
 	Message        *string                                   `json:"message,omitempty"`
 }
 
+// PostAPIAdminPosts413JSONResponseBody defines parameters for PostAPIAdminPosts.
+type PostAPIAdminPosts413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PostAPIAdminPosts500JSONResponseBody defines parameters for PostAPIAdminPosts.
 type PostAPIAdminPosts500JSONResponseBody struct {
 	Error   string             `json:"error"`
@@ -8673,6 +8687,13 @@ type PutAPIAdminPostsID409JSONResponseBody struct {
 	Error          PutAPIAdminPostsID409JSONResponseBodyError `json:"error"`
 	Fields         *map[string]string                         `json:"fields,omitempty"`
 	Message        *string                                    `json:"message,omitempty"`
+}
+
+// PutAPIAdminPostsID413JSONResponseBody defines parameters for PutAPIAdminPostsID.
+type PutAPIAdminPostsID413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
 }
 
 // PutAPIAdminPostsID500JSONResponseBody defines parameters for PutAPIAdminPostsID.
@@ -9134,6 +9155,13 @@ type PostAPIAdminProjects409JSONResponseBody struct {
 	Message        *string                                      `json:"message,omitempty"`
 }
 
+// PostAPIAdminProjects413JSONResponseBody defines parameters for PostAPIAdminProjects.
+type PostAPIAdminProjects413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PostAPIAdminProjects500JSONResponseBody defines parameters for PostAPIAdminProjects.
 type PostAPIAdminProjects500JSONResponseBody struct {
 	Error   string             `json:"error"`
@@ -9427,6 +9455,13 @@ type PutAPIAdminProjectsID409JSONResponseBody struct {
 	Error          PutAPIAdminProjectsID409JSONResponseBodyError `json:"error"`
 	Fields         *map[string]string                            `json:"fields,omitempty"`
 	Message        *string                                       `json:"message,omitempty"`
+}
+
+// PutAPIAdminProjectsID413JSONResponseBody defines parameters for PutAPIAdminProjectsID.
+type PutAPIAdminProjectsID413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
 }
 
 // PutAPIAdminProjectsID500JSONResponseBody defines parameters for PutAPIAdminProjectsID.
@@ -9966,6 +10001,13 @@ type PutAPIAdminResume409JSONResponseBody struct {
 	Error          PutAPIAdminResume409JSONResponseBodyError `json:"error"`
 	Fields         *map[string]string                        `json:"fields,omitempty"`
 	Message        *string                                   `json:"message,omitempty"`
+}
+
+// PutAPIAdminResume413JSONResponseBody defines parameters for PutAPIAdminResume.
+type PutAPIAdminResume413JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
 }
 
 // PutAPIAdminResume500JSONResponseBody defines parameters for PutAPIAdminResume.

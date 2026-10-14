@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/data/datatest"
@@ -43,6 +44,14 @@ func TestMapWriteError(t *testing.T) {
 		if !errors.As(err, &conflict) || conflict.Code != c.wantCode {
 			t.Errorf("%s: err = %v, want a %s conflict", c.name, err, c.wantCode)
 		}
+	}
+	tooBig := &smithy.GenericAPIError{Code: "ValidationException", Message: "Item size has exceeded the maximum allowed size"}
+	var tooLarge *api.PayloadTooLargeError
+	if err := MapWriteError(tooBig, "x", claim); !errors.As(err, &tooLarge) {
+		t.Errorf("item over the size limit: err = %v, want a 413", err)
+	}
+	if err := MapVersionedWriteError(tooBig, "x", claim, func() error { return errors.New("conflict") }); !errors.As(err, &tooLarge) {
+		t.Errorf("versioned item over the size limit: err = %v, want a 413", err)
 	}
 	other := &types.ResourceNotFoundException{}
 	if err := MapWriteError(other, "x", claim); !errors.Is(err, other) {

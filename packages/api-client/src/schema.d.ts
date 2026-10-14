@@ -438,6 +438,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
                 /** @description Internal error */
                 500: {
                     headers: {
@@ -756,6 +771,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -1758,6 +1788,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
                 /** @description Internal error */
                 500: {
                     headers: {
@@ -2091,6 +2136,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };
@@ -4397,6 +4457,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
                 /** @description Internal error */
                 500: {
                     headers: {
@@ -5182,6 +5257,21 @@ export interface paths {
                             };
                             currentVersion?: number;
                             current?: unknown;
+                        };
+                    };
+                };
+                /** @description The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`) */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
                         };
                     };
                 };

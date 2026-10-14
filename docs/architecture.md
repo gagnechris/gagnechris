@@ -107,6 +107,7 @@ Integrity rules:
 - Client input errors (`api.BadRequest`, `api.ErrInvalidCursor`, `api.InvalidHeader`, an unparseable JSON body; `services/api/internal/api/errors.go`) → **400**. A stored row that fails to parse is a **500** `data_integrity`.
 - Mutation pre-reads use `ConsistentRead` so queued autosave does not 409 on a stale eventually-consistent `current`. So does the check that a task's `noteId` names a live note, so a task created right after its note never gets a 400.
 - A single-item write that hits an item another request's transaction holds (`TransactionConflictException`, which the SDK doesn't retry) is a version **409** with `current`, like a failed condition.
+- A write DynamoDB refuses as over its 400 KB item size (a post, project, home or resume with no per-field cap) is a **413** `payload_too_large` (`store.MapWriteError`), so autosave shows the too-large message instead of retrying.
 - Stale version + taken slug prefers a version **409** with `current` over bare `slug_taken`.
 - Admin autosave branches on `error === 'slug_taken'` vs version conflict.
 

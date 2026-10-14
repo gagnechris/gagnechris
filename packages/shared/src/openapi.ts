@@ -186,6 +186,9 @@ const r412 = preconditionFailed();
 const r413 = err(
   'A field is over its size limit (`payload_too_large`, with `fields`)',
 );
+const r413Item = err(
+  'The saved item would be over the 400 KB DynamoDB item size limit (`payload_too_large`)',
+);
 const r429 = err('Rate limited');
 const r500 = err('Internal error');
 const r502 = err('Upstream failure (e.g. SES)');
@@ -555,6 +558,7 @@ function registerPublishablePaths(
         201: ok(entity, 'Created'),
         400: r400,
         409: r409,
+        413: r413Item,
         ...adminAuth,
       },
     });
@@ -566,7 +570,7 @@ function registerPublishablePaths(
     summary: summaries.update,
     ...base,
     request: { ...params, body: jsonBody(config.updateRequest) },
-    responses: { 200: ok(entity, 'Updated'), ...mutation },
+    responses: { 200: ok(entity, 'Updated'), ...mutation, 413: r413Item },
   });
 
   for (const [action, summary, description] of [

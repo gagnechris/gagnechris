@@ -246,6 +246,28 @@ describe('POST /api/admin/posts', () => {
       message: 'Invalid JSON body',
     });
   });
+
+  it('answers 413 for a post over the item size limit, created or edited', async () => {
+    const huge = 'x'.repeat(450_000);
+    const tooLarge = {
+      error: 'payload_too_large',
+      message: expect.stringContaining('400 KB'),
+      fields: {},
+    };
+    const created = await call('POST', '/api/admin/posts', {
+      body: { title: 'Huge', bodyMarkdown: huge },
+    });
+    expect(created.status).toBe(413);
+    expect(created.body).toEqual(tooLarge);
+
+    const post = await create();
+    const edited = await call('PUT', `/api/admin/posts/${post.id}`, {
+      body: { version: post.version, bodyMarkdown: huge },
+    });
+    expect(edited.status).toBe(413);
+    expect(edited.body).toEqual(tooLarge);
+    expect(await ok('GET', `/api/admin/posts/${post.id}`)).toEqual(post);
+  });
 });
 
 describe('GET /api/admin/posts/:id', () => {
