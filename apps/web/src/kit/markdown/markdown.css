@@ -987,7 +987,7 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 }
 
 /* Room left of the text for the task rows' drag grip, inside the border. */
-@media (hover: hover) and (min-width: 768px) {
+@media (hover: hover) {
   .markdown-single--notebook .cm-live .cm-content {
     padding-left: 1.5rem;
   }
