@@ -1658,6 +1658,25 @@ describe('subtasks in a note', () => {
     expect(await screen.findByDisplayValue('Book venue')).toBeInTheDocument();
   });
 
+  test('Enter in a parent or subtask title opens a line after the whole block', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByDisplayValue('Plan offsite'));
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+
+    await user.click(await screen.findByDisplayValue('Pick dates'));
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+    const view = await editorView(document.body);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(4).from);
+  });
+
   test('checking the last subtask leaves the parent open with All done', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates', status: 'done' },

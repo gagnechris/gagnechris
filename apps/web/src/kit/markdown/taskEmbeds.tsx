@@ -7,6 +7,7 @@ import {
   type Extension,
   type Line,
   type Range,
+  type Text,
 } from '@codemirror/state';
 import {
   Decoration,
@@ -39,7 +40,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { blockEnd } from './lineMoves';
+import { blockEnd, indentOf } from './lineMoves';
 import {
   dragTaskEmbed,
   indentTaskEmbed,
@@ -649,9 +650,28 @@ export function taskEmbedEditor({
 }
 
 /**
+ * The last line of the outermost block holding line `n`. A blank line inside
+ * a block would end it and take its subtasks from their parent.
+ */
+function outerBlockEnd(doc: Text, n: number): number {
+  let top = n;
+  for (let k = n - 1; k >= 1 && indentOf(doc.line(top).text) > 0; k -= 1) {
+    const text = doc.line(k).text;
+    if (!text.trim()) break;
+    if (
+      indentOf(text) < indentOf(doc.line(top).text) &&
+      blockEnd(doc, k) >= n
+    ) {
+      top = k;
+    }
+  }
+  return blockEnd(doc, top);
+}
+
+/**
  * Moves the caret out of an embed row back into the note: onto the blank line
- * below it (adding one unless the next line is already blank), or to the end
- * of the embed's own line.
+ * after its block (adding one unless the next line is already blank), or to
+ * the end of the embed's own line.
  */
 export function leaveTaskEmbed(
   view: EditorView,
@@ -666,16 +686,16 @@ export function leaveTaskEmbed(
   const line = doc.lineAt(at);
   if (!below) {
     view.dispatch({ selection: { anchor: line.to } });
-  } else if (
-    line.number < doc.lines &&
-    !doc.line(line.number + 1).text.trim()
-  ) {
-    const next = doc.line(line.number + 1);
+    return;
+  }
+  const end = doc.line(outerBlockEnd(doc, line.number));
+  if (end.number < doc.lines && !doc.line(end.number + 1).text.trim()) {
+    const next = doc.line(end.number + 1);
     view.dispatch({ selection: { anchor: next.to }, scrollIntoView: true });
   } else {
     view.dispatch({
-      changes: { from: line.to, insert: '\n' },
-      selection: { anchor: line.to + 1 },
+      changes: { from: end.to, insert: '\n' },
+      selection: { anchor: end.to + 1 },
       scrollIntoView: true,
       userEvent: 'input',
     });
