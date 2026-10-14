@@ -651,7 +651,9 @@
 }
 
 @media (min-width: 1000px) {
-  .workspace-shell:has(.notebook-today:not(.notebook-today--side-closed)) {
+  .workspace-shell:has(
+    .notebook-today:not(.notebook-today--side-closed, .notebook-today--overlay)
+  ) {
     --note-column-beside: calc(14rem + var(--space-6));
   }
 }
@@ -833,6 +835,61 @@
 @media (max-width: 999px) {
   .notebook-today__side-resize {
     display: none;
+  }
+}
+
+/* Between the tab bar and the side-by-side width the panel slides in over
+   the note from the right, below the sticky day header. */
+.notebook-today.notebook-today--overlay {
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+}
+
+.notebook-today--overlay .notebook-today__side {
+  position: fixed;
+  top: var(--today-overlay-top, 0px);
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  display: block;
+  width: min(22rem, 100vw - var(--space-8));
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  border-left: 1px solid var(--neutral-200);
+  background: var(--neutral-50);
+  box-shadow: var(--shadow-lg);
+  visibility: visible;
+  opacity: 1;
+}
+
+.notebook-today--overlay .notebook-today__side:focus {
+  outline: none;
+}
+
+.notebook-today--overlay.notebook-today--side-closed .notebook-today__side {
+  visibility: hidden;
+  transform: translateX(100%);
+}
+
+/* Under the sticky header (z-index 20), so the Tasks toggle stays clickable. */
+.notebook-today__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgb(18 25 38 / 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notebook-today--overlay .notebook-today__side {
+    transition: transform 180ms ease;
+  }
+
+  .notebook-today--overlay.notebook-today--side-closed .notebook-today__side {
+    transition:
+      transform 180ms ease,
+      visibility 0s 180ms;
   }
 }
 
