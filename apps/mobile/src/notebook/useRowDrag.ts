@@ -104,16 +104,20 @@ export function useRowDrag({
       set({ key, id, target: null, lineY: null, level: null });
     },
     onMove: (move: DragMove) => {
-      // The content scrolls under the finger near the edges; the row stays on it.
-      const offsetY = move.dy + (scroll?.offset() ?? 0) - startOffset.current;
-      dy.setValue(offsetY);
-      scroll?.edgeScroll(move.pageY);
-      set({
-        key,
-        id,
-        ...targetOf(key, id, offsetY),
-        level: move.dx > SIDEWAYS ? 'in' : move.dx < -SIDEWAYS ? 'out' : null,
-      });
+      // The content scrolls under the finger near the edges; the row stays on
+      // it, also while the finger is held still.
+      const follow = () => {
+        const offsetY = move.dy + (scroll?.offset() ?? 0) - startOffset.current;
+        dy.setValue(offsetY);
+        set({
+          key,
+          id,
+          ...targetOf(key, id, offsetY),
+          level: move.dx > SIDEWAYS ? 'in' : move.dx < -SIDEWAYS ? 'out' : null,
+        });
+      };
+      follow();
+      scroll?.edgeScroll(move.pageY, follow);
     },
     onEnd: (move: DragMove | null) => {
       scroll?.edgeScroll(null);

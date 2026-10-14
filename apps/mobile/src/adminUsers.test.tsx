@@ -101,6 +101,26 @@ describe('Users', () => {
     expect(allText(renderer)).toContain('Invite sent to lee@example.com.');
   });
 
+  it('asks for the passkey before an invite when the sign-in is too old', async () => {
+    const backend = signedInBackend();
+    backend.reauthenticate = vi.fn(async () => {
+      server.state.needsSignIn = false;
+      return true;
+    });
+    const renderer = await show([me, sam], backend);
+    server.state.needsSignIn = true;
+    act(() => byLabel(renderer, 'Invite user').props.onPress());
+    act(() => input(renderer, 'Email').props.onChangeText('lee@example.com'));
+    await act(async () => byLabel(renderer, 'Send invite').props.onPress());
+    await settle(5);
+    expect(backend.reauthenticate).toHaveBeenCalledTimes(1);
+    expect([...server.state.users.values()].at(-1)).toMatchObject({
+      email: 'lee@example.com',
+      level: 'notebook',
+    });
+    expect(allText(renderer)).toContain('Invite sent to lee@example.com.');
+  });
+
   it('changes access and says what they gain and lose', async () => {
     const renderer = await show();
     act(() => row(renderer, 'Sam Rivera').props.onPress());

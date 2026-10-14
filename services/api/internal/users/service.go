@@ -65,9 +65,25 @@ func (e *conflictError) Error() string { return e.message }
 // admin keeps the pool manageable, whatever the UI allows: nobody changes
 // their own access, and at least one enabled Full Admin always remains.
 type admin struct {
-	dir     Directory
-	removed removedStore
-	actor   string
+	dir      Directory
+	removed  removedStore
+	sessions Sessions
+	actor    string
+}
+
+// Sessions ends the sessions a user already holds, past what signing them
+// out of Cognito does.
+type Sessions interface {
+	Revoke(ctx context.Context, userID string) error
+}
+
+// endSessions: global sign-out stops refreshes, and the revocation refuses
+// the tokens already issued.
+func (a admin) endSessions(ctx context.Context, id string) error {
+	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+		return err
+	}
+	return a.sessions.Revoke(ctx, id)
 }
 
 var byEmail = collate.New(language.Und)
@@ -108,22 +124,46 @@ func (a admin) invite(ctx context.Context, email string, name *string, level str
 		if err != nil {
 			return inviteResult{}, err
 		}
-		if rec == nil {
+		if rec != nil {
+			user, err := a.restore(ctx, existing.ID, &level)
+			return inviteResult{User: user, Restored: true}, err
+		}
+		if !inviteUnfinished(*existing, level) {
 			return inviteResult{}, &conflictError{"user_exists", "Someone with this email already has an account."}
 		}
-		user, err := a.restore(ctx, existing.ID, &level)
-		return inviteResult{User: user, Restored: true}, err
+		return a.grantInvite(ctx, existing.ID, level)
 	}
 	created, err := a.dir.InviteUser(ctx, email, name)
 	if err != nil {
 		return inviteResult{}, err
 	}
+	return a.grantInvite(ctx, created.ID, level)
+}
+
+// inviteUnfinished is an invite whose account was created but whose groups
+// were not all added, so inviting again at that level finishes it.
+func inviteUnfinished(u DirectoryUser, level string) bool {
+	want := accessLevelGroups[level]
+	held := 0
+	for _, g := range u.Groups {
+		if !slices.Contains(accessGroups, g) {
+			continue
+		}
+		if !slices.Contains(want, g) {
+			return false
+		}
+		held++
+	}
+	return u.Enabled && u.Status == invitedStatus && held < len(want)
+}
+
+func (a admin) grantInvite(ctx context.Context, id, level string) (inviteResult, error) {
 	for _, group := range accessLevelGroups[level] {
-		if err := a.dir.AddToGroup(ctx, created.ID, group); err != nil {
+		if err := a.dir.AddToGroup(ctx, id, group); err != nil {
 			return inviteResult{}, err
 		}
 	}
-	user, err := a.managedUser(ctx, created.ID)
+	user, err := a.managedUser(ctx, id)
 	return inviteResult{User: user}, err
 }
 
@@ -165,7 +205,7 @@ func (a admin) setAccess(ctx context.Context, id, level string) (ManagedUser, er
 		}
 	}
 	if dropped > 0 {
-		if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+		if err := a.endSessions(ctx, id); err != nil {
 			return ManagedUser{}, err
 		}
 	}
@@ -186,7 +226,7 @@ func (a admin) disable(ctx context.Context, id string) (ManagedUser, error) {
 	if err := a.dir.DisableUser(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)
@@ -199,7 +239,7 @@ func (a admin) signOut(ctx context.Context, id string) (ManagedUser, error) {
 	if _, err := a.requireActive(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)
@@ -248,7 +288,7 @@ func (a admin) remove(ctx context.Context, id string) (ManagedUser, error) {
 	if err := a.dir.DisableUser(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
-	if err := a.dir.SignOutEverywhere(ctx, id); err != nil {
+	if err := a.endSessions(ctx, id); err != nil {
 		return ManagedUser{}, err
 	}
 	return a.managedUser(ctx, id)

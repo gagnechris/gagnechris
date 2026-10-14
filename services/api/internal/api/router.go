@@ -72,8 +72,21 @@ func (r Route) metricName() string {
 var nonAlphanumeric = regexp.MustCompile(`[^a-zA-Z0-9]+`)
 
 type Router struct {
-	routes  []Route
-	clients ClientIDs
+	routes      []Route
+	clients     ClientIDs
+	revocations Revocations
+}
+
+// Revocations says whether a token predates the end of its user's sessions.
+type Revocations interface {
+	Revoked(ctx context.Context, userID string, issuedAt int64) (bool, error)
+}
+
+// WithRevocations refuses, on every protected route, tokens issued before
+// their user's sessions were ended.
+func (rt *Router) WithRevocations(r Revocations) *Router {
+	rt.revocations = r
+	return rt
 }
 
 // NewRouter panics on a route whose auth doesn't match the API Gateway
@@ -262,6 +275,17 @@ func (rt *Router) dispatchMatched(ctx context.Context, req *Request, rawPath str
 	if m.route.Auth != Public {
 		if denied := authorize(m.route.Auth, rt.clients, req.Claims); denied != nil {
 			return denied, false, nil
+		}
+		if rt.revocations != nil {
+			revoked, err := rt.revocations.Revoked(ctx, req.UserID(), tokenIssuedAt(req.Claims))
+			if err != nil {
+				return nil, false, err
+			}
+			if revoked {
+				return JSON(http.StatusUnauthorized, map[string]any{
+					"error": "unauthorized", "message": "Session ended; sign in again",
+				}), false, nil
+			}
 		}
 	} else {
 		req.Claims = nil

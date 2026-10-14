@@ -276,7 +276,7 @@ func TestFloorsEverySchemaCheckedTypeThatHasATimestamp(t *testing.T) {
 			unfloored = append(unfloored, entityType)
 		}
 	}
-	if !slices.Equal(unfloored, []string{"dailyNoteClaim"}) {
+	if !slices.Equal(unfloored, []string{"userRevocation", "dailyNoteClaim"}) {
 		t.Errorf("unfloored = %v", unfloored)
 	}
 }

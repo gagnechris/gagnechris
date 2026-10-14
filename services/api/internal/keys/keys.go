@@ -70,6 +70,10 @@ func RemovedUsersPk() string { return "REMOVED_USERS" }
 
 func RemovedUserSk(userID string) string { return "USER#" + userID }
 
+func UserRevocationsPk() string { return "USER_REVOCATIONS" }
+
+func UserRevocationSk(userID string) string { return "USER#" + userID }
+
 func NotePk(userID, noteID string) string { return "USER#" + userID + "#NOTE#" + noteID }
 
 func NoteMetaSk() string { return SKMeta }
@@ -136,6 +140,8 @@ func DailyTemplateSk() string { return SKMeta }
 func RateContactIPPk(ip string) string { return "RATE#contact#ip#" + ip }
 
 func RateResumeIPPk(ip string) string { return "RATE#resume#ip#" + ip }
+
+func RateNotebookImageUserPk(userID string) string { return "RATE#notebook-image#user#" + userID }
 
 func RateSESGlobalPk() string { return "RATE#ses#global" }
 

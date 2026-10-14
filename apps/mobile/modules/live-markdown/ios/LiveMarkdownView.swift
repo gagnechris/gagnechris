@@ -71,11 +71,15 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
   private var images: [ImageRange] = []
   private var imageViews: [Int: UIImageView] = [:]
   private var lastCaret = 0
+  /// The selection JS last sent or was told about.
+  private var jsSelection: NSRange?
   private var lastHeight: CGFloat = -1
   private var lastWidth: CGFloat = -1
 
   private static let imageCache = NSCache<NSString, UIImage>()
   private var loading = Set<String>()
+  // Not retried while the view is mounted: restyle asks on every keystroke.
+  private var failedImages = Set<String>()
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -189,11 +193,24 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
       let end = min(max(start, request[2]), length)
       textView.selectedRange = NSRange(location: start, length: end - start)
       lastCaret = end
+      jsSelection = NSRange(location: request[1], length: max(0, request[2] - request[1]))
     }
     updateActiveLines()
     restyle()
     updatePlaceholder()
     reportHeight()
+    // A new value can move the caret, and JS edits at the caret it knows.
+    if textView.isFirstResponder, textView.selectedRange != jsSelection {
+      reportSelection()
+    }
+  }
+
+  private func reportSelection() {
+    let selection = textView.selectedRange
+    jsSelection = selection
+    onSelectionChange([
+      "selection": ["start": selection.location, "end": selection.location + selection.length],
+    ])
   }
 
   /// Changes only the differing middle, so the attributes and the caret
@@ -554,14 +571,17 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
   }
 
   private func loadImage(_ src: String) {
-    guard !loading.contains(src), let url = URL(string: src) else { return }
+    guard !loading.contains(src), !failedImages.contains(src), let url = URL(string: src) else { return }
     loading.insert(src)
     URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
       let image = data.flatMap { UIImage(data: $0) }
       DispatchQueue.main.async {
         guard let self else { return }
         self.loading.remove(src)
-        guard let image else { return }
+        guard let image else {
+          self.failedImages.insert(src)
+          return
+        }
         LiveMarkdownView.imageCache.setObject(image, forKey: src as NSString)
         self.restyle()
         self.layoutImages()
@@ -652,6 +672,7 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     // UIKit reports the caret before the text it belongs to; JS takes both
     // from here so it never pairs the text with an older caret.
     let selection = textView.selectedRange
+    jsSelection = selection
     onChangeText([
       "text": textView.textStorage.string,
       "eventCount": eventCount,
@@ -677,9 +698,7 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     }
     updateTypingAttributes()
     guard !applying else { return }
-    onSelectionChange([
-      "selection": ["start": selection.location, "end": selection.location + selection.length],
-    ])
+    reportSelection()
   }
 
   func textViewDidBeginEditing(_ textView: UITextView) {

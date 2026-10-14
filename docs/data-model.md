@@ -289,7 +289,9 @@ Anti-bot timing (`elapsedMs` / `formStartedAt`) is **best-effort and
 client-controlled**: a bot can omit or inflate the value. The hard caps are
 the per-IP contact rate limit and the global SES daily cap
 (`SES_GLOBAL_DAILY_CAP`, one counter for contact mail and resume-download
-notices). Resume notices stop once that counter reaches
+notices). Per-IP limits count an IPv6 caller by its /64 prefix, since a
+client can rotate addresses within it. Once the daily cap is used up, the
+contact form answers 429 without saving the message. Resume notices stop once that counter reaches
 `RESUME_NOTIFY_SES_DAILY_CAP`, so the rest of the day's mail is left for the
 contact form.
 
@@ -312,11 +314,26 @@ Counter rows (`entityType` `rateLimit`) hold a `count` and expire an hour after
 their window ends (a day for `DAY#` rows). They use non-`PUBLISHED` sort keys, so the publisher stream filter ignores
 them (same as draft `META` rows).
 
-| Purpose               | `pk`                   | `sk`                   | Limit      |
-| --------------------- | ---------------------- | ---------------------- | ---------- |
-| Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3          |
-| SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
-| Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
+| Purpose                                 | `pk`                             | `sk`                   | Limit      |
+| --------------------------------------- | -------------------------------- | ---------------------- | ---------- |
+| Contact per IP / hour                   | `RATE#contact#ip#<ip>`           | `HOUR#<yyyy-mm-ddTHH>` | 3          |
+| SES emails / UTC day                    | `RATE#ses#global`                | `DAY#<yyyy-mm-dd>`     | 100        |
+| Resume notify IP/day                    | `RATE#resume#ip#<ip>`            | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
+| Notebook image uploads / user / UTC day | `RATE#notebook-image#user#<sub>` | `DAY#<yyyy-mm-dd>`     | 200        |
+
+## User revocations
+
+The API refuses a user's tokens issued before `revokedBefore` (see
+`docs/architecture.md`, Users and access). One row per user, replaced on each
+revocation, expiring through `ttl` a day later.
+
+| Attr            | Notes                                        |
+| --------------- | -------------------------------------------- |
+| `pk` / `sk`     | `USER_REVOCATIONS` / `USER#<sub>`            |
+| `entityType`    | `userRevocation`                             |
+| `userId`        | Cognito `sub`                                |
+| `revokedBefore` | ISO-8601 time the user's sessions were ended |
+| `ttl`           | Epoch seconds, a day after `revokedBefore`   |
 
 ## Removed users
 
@@ -420,7 +437,7 @@ Context written under the task.
 - Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `removeTaskEmbedLines`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
 - A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, `- [ ] ~~Title~~ (dropped)` when dropped, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
 - On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. Each `[ ]` line makes its own task, so the same text twice gives two tasks, and pasting several `[ ]` lines converts each one. Undoing a conversion brings the line back; leaving it again embeds the same task (its token is no longer in the note), and if the line was edited first the task is updated to the new text, so undo never leaves an orphan (and is not a delete).
-- **Subtasks:** an embed line indented under another embed line, with no blank line between them, is a subtask of that task. Subtasks are one level deep: a task line under a subtask is nested but has no parent. Only the task's home note decides its parent, and only when the parent is in the same area. The API sets each task's `parentId` from its home note on every note create and update (`taskEmbedNesting` and `taskEmbedParents` in `@gagnechris/shared`, ported to Go), when a task moves to another note or area, and clears it on the subtasks of a deleted task. Setting a parent never fails the note save; a failure is logged.
+- **Subtasks:** an embed line indented under another embed line, with no blank line between them, is a subtask of that task. Subtasks are one level deep: a task line under a subtask is nested but has no parent. Only the task's home note decides its parent, and only when the parent is in the same area and is not itself a subtask, so two notes cannot nest tasks under each other. The API sets each task's `parentId` from its home note on every note create and update (`taskEmbedNesting` and `taskEmbedParents` in `@gagnechris/shared`, ported to Go), when a task moves to another note or area, and clears it when the parent is deleted. That clear reads only the parent's home note, daily notes dated from the day before the parent was created and pages saved since then; a subtask homed in an older note keeps the deleted parent's id until that note is next saved. Setting a parent never fails the note save or the task update; a failure is logged.
 - Deleting an embed line deletes its task, in whichever note the line was. The delete waits `EMBED_DELETE_GRACE_MS` (3 s) and is dropped if the line comes back first (undo, paste); closing the note sends it at once. Cutting a line does not delete the task, since it is being moved. A note line whose task is deleted or missing is taken out of the note, and the note saves without it.
 
 ### Task fields

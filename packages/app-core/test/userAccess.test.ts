@@ -24,7 +24,7 @@ describe('accessChange', () => {
   test('lists gains before losses and warns about the sign-out', () => {
     expect(accessChange(sam, 'cms', 'notebook')).toEqual({
       title: 'Public CMS → Notebook only',
-      body: 'Sam gains Notebook. Sam loses Admin. Saving signs them out everywhere, so they can’t start a new session; a tab they already have open stops working within the hour.',
+      body: 'Sam gains Notebook. Sam loses Admin. Saving signs them out everywhere, so they can’t start a new session; a tab they already have open stops working within a minute.',
     });
   });
 

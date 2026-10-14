@@ -17,7 +17,6 @@ import { UserAvatar } from './UserAvatar';
 import { useUserChange } from './useUserChange';
 import { takePendingChange } from './userChange';
 import {
-  changeToast,
   formatAdded,
   hasApp,
   LEVEL_APPS,
@@ -92,8 +91,8 @@ export default function AdminUsersPage() {
       );
       if (!change) return;
       try {
-        await perform(change, { confirmed: true });
-        setToast(changeToast(change));
+        const outcome = await perform(change, { confirmed: true });
+        if (outcome.status === 'done') setToast(outcome.toast);
       } catch (err) {
         setRowError(userErrorMessage(err, 'Could not finish that change.'));
       }
@@ -295,6 +294,7 @@ export default function AdminUsersPage() {
         <InviteUserDialog
           onClose={() => setInviting(false)}
           onToast={setToast}
+          requesterId={me.userId}
         />
       ) : null}
       <div className="users-toast-region" role="status" aria-live="polite">

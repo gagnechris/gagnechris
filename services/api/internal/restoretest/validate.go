@@ -118,6 +118,9 @@ var keyRules = map[string]func(Item) bool{
 	"removedUser": func(i Item) bool {
 		return i["pk"] == keys.RemovedUsersPk() && i["sk"] == keys.RemovedUserSk(str(i["userId"]))
 	},
+	"userRevocation": func(i Item) bool {
+		return i["pk"] == keys.UserRevocationsPk() && i["sk"] == keys.UserRevocationSk(str(i["userId"]))
+	},
 	"resume": func(i Item) bool {
 		return i["pk"] == keys.ResumePk() && isMetaOrPublished(i["sk"])
 	},

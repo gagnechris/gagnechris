@@ -20,6 +20,7 @@ import type { IUserPool } from 'aws-cdk-lib/aws-cognito';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket, type IBucket } from 'aws-cdk-lib/aws-s3';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
@@ -124,9 +125,6 @@ export class ApiStack extends Stack {
         'Action::s3:Abort*',
         { regex: '/^Resource::.*/index*/g' },
         { regex: '/^Resource::arn:<AWS::Partition>:s3:::.*/media/*/g' },
-        'Action::s3:GetObject*',
-        'Action::s3:GetBucket*',
-        'Action::s3:List*',
         {
           regex:
             '/^Resource::<NotebookMedia[A-Za-z0-9]+\\.Arn>\\/images\\/\\*$/g',
@@ -150,7 +148,12 @@ export class ApiStack extends Stack {
     siteBucket.grantPut(this.apiFunction, 'media/*');
     // Presigned PUT and GET; the bucket has no other reader.
     notebookMediaBucket.grantPut(this.apiFunction, 'images/*');
-    notebookMediaBucket.grantRead(this.apiFunction, 'images/*');
+    this.apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [notebookMediaBucket.arnForObjects('images/*')],
+      }),
+    );
     emailIdentity.grantSendEmail(this.apiFunction);
     notifyEmailIdentity.grantSendEmail(this.apiFunction);
     // Users & access. No delete: removing someone keeps their account and Notebook.

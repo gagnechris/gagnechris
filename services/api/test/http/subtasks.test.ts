@@ -77,6 +77,40 @@ describe('subtasks come from indentation in the home note', () => {
     expect(moved.parentId).toBe(id(20));
   });
 
+  it('never nests under a subtask, so two notes cannot make a cycle or a chain', async () => {
+    const one = await page(80);
+    const two = await page(81);
+    await task(60, one.id);
+    await task(61, two.id);
+    await task(62, two.id);
+    await write(one, [t(61), `  ${t(60)}`]);
+    expect(await parentOf(60)).toBe(id(61));
+
+    await write(two, [t(60), `  ${t(61)}`, `  ${t(62)}`]);
+    expect(await parentOf(61)).toBeNull();
+    expect(await parentOf(62)).toBeNull();
+    expect(await parentOf(60)).toBe(id(61));
+  });
+
+  it('a subtask loses a parent that moved to another area on the next note save, and gets it back by following it', async () => {
+    let note = await page(82);
+    await task(70, note.id);
+    await task(71, note.id);
+    note = await write(note, [t(70), `  ${t(71)}`]);
+    expect(await parentOf(71)).toBe(id(70));
+
+    await ok('PUT', `/api/notebook/tasks/${id(70)}`, {
+      body: { version: 1, area: 'personal' },
+    });
+    await write(note, [t(70), `  ${t(71)}`, '']);
+    expect(await parentOf(71)).toBeNull();
+
+    const moved = await ok<Task>('PUT', `/api/notebook/tasks/${id(71)}`, {
+      body: { version: 3, area: 'personal' },
+    });
+    expect(moved.parentId).toBe(id(70));
+  });
+
   it('deleting a parent clears its subtasks', async () => {
     const note = await page(95);
     await task(30, note.id);

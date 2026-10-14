@@ -30,6 +30,7 @@ import type { NotebookOutletContext } from './NotebookLayout';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useLocalToday } from './useLocalToday';
 import { TaskParentLabel } from '../kit/tasks/TaskParentLabel';
+import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 
 export default function NotebookUpcomingPage() {
   const { areaFilter } = useOutletContext<NotebookOutletContext>();
@@ -107,6 +108,7 @@ export default function NotebookUpcomingPage() {
     <TaskParentsProvider tasks={listed}>
       <section className="workspace-panel notebook-upcoming">
         <div className="workspace-panel__header">
+          <SidebarToggle />
           <div>
             <p className="notebook-today__kicker">
               {NOTEBOOK_AREA_HEADINGS[areaFilter]}

@@ -10,9 +10,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import { AUTOSAVE_RETRY_DELAYS_MS } from '@gagnechris/app-core';
+import { NOTEBOOK_AREA_STORAGE_KEY } from '@gagnechris/shared';
 import NotebookLayout from './NotebookLayout';
 import NotebookTodayPage from './NotebookTodayPage';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
+import { TODAY_OVERLAY_QUERY } from './todaySidePreference';
 
 type DailyNote = {
   id: string;
@@ -361,28 +363,65 @@ describe('NotebookTodayPage', () => {
     expect(await screen.findByDisplayValue(/hello daily/)).toBeInTheDocument();
   });
 
-  test('hides the task panel and remembers it', async () => {
+  test('the Tasks toggle on the title row hides the panel and remembers it', async () => {
     const user = userEvent.setup();
     const { unmount } = renderToday();
-    const hide = await screen.findByRole('button', { name: /Hide tasks/ });
+    await screen.findByRole('textbox', { name: 'Note body' });
+    const toggle = screen.getByRole('button', { name: /^Tasks/ });
     const side = screen.getByRole('complementary', { name: 'Today tasks' });
-    expect(hide).toHaveAttribute('aria-expanded', 'true');
-    await user.click(hide);
+    expect(toggle.closest('.workspace-action-bar')).not.toBeNull();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-controls', side.id);
+    await user.click(toggle);
     expect(side.parentElement).toHaveClass('notebook-today--side-closed');
-    expect(screen.getByRole('button', { name: /Show tasks/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    );
+    const closed = screen.getByRole('button', { name: /^Tasks/ });
+    expect(closed).toHaveAttribute('aria-expanded', 'false');
+    expect(closed).toHaveTextContent(/^Tasks$/);
+    expect(side.parentElement!.lastElementChild).toBe(side);
 
     unmount();
     renderToday();
+    await screen.findByRole('textbox', { name: 'Note body' });
+    expect(screen.getByRole('button', { name: /^Tasks/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  test('the Tasks toggle is on the title row with All selected', async () => {
+    localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, 'all');
+    renderToday();
+    await screen.findByText(/All shows both areas/);
     expect(
-      await screen.findByRole('button', { name: /Show tasks/ }),
-    ).toBeInTheDocument();
+      (await screen.findByRole('button', { name: /^Tasks/ })).closest(
+        '.workspace-action-bar',
+      ),
+    ).not.toBeNull();
+  });
+
+  test('⌥⌘\\ toggles the panel with focus in the editor', async () => {
+    renderToday();
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    editor.focus();
+    const toggle = () => screen.getByRole('button', { name: /^Tasks/ });
+    const press = (init: KeyboardEventInit) =>
+      fireEvent.keyDown(editor, { code: 'Backslash', key: '«', ...init });
+
+    press({ altKey: true, metaKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(editor).toHaveFocus();
+    press({ altKey: true, ctrlKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+
+    press({ metaKey: true });
+    press({ altKey: true, metaKey: true, shiftKey: true });
+    press({ altKey: true, metaKey: true, ctrlKey: true });
+    expect(toggle()).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('dragging the panel edge past its minimum hides it', async () => {
     renderToday();
+    await screen.findByRole('textbox', { name: 'Note body' });
     const handle = await screen.findByRole('separator', {
       name: 'Resize task panel',
     });
@@ -390,9 +429,170 @@ describe('NotebookTodayPage', () => {
     handle.setPointerCapture = () => {};
     fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 1000, pointerId: 1 });
-    const show = screen.getByRole('button', { name: /Show tasks/ });
+    const show = screen.getByRole('button', { name: /^Tasks/ });
     expect(show).toHaveAttribute('aria-expanded', 'false');
     expect(show).toHaveFocus();
+  });
+
+  test('the carry-over line ends the task panel, not the note', async () => {
+    renderToday(null);
+    const carry = await screen.findByTestId('carry-footer');
+    const side = screen.getByRole('complementary', { name: 'Today tasks' });
+    expect(side.lastElementChild).toBe(carry);
+  });
+
+  describe('between the tab bar and the side-by-side width', () => {
+    let narrow = true;
+    const listeners = new Set<() => void>();
+    const setNarrow = (next: boolean) => {
+      narrow = next;
+      act(() => listeners.forEach((fn) => fn()));
+    };
+
+    beforeEach(() => {
+      narrow = true;
+      listeners.clear();
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          disconnect() {}
+        },
+      );
+      vi.spyOn(window, 'matchMedia').mockImplementation(
+        (query: string) =>
+          ({
+            get matches() {
+              return query === TODAY_OVERLAY_QUERY && narrow;
+            },
+            media: query,
+            addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+            removeEventListener: (_: string, fn: () => void) =>
+              listeners.delete(fn),
+          }) as unknown as MediaQueryList,
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    const openPage = async () => {
+      renderToday();
+      await screen.findByRole('textbox', { name: 'Note body' });
+      return {
+        toggle: () => screen.getByRole('button', { name: /^Tasks/ }),
+        side: screen.getByRole('complementary', { name: 'Today tasks' }),
+      };
+    };
+    const scrim = () => document.querySelector('.notebook-today__scrim');
+
+    test('the panel starts closed and opens over the note without resizing', async () => {
+      const user = userEvent.setup();
+      const { toggle, side } = await openPage();
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(side.parentElement).toHaveClass(
+        'notebook-today--overlay',
+        'notebook-today--side-closed',
+      );
+      expect(scrim()).toBeNull();
+
+      await user.click(toggle());
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+      expect(side.parentElement).not.toHaveClass('notebook-today--side-closed');
+      expect(scrim()).not.toBeNull();
+      expect(side).toHaveFocus();
+      expect(
+        screen.queryByRole('separator', { name: 'Resize task panel' }),
+      ).toBeNull();
+    });
+
+    test('Esc, the scrim and the toggle close it and focus the toggle', async () => {
+      const user = userEvent.setup();
+      const { toggle } = await openPage();
+
+      const open = async () => {
+        await user.click(toggle());
+        expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+        expect(toggle()).not.toHaveFocus();
+      };
+
+      await open();
+      await user.keyboard('{Escape}');
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle()).toHaveFocus();
+
+      await open();
+      await user.click(scrim()!);
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle()).toHaveFocus();
+
+      await open();
+      await user.click(toggle());
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle()).toHaveFocus();
+    });
+
+    test('⌥⌘\\ opens and closes it from the editor', async () => {
+      const { toggle, side } = await openPage();
+      const editor = screen.getByRole('textbox', { name: 'Note body' });
+      editor.focus();
+      const press = () =>
+        fireEvent.keyDown(document.activeElement!, {
+          code: 'Backslash',
+          altKey: true,
+          metaKey: true,
+        });
+      press();
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+      expect(side).toHaveFocus();
+      press();
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle()).toHaveFocus();
+    });
+
+    test('overlay use leaves the remembered state, and a wider window restores it', async () => {
+      const user = userEvent.setup();
+      localStorage.setItem('gagnechris.notebook.todaySide', 'closed');
+      localStorage.setItem('gagnechris.notebook.todaySideWidth', '300');
+      const { toggle, side } = await openPage();
+      await user.click(toggle());
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+
+      setNarrow(false);
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(side.parentElement).not.toHaveClass('notebook-today--overlay');
+      expect(scrim()).toBeNull();
+      expect(localStorage.getItem('gagnechris.notebook.todaySide')).toBe(
+        'closed',
+      );
+      expect(localStorage.getItem('gagnechris.notebook.todaySideWidth')).toBe(
+        '300',
+      );
+      expect(
+        side.parentElement!.style.getPropertyValue('--today-side-width'),
+      ).toBe('300px');
+
+      localStorage.setItem('gagnechris.notebook.todaySide', 'open');
+      setNarrow(true);
+      await user.click(toggle());
+      await user.keyboard('{Escape}');
+      setNarrow(false);
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+      expect(localStorage.getItem('gagnechris.notebook.todaySide')).toBe(
+        'open',
+      );
+    });
+
+    test('narrowing the window again starts the panel closed', async () => {
+      const user = userEvent.setup();
+      const { toggle } = await openPage();
+      await user.click(toggle());
+      setNarrow(false);
+      expect(toggle()).toHaveAttribute('aria-expanded', 'true');
+      setNarrow(true);
+      expect(toggle()).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 
   test('surfaces version conflict instead of silent overwrite', async () => {

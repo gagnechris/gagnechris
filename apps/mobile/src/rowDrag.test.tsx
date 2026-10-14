@@ -1,4 +1,7 @@
-import { clearPendingFlushes } from '@gagnechris/app-core';
+import {
+  AUTOSAVE_DEBOUNCE_MS,
+  clearPendingFlushes,
+} from '@gagnechris/app-core';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import NoteScreen from '../app/(tabs)/notes/[id]';
@@ -28,7 +31,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const renderNote = async (body: string) => {
+const renderNote = async (
+  body: string,
+  options?: Parameters<typeof render>[1],
+) => {
   server = notebookServer(
     [makeNote(NOTE, body)],
     [makeTask(A, 'Alpha'), makeTask(B, 'Bravo'), makeTask(C, 'Charlie')],
@@ -38,6 +44,7 @@ const renderNote = async (body: string) => {
     <Providers>
       <NoteScreen />
     </Providers>,
+    options,
   );
   mounted = renderer;
   await settle(10);
@@ -147,9 +154,47 @@ describe('dragging task rows', () => {
     );
   });
 
+  it('drops where the row is after the list scrolls under a finger held at the edge', async () => {
+    const scrollTo = vi.fn();
+    const renderer = await renderNote(
+      `{{task:${A}}}\n{{task:${B}}}\n{{task:${C}}}`,
+      {
+        createNodeMock: (element) =>
+          element.type === 'ScrollView'
+            ? {
+                scrollTo,
+                measureInWindow: (
+                  done: (x: number, y: number, w: number, h: number) => void,
+                ) => done(0, 0, 320, 600),
+              }
+            : null,
+      },
+    );
+    const scrollView = renderer.root.find(
+      (node) => (node.type as string) === 'ScrollView',
+    );
+    act(() => scrollView.props.onLayout());
+    const handlers = grip(renderer, 'Alpha');
+    const atEdge = { dx: 0, dy: 4, moveY: 590 };
+    act(() => handlers.onPanResponderGrant());
+    act(() => handlers.onPanResponderMove({}, atEdge));
+    await vi.waitFor(
+      () => expect(scrollTo.mock.lastCall?.[0].y).toBeGreaterThan(ROW * 3),
+      { timeout: 3_000 },
+    );
+    act(() => handlers.onPanResponderRelease({}, atEdge));
+    await vi.waitFor(
+      () => expect(saved()).toBe(`{{task:${B}}}\n{{task:${C}}}\n{{task:${A}}}`),
+      { timeout: 3_000 },
+    );
+  });
+
   it('leaves the note alone when a row is dropped where it was', async () => {
     const renderer = await renderNote(`{{task:${A}}}\n{{task:${B}}}`);
     dragBy(renderer, 'Alpha', 0, 4);
+    await act(
+      () => new Promise((done) => setTimeout(done, AUTOSAVE_DEBOUNCE_MS * 2)),
+    );
     await settle(10);
     expect(saved()).toBe(`{{task:${A}}}\n{{task:${B}}}`);
   });
