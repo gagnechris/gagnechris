@@ -6,6 +6,8 @@ export const TEST_SHELL =
 export type MemoryStorage = SiteStorage & {
   /** Bodies as UTF-8 text, keyed like S3. `_shell.html` is seeded. */
   objects: Map<string, string>;
+  /** `redirectLocation` of each object that has one. */
+  redirects: Map<string, string>;
   /** Keys of puts that wrote, in order. */
   puts: string[];
   /** Keys of deletes that removed something, in order. */
@@ -26,12 +28,14 @@ export function memoryStorage(
     [SITE_SHELL_KEY, opts.shell ?? TEST_SHELL],
     ...Object.entries(opts.seed ?? {}),
   ]);
+  const redirects = new Map<string, string>();
   const puts: string[] = [];
   const deletes: string[] = [];
   const invalidations: string[][] = [];
   let hold: { until: Promise<void>; reached: () => void } | undefined;
   return {
     objects,
+    redirects,
     puts,
     deletes,
     invalidations,
@@ -53,7 +57,7 @@ export function memoryStorage(
     async read(key) {
       return objects.get(key);
     },
-    async put({ key, body }) {
+    async put({ key, body, redirectLocation }) {
       if (hold) {
         const { until, reached } = hold;
         hold = undefined;
@@ -62,12 +66,20 @@ export function memoryStorage(
       }
       const text =
         typeof body === 'string' ? body : Buffer.from(body).toString('utf8');
-      if (objects.get(key) === text) return false;
+      if (
+        objects.get(key) === text &&
+        redirects.get(key) === redirectLocation
+      ) {
+        return false;
+      }
       objects.set(key, text);
+      if (redirectLocation) redirects.set(key, redirectLocation);
+      else redirects.delete(key);
       puts.push(key);
       return true;
     },
     async delete(key) {
+      redirects.delete(key);
       if (!objects.delete(key)) return false;
       deletes.push(key);
       return true;

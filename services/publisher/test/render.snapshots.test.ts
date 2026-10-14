@@ -183,6 +183,7 @@ describe('render HTML snapshots', () => {
         }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({
           status: 'ok' as const,
           entity: DEFAULT_HOME,

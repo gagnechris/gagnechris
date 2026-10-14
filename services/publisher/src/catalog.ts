@@ -246,3 +246,21 @@ export const getPublishedHome = (
     keys.singleton.home.published(),
     (item) => metaToHome(parseHomeMetaItem(item)),
   );
+
+/** Owner of the `REDIRECT` row the API leaves at a renamed slug. */
+export async function getSlugRedirectOwner(
+  tableName: string,
+  kind: 'post' | 'project',
+  slug: string,
+): Promise<string | undefined> {
+  const result = await ddb.send(
+    new GetCommand({
+      TableName: tableName,
+      Key: keys[kind].slugRedirect(slug),
+    }),
+  );
+  return stringAttr(
+    result.Item ?? {},
+    kind === 'post' ? 'postId' : 'projectId',
+  );
+}

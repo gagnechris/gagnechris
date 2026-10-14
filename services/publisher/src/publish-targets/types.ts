@@ -28,6 +28,11 @@ export type RebuildSiteSources = {
   listPublishedProjects: () => Promise<PublishedProjectsCatalog>;
   getPublishedResume: () => Promise<PublishedLookup<Resume>>;
   getPublishedHome: () => Promise<PublishedLookup<Home>>;
+  /** The id of the post or project that was renamed away from `slug`, if any. */
+  slugRedirectOwner: (
+    kind: 'post' | 'project',
+    slug: string,
+  ) => Promise<string | undefined>;
 };
 
 export const CACHE_HTML = 'public,max-age=0,must-revalidate';

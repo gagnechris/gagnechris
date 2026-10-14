@@ -116,6 +116,28 @@ describe('filesystem site storage', () => {
     expect(await readObjectMeta(root, 'resume.pdf')).toBeUndefined();
   });
 
+  it('keeps a redirect location beside the object for the local site', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
+    const storage = createFilesystemSiteStorage(root);
+    const page = {
+      key: 'blog/old/index.html',
+      body: '<html>moved</html>',
+      contentType: 'text/html; charset=utf-8',
+      cacheControl: '',
+    };
+    expect(await storage.put({ ...page, redirectLocation: '/posts/new' })).toBe(
+      true,
+    );
+    expect(await readObjectMeta(root, page.key)).toEqual({
+      contentType: 'text/html; charset=utf-8',
+      redirectLocation: '/posts/new',
+    });
+    expect(await storage.put(page)).toBe(true);
+    expect(await readObjectMeta(root, page.key)).toEqual({
+      contentType: 'text/html; charset=utf-8',
+    });
+  });
+
   it('skips put when bytes are unchanged', async () => {
     const root = await mkdtemp(join(tmpdir(), 'publisher-fs-'));
     await writeFile(join(root, SITE_SHELL_KEY), '<html>shell</html>');

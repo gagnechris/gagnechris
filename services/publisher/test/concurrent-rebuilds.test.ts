@@ -79,6 +79,7 @@ function tableSources(table: Table, hold?: Hold): RebuildSiteSources {
     listPublishedProjects: () =>
       answer('projects', { projects: [...table.projects], corruptSlugs: [] }),
     getPublishedResume: async () => ({ status: 'missing' }),
+    slugRedirectOwner: async () => undefined,
     getPublishedHome: async () => ({ status: 'missing' }),
   };
 }

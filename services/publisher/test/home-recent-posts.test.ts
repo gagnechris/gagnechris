@@ -100,6 +100,7 @@ function sources(
     }),
     listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
     getPublishedResume: async () => ({ status: 'missing' }),
+    slugRedirectOwner: async () => undefined,
     getPublishedHome,
   };
   return { src, getPublishedHome };

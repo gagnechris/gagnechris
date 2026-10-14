@@ -111,7 +111,7 @@ describe('S3 site storage put', () => {
     else process.env.SITE_BUCKET_NAME = prevBucket;
   });
 
-  const stored = (headers: Record<string, string | undefined>) =>
+  const stored = (headers: Record<string, unknown>) =>
     s3Send.mockImplementation(async (cmd: { constructor: { name: string } }) =>
       cmd.constructor.name === 'HeadObjectCommand'
         ? { ETag: etag, ...headers }
@@ -142,6 +142,7 @@ describe('S3 site storage put', () => {
     ['Cache-Control', { CacheControl: 'public,max-age=60' }],
     ['Content-Type', { ContentType: 'text/plain' }],
     ['Content-Disposition', { ContentDisposition: 'attachment' }],
+    ['redirect location', { Metadata: { 'redirect-location': '/posts/x' } }],
   ])('rewrites unchanged bytes when %s differs', async (_header, overrides) => {
     stored({
       ContentType: 'text/html; charset=utf-8',
@@ -159,5 +160,24 @@ describe('S3 site storage put', () => {
       }),
     ).resolves.toBe(true);
     expect(sentCommands()).toEqual(['HeadObjectCommand', 'PutObjectCommand']);
+  });
+
+  it('stores a redirect location as object metadata the edge reads', async () => {
+    stored({});
+    const { createS3SiteStorage } = await import('../src/storage-s3.js');
+
+    await createS3SiteStorage().put({
+      key: 'blog/old/index.html',
+      body,
+      contentType: 'text/html; charset=utf-8',
+      cacheControl: 'public,max-age=0,must-revalidate',
+      redirectLocation: '/posts/new',
+    });
+    const put = s3Send.mock.calls
+      .map(([cmd]) => cmd as { constructor: { name: string }; input: unknown })
+      .find((cmd) => cmd.constructor.name === 'PutObjectCommand');
+    expect(put?.input).toMatchObject({
+      Metadata: { 'redirect-location': '/posts/new' },
+    });
   });
 });

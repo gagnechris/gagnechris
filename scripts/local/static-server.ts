@@ -112,6 +112,7 @@ async function readOrigin(uri: string): Promise<OriginObject | null> {
     (contentTypes[extname(filePath).toLowerCase()] ||
       'application/octet-stream');
   const contentDisposition = meta?.contentDisposition;
+  const redirectLocation = meta?.redirectLocation;
   const isText =
     contentType.startsWith('text/') ||
     contentType.includes('json') ||
@@ -122,6 +123,7 @@ async function readOrigin(uri: string): Promise<OriginObject | null> {
         kind: 'text',
         contentType,
         contentDisposition,
+        redirectLocation,
         body: body.toString('utf8'),
       }
     : { kind: 'binary', contentType, contentDisposition, body };

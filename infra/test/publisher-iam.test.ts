@@ -154,7 +154,19 @@ describe('publisher DynamoDB access', () => {
     ).toBe(false);
   });
 
-  it('cannot read drafts lists, slug claims or contact messages', () => {
+  it('can read the rename redirect rows of posts and projects', () => {
+    for (const { pk } of [
+      keys.post.slugRedirect('old'),
+      keys.project.slugRedirect('old'),
+    ]) {
+      expect(
+        allows(statements, { action: 'dynamodb:GetItem', leadingKeys: [pk] }),
+        pk,
+      ).toBe(true);
+    }
+  });
+
+  it('cannot read drafts lists or contact messages', () => {
     for (const pk of [projectStatusGsi1Pk('draft'), statusGsi1Pk('draft')]) {
       expect(
         allows(statements, {
@@ -165,10 +177,7 @@ describe('publisher DynamoDB access', () => {
         pk,
       ).toBe(false);
     }
-    for (const pk of [
-      keys.project.slugClaim('notebook').pk,
-      'CONTACT#01JCONTACT000000000000000',
-    ]) {
+    for (const pk of ['CONTACT#01JCONTACT000000000000000']) {
       expect(
         allows(statements, { action: 'dynamodb:GetItem', leadingKeys: [pk] }),
         pk,

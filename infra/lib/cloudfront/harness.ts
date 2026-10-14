@@ -95,7 +95,12 @@ export function loadAppViewerRequest(
 }
 
 /** What the origin holds at a key: text CloudFront functions can see, or bytes. */
-type ObjectHeaders = { contentType: string; contentDisposition?: string };
+type ObjectHeaders = {
+  contentType: string;
+  contentDisposition?: string;
+  /** S3 object metadata `redirect-location`. */
+  redirectLocation?: string;
+};
 
 export type OriginObject =
   | ({ kind: 'text'; body: string } & ObjectHeaders)
@@ -142,6 +147,13 @@ export function edgePipeline(options: {
             'content-type': { value: object.contentType },
             ...(object.contentDisposition
               ? { 'content-disposition': { value: object.contentDisposition } }
+              : {}),
+            ...(object.redirectLocation
+              ? {
+                  'x-amz-meta-redirect-location': {
+                    value: object.redirectLocation,
+                  },
+                }
               : {}),
           },
           body: object.body,

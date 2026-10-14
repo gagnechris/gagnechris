@@ -3,7 +3,7 @@ import type { Post } from '@gagnechris/shared';
 import { runPublishTargets } from '../src/publish-targets/orchestrator.js';
 import { publishTargets } from '../src/publish-targets/registry.js';
 import type { RebuildSiteSources } from '../src/publish-targets/types.js';
-import type { RebuildScope } from '../src/rebuild-scope.js';
+import { fullRebuildScope, type RebuildScope } from '../src/rebuild-scope.js';
 import { memoryStorage } from './fixtures/memory-storage.js';
 
 vi.mock('../src/viewer-request-slugs.js', async (importOriginal) => ({
@@ -34,6 +34,8 @@ const sources: RebuildSiteSources = {
   listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
   getPublishedResume: async () => ({ status: 'missing' }),
   getPublishedHome: async () => ({ status: 'missing' }),
+  slugRedirectOwner: async (kind, slug) =>
+    kind === 'post' && slug === 'renamed' ? kept.id : undefined,
 };
 
 const unpublishScope = (slug: string): RebuildScope => ({
@@ -95,5 +97,51 @@ describe('post orphan deletes', () => {
     expect(invalidations).toEqual([
       expect.arrayContaining(['/blog*', '/rss.xml']),
     ]);
+  });
+
+  it("a renamed post's old page becomes a redirect to its new slug", async () => {
+    const storage = memoryStorage({
+      seed: {
+        'blog/renamed/index.html': '<html>old</html>',
+        'blog/renamed/index.json': '{}',
+      },
+    });
+
+    const result = await runPublishTargets({
+      scope: unpublishScope('renamed'),
+      storage,
+      sources,
+      targets: publishTargets,
+    });
+
+    expect(storage.redirects.get('blog/renamed/index.html')).toBe(
+      '/posts/kept',
+    );
+    expect(storage.objects.get('blog/renamed/index.html')).toContain(
+      'https://gagnechris.com/posts/kept',
+    );
+    expect(storage.objects.has('blog/renamed/index.json')).toBe(false);
+    expect(result.removedSlugs).toEqual([]);
+  });
+
+  it('a full rebuild keeps a redirect and drops one whose post is gone', async () => {
+    const storage = memoryStorage({
+      seed: {
+        'blog/renamed/index.html': '<html>old</html>',
+        'blog/unowned/index.html': '<html>old</html>',
+      },
+    });
+
+    await runPublishTargets({
+      scope: fullRebuildScope(),
+      storage,
+      sources,
+      targets: publishTargets,
+    });
+
+    expect(storage.redirects.get('blog/renamed/index.html')).toBe(
+      '/posts/kept',
+    );
+    expect(storage.objects.has('blog/unowned/index.html')).toBe(false);
   });
 });

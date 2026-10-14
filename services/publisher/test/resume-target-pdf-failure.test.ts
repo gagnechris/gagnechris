@@ -56,6 +56,7 @@ describe('resume target PDF failure', () => {
           status: 'ok' as const,
           entity: publishedResume,
         }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });

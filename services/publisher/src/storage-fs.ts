@@ -77,15 +77,21 @@ export function createFilesystemSiteStorage(rootDir?: string): SiteStorage {
       body,
       contentType,
       contentDisposition,
+      redirectLocation,
     }): Promise<boolean> {
       const path = join(root, key);
       const next = bodyBytes(body);
       const meta = await readObjectMeta(root, key);
       const sameMeta =
         meta?.contentType === contentType &&
-        meta.contentDisposition === contentDisposition;
+        meta.contentDisposition === contentDisposition &&
+        meta.redirectLocation === redirectLocation;
       if (!sameMeta) {
-        await writeObjectMeta(root, key, { contentType, contentDisposition });
+        await writeObjectMeta(root, key, {
+          contentType,
+          contentDisposition,
+          redirectLocation,
+        });
       }
       try {
         const existing = await readFile(path);

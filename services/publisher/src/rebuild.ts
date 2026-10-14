@@ -2,6 +2,7 @@ import {
   getPublishedHome,
   getPublishedResume,
   getSitePublishState,
+  getSlugRedirectOwner,
   listPublishedPosts,
   listPublishedProjects,
 } from './catalog.js';
@@ -38,6 +39,8 @@ export function tableSources(tableName: string): RebuildSiteSources {
     listPublishedProjects: () => listPublishedProjects(tableName),
     getPublishedResume: () => getPublishedResume(tableName),
     getPublishedHome: () => getPublishedHome(tableName),
+    slugRedirectOwner: (kind, slug) =>
+      getSlugRedirectOwner(tableName, kind, slug),
   };
 }
 

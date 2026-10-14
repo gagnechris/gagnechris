@@ -568,6 +568,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });
@@ -584,6 +585,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });
@@ -620,6 +622,7 @@ describe('publisher corrupt / GSI / quiet rebuild', () => {
         }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });

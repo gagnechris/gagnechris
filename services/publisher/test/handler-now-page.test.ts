@@ -55,6 +55,7 @@ describe('handler + now-page fixture', () => {
               corruptSlugs: [],
             }),
             getPublishedResume: async () => ({ status: 'missing' as const }),
+            slugRedirectOwner: async () => undefined,
             getPublishedHome: async () => ({ status: 'missing' as const }),
           },
           targets,

@@ -56,6 +56,20 @@ describe('viewer-response CloudFront Function', () => {
     expect(res.body).toBe('<html>welcome</html>');
   });
 
+  it('answers a publisher redirect page with a 301 to its new URL', () => {
+    const res = runHandler('/blog/old-slug/index.html', {
+      statusCode: 200,
+      headers: {
+        'content-type': { value: 'text/html; charset=utf-8' },
+        'x-amz-meta-redirect-location': { value: '/posts/new-slug' },
+      },
+      body: '<html>moved</html>',
+    });
+    expect(res.statusCode).toBe(301);
+    expect(res.headers.location?.value).toBe('/posts/new-slug');
+    expect(res.headers['x-amz-meta-redirect-location']).toBeUndefined();
+  });
+
   it('has no inline 404 page: CloudFront never runs it on an origin 4xx', () => {
     expect(functionSource('viewer-response-function.js')).not.toContain(
       'NOT_FOUND_HTML',

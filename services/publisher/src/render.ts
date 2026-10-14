@@ -220,6 +220,11 @@ export const renderHomePage = (
 export const projectCanonicalUrl = (slug: string): string =>
   siteUrl(projectPagePath(slug), APEX);
 
+export const renderRedirectPage = (url: string): string => {
+  const href = escapeHtml(url);
+  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Moved</title><link rel="canonical" href="${href}"><meta name="robots" content="noindex"><meta http-equiv="refresh" content="0; url=${href}"></head><body><p>This page moved to <a href="${href}">${href}</a>.</p></body></html>\n`;
+};
+
 const projectDescription = (project: Project): string =>
   project.pitch || `${project.name}, a project by ${SITE_AUTHOR_NAME}.`;
 
