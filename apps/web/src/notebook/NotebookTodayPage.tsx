@@ -24,7 +24,6 @@ import {
 } from '../kit/tasks/TodayPanels';
 import { TodaySheet } from '../kit/tasks/TodaySheet';
 import ShellIcon from '../workspace/ui/ShellIcon';
-import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
 import {
   NOTEBOOK_AREA_FILTERS,
@@ -37,8 +36,12 @@ import { useLocalToday } from './useLocalToday';
 import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
+import {
+  PanelCollapseButton,
+  PanelExpandEdge,
+} from '../workspace/ui/PanelEdge';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
-import { TodayTasksToggle } from './TodayTasksToggle';
+import { usePanelEdgeFocus } from '../workspace/ui/usePanelEdgeFocus';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
 import { noteColumnRoom } from '../workspace/ui/noteColumn';
 import {
@@ -66,7 +69,6 @@ export default function NotebookTodayPage() {
   const [editorGeneration, setEditorGeneration] = useState(0);
   const gridRef = useRef<HTMLDivElement>(null);
   const sideRef = useRef<HTMLElement>(null);
-  const sideToggleRef = useRef<HTMLButtonElement>(null);
   const [sideWidth, setSideWidth] = useStoredWidth(
     'gagnechris.notebook.todaySideWidth',
     SIDE_MIN,
@@ -87,16 +89,23 @@ export default function NotebookTodayPage() {
     setOverlayOpen(false);
   }
   const panelOpen = overlay ? overlayOpen : sideOpen;
+  const { collapseRef, expandRef, handOff } = usePanelEdgeFocus(panelOpen);
   const setPanel = useCallback(
     (open: boolean) => (overlay ? setOverlayOpen(open) : setSide(open)),
     [overlay, setSide],
   );
-  const closeOverlay = useCallback(() => {
-    setOverlayOpen(false);
-    sideToggleRef.current?.focus();
-  }, []);
-  const toggleSide = () =>
-    overlay && overlayOpen ? closeOverlay() : setPanel(!panelOpen);
+  const closeOverlay = useCallback(
+    (focusVisible = true) => {
+      handOff(focusVisible);
+      setOverlayOpen(false);
+    },
+    [handOff],
+  );
+  // The open overlay takes focus itself.
+  const togglePanelFromEdge = (byKeyboard: boolean) => {
+    if (panelOpen || !overlay) handOff(byKeyboard);
+    setPanel(!panelOpen);
+  };
   const overlayShown = overlay && overlayOpen;
   useEffect(() => {
     if (!overlayShown) return;
@@ -109,8 +118,8 @@ export default function NotebookTodayPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [overlayShown, closeOverlay]);
-  // The panel opens below the sticky day header so the Tasks toggle stays
-  // in reach; the header moves until it sticks.
+  // The panel opens below the sticky day header so the note's title and
+  // menus stay in reach; the header moves until it sticks.
   useLayoutEffect(() => {
     const grid = gridRef.current;
     if (!overlayShown || !grid) return;
@@ -144,14 +153,19 @@ export default function NotebookTodayPage() {
       if (document.querySelector('[aria-modal="true"]')) return;
       e.preventDefault();
       e.stopPropagation();
-      if (panelOpen && sideRef.current?.contains(document.activeElement)) {
-        sideToggleRef.current?.focus();
+      const active = document.activeElement;
+      if (
+        panelOpen
+          ? sideRef.current?.contains(active)
+          : active === expandRef.current && !overlay
+      ) {
+        handOff();
       }
       setPanel(!panelOpen);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [setPanel, panelOpen]);
+  }, [setPanel, panelOpen, overlay, expandRef, handOff]);
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -253,15 +267,15 @@ export default function NotebookTodayPage() {
     date >= today && !loading.stillOpen ? (
       <CarryFooter count={buckets.carryCount} nextDay={addDays(date, 1)} />
     ) : null;
-  const tasksToggle = (
-    <TodayTasksToggle
-      ref={sideToggleRef}
-      open={panelOpen}
-      count={loading.stillOpen ? null : stillOpenRows.length}
-      controls="notebook-today-side"
-      onToggle={toggleSide}
-    />
-  );
+  const tasksEdgeProps = {
+    label: 'Tasks',
+    noun: 'the task panel',
+    controls: SIDE_ID,
+    side: 'right',
+    shortcut: '⌥⌘\\',
+    keyShortcuts: 'Alt+Meta+\\ Control+Alt+\\',
+    onToggle: togglePanelFromEdge,
+  } as const;
 
   // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
@@ -289,7 +303,6 @@ export default function NotebookTodayPage() {
         >
           <div className="notebook-today__main notebook-column" ref={editorRef}>
             <div className="notebook-today__day-nav">
-              <SidebarToggle />
               <button
                 type="button"
                 className="kit-btn"
@@ -429,13 +442,11 @@ export default function NotebookTodayPage() {
                 highlightTaskId={highlightTaskId}
                 onHighlighted={clearHighlight}
                 onDeleted={() => setEditorGeneration((n) => n + 1)}
-                tasksToggle={tasksToggle}
               />
             ) : (
               <>
                 <div className="workspace-action-bar notebook-today__header">
                   <DayTitle area={null} date={date} today={today} />
-                  <div className="workspace-toolbar">{tasksToggle}</div>
                 </div>
                 <p className="workspace-panel__lede">
                   Choose Work or Personal in the area switcher to write a daily
@@ -445,7 +456,7 @@ export default function NotebookTodayPage() {
             )}
           </div>
           <aside
-            id="notebook-today-side"
+            id={SIDE_ID}
             className="notebook-today__side"
             aria-label="Today tasks"
             ref={sideRef}
@@ -463,11 +474,18 @@ export default function NotebookTodayPage() {
                 onChange={setSideWidth}
                 room={noteColumnRoom}
                 onCollapse={() => {
+                  handOff(false);
                   setSide(false);
-                  sideToggleRef.current?.focus();
                 }}
               />
             )}
+            {panelOpen ? (
+              <PanelCollapseButton
+                {...tasksEdgeProps}
+                ref={collapseRef}
+                className="notebook-today__side-edge"
+              />
+            ) : null}
             <StillOpenPanel
               rows={stillOpenRows}
               snoozeFrom={snoozeBaseDay(date, today)}
@@ -496,10 +514,19 @@ export default function NotebookTodayPage() {
             <div
               className="notebook-today__scrim"
               aria-hidden="true"
-              onClick={closeOverlay}
+              onClick={() => closeOverlay(false)}
             />
           ) : null}
         </div>
+        {panelOpen ? null : (
+          <PanelExpandEdge
+            {...tasksEdgeProps}
+            ref={expandRef}
+            className="notebook-today__side-expand"
+            count={loading.stillOpen ? null : stillOpenRows.length}
+            countLabel="still open"
+          />
+        )}
         {sheetOpen ? (
           <TodaySheet
             stillOpen={stillOpenRows}
@@ -525,6 +552,7 @@ export default function NotebookTodayPage() {
 
 const NO_IDS: ReadonlySet<string> = new Set();
 
+const SIDE_ID = 'notebook-today-side';
 const SIDE_MIN = 224;
 const SIDE_MAX = 576;
 

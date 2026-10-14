@@ -32,7 +32,6 @@ import { TaskParentsProvider } from './TaskParentsProvider';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useLocalToday } from './useLocalToday';
 
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -149,7 +148,6 @@ export default function NotebookTasksPage() {
     <TaskParentsProvider tasks={listed}>
       <section className="workspace-panel">
         <div className="workspace-panel__header">
-          <SidebarToggle />
           <div>
             <h1>Tasks</h1>
             <p className="workspace-panel__lede">

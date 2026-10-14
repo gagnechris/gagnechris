@@ -1,19 +1,3 @@
-import { createContext, useContext, type RefObject } from 'react';
-
-export type WorkspaceSidebar = {
-  id: string;
-  open: boolean;
-  toggle: () => void;
-  toggleRef: RefObject<HTMLButtonElement | null>;
-};
-
-export const WorkspaceSidebarContext = createContext<WorkspaceSidebar | null>(
-  null,
-);
-
-/** The collapsible sidebar's state; null in apps whose sidebar stays put. */
-export const useWorkspaceSidebar = () => useContext(WorkspaceSidebarContext);
-
 const storageKey = (app: string) => `gagnechris.${app}.sidebar`;
 
 export function readSidebarOpen(app: string): boolean {
