@@ -7,7 +7,7 @@ import {
 
 const ITEM = /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\[[ xX]\][ \t]|\{\{task:)/;
 
-const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
+export const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
 const blank = (text: string) => text.trim().length === 0;
 
 /** The last line of the item at `n` and the lines indented under it. */
