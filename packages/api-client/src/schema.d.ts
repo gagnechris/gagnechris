@@ -9164,6 +9164,439 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/images/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Presigned PUT URL for an image in the caller’s private Notebook media */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+                        contentLength: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Upload URL and markdown src */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uri */
+                            uploadUrl: string;
+                            src: string;
+                            headers: {
+                                "Content-Type": string;
+                            };
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Gone — sync watermark older than tombstone horizon (`resync_required`) */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notebook/images/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Short-lived URL that loads one of the caller’s Notebook images */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Image name from a `notebook-image:` markdown src */
+                    name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Image URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            url: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Gone — sync watermark older than tombstone horizon (`resync_required`) */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notebook/images/objects/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Local-only Notebook image PUT (filesystem SITE_STORAGE). Production uses the S3 uploadUrl. */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Object key under images/<user>/ (may include slashes) */
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Stored */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Not available outside filesystem mode */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Gone — sync watermark older than tombstone horizon (`resync_required`) */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/templates/daily/{area}": {
         parameters: {
             query?: never;
@@ -10251,6 +10684,26 @@ export interface components {
             headers: {
                 "Content-Type": string;
             };
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        NotebookImageUploadUrlRequest: {
+            /** @enum {string} */
+            contentType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+            contentLength: number;
+        };
+        NotebookImageUploadUrlResponse: {
+            /** Format: uri */
+            uploadUrl: string;
+            src: string;
+            headers: {
+                "Content-Type": string;
+            };
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        NotebookImageUrlResponse: {
+            url: string;
             /** Format: date-time */
             expiresAt: string;
         };

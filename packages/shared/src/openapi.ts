@@ -20,6 +20,10 @@ import {
   ListProjectsQuerySchema,
   MediaUploadUrlRequestSchema,
   MediaUploadUrlResponseSchema,
+  NOTEBOOK_IMAGE_NAME_PATTERN,
+  NotebookImageUploadUrlRequestSchema,
+  NotebookImageUploadUrlResponseSchema,
+  NotebookImageUrlResponseSchema,
   PostListResponseSchema,
   PostSummarySchema,
   PostSchema,
@@ -86,6 +90,18 @@ import {
 const MediaObjectKeyParamsSchema = z.object({
   key: z.string().min(1).openapi({
     description: 'Object key under media/ (may include slashes)',
+  }),
+});
+
+const NotebookImageParamsSchema = z.object({
+  name: z.string().regex(NOTEBOOK_IMAGE_NAME_PATTERN).openapi({
+    description: 'Image name from a `notebook-image:` markdown src',
+  }),
+});
+
+const NotebookImageObjectKeyParamsSchema = z.object({
+  key: z.string().min(1).openapi({
+    description: 'Object key under images/<user>/ (may include slashes)',
   }),
 });
 
@@ -614,6 +630,15 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
   registry.register('ExpectedVersionRequest', ExpectedVersionRequestSchema);
   registry.register('MediaUploadUrlRequest', MediaUploadUrlRequestSchema);
   registry.register('MediaUploadUrlResponse', MediaUploadUrlResponseSchema);
+  registry.register(
+    'NotebookImageUploadUrlRequest',
+    NotebookImageUploadUrlRequestSchema,
+  );
+  registry.register(
+    'NotebookImageUploadUrlResponse',
+    NotebookImageUploadUrlResponseSchema,
+  );
+  registry.register('NotebookImageUrlResponse', NotebookImageUrlResponseSchema);
   registry.register('ContactRequest', ContactRequestSchema);
   registry.register('ContactResponse', ContactResponseSchema);
   registry.register('Home', HomeSchema);
@@ -1001,6 +1026,61 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
       200: ok(NotebookSearchResponseSchema, 'Grouped search hits'),
       400: r400,
       ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/notebook/images/upload-url',
+    summary:
+      'Presigned PUT URL for an image in the caller’s private Notebook media',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: NotebookImageUploadUrlRequestSchema },
+        },
+      },
+    },
+    responses: {
+      200: ok(
+        NotebookImageUploadUrlResponseSchema,
+        'Upload URL and markdown src',
+      ),
+      400: r400,
+      ...notebookAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: '/api/notebook/images/{name}',
+    summary: 'Short-lived URL that loads one of the caller’s Notebook images',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { params: NotebookImageParamsSchema },
+    responses: {
+      200: ok(NotebookImageUrlResponseSchema, 'Image URL'),
+      400: r400,
+      404: r404,
+      ...notebookAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: '/api/notebook/images/objects/{key}',
+    summary:
+      'Local-only Notebook image PUT (filesystem SITE_STORAGE). Production uses the S3 uploadUrl.',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: { params: NotebookImageObjectKeyParamsSchema },
+    responses: {
+      204: { description: 'Stored' },
+      400: r400,
+      404: err('Not available outside filesystem mode'),
+      ...notebookAuth,
     },
   });
 

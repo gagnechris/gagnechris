@@ -81,6 +81,7 @@ const api = new ApiStack(app, `Api-${config.name}`, {
   userPool: auth.userPool,
   alertsTopic: guardrails.alertsTopic,
   dataTable: data.table,
+  notebookMediaBucket: data.notebookMediaBucket,
   emailIdentity: email.emailIdentity,
   notifyEmailIdentity: email.notifyEmailIdentity,
   fromEmail: email.fromEmail,
@@ -95,6 +96,7 @@ const site = new SiteStack(app, `Site-${config.name}`, {
   certificate: certificate.certificate,
   appHostsCertificate: certificate.appHostsCertificate,
   alertsTopic: guardrails.alertsTopic,
+  notebookMediaBucket: data.notebookMediaBucket,
 });
 site.node.addDependency(api);
 

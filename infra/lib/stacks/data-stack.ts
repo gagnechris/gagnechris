@@ -21,6 +21,13 @@ import {
   TableEncryption,
 } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule, Schedule } from 'aws-cdk-lib/aws-events';
+import {
+  BlockPublicAccess,
+  Bucket,
+  BucketEncryption,
+  HttpMethods,
+  ObjectOwnership,
+} from 'aws-cdk-lib/aws-s3';
 import { SnsTopic } from 'aws-cdk-lib/aws-events-targets';
 import type { ITopic } from 'aws-cdk-lib/aws-sns';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -36,7 +43,7 @@ import {
   type DynamoAttributeTypeCode,
   type DynamoProjectionType,
 } from '@gagnechris/data';
-import { ssmParameterName } from '../config/constants.js';
+import { NOTEBOOK_HOST, ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { metricAlarm } from '../constructs/emf-alarm.js';
 import { AppTableRestoreTesting } from '../constructs/restore-testing.js';
@@ -122,6 +129,8 @@ const BACKUP_FAILURE_STATES = ['FAILED', 'ABORTED', 'EXPIRED', 'PARTIAL'];
 
 export class DataStack extends Stack {
   readonly table: Table;
+  /** Images pasted into Notebook notes; only the API signs access to it. */
+  readonly notebookMediaBucket: Bucket;
   readonly restoreTesting: AppTableRestoreTesting;
 
   constructor(scope: Construct, id: string, props: DataStackProps) {
@@ -288,6 +297,39 @@ export class DataStack extends Stack {
       }),
       alertsTopic,
     });
+
+    this.notebookMediaBucket = new Bucket(this, 'NotebookMedia', {
+      encryption: BucketEncryption.S3_MANAGED,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      enforceSSL: true,
+      versioned: true,
+      objectOwnership: ObjectOwnership.BUCKET_OWNER_ENFORCED,
+      removalPolicy: RemovalPolicy.RETAIN,
+      lifecycleRules: [
+        {
+          id: 'ExpireNoncurrentVersions',
+          enabled: true,
+          noncurrentVersionExpiration: Duration.days(90),
+          abortIncompleteMultipartUploadAfter: Duration.days(1),
+        },
+      ],
+      // Browser PUTs to signed upload URLs, and the export's GETs.
+      cors: [
+        {
+          allowedMethods: [HttpMethods.PUT, HttpMethods.GET],
+          allowedOrigins: [`https://${NOTEBOOK_HOST}`],
+          allowedHeaders: ['Content-Type', 'Content-Length'],
+          maxAge: 3600,
+        },
+      ],
+    });
+    NagSuppressions.addResourceSuppressions(this.notebookMediaBucket, [
+      {
+        id: 'AwsSolutions-S1',
+        reason:
+          'The access-logs bucket is in the Site stack, which deploys after Data. Every upload and read URL is signed by the API, whose requests are in the API Gateway access logs.',
+      },
+    ]);
 
     new StringParameter(this, 'TableNameParam', {
       parameterName: ssmParameterName(config.name, 'dataTableName'),

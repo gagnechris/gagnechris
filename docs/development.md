@@ -52,7 +52,7 @@ Starts DynamoDB Local (Compose project `gagnechris`), bootstraps `gagnechris-loc
 
 The local API is the Go API (`services/api/cmd/api`). `scripts/local/api.ts` builds it once (no watch: restart `local:dev` to pick up Go changes; `GO_API_BIN` names a prebuilt binary instead) and runs it on a private port with `API_CLAIMS_MODE=local`, which turns a local `Bearer` token into the route's ID-token claims. A small front server on `8787` (`scripts/local/site-hooks.ts`) runs the local stand-ins for the site bucket's media CORS rule and the publisher's stream trigger around it, so a publish rebuilds the local site before the response returns.
 
-Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Local media upload URLs point at the local API, which answers the browser's CORS preflight for them the way the site bucket's CORS rule does in production. Fake local sign-in never uses Cognito or prod AWS.
+Open the public site at [http://localhost:5173](http://localhost:5173), the CMS at [http://localhost:5174](http://localhost:5174) and Notebook at [http://localhost:5175](http://localhost:5175). Each Vite server proxies `/api` → local API; the public one also proxies `/__site` → the static origin and the admin one `/media` (mirrors production CloudFront routing). Local media and Notebook image upload URLs point at the local API, which answers the browser's CORS preflight for them the way the buckets' CORS rules do in production. Fake local sign-in never uses Cognito or prod AWS.
 
 The public site has no sign-in, admin or Notebook routes: on `:5173`, `/admin` and `/auth/callback` render the 404 page. The static origin (`:4177`) runs the apex viewer-request function, so there they 301 to `https://admin.gagnechris.com` / `https://notebook.gagnechris.com` as in production.
 
@@ -142,6 +142,7 @@ that is executed, not just built) run with `--prefix apps/mobile`. See
 | `AWS_ENDPOINT_URL_DYNAMODB`          | `http://127.0.0.1:${DYNAMODB_LOCAL_HOST_PORT}`                                   |
 | `DATA_TABLE_NAME`                    | `gagnechris-local` (refuses `gagnechris-prod`)                                   |
 | `SITE_BUCKET_NAME`                   | Repo `.local-site/` filesystem “bucket”                                          |
+| `NOTEBOOK_MEDIA_BUCKET_NAME`         | Repo `.local-notebook-media/`: stand-in for the private Notebook images bucket   |
 | `LOCAL_API_PORT` / `LOCAL_SITE_PORT` | `8787` / `4177`                                                                  |
 | `COMPOSE_PROJECT_NAME`               | `gagnechris` (shared DynamoDB Local across worktrees)                            |
 | `USER_DIRECTORY`                     | `memory`: in-memory stand-in for the Cognito user pool behind `/api/admin/users` |

@@ -1,5 +1,9 @@
 import type { DailyTemplate, Note, Task } from '@gagnechris/app-core';
-import { replaceTaskEmbeds, taskEmbedFallbackLine } from '@gagnechris/shared';
+import {
+  NOTEBOOK_IMAGE_SRC_PREFIX,
+  replaceTaskEmbeds,
+  taskEmbedFallbackLine,
+} from '@gagnechris/shared';
 
 /** General-purpose flag bit 11: file names are UTF-8, not CP437. */
 const UTF8_NAMES = 0x0800;
@@ -126,7 +130,9 @@ updatedAt: ${q(note.updatedAt)}
 `;
   const body = replaceTaskEmbeds(note.bodyMarkdown, (embed) =>
     taskEmbedFallbackLine(embed, tasksById.get(embed.id)),
-  );
+  )
+    .split(`](${NOTEBOOK_IMAGE_SRC_PREFIX}`)
+    .join('](../../images/');
   return `${frontmatter}${body.trimEnd()}\n`;
 }
 
@@ -147,8 +153,12 @@ export function buildNotebookExportZip(
   notes: Note[],
   tasks: Task[],
   templates: readonly DailyTemplate[] = [],
+  images: Readonly<Record<string, Uint8Array>> = {},
 ): { blob: Blob; fileCount: number } {
-  const files: Record<string, string> = {};
+  const files: Record<string, string | Uint8Array> = {};
+  for (const [name, bytes] of Object.entries(images)) {
+    files[`images/${name}`] = bytes;
+  }
   for (const template of templates) {
     files[`templates/${template.area}.md`] = template.bodyMarkdown;
   }
@@ -163,6 +173,7 @@ export function buildNotebookExportZip(
 Generated for personal backup / migration.
 
 - \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\`, \`- [x] Title\` when done and \`- [ ] ~~Title~~ (dropped)\` when dropped
+- \`images/\` — the images pasted into notes, which the notes link to
 - \`tasks.json\` — all non-deleted tasks
 - \`templates/work.md\` and \`templates/personal.md\` — the daily note templates, with \`{{weekday}}\`, \`{{date}}\` and \`{{area}}\` unfilled
 

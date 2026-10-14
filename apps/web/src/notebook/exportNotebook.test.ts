@@ -105,6 +105,21 @@ describe('exportNotebook', () => {
     expect(revoke).toHaveBeenCalledWith('blob:x');
   });
 
+  test('pasted images go in images/ and the notes link to them there', async () => {
+    const name = '0123456789abcdef.png';
+    const md = noteToMarkdown(
+      note({ bodyMarkdown: `Shot:\n![image](notebook-image:${name})` }),
+    );
+    expect(md).toContain(`![image](../../images/${name})`);
+
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const { blob } = buildNotebookExportZip([note()], [], [], {
+      [name]: bytes,
+    });
+    const text = new TextDecoder().decode(await blob.arrayBuffer());
+    expect(text).toContain(`images/${name}`);
+  });
+
   test('builds a zip blob with notes and tasks.json', async () => {
     const task: Task = {
       id: '01ARZ3NDEKTSV4RRFFQ48JMTC7',

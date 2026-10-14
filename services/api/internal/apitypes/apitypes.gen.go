@@ -896,6 +896,30 @@ func (e NoteSyncChange1Type) Valid() bool {
 	}
 }
 
+// Defines values for NotebookImageUploadURLRequestContentType.
+const (
+	NotebookImageUploadURLRequestContentTypeImageGif  NotebookImageUploadURLRequestContentType = "image/gif"
+	NotebookImageUploadURLRequestContentTypeImageJpeg NotebookImageUploadURLRequestContentType = "image/jpeg"
+	NotebookImageUploadURLRequestContentTypeImagePng  NotebookImageUploadURLRequestContentType = "image/png"
+	NotebookImageUploadURLRequestContentTypeImageWebp NotebookImageUploadURLRequestContentType = "image/webp"
+)
+
+// Valid indicates whether the value is a known member of the NotebookImageUploadURLRequestContentType enum.
+func (e NotebookImageUploadURLRequestContentType) Valid() bool {
+	switch e {
+	case NotebookImageUploadURLRequestContentTypeImageGif:
+		return true
+	case NotebookImageUploadURLRequestContentTypeImageJpeg:
+		return true
+	case NotebookImageUploadURLRequestContentTypeImagePng:
+		return true
+	case NotebookImageUploadURLRequestContentTypeImageWebp:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for NotebookSearchRequestArea.
 const (
 	NotebookSearchRequestAreaPersonal NotebookSearchRequestArea = "personal"
@@ -4133,6 +4157,30 @@ func (e GetAPIHealth200JSONResponseBodyStatus) Valid() bool {
 	}
 }
 
+// Defines values for PostAPINotebookImagesUploadURLJSONBodyContentType.
+const (
+	PostAPINotebookImagesUploadURLJSONBodyContentTypeImageGif  PostAPINotebookImagesUploadURLJSONBodyContentType = "image/gif"
+	PostAPINotebookImagesUploadURLJSONBodyContentTypeImageJpeg PostAPINotebookImagesUploadURLJSONBodyContentType = "image/jpeg"
+	PostAPINotebookImagesUploadURLJSONBodyContentTypeImagePng  PostAPINotebookImagesUploadURLJSONBodyContentType = "image/png"
+	PostAPINotebookImagesUploadURLJSONBodyContentTypeImageWebp PostAPINotebookImagesUploadURLJSONBodyContentType = "image/webp"
+)
+
+// Valid indicates whether the value is a known member of the PostAPINotebookImagesUploadURLJSONBodyContentType enum.
+func (e PostAPINotebookImagesUploadURLJSONBodyContentType) Valid() bool {
+	switch e {
+	case PostAPINotebookImagesUploadURLJSONBodyContentTypeImageGif:
+		return true
+	case PostAPINotebookImagesUploadURLJSONBodyContentTypeImageJpeg:
+		return true
+	case PostAPINotebookImagesUploadURLJSONBodyContentTypeImagePng:
+		return true
+	case PostAPINotebookImagesUploadURLJSONBodyContentTypeImageWebp:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetAPINotebookNotesParamsArea.
 const (
 	GetAPINotebookNotesParamsAreaPersonal GetAPINotebookNotesParamsArea = "personal"
@@ -6887,6 +6935,34 @@ type NoteSyncChange_1 struct {
 // NotebookBatchRequest defines model for NotebookBatchRequest.
 type NotebookBatchRequest struct {
 	Ids []string `json:"ids"`
+}
+
+// NotebookImageUploadURLRequest defines model for NotebookImageUploadUrlRequest.
+type NotebookImageUploadURLRequest struct {
+	ContentLength int                                      `json:"contentLength"`
+	ContentType   NotebookImageUploadURLRequestContentType `json:"contentType"`
+}
+
+// NotebookImageUploadURLRequestContentType defines model for NotebookImageUploadURLRequest.ContentType.
+type NotebookImageUploadURLRequestContentType string
+
+// NotebookImageUploadURLResponse defines model for NotebookImageUploadUrlResponse.
+type NotebookImageUploadURLResponse struct {
+	ExpiresAt string                                 `json:"expiresAt"`
+	Headers   NotebookImageUploadURLResponse_Headers `json:"headers"`
+	Src       string                                 `json:"src"`
+	UploadURL string                                 `json:"uploadUrl"`
+}
+
+// NotebookImageUploadURLResponse_Headers defines model for NotebookImageUploadURLResponse.Headers.
+type NotebookImageUploadURLResponse_Headers struct {
+	ContentType string `json:"Content-Type"`
+}
+
+// NotebookImageURLResponse defines model for NotebookImageUrlResponse.
+type NotebookImageURLResponse struct {
+	ExpiresAt string `json:"expiresAt"`
+	URL       string `json:"url"`
 }
 
 // NotebookSearchRequest defines model for NotebookSearchRequest.
@@ -10970,6 +11046,174 @@ type GetAPIHealth503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
+// PutAPINotebookImagesObjectsKey400JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey401JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey403JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey404JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey404JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey410JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey410JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey500JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookImagesObjectsKey503JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
+type PutAPINotebookImagesObjectsKey503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURLJSONBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURLJSONBody struct {
+	ContentLength int                                               `json:"contentLength"`
+	ContentType   PostAPINotebookImagesUploadURLJSONBodyContentType `json:"contentType"`
+}
+
+// PostAPINotebookImagesUploadURLJSONBodyContentType defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURLJSONBodyContentType string
+
+// PostAPINotebookImagesUploadURL200JSONResponseBody_Headers defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL200JSONResponseBody_Headers struct {
+	ContentType string `json:"Content-Type"`
+}
+
+// PostAPINotebookImagesUploadURL200JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL200JSONResponseBody struct {
+	ExpiresAt string                                                    `json:"expiresAt"`
+	Headers   PostAPINotebookImagesUploadURL200JSONResponseBody_Headers `json:"headers"`
+	Src       string                                                    `json:"src"`
+	UploadURL string                                                    `json:"uploadUrl"`
+}
+
+// PostAPINotebookImagesUploadURL400JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURL401JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURL403JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURL410JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL410JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURL500JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookImagesUploadURL503JSONResponseBody defines parameters for PostAPINotebookImagesUploadURL.
+type PostAPINotebookImagesUploadURL503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName200JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName200JSONResponseBody struct {
+	ExpiresAt string `json:"expiresAt"`
+	URL       string `json:"url"`
+}
+
+// GetAPINotebookImagesName400JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName401JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName403JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName404JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName404JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName410JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName410JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName500JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookImagesName503JSONResponseBody defines parameters for GetAPINotebookImagesName.
+type GetAPINotebookImagesName503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // GetAPINotebookNotesParams defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotesParams struct {
 	// Area Filter by Work or Personal
@@ -13292,6 +13536,9 @@ type PostAPIAdminUsersIDRestoreJSONRequestBody PostAPIAdminUsersIDRestoreJSONBod
 
 // PostAPIContactJSONRequestBody defines body for PostAPIContact for application/json ContentType.
 type PostAPIContactJSONRequestBody PostAPIContactJSONBody
+
+// PostAPINotebookImagesUploadURLJSONRequestBody defines body for PostAPINotebookImagesUploadURL for application/json ContentType.
+type PostAPINotebookImagesUploadURLJSONRequestBody PostAPINotebookImagesUploadURLJSONBody
 
 // PostAPINotebookNotesJSONRequestBody defines body for PostAPINotebookNotes for application/json ContentType.
 type PostAPINotebookNotesJSONRequestBody PostAPINotebookNotesJSONBody

@@ -40,6 +40,8 @@ export SITE_STORAGE=filesystem
 if [[ -z "${SITE_BUCKET_NAME:-}" || "${SITE_BUCKET_NAME}" != "${_LOCAL_ROOT}/"* ]]; then
   export SITE_BUCKET_NAME="${_LOCAL_ROOT}/.local-site"
 fi
+# Stands in for the private Notebook media bucket; never served by the static server.
+export NOTEBOOK_MEDIA_BUCKET_NAME="${_LOCAL_ROOT}/.local-notebook-media"
 export CLOUDFRONT_DISTRIBUTION_ID=local
 # Stands in for the CloudFront KeyValueStore: the publisher writes the slug
 # allowlist here and the local static server reads it.

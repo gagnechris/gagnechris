@@ -8,7 +8,11 @@ import {
   type RefObject,
 } from 'react';
 import { EditorView, keymap } from '@codemirror/view';
-import { useLatest, type EmbedNote } from '@gagnechris/app-core';
+import {
+  useGetApiClient,
+  useLatest,
+  type EmbedNote,
+} from '@gagnechris/app-core';
 import {
   findTaskEmbeds,
   parseTaskEmbedLine,
@@ -22,10 +26,12 @@ import MarkdownEditor, {
 } from '../kit/markdown/MarkdownEditor';
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
+import { markdownImages } from '../kit/markdown/imageWidgets';
 import { livePreview } from '../kit/markdown/livePreview';
 import '../kit/markdown/markdown.css';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import type { DescriptionEditorProps } from './TaskDetailsPanel';
+import { notebookImageResolver, uploadNotebookImages } from './notebookImages';
 import { toggleTaskDetails } from './taskDetailsStore';
 import { useLocalToday } from './useLocalToday';
 import { useNoteTaskEmbeds } from './useNoteTaskEmbeds';
@@ -70,7 +76,6 @@ const toggleDetailsKey = keymap.of([
     },
   },
 ]);
-/** No image upload: Notebook attachments need the private bucket. */
 export function NotebookMarkdownBody({
   value,
   onChange,
@@ -95,6 +100,26 @@ export function NotebookMarkdownBody({
   const getView = useCallback(() => editorRef.current?.view(), []);
   const phone = useMediaQuery(PHONE_QUERY);
   const [focused, setFocused] = useState(false);
+  const getClient = useGetApiClient();
+  const resolveImageSrc = useMemo(
+    () => notebookImageResolver(getClient),
+    [getClient],
+  );
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const uploadImages = useCallback(
+    async (files: File[]) => {
+      setUploadError(null);
+      try {
+        return await uploadNotebookImages(getClient(), files);
+      } catch (err) {
+        setUploadError(
+          err instanceof Error ? err.message : 'Image upload failed',
+        );
+        return [];
+      }
+    },
+    [getClient],
+  );
   const valueRef = useLatest(value);
   const removeEmbeds = useCallback(
     (ids: ReadonlySet<string>) => {
@@ -118,6 +143,7 @@ export function NotebookMarkdownBody({
   const extensions = useMemo(
     () => [
       livePreview(),
+      markdownImages({ resolveSrc: resolveImageSrc }),
       taskListToggle(),
       ...(withTasks ? [...dateMenu.extensions, toggleDetailsKey] : []),
       ...embeds.extensions,
@@ -128,7 +154,7 @@ export function NotebookMarkdownBody({
         ? [EditorView.scrollMargins.of(() => ({ bottom: PHONE_SCROLL_MARGIN }))]
         : []),
     ],
-    [embeds.extensions, dateMenu.extensions, withTasks, phone],
+    [embeds.extensions, dateMenu.extensions, withTasks, phone, resolveImageSrc],
   );
 
   const handledHighlight = useRef<string | null>(null);
@@ -191,6 +217,7 @@ export function NotebookMarkdownBody({
             lineNumbers={false}
             label={label}
             placeholder={placeholder}
+            onUploadImages={uploadImages}
           />
         </div>
       </div>
@@ -199,6 +226,11 @@ export function NotebookMarkdownBody({
         <EditorAccessoryBar getView={getView} tasks={withTasks} />
       ) : null}
       {withTasks ? dateMenu.menu : null}
+      {uploadError ? (
+        <p className="workspace-panel__error" role="alert">
+          {uploadError}
+        </p>
+      ) : null}
       {embeds.toggleError ? (
         <p className="workspace-panel__error" role="alert">
           {embeds.toggleError}

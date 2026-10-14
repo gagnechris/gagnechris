@@ -10,6 +10,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contact"
 	"github.com/gagnechris/gagnechris/services/api/internal/media"
+	"github.com/gagnechris/gagnechris/services/api/internal/noteimages"
 )
 
 func envOf(vars map[string]string) func(string) string {
@@ -18,15 +19,16 @@ func envOf(vars map[string]string) func(string) string {
 
 func lambdaEnv() map[string]string {
 	return map[string]string{
-		"AWS_LAMBDA_RUNTIME_API": "127.0.0.1:9001",
-		"DATA_TABLE_NAME":        "gagnechris-prod",
-		"ADMIN_WEB_CLIENT_ID":    "admin",
-		"NOTEBOOK_WEB_CLIENT_ID": "notebook",
-		"IOS_CLIENT_ID":          "ios",
-		"SITE_BUCKET_NAME":       "site",
-		"CONTACT_FROM_EMAIL":     "from@example.com",
-		"CONTACT_TO_EMAIL":       "to@example.com",
-		"USER_POOL_ID":           "us-east-1_pool",
+		"AWS_LAMBDA_RUNTIME_API":     "127.0.0.1:9001",
+		"DATA_TABLE_NAME":            "gagnechris-prod",
+		"ADMIN_WEB_CLIENT_ID":        "admin",
+		"NOTEBOOK_WEB_CLIENT_ID":     "notebook",
+		"IOS_CLIENT_ID":              "ios",
+		"SITE_BUCKET_NAME":           "site",
+		"NOTEBOOK_MEDIA_BUCKET_NAME": "notebook-media",
+		"CONTACT_FROM_EMAIL":         "from@example.com",
+		"CONTACT_TO_EMAIL":           "to@example.com",
+		"USER_POOL_ID":               "us-east-1_pool",
 	}
 }
 
@@ -44,6 +46,9 @@ func TestLambdaConfig(t *testing.T) {
 	if c.media != (media.Config{Bucket: "site"}) || c.userPoolID != "us-east-1_pool" || c.memoryUsers {
 		t.Errorf("media %+v, pool %q, memory %v", c.media, c.userPoolID, c.memoryUsers)
 	}
+	if c.images != (noteimages.Config{Bucket: "notebook-media"}) {
+		t.Errorf("images %+v", c.images)
+	}
 }
 
 func TestLambdaConfigRequiresEveryValue(t *testing.T) {
@@ -59,12 +64,13 @@ func TestLambdaConfigRequiresEveryValue(t *testing.T) {
 
 func TestLocalConfig(t *testing.T) {
 	c, err := loadConfig(envOf(map[string]string{
-		"DATA_TABLE_NAME":  "gagnechris-local",
-		"API_CLAIMS_MODE":  "local",
-		"SITE_STORAGE":     "filesystem",
-		"SITE_BUCKET_NAME": "/tmp/site",
-		"LOCAL_API_PORT":   "9999",
-		"USER_DIRECTORY":   "memory",
+		"DATA_TABLE_NAME":            "gagnechris-local",
+		"API_CLAIMS_MODE":            "local",
+		"SITE_STORAGE":               "filesystem",
+		"SITE_BUCKET_NAME":           "/tmp/site",
+		"NOTEBOOK_MEDIA_BUCKET_NAME": "/tmp/notebook-media",
+		"LOCAL_API_PORT":             "9999",
+		"USER_DIRECTORY":             "memory",
 	}))
 	if err != nil {
 		t.Fatal(err)
@@ -77,6 +83,9 @@ func TestLocalConfig(t *testing.T) {
 	}
 	if c.media != (media.Config{Bucket: "/tmp/site", Filesystem: true, LocalOrigin: "http://127.0.0.1:9999"}) {
 		t.Errorf("media %+v", c.media)
+	}
+	if c.images != (noteimages.Config{Bucket: "/tmp/notebook-media", Filesystem: true, LocalOrigin: "http://127.0.0.1:9999"}) {
+		t.Errorf("images %+v", c.images)
 	}
 	if !c.memoryUsers || c.port != "8787" {
 		t.Errorf("memory %v, port %q", c.memoryUsers, c.port)

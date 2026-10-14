@@ -22,6 +22,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/home"
 	"github.com/gagnechris/gagnechris/services/api/internal/media"
 	"github.com/gagnechris/gagnechris/services/api/internal/notebook"
+	"github.com/gagnechris/gagnechris/services/api/internal/noteimages"
 	"github.com/gagnechris/gagnechris/services/api/internal/observability"
 	"github.com/gagnechris/gagnechris/services/api/internal/posts"
 	"github.com/gagnechris/gagnechris/services/api/internal/projects"
@@ -81,7 +82,9 @@ func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Co
 	routes = append(routes, search.Routes(table, nil)...)
 	routes = append(routes, notebook.Routes(table, nil)...)
 	routes = append(routes, users.Routes(userDeps)...)
-	return append(routes, media.Routes(s3.NewPresignClient(s3.NewFromConfig(cfg)), conf.media, nil)...)
+	presign := s3.NewPresignClient(s3.NewFromConfig(cfg))
+	routes = append(routes, noteimages.Routes(presign, conf.images, nil)...)
+	return append(routes, media.Routes(presign, conf.media, nil)...)
 }
 
 func serveHTTP(app *api.App, conf config, logger *slog.Logger) error {

@@ -64,6 +64,7 @@ function build() {
     userPool: auth.userPool,
     alertsTopic,
     dataTable: data.table,
+    notebookMediaBucket: data.notebookMediaBucket,
     emailIdentity: email.emailIdentity,
     notifyEmailIdentity: email.notifyEmailIdentity,
     fromEmail: email.fromEmail,
@@ -74,6 +75,7 @@ function build() {
     certificate: certArn('site'),
     appHostsCertificate: certArn('app-hosts'),
     alertsTopic,
+    notebookMediaBucket: data.notebookMediaBucket,
   });
   const dns = new DnsStack(app, 'Dns-prod', {
     env,
@@ -291,16 +293,24 @@ describe('app hosts: CloudFront', () => {
     expect(cspOf('gagnechris-prod-admin-app-security-headers')).toContain(
       "img-src 'self' data: https://gagnechris.com;",
     );
-    expect(cspOf('gagnechris-prod-notebook-app-security-headers')).toContain(
-      "img-src 'self' data:;",
-    );
     // Presigned media PUTs go to the site bucket from admin only.
     expect(cspOf('gagnechris-prod-admin-app-security-headers')).toContain(
       'SiteBucket',
     );
-    expect(cspOf('gagnechris-prod-notebook-app-security-headers')).not.toMatch(
-      /SiteBucket|s3/,
+    expect(cspOf('gagnechris-prod-admin-app-security-headers')).not.toContain(
+      'NotebookMedia',
     );
+    // Notebook images upload to and load from the private Notebook media
+    // bucket only.
+    const notebook = cspOf('gagnechris-prod-notebook-app-security-headers');
+    expect(notebook).not.toContain('SiteBucket');
+    expect(notebook).toContain("img-src 'self' data: https://");
+    expect(notebook).toContain(
+      "connect-src 'self' https://auth.gagnechris.com https://cognito-idp.us-east-1.amazonaws.com https://",
+    );
+    expect(
+      notebook.match(/NotebookMedia[A-Za-z0-9]*RegionalDomainName/g),
+    ).toHaveLength(2);
   });
 
   it('routes /api/* same-origin to the HTTP API with the API headers policy', () => {

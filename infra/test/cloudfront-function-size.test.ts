@@ -1,3 +1,4 @@
+import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { App, Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
@@ -27,6 +28,11 @@ function siteFunctions(): Record<string, string> {
     certificate,
     appHostsCertificate: certificate,
     alertsTopic: new Topic(deps, 'Alerts', { enforceSSL: true }),
+    notebookMediaBucket: Bucket.fromBucketName(
+      deps,
+      'NotebookMedia',
+      'notebook-media',
+    ),
   });
   const functions = Template.fromStack(site).findResources(
     'AWS::CloudFront::Function',

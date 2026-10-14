@@ -14,10 +14,14 @@ import { MARKDOWN_IMAGE } from '@gagnechris/shared';
 
 const FENCE = /^[ \t]{0,3}(`{3,}|~{3,})/;
 
+/** Maps a markdown `src` to a URL the app can load, now or once it resolves. */
+export type ResolveImageSrc = (src: string) => string | Promise<string>;
+
 class ImageWidget extends WidgetType {
   constructor(
     readonly src: string,
     readonly alt: string,
+    readonly resolveSrc: ResolveImageSrc,
   ) {
     super();
   }
@@ -29,16 +33,30 @@ class ImageWidget extends WidgetType {
   toDOM() {
     const img = document.createElement('img');
     img.className = 'cm-md-image';
-    img.src = this.src;
     img.alt = this.alt;
     img.loading = 'lazy';
+    const resolved = this.resolveSrc(this.src);
+    if (typeof resolved === 'string') {
+      img.src = resolved;
+    } else {
+      img.classList.add('cm-md-image--loading');
+      resolved.then(
+        (url) => {
+          img.src = url;
+          img.classList.remove('cm-md-image--loading');
+        },
+        () => {
+          img.classList.replace('cm-md-image--loading', 'cm-md-image--broken');
+        },
+      );
+    }
     return img;
   }
 }
 
 function buildImages(
   state: EditorState,
-  resolveSrc: (src: string) => string,
+  resolveSrc: ResolveImageSrc,
 ): DecorationSet {
   const doc = state.doc;
   const out: Range<Decoration>[] = [];
@@ -60,7 +78,7 @@ function buildImages(
       const from = line.from + m.index;
       out.push(
         Decoration.replace({
-          widget: new ImageWidget(resolveSrc(m[2]!), m[1]!),
+          widget: new ImageWidget(m[2]!, m[1]!, resolveSrc),
         }).range(from, from + m[0].length),
       );
     }
@@ -74,7 +92,7 @@ function buildImages(
  */
 export function markdownImages({
   resolveSrc = (src) => src,
-}: { resolveSrc?: (src: string) => string } = {}): Extension {
+}: { resolveSrc?: ResolveImageSrc } = {}): Extension {
   const field = StateField.define<DecorationSet>({
     create: (state) => buildImages(state, resolveSrc),
     update: (deco, tr) =>
