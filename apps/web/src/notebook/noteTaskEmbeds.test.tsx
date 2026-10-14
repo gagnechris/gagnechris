@@ -79,6 +79,12 @@ const fail = (status: number, error: string) => ({
   response: { status },
 });
 
+vi.mock('./notebookImages', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./notebookImages')>()),
+  uploadNotebookImages: async (_client: unknown, files: File[]) =>
+    files.map((file) => `notebook-image:${file.name}`),
+}));
+
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () =>
     openDailyViaGet({
@@ -1150,6 +1156,35 @@ describe('editing an embedded task title in place', () => {
       await within(noteA()).findByText(/changed on another device/),
     ).toBeTruthy();
     await waitFor(() => expect(field).toHaveValue('Call Sam'));
+  });
+
+  test('an image pasted at the end of the embed line goes on a line of its own', async () => {
+    seedTask();
+    const { onChange } = renderNotes(`Standup\n${tokenLine(TASK_ID)}\nnotes`);
+    await titleIn(noteA());
+    const view = await editorView(noteA());
+    act(() => {
+      view.focus();
+      view.dispatch({ selection: { anchor: view.state.doc.line(2).to } });
+    });
+    const file = new File(['png'], 'pasted.png', { type: 'image/png' });
+
+    fireEvent.paste(view.contentDOM, {
+      clipboardData: {
+        items: [{ kind: 'file', type: file.type, getAsFile: () => file }],
+      },
+    });
+
+    await waitFor(() =>
+      expect(view.state.doc.toString()).toContain('notebook-image:pasted.png'),
+    );
+    expect(view.state.doc.line(2).text).toBe(tokenLine(TASK_ID));
+    expect(view.state.doc.line(3).text).toBe(
+      '![image](notebook-image:pasted.png)',
+    );
+    expect(last(onChange.mock.calls)?.[0]).toContain(
+      `${tokenLine(TASK_ID)}\n![image]`,
+    );
   });
 });
 
