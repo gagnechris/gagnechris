@@ -629,6 +629,18 @@
   align-items: flex-end;
 }
 
+/* Keeps the Tasks toggle on the title row; the date wraps instead. */
+@media (min-width: 768px) {
+  .workspace-action-bar.notebook-today__header {
+    flex-wrap: nowrap;
+  }
+
+  .notebook-today__header > .workspace-toolbar {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+}
+
 .note-menu {
   position: relative;
   display: inline-flex;
