@@ -87,6 +87,8 @@ export function useDebouncedNotebookSearch(
     query,
     notes: data?.notes ?? [],
     tasks,
+    /** The notebook held more than one search reads; the oldest went unsearched. */
+    truncated: data?.truncated ?? false,
     isError: searching && search.isError,
     /** Waiting on typing to pause or on the request. */
     pending: searching && (typing || search.isFetching),

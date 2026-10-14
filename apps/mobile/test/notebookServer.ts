@@ -396,6 +396,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
               version: t.version,
             }),
           ),
+        truncated: false,
       });
     }
     if (daily) {

@@ -186,7 +186,7 @@ describe('Notebook over HTTP, two users (DynamoDB Local)', () => {
       user: B,
       body: { q: 'aardvark' },
     });
-    expect(search).toEqual({ notes: [], tasks: [] });
+    expect(search).toEqual({ notes: [], tasks: [], truncated: false });
 
     const bSync = await syncAll(B);
     expect(bSync.length).toBeGreaterThan(0);

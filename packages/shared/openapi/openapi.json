@@ -3395,11 +3395,16 @@
                 "matches"
               ]
             }
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the notebook held more notes or tasks than one search reads; the oldest went unsearched"
           }
         },
         "required": [
           "notes",
-          "tasks"
+          "tasks",
+          "truncated"
         ]
       },
       "NoteSyncChange": {
@@ -23136,11 +23141,16 @@
                           "matches"
                         ]
                       }
+                    },
+                    "truncated": {
+                      "type": "boolean",
+                      "description": "True when the notebook held more notes or tasks than one search reads; the oldest went unsearched"
                     }
                   },
                   "required": [
                     "notes",
-                    "tasks"
+                    "tasks",
+                    "truncated"
                   ]
                 }
               }

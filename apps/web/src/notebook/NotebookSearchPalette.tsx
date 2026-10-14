@@ -118,6 +118,11 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
           {q.trim() && !search.pending && hits.length === 0 ? (
             <p className="kit-hint">No matches.</p>
           ) : null}
+          {search.truncated && !search.pending ? (
+            <p className="kit-hint">
+              Only your most recent notes and tasks were searched.
+            </p>
+          ) : null}
           {search.tasks.length > 0 ? (
             <p className="kit-hint">
               ⌘⏎ / Ctrl+Enter checks off the selected task.

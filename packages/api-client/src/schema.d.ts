@@ -9171,6 +9171,8 @@ export interface paths {
                                     end: number;
                                 }[];
                             }[];
+                            /** @description True when the notebook held more notes or tasks than one search reads; the oldest went unsearched */
+                            truncated: boolean;
                         };
                     };
                 };
@@ -11430,6 +11432,8 @@ export interface components {
                     end: number;
                 }[];
             }[];
+            /** @description True when the notebook held more notes or tasks than one search reads; the oldest went unsearched */
+            truncated: boolean;
         };
         NoteSyncChange: {
             /** @enum {string} */

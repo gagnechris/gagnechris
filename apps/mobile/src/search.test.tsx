@@ -111,6 +111,29 @@ describe('Search', () => {
     ]);
   });
 
+  it('says when the notebook was too large to search in full', async () => {
+    const hint = 'Only your most recent notes and tasks were searched.';
+    let truncated = false;
+    const server = notebookServer(notes, tasks);
+    vi.stubGlobal('fetch', async (input: Request) => {
+      const res = await server.fetch(input);
+      if (!input.url.endsWith('/api/notebook/search')) return res;
+      return Response.json({ ...(await res.json()), truncated });
+    });
+    const renderer = await render(
+      <Providers store={memoryStore().store}>
+        <SearchScreen />
+      </Providers>,
+    );
+    mounted.push(renderer);
+    await settle();
+    await type(renderer, 'passport');
+    expect(allText(renderer)).not.toContain(hint);
+    truncated = true;
+    await type(renderer, 'renew');
+    await vi.waitFor(() => expect(allText(renderer)).toContain(hint));
+  });
+
   it('never shows an embed token', async () => {
     const renderer = await launch();
     await type(renderer, 'trip');
