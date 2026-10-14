@@ -319,6 +319,20 @@ them (same as draft `META` rows).
 | Resume notify IP/day                    | `RATE#resume#ip#<ip>`            | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 | Notebook image uploads / user / UTC day | `RATE#notebook-image#user#<sub>` | `DAY#<yyyy-mm-dd>`     | 200        |
 
+## User revocations
+
+The API refuses a user's tokens issued before `revokedBefore` (see
+`docs/architecture.md`, Users and access). One row per user, replaced on each
+revocation, expiring through `ttl` a day later.
+
+| Attr            | Notes                                        |
+| --------------- | -------------------------------------------- |
+| `pk` / `sk`     | `USER_REVOCATIONS` / `USER#<sub>`            |
+| `entityType`    | `userRevocation`                             |
+| `userId`        | Cognito `sub`                                |
+| `revokedBefore` | ISO-8601 time the user's sessions were ended |
+| `ttl`           | Epoch seconds, a day after `revokedBefore`   |
+
 ## Removed users
 
 Removing a user's access keeps their Cognito account (disabled, no groups), so

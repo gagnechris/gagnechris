@@ -36,6 +36,13 @@ func (m memRemoved) delete(_ context.Context, id string) error {
 	return nil
 }
 
+type memSessions struct{ revoked []string }
+
+func (m *memSessions) Revoke(_ context.Context, id string) error {
+	m.revoked = append(m.revoked, id)
+	return nil
+}
+
 func TestLevelFromGroupsMatchesTypeScript(t *testing.T) {
 	cases := contract.Data.Users.LevelCases
 	if len(cases) == 0 {
@@ -59,7 +66,7 @@ func deref(s *string) string {
 func TestRemoveKeepsTheFirstLevelAndRestoreBringsItBack(t *testing.T) {
 	ctx := context.Background()
 	dir := NewMemoryDirectory(localSeed(), time.Now)
-	a := admin{dir: dir, removed: memRemoved{}, actor: "owner"}
+	a := admin{dir: dir, removed: memRemoved{}, sessions: &memSessions{}, actor: "owner"}
 	invited, err := a.invite(ctx, "a@example.com", nil, "cms")
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +89,7 @@ func TestRemoveKeepsTheFirstLevelAndRestoreBringsItBack(t *testing.T) {
 	if _, err := a.remove(ctx, "local-dev-user"); !errors.As(err, &conflict) || conflict.code != "last_full_admin" {
 		t.Errorf("remove the last Full Admin: %v", err)
 	}
-	self := admin{dir: dir, removed: memRemoved{}, actor: id}
+	self := admin{dir: dir, removed: memRemoved{}, sessions: &memSessions{}, actor: id}
 	if _, err := self.setAccess(ctx, id, "full"); !errors.As(err, &conflict) || conflict.code != "self_change" {
 		t.Errorf("own access: %v", err)
 	}

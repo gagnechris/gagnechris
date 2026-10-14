@@ -168,6 +168,16 @@ export const RemovedUserItemSchema = z.object({
 
 export type RemovedUserItem = z.infer<typeof RemovedUserItemSchema>;
 
+/** The API refuses the user's tokens issued before `revokedBefore`. */
+export const UserRevocationItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('userRevocation'),
+  userId: z.string().min(1),
+  revokedBefore: z.string().min(1),
+  ttl: z.number().int(),
+});
+
 export function parsePostMetaItem(raw: unknown): PostMetaItem {
   return PostMetaItemSchema.parse(raw);
 }
@@ -741,6 +751,7 @@ export const ITEM_SCHEMAS: Record<
   project: ProjectMetaItemSchema,
   home: HomeMetaItemSchema,
   removedUser: RemovedUserItemSchema,
+  userRevocation: UserRevocationItemSchema,
   resume: ResumeMetaItemSchema,
   contact: ContactMsgItemSchema,
   note: NoteMetaItemSchema,

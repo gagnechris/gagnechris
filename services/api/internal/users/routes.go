@@ -16,11 +16,13 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/api"
 	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
+	"github.com/gagnechris/gagnechris/services/api/internal/revocation"
 )
 
 type Deps struct {
-	Table *data.Table
-	AWS   aws.Config
+	Table    *data.Table
+	Sessions Sessions
+	AWS      aws.Config
 	// UserPoolID is the Cognito pool the directory manages, when Directory is nil.
 	UserPoolID string
 	Directory  Directory
@@ -49,6 +51,7 @@ func localSeed() []DirectoryUser {
 
 type handlers struct {
 	removed   removedStore
+	sessions  Sessions
 	directory func() (Directory, error)
 }
 
@@ -56,7 +59,10 @@ func Routes(d Deps) []api.Route {
 	if d.Now == nil {
 		d.Now = time.Now
 	}
-	h := handlers{removed: removedRepo{table: d.Table, now: d.Now}}
+	if d.Sessions == nil {
+		d.Sessions = revocation.New(d.Table, d.Now)
+	}
+	h := handlers{removed: removedRepo{table: d.Table, now: d.Now}, sessions: d.Sessions}
 	switch {
 	case d.Directory != nil:
 		h.directory = func() (Directory, error) { return d.Directory, nil }
@@ -112,7 +118,7 @@ func (h handlers) admin(r *api.Request) (admin, error) {
 	if err != nil {
 		return admin{}, err
 	}
-	return admin{dir: dir, removed: h.removed, actor: r.UserID()}, nil
+	return admin{dir: dir, removed: h.removed, sessions: h.sessions, actor: r.UserID()}, nil
 }
 
 type reauthRequiredError struct{}

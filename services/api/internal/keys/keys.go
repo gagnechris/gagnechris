@@ -70,6 +70,10 @@ func RemovedUsersPk() string { return "REMOVED_USERS" }
 
 func RemovedUserSk(userID string) string { return "USER#" + userID }
 
+func UserRevocationsPk() string { return "USER_REVOCATIONS" }
+
+func UserRevocationSk(userID string) string { return "USER#" + userID }
+
 func NotePk(userID, noteID string) string { return "USER#" + userID + "#NOTE#" + noteID }
 
 func NoteMetaSk() string { return SKMeta }

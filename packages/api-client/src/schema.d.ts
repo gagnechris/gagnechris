@@ -3568,7 +3568,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Sign the user out everywhere; their open sessions end within the hour
+         * Sign the user out everywhere; tokens they already hold stop working within a minute
          * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
          */
         post: {

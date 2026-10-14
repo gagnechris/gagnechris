@@ -38,6 +38,7 @@ var Skipped = map[string]string{
 	"dailyTemplate":  "written inline by templatesRepo.write",
 	"contact":        "written inline by the contact store",
 	"removedUser":    "written inline by removedRepo.put",
+	"userRevocation": "written inline by revocation.Store.Revoke",
 }
 
 // Item is a contract sample as a DynamoDB row.
