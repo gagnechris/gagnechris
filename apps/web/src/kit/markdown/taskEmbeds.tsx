@@ -807,9 +807,13 @@ export type TaskEmbedControls = {
   toSection: (index: number) => void;
   /**
    * The task's line and the lines under it, for another note, and a way to
-   * take them out of this one afterwards, keeping their tasks.
+   * take them out of this one afterwards, keeping their tasks; false once the
+   * editor is gone.
    */
-  takeBlock: () => { lines: string; remove: () => void } | null;
+  takeBlock: () => {
+    lines: () => string | null;
+    remove: () => boolean;
+  } | null;
 };
 
 /**

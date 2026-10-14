@@ -324,7 +324,7 @@ export const refetchRenestedTasks = (
   if (stale) void refetchTasks(queryClient);
 };
 
-const findCachedTask = (
+export const findCachedTask = (
   queryClient: QueryClient,
   id: string,
 ): Task | undefined => {

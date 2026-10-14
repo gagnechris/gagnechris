@@ -136,6 +136,12 @@ export {
   type TaskEmbedNesting,
 } from './task-embeds.js';
 export {
+  markdownItemBlock,
+  removeTaskBlock,
+  taskEmbedLineOf,
+  type LineBlock,
+} from './task-blocks.js';
+export {
   parseTaskLine,
   TASK_LINE_PREFIX,
   taskLineDraft,

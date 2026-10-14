@@ -309,11 +309,7 @@ export { taskActionError } from './query/taskActionError.js';
 export { taskRequestFromDraft } from './query/taskRequest.js';
 export { useTaskToggle } from './query/useTaskToggle.js';
 export { useTaskDescriptionEditor } from './query/useTaskDescriptionEditor.js';
-export {
-  appendNoteLines,
-  movedTaskPatch,
-  useMoveTaskToDay,
-} from './query/useMoveTaskToDay.js';
+export { useMoveTaskToDay } from './query/useMoveTaskToDay.js';
 export { useQuickAddTask } from './query/useQuickAddTask.js';
 export {
   emptyTaskDraft,
