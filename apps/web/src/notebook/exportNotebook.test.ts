@@ -232,4 +232,21 @@ describe('exportNotebook', () => {
     expect(text).toContain('templates/work.md## Focus for {{weekday}}\n');
     expect(text).toContain('templates/personal.md## Errands\n- [ ] \n');
   });
+
+  test('includes each note template, unfilled, named after it', async () => {
+    const { blob } = buildNotebookExportZip([], [], [], {}, [
+      {
+        id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
+        name: 'HM Screen Interview',
+        bodyMarkdown: '## {{date}}\n[ ] Send feedback\n',
+        version: 1,
+        createdAt: '2026-10-09T12:00:00.000Z',
+        updatedAt: '2026-10-09T12:00:00.000Z',
+      },
+    ]);
+    const text = new TextDecoder().decode(await blob.arrayBuffer());
+    expect(text).toContain(
+      'templates/notes/hm-screen-interview-AAAAA1.md## {{date}}\n[ ] Send feedback\n',
+    );
+  });
 });

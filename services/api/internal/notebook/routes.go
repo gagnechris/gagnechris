@@ -16,23 +16,26 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
-// Routes are the Notebook notes, tasks, daily templates and sync feed.
+// Routes are the Notebook notes, tasks, daily and note templates and sync
+// feed.
 func Routes(table *data.Table, now func() time.Time) []api.Route {
 	if now == nil {
 		now = time.Now
 	}
 	h := handlers{
-		notes:     newNotesRepo(table, now),
-		tasks:     newTasksRepo(table, now),
-		templates: &templatesRepo{table: table, now: now},
-		table:     table,
-		now:       now,
+		notes:         newNotesRepo(table, now),
+		tasks:         newTasksRepo(table, now),
+		templates:     &templatesRepo{table: table, now: now},
+		noteTemplates: &noteTemplatesRepo{table: table, now: now},
+		table:         table,
+		now:           now,
 	}
 	route := func(method, pattern, metric string, handler api.Handler) api.Route {
 		return api.Route{Method: method, Pattern: pattern, Auth: api.Notebook, Metric: metric, Handler: handler}
 	}
 	const daily = "/notebook/notes/daily/:area/:date"
 	const template = "/notebook/templates/daily/:area"
+	const noteTemplates = "/notebook/templates/notes"
 	return []api.Route{
 		route(http.MethodPost, "/notebook/notes/batch", "BatchGetNotes", h.batchNotes),
 		route(http.MethodGet, "/notebook/notes", "ListNotes", h.listNotes),
@@ -57,16 +60,23 @@ func Routes(table *data.Table, now func() time.Time) []api.Route {
 		route(http.MethodPut, template, "UpdateDailyTemplate", h.updateTemplate),
 		route(http.MethodDelete, template, "ResetDailyTemplate", h.resetTemplate),
 
+		route(http.MethodGet, noteTemplates, "ListNoteTemplates", h.listNoteTemplates),
+		route(http.MethodPost, noteTemplates, "CreateNoteTemplate", h.createNoteTemplate),
+		route(http.MethodGet, noteTemplates+"/:id", "GetNoteTemplate", h.getNoteTemplate),
+		route(http.MethodPut, noteTemplates+"/:id", "UpdateNoteTemplate", h.updateNoteTemplate),
+		route(http.MethodDelete, noteTemplates+"/:id", "DeleteNoteTemplate", h.deleteNoteTemplate),
+
 		route(http.MethodGet, "/notebook/sync/changes", "SyncChanges", h.syncChanges),
 	}
 }
 
 type handlers struct {
-	notes     *notesRepo
-	tasks     *tasksRepo
-	templates *templatesRepo
-	table     *data.Table
-	now       func() time.Time
+	notes         *notesRepo
+	tasks         *tasksRepo
+	templates     *templatesRepo
+	noteTemplates *noteTemplatesRepo
+	table         *data.Table
+	now           func() time.Time
 }
 
 var dayPattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
@@ -822,6 +832,102 @@ func (h handlers) resetTemplate(ctx context.Context, r *api.Request) (*api.Respo
 		return nil, e.IfMatchConflict(err)
 	}
 	return templateResponse(t), nil
+}
+
+// Note templates.
+
+func noteTemplateResponse(status int, t NoteTemplate) (*api.Response, error) {
+	if err := checkNoteTemplate(t); err != nil {
+		return nil, err
+	}
+	return api.JSONWithETag(status, t, t.Version), nil
+}
+
+func noteTemplateName(v *api.Validator, required bool) (string, bool) {
+	return v.String("name", required, true, api.MinLen(1), api.MaxLen(contract.Data.Notebook.NoteTemplateNameMaxLength))
+}
+
+func noteTemplateBody(v *api.Validator) (string, bool) {
+	s, ok := v.String("bodyMarkdown", false, false)
+	if ok && len(s) > contract.Data.Notebook.NoteTemplateMaxBytes {
+		v.FailWith("bodyMarkdown", api.CodeTooBig, "Template is over the "+strconv.Itoa(contract.Data.Notebook.NoteTemplateMaxBytes/1000)+" KB limit")
+	}
+	return s, ok
+}
+
+func (h handlers) listNoteTemplates(ctx context.Context, r *api.Request) (*api.Response, error) {
+	items, err := h.noteTemplates.list(ctx, r.UserID(), store.LogCorrupt(r.Log, r.Metrics))
+	if err != nil {
+		return nil, err
+	}
+	return listResponse(store.Page[NoteTemplate]{Items: items}, checkNoteTemplate)
+}
+
+func (h handlers) createNoteTemplate(ctx context.Context, r *api.Request) (*api.Response, error) {
+	v, err := api.NewValidator(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := v.ULID("id", true)
+	name, _ := noteTemplateName(v, true)
+	body, _ := noteTemplateBody(v)
+	if err := v.ErrMaybeTooLarge(); err != nil {
+		return nil, err
+	}
+	t, err := h.noteTemplates.create(ctx, r.UserID(), id, name, body)
+	if err != nil {
+		return nil, err
+	}
+	return noteTemplateResponse(http.StatusCreated, t)
+}
+
+func (h handlers) getNoteTemplate(ctx context.Context, r *api.Request) (*api.Response, error) {
+	id, err := idParam(r)
+	if err != nil {
+		return nil, err
+	}
+	t, err := h.noteTemplates.getOrThrow(ctx, r.UserID(), id)
+	if err != nil {
+		return nil, err
+	}
+	return noteTemplateResponse(http.StatusOK, t.NoteTemplate)
+}
+
+func (h handlers) updateNoteTemplate(ctx context.Context, r *api.Request) (*api.Response, error) {
+	v, err := api.NewValidator(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	version := bodyVersion(v)
+	name := optStr(noteTemplateName(v, false))
+	body := optStr(noteTemplateBody(v))
+	if err := v.ErrMaybeTooLarge(); err != nil {
+		return nil, err
+	}
+	id, err := idParam(r)
+	if err != nil {
+		return nil, err
+	}
+	e, err := expected(r, version, true)
+	if err != nil {
+		return nil, err
+	}
+	t, err := h.noteTemplates.update(ctx, r.UserID(), id, e, name, body)
+	if err != nil {
+		return nil, e.IfMatchConflict(err)
+	}
+	return noteTemplateResponse(http.StatusOK, t)
+}
+
+func (h handlers) deleteNoteTemplate(ctx context.Context, r *api.Request) (*api.Response, error) {
+	id, e, err := versionOnly(r)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.noteTemplates.delete(ctx, r.UserID(), id, e); err != nil {
+		return nil, e.IfMatchConflict(err)
+	}
+	return &api.Response{Status: http.StatusNoContent}, nil
 }
 
 // Sync.

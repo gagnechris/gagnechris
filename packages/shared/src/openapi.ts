@@ -78,6 +78,13 @@ import {
   UpdateDailyTemplateRequestSchema,
 } from './daily-templates.js';
 import {
+  CreateNoteTemplateRequestSchema,
+  NOTE_TEMPLATE_MAX_COUNT,
+  NoteTemplateListResponseSchema,
+  NoteTemplateSchema,
+  UpdateNoteTemplateRequestSchema,
+} from './note-templates.js';
+import {
   InviteUserRequestSchema,
   InviteUserResponseSchema,
   ManagedUserIdSchema,
@@ -368,6 +375,88 @@ function registerDailyTemplatePaths(registry: OpenAPIRegistry) {
         'The built-in template, at a new version',
       ),
       400: r400,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+}
+
+function registerNoteTemplatePaths(registry: OpenAPIRegistry) {
+  const base = { tags: ['Notebook'], security: [{ bearerAuth: [] }] };
+  const path = '/api/notebook/templates/notes';
+  const idParams = idParamsSchema('Template');
+
+  registry.registerPath({
+    method: 'get',
+    path,
+    summary: 'List the note templates the user can insert into notes',
+    ...base,
+    responses: {
+      200: ok(NoteTemplateListResponseSchema, 'Every template'),
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path,
+    summary: `Create a note template (client ULID; a repeat with the same body is idempotent; at most ${NOTE_TEMPLATE_MAX_COUNT})`,
+    ...base,
+    request: { body: jsonBody(CreateNoteTemplateRequestSchema) },
+    responses: {
+      201: okWithEtag(NoteTemplateSchema, 'Created'),
+      400: r400,
+      413: r413,
+      409: r409,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'get',
+    path: `${path}/{id}`,
+    summary: 'Get a note template by id',
+    ...base,
+    request: { params: idParams },
+    responses: {
+      200: okWithEtag(NoteTemplateSchema, 'Template'),
+      400: r400,
+      404: r404,
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path: `${path}/{id}`,
+    summary: 'Rename a note template or change its text',
+    ...base,
+    request: {
+      params: idParams,
+      headers: IfMatchHeadersSchema,
+      body: jsonBody(UpdateNoteTemplateRequestSchema),
+    },
+    responses: {
+      200: okWithEtag(NoteTemplateSchema, 'Updated'),
+      400: r400,
+      413: r413,
+      404: r404,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'delete',
+    path: `${path}/{id}`,
+    summary:
+      'Delete a note template; notes it was inserted into keep their text',
+    ...base,
+    request: { params: idParams, ...versionBody },
+    responses: {
+      204: { description: 'Deleted' },
+      400: r400,
+      404: r404,
       409: r409,
       ...versionedAuth,
     },
@@ -674,6 +763,16 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
   registry.register(
     'UpdateDailyTemplateRequest',
     UpdateDailyTemplateRequestSchema,
+  );
+  registry.register('NoteTemplate', NoteTemplateSchema);
+  registry.register('NoteTemplateListResponse', NoteTemplateListResponseSchema);
+  registry.register(
+    'CreateNoteTemplateRequest',
+    CreateNoteTemplateRequestSchema,
+  );
+  registry.register(
+    'UpdateNoteTemplateRequest',
+    UpdateNoteTemplateRequestSchema,
   );
   registry.register('Task', TaskSchema);
   registry.register('TaskListResponse', TaskListResponseSchema);
@@ -1091,6 +1190,7 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
   });
 
   registerDailyTemplatePaths(registry);
+  registerNoteTemplatePaths(registry);
 
   registry.registerPath({
     method: 'get',

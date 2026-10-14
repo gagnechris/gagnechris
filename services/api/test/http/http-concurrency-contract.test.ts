@@ -158,6 +158,12 @@ async function dailyTemplate() {
   });
 }
 
+async function noteTemplate() {
+  return ok('POST', '/api/notebook/templates/notes', {
+    body: { id: ulid(), name: `Template ${unique()}` },
+  });
+}
+
 async function task() {
   return ok('POST', '/api/notebook/tasks', {
     body: {
@@ -375,6 +381,25 @@ const PROBES: Record<string, () => Promise<Target>> = {
   'DELETE /api/notebook/templates/daily/{area}': onSingleton(
     dailyTemplate,
     TEMPLATE,
+  ),
+
+  'POST /api/notebook/templates/notes': create(
+    '/api/notebook/templates/notes',
+    () => ({ id: ulid(), name: 'Created' }),
+  ),
+  'GET /api/notebook/templates/notes/{id}': onEntity(
+    noteTemplate,
+    (id) => `/api/notebook/templates/notes/${id}`,
+    () => undefined,
+  ),
+  'PUT /api/notebook/templates/notes/{id}': onEntity(
+    noteTemplate,
+    (id) => `/api/notebook/templates/notes/${id}`,
+    (version) => ({ version, name: 'Updated' }),
+  ),
+  'DELETE /api/notebook/templates/notes/{id}': onEntity(
+    noteTemplate,
+    (id) => `/api/notebook/templates/notes/${id}`,
   ),
 
   'POST /api/notebook/tasks': create('/api/notebook/tasks', () => ({

@@ -25,6 +25,11 @@ export type UpsertDailyNoteRequest =
   components['schemas']['UpsertDailyNoteRequest'];
 export type EmptyDailyNote = components['schemas']['EmptyDailyNote'];
 export type DailyTemplate = components['schemas']['DailyTemplate'];
+export type NoteTemplate = components['schemas']['NoteTemplate'];
+export type CreateNoteTemplateRequest =
+  components['schemas']['CreateNoteTemplateRequest'];
+export type UpdateNoteTemplateRequest =
+  components['schemas']['UpdateNoteTemplateRequest'];
 export type ExpectedVersionRequest =
   components['schemas']['ExpectedVersionRequest'];
 export type NotebookArea = Note['area'];
@@ -578,6 +583,57 @@ export const resetDailyTemplate = async (
     body: { version },
   });
   return unwrap(result, 'Could not reset the template');
+};
+
+export const fetchNoteTemplates = async (
+  client: ApiClient,
+): Promise<NoteTemplate[]> => {
+  const result = await client.GET('/api/notebook/templates/notes');
+  return unwrap(result, 'Could not load templates').items;
+};
+
+export const fetchNoteTemplate = async (
+  client: ApiClient,
+  id: string,
+): Promise<NoteTemplate> => {
+  const result = await client.GET('/api/notebook/templates/notes/{id}', {
+    params: { path: { id } },
+  });
+  return unwrap(result, 'Could not load the template');
+};
+
+export const createNoteTemplate = async (
+  client: ApiClient,
+  body: CreateNoteTemplateRequest,
+): Promise<NoteTemplate> => {
+  const result = await client.POST('/api/notebook/templates/notes', { body });
+  return unwrap(result, 'Could not create the template');
+};
+
+export const updateNoteTemplate = async (
+  client: ApiClient,
+  id: string,
+  body: UpdateNoteTemplateRequest & { version: number },
+): Promise<NoteTemplate> => {
+  const result = await client.PUT('/api/notebook/templates/notes/{id}', {
+    params: { path: { id } },
+    body,
+  });
+  return unwrap(result, 'Could not save the template');
+};
+
+export const deleteNoteTemplate = async (
+  client: ApiClient,
+  id: string,
+  version: number,
+): Promise<void> => {
+  const result = await client.DELETE('/api/notebook/templates/notes/{id}', {
+    params: { path: { id } },
+    body: { version },
+  });
+  if (result.response.status !== 204) {
+    unwrap(result, 'Could not delete the template');
+  }
 };
 
 export type TasksPage = {

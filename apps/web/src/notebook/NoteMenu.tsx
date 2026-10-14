@@ -1,5 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react';
+import type { NoteTemplate } from '@gagnechris/app-core';
 import { taskEmbedIds } from '@gagnechris/shared';
+import { NoteTemplatePicker } from './NoteTemplatePicker';
 import {
   setNotePeek,
   setTaskDetailsOpen,
@@ -23,13 +25,14 @@ export function NoteDetailsToggle({ markdown }: { markdown: string }) {
   );
 }
 
-/** The note's ⋯ menu: how task rows show, Archive, and Delete. */
+/** The note's ⋯ menu: how task rows show, Insert template…, Archive, and Delete. */
 export function NoteMenu({
   noteId,
   archived,
   onArchivedChange,
   onDelete,
   deleteDisabled,
+  onInsertTemplate,
 }: {
   noteId: string;
   archived?: boolean;
@@ -38,8 +41,11 @@ export function NoteMenu({
   /** Without it there is no Delete note item. */
   onDelete?: () => void;
   deleteDisabled?: boolean;
+  /** Without it there is no Insert template… item. */
+  onInsertTemplate?: (template: NoteTemplate) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [picking, setPicking] = useState(false);
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { peek } = useTaskDetailsStore();
@@ -47,6 +53,7 @@ export function NoteMenu({
 
   const close = (refocus: boolean) => {
     setOpen(false);
+    setPicking(false);
     if (refocus) triggerRef.current?.focus();
   };
 
@@ -72,11 +79,23 @@ export function NoteMenu({
         aria-label="Note options"
         aria-expanded={open}
         aria-controls={menuId}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setPicking(false);
+        }}
       >
         ⋯
       </button>
-      {open ? (
+      {open && picking && onInsertTemplate ? (
+        <div id={menuId} className="note-menu__panel">
+          <NoteTemplatePicker
+            onChoose={(template) => {
+              close(false);
+              onInsertTemplate(template);
+            }}
+          />
+        </div>
+      ) : open ? (
         <div id={menuId} className="note-menu__panel">
           <fieldset className="note-menu__group">
             <legend>Task rows</legend>
@@ -99,6 +118,15 @@ export function NoteMenu({
               Title and first line
             </label>
           </fieldset>
+          {onInsertTemplate ? (
+            <button
+              type="button"
+              className="note-menu__item"
+              onClick={() => setPicking(true)}
+            >
+              Insert template…
+            </button>
+          ) : null}
           {onArchivedChange ? (
             <button
               type="button"

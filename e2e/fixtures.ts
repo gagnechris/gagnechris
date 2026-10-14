@@ -205,6 +205,14 @@ export class Seed {
     await this.dailyTemplate('personal', '');
   }
 
+  async noteTemplate(name: string, bodyMarkdown: string) {
+    const { data, error } = await this.api.POST(
+      '/api/notebook/templates/notes',
+      { body: { id: ulid(), name, bodyMarkdown } },
+    );
+    return data ?? fail('note template', error);
+  }
+
   async task(input: Partial<TaskInput> & { title: string }) {
     const { data, error } = await this.api.POST('/api/notebook/tasks', {
       body: { id: ulid(), area: 'work', noteId: null, ...input },

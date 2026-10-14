@@ -266,6 +266,22 @@ export {
   type UpdateDailyTemplateRequest,
 } from './daily-templates.js';
 export {
+  compareNoteTemplates,
+  CreateNoteTemplateRequestSchema,
+  fillNoteTemplate,
+  filterNoteTemplates,
+  NOTE_TEMPLATE_LIMIT_MESSAGE,
+  NOTE_TEMPLATE_MAX_BYTES,
+  NOTE_TEMPLATE_MAX_COUNT,
+  NOTE_TEMPLATE_NAME_MAX_LENGTH,
+  NoteTemplateListResponseSchema,
+  NoteTemplateSchema,
+  UpdateNoteTemplateRequestSchema,
+  type CreateNoteTemplateRequest,
+  type NoteTemplate,
+  type UpdateNoteTemplateRequest,
+} from './note-templates.js';
+export {
   fenceLineKind,
   scanFences,
   type FenceBlock,

@@ -53,6 +53,12 @@ export const queryKeys = {
   },
   dailyTemplate: (area: 'work' | 'personal') =>
     ['admin', 'notebook', 'templates', 'daily', area] as const,
+  noteTemplates: {
+    all: ['admin', 'notebook', 'templates', 'notes'] as const,
+    list: () => [...queryKeys.noteTemplates.all, 'list'] as const,
+    detail: (id: string) =>
+      [...queryKeys.noteTemplates.all, 'detail', id] as const,
+  },
   search: (filters: {
     q: string;
     area?: 'work' | 'personal';

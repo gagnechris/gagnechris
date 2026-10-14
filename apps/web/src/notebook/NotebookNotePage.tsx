@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   noteResource,
@@ -5,10 +6,13 @@ import {
   type Note,
 } from '@gagnechris/app-core';
 import { Field, TextInput } from '../kit/Field';
+import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
+import { useInsertNoteTemplate } from './noteTemplateMenu';
+import { useLocalToday } from './useLocalToday';
 import {
   emptyNoteDraft,
   noteDraftFromNote,
@@ -36,6 +40,8 @@ export default function NotebookNotePage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const deleteMutation = useDeleteNoteMutation();
+  const today = useLocalToday();
+  const editorRef = useRef<MarkdownEditorHandle>(null);
 
   const {
     draft,
@@ -72,6 +78,11 @@ export default function NotebookNotePage() {
         void navigate('/notes');
       },
     },
+  });
+
+  const insertTemplate = useInsertNoteTemplate(editorRef, {
+    date: today,
+    area: entity?.area,
   });
 
   if (loadError) {
@@ -119,6 +130,7 @@ export default function NotebookNotePage() {
             }
             onDelete={() => void runDelete()}
             deleteDisabled={busy}
+            onInsertTemplate={insertTemplate}
           />
         </div>
       </div>
@@ -167,6 +179,8 @@ export default function NotebookNotePage() {
       </label>
 
       <NotebookMarkdownBody
+        editorRef={editorRef}
+        templates={{ date: today, area: entity.area }}
         note={entity}
         value={draft.bodyMarkdown}
         onChange={(bodyMarkdown) =>
