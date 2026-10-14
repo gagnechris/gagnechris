@@ -9269,6 +9269,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description Rate limited */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
                 /** @description Internal error */
                 500: {
                     headers: {

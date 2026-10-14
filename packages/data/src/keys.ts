@@ -134,6 +134,10 @@ export function rateResumeIpPk(ip: string): string {
   return `RATE#resume#ip#${ip}`;
 }
 
+export function rateNotebookImageUserPk(userId: string): string {
+  return `RATE#notebook-image#user#${userId}`;
+}
+
 export function rateSesGlobalPk(): string {
   return 'RATE#ses#global';
 }

@@ -1049,6 +1049,7 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
         'Upload URL and markdown src',
       ),
       400: r400,
+      429: r429,
       ...notebookAuth,
     },
   });
