@@ -96,6 +96,31 @@ describe('page URLs at the edge', () => {
     });
   }
 
+  it("a renamed post's old URL is a 301 to its new one", async () => {
+    const run = edgePipeline({
+      viewerRequest: loadViewerRequest({
+        kvs: { exists: async (k) => ['old', '__synced__'].includes(k) },
+      }).handler,
+      viewerResponse: loadViewerResponse(),
+      origin: async (uri) =>
+        uri === '/blog/old/index.html'
+          ? {
+              kind: 'text',
+              contentType: 'text/html; charset=utf-8',
+              redirectLocation: '/posts/new',
+              body: '<html>moved</html>',
+            }
+          : null,
+    });
+    const result = await run({
+      uri: '/posts/old',
+      headers: { host: { value: 'gagnechris.com' } },
+    });
+    if (result.kind !== 'response') throw new Error('unexpected binary');
+    expect(result.response.statusCode).toBe(301);
+    expect(result.response.headers.location?.value).toBe('/posts/new');
+  });
+
   it('an unpublished project 404s once the publisher drops its key', async () => {
     const res = await edge(
       new Set([...site].filter((k) => k !== 'projects/notebook/index.html')),

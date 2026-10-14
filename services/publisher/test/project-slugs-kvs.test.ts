@@ -74,6 +74,7 @@ describe('project slug allowlist (local KVS file)', () => {
       listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
       listPublishedProjects: async () => catalog,
       getPublishedResume: async () => ({ status: 'missing' }),
+      slugRedirectOwner: async () => undefined,
       getPublishedHome: async () => ({ status: 'missing' }),
     };
     return runPublishTargets({

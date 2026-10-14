@@ -7,6 +7,8 @@ export type PublishArtifact = {
   contentType: string;
   cacheControl: string;
   contentDisposition?: string;
+  /** The path this object's URL moved to; the edge answers it with a 301. */
+  redirectLocation?: string;
 };
 
 export type SiteStorage = {

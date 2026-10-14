@@ -471,6 +471,8 @@ describe('stack Template assertions', () => {
           'RESUME#*',
           'PROJECT#*',
           'SITE#publish',
+          'SLUG#*',
+          'PROJECT_SLUG#*',
         ],
       },
     });

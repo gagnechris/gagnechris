@@ -2,12 +2,16 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /**
- * S3 keeps each object's Content-Type and Content-Disposition; a plain file
- * can't, so the filesystem bucket keeps them here for the local site server.
+ * S3 keeps each object's Content-Type, Content-Disposition and metadata; a
+ * plain file can't, so the filesystem bucket keeps them here for the local site server.
  */
 export const OBJECT_META_DIR = '.object-meta';
 
-export type ObjectMeta = { contentType: string; contentDisposition?: string };
+export type ObjectMeta = {
+  contentType: string;
+  contentDisposition?: string;
+  redirectLocation?: string;
+};
 
 const metaPath = (root: string, key: string) =>
   join(root, OBJECT_META_DIR, `${key}.json`);

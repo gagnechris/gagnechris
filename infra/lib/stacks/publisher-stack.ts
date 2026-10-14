@@ -39,6 +39,9 @@ export const PUBLISHER_TABLE_LEADING_KEYS = [
   'RESUME#*',
   'PROJECT#*',
   sitePublishPk(),
+  // Rename REDIRECT rows, read by slug.
+  'SLUG#*',
+  'PROJECT_SLUG#*',
 ];
 
 export const PUBLISHER_GSI1_LEADING_KEYS = [

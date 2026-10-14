@@ -76,6 +76,7 @@ describe('publish target registry', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({
           status: 'ok' as const,
           entity: {

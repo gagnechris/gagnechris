@@ -74,6 +74,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
           status: 'ok' as const,
           entity: resume,
         }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
@@ -94,6 +95,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
@@ -124,6 +126,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'ok' as const, entity: home }),
       },
     });
@@ -159,6 +162,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
@@ -187,6 +191,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' as const }),
       },
     });
@@ -211,6 +216,7 @@ describe('rebuildPublishedSite unpublish cleanup', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' as const }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'corrupt' as const }),
       },
     });

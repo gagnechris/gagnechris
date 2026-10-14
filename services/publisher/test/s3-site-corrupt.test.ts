@@ -77,6 +77,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'ok', entity: resume }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });
@@ -95,6 +96,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
         listPublishedPosts: async () => ({ posts: [], corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'corrupt' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });
@@ -135,6 +137,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
         }),
         listPublishedProjects: async () => ({ projects: [], corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
     });
@@ -186,6 +189,7 @@ describe('rebuildPublishedSite corrupt rows', () => {
         status: 'ok' as const,
         entity: publishedResume(),
       }),
+      slugRedirectOwner: async () => undefined,
       getPublishedHome: async () => ({ status: 'ok' as const, entity: home }),
     };
 

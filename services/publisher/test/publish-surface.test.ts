@@ -140,6 +140,7 @@ describe('publisher-owned S3 keys', () => {
             version: 1,
           },
         }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({
           status: 'ok',
           entity: { ...DEFAULT_HOME, ...published, updatedAt: at, version: 1 },

@@ -121,6 +121,7 @@ describe('post to project tagging', () => {
         listPublishedPosts: async () => ({ posts, corruptSlugs: [] }),
         listPublishedProjects: async () => ({ projects, corruptSlugs: [] }),
         getPublishedResume: async () => ({ status: 'missing' }),
+        slugRedirectOwner: async () => undefined,
         getPublishedHome: async () => ({ status: 'missing' }),
       },
       targets: publishTargets,

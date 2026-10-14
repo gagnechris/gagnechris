@@ -68,6 +68,7 @@ const post: Post = {
 function sources(
   catalog: PublishedProjectsCatalog,
   posts: Post[] = [post],
+  redirects: Record<string, string> = {},
 ): RebuildSiteSources {
   return {
     readGeneration: async () => 0,
@@ -75,6 +76,8 @@ function sources(
     listPublishedProjects: async () => catalog,
     getPublishedResume: async () => ({ status: 'missing' }),
     getPublishedHome: async () => ({ status: 'missing' }),
+    slugRedirectOwner: async (kind, slug) =>
+      kind === 'project' ? redirects[slug] : undefined,
   };
 }
 
@@ -109,6 +112,26 @@ describe('projects publish targets', () => {
     });
 
   const sitemap = () => site.objects.get('sitemap.xml') ?? '';
+
+  it("a renamed project's old page becomes a redirect to its page", async () => {
+    const notebook = project({ slug: 'notebook' });
+    site.objects.set('projects/old-notebook/index.html', '<html>old</html>');
+    site.objects.set('projects/gone/index.html', '<html>gone</html>');
+    await runPublishTargets({
+      scope: projectScope(),
+      storage: site,
+      sources: sources({ projects: [notebook], corruptSlugs: [] }, [post], {
+        'old-notebook': notebook.id,
+        gone: '01PROJECTGONE0000000000000',
+      }),
+      targets: publishTargets,
+    });
+
+    expect(site.redirects.get('projects/old-notebook/index.html')).toBe(
+      '/projects/notebook',
+    );
+    expect(site.objects.has('projects/gone/index.html')).toBe(false);
+  });
 
   it('publishing renders the project page, the index and sitemap entries', async () => {
     const notebook = project({ slug: 'notebook', name: 'Notebook' });

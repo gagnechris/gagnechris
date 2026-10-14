@@ -214,6 +214,11 @@ test('a project and an idea: listing, Build log, slug rename, unpublish', async 
   );
   expect(republished?.slug).toBe(renamed);
   expect(await html(request, `/projects/${renamed}`)).toContain(buildLogEntry);
+  const moved = await request.get(`${site()}/projects/${slug}`, {
+    maxRedirects: 0,
+  });
+  expect(moved.status(), 'the old slug redirects').toBe(301);
+  expect(moved.headers().location).toBe(`/projects/${renamed}`);
   expect(await html(request, `/posts/${logSlug}`)).toContain(
     `href="/projects/${renamed}">${name}</a>`,
   );

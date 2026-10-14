@@ -83,6 +83,7 @@ const sources = (
     status: 'ok',
     entity: { ...DEFAULT_RESUME, ...publishable, pdfPath: '/resume.pdf' },
   }),
+  slugRedirectOwner: async () => undefined,
   getPublishedHome: async () => ({
     status: 'ok',
     entity: { ...DEFAULT_HOME, ...publishable },

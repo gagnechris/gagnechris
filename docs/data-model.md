@@ -85,9 +85,12 @@ posts cannot claim the same slug.
 | `entityType` | `slugRedirect`              |
 
 On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
-update `META.slug`. Nothing reads `REDIRECT` rows: the publisher does not serve
-redirects and the API has no lookup by slug. A redirected slug is not
-reserved: another post can claim it, and its `REDIRECT` row stays.
+update `META.slug`. The publisher reads `REDIRECT` by slug when it would
+delete the page at an old published slug: if the row's `postId` is
+published, it leaves a redirect page there instead (see Architecture,
+request flow), which the edge serves as a 301 to the post's current slug. A
+redirected slug is not reserved: another post can claim it, and its page
+then replaces the redirect.
 
 ### Access patterns (posts)
 
@@ -148,8 +151,9 @@ listing ids from GSI1 `PROJECT_STATUS#published` and the `SITE#publish` `project
 
 Slug claim (`entityType` `projectSlug`, `projectId`) and rename redirect
 (`projectSlugRedirect`, `targetSlug`), written in the same transaction as META
-exactly as for posts. A separate partition from `SLUG#…`, so a project and a
-post can share a slug and their redirect rows never collide.
+exactly as for posts, and served the same way (`projectId`). A separate
+partition from `SLUG#…`, so a project and a post can share a slug and their
+redirect rows never collide.
 
 ### Pages
 

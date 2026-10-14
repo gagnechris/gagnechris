@@ -222,7 +222,7 @@ export class SiteStack extends Stack {
 
     const viewerResponseFn = new CloudFrontFunction(this, 'ViewerResponseFn', {
       functionName: `gagnechris-${config.name}-viewer-response`,
-      comment: 'Force 404 status for /404.html',
+      comment: 'Force 404 status for /404.html, 301 for rename redirect pages',
       runtime: FunctionRuntime.JS_2_0,
       code: FunctionCode.fromInline(
         deployedFunctionCode(

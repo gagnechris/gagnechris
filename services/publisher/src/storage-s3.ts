@@ -14,6 +14,9 @@ import {
 import { isLocalCloudFront, requireEnv } from './config.js';
 import { SITE_SHELL_KEY, type SiteStorage } from './storage.js';
 
+/** S3 serves it as `x-amz-meta-redirect-location`, which the viewer-response function turns into a 301. */
+const REDIRECT_METADATA = 'redirect-location';
+
 const s3 = new S3Client({});
 const cloudfront = new CloudFrontClient({});
 
@@ -67,6 +70,7 @@ export function createS3SiteStorage(): SiteStorage {
       contentType,
       cacheControl,
       contentDisposition,
+      redirectLocation,
     }): Promise<boolean> {
       const etag = md5Etag(body);
       try {
@@ -79,7 +83,9 @@ export function createS3SiteStorage(): SiteStorage {
           head.ETag === etag &&
           head.ContentType === contentType &&
           head.CacheControl === cacheControl &&
-          (head.ContentDisposition ?? '') === (contentDisposition ?? '')
+          (head.ContentDisposition ?? '') === (contentDisposition ?? '') &&
+          (head.Metadata?.[REDIRECT_METADATA] ?? '') ===
+            (redirectLocation ?? '')
         ) {
           return false;
         }
@@ -96,6 +102,9 @@ export function createS3SiteStorage(): SiteStorage {
           CacheControl: cacheControl,
           ...(contentDisposition
             ? { ContentDisposition: contentDisposition }
+            : {}),
+          ...(redirectLocation
+            ? { Metadata: { [REDIRECT_METADATA]: redirectLocation } }
             : {}),
         }),
       );

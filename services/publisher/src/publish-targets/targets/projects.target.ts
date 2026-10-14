@@ -1,15 +1,23 @@
-import { projectBuildLogPosts, projectHasPage } from '@gagnechris/shared';
+import {
+  projectBuildLogPosts,
+  projectHasPage,
+  projectPagePath,
+} from '@gagnechris/shared';
 import {
   PROJECT_ENTITY_TYPE,
   isFullRebuildScope,
 } from '../../rebuild-scope.js';
-import { renderProjectPage, renderProjectsIndexPage } from '../../render.js';
+import {
+  projectCanonicalUrl,
+  renderProjectPage,
+  renderProjectsIndexPage,
+} from '../../render.js';
 import { projectPageKey, projectSlugsFromKeys } from '../../storage.js';
 import {
   PROJECT_SLUG_NAMESPACE,
   projectSlugKvsKey,
 } from '../../viewer-request-slugs.js';
-import { htmlArtifact } from '../artifacts.js';
+import { htmlArtifact, redirectArtifact } from '../artifacts.js';
 import type { PublishArtifact, PublishTarget } from '../types.js';
 
 export const PROJECTS_INDEX_KEY = 'projects/index.html';
@@ -70,9 +78,25 @@ const target: PublishTarget = {
     ]);
 
     const artifacts: PublishArtifact[] = paged.map(page);
-    const deleteKeys = (await storage.list('projects/')).filter(
-      (key) => PAGE_KEY_RE.test(key) && !keep.has(key),
-    );
+    const slugById = new Map(paged.map((p) => [p.id, p.slug]));
+    const deleteKeys: string[] = [];
+    for (const key of await storage.list('projects/')) {
+      const slug = PAGE_KEY_RE.exec(key)?.[1];
+      if (!slug || keep.has(key)) continue;
+      const owner = await ctx.sources.slugRedirectOwner('project', slug);
+      const target = owner === undefined ? undefined : slugById.get(owner);
+      if (target) {
+        artifacts.push(
+          redirectArtifact(
+            key,
+            projectPagePath(target),
+            projectCanonicalUrl(target),
+          ),
+        );
+      } else {
+        deleteKeys.push(key);
+      }
+    }
 
     // The nav always links `/projects`, so it gets an index (the empty state
     // when nothing is published). An index of only corrupt rows would drop
