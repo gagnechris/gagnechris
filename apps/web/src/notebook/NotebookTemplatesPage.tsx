@@ -21,7 +21,6 @@ import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -249,7 +248,6 @@ export default function NotebookTemplatesPage() {
   return (
     <section className="workspace-panel workspace-panel--editor">
       <div className="workspace-action-bar">
-        <SidebarToggle />
         <div className="notebook-today__title">
           <p className="notebook-today__kicker">Settings</p>
           <h1>Daily templates</h1>
