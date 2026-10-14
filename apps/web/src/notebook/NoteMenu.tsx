@@ -25,14 +25,19 @@ export function NoteDetailsToggle({ markdown }: { markdown: string }) {
   );
 }
 
-/** The note's ⋯ menu: how task rows show, Insert template…, and Delete. */
+/** The note's ⋯ menu: how task rows show, Insert template…, Archive, and Delete. */
 export function NoteMenu({
   noteId,
+  archived,
+  onArchivedChange,
   onDelete,
   deleteDisabled,
   onInsertTemplate,
 }: {
   noteId: string;
+  archived?: boolean;
+  /** Without it there is no Archive item. */
+  onArchivedChange?: (archived: boolean) => void;
   /** Without it there is no Delete note item. */
   onDelete?: () => void;
   deleteDisabled?: boolean;
@@ -120,6 +125,18 @@ export function NoteMenu({
               onClick={() => setPicking(true)}
             >
               Insert template…
+            </button>
+          ) : null}
+          {onArchivedChange ? (
+            <button
+              type="button"
+              className="note-menu__item"
+              onClick={() => {
+                close(true);
+                onArchivedChange(!archived);
+              }}
+            >
+              {archived ? 'Unarchive note' : 'Archive note'}
             </button>
           ) : null}
           {onDelete ? (

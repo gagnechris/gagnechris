@@ -155,7 +155,7 @@ type noteFields struct {
 	title, bodyMarkdown *string
 	tags                []string
 	hasTags             bool
-	pinned              *bool
+	pinned, archived    *bool
 	area                *string
 }
 
@@ -164,6 +164,9 @@ func applyNoteUpdate(existing Note, f noteFields, now string) (Note, error) {
 	// to another area would leave two dailies for one day.
 	if existing.Type == "daily" && f.area != nil && *f.area != existing.Area {
 		return existing, api.BadRequest("A daily note's area cannot change", map[string]string{"area": "immutable"})
+	}
+	if existing.Type == "daily" && f.archived != nil && *f.archived {
+		return existing, api.BadRequest("Only page notes can be archived", map[string]string{"archived": "page_only"})
 	}
 	n := existing
 	if f.title != nil {
@@ -178,6 +181,9 @@ func applyNoteUpdate(existing Note, f noteFields, now string) (Note, error) {
 	}
 	if f.pinned != nil {
 		n.Pinned = *f.pinned
+	}
+	if f.archived != nil {
+		n.Archived = *f.archived
 	}
 	if f.area != nil {
 		n.Area = *f.area

@@ -25,6 +25,7 @@ const dailyNote: Note = {
   bodyMarkdown: 'hello',
   tags: ['a', 'b'],
   pinned: false,
+  archived: false,
   taskIds: [],
   version: 1,
   createdAt: ts,
@@ -80,6 +81,15 @@ describe('Notebook Dynamo items', () => {
     const tombstone = buildNoteMetaItem({ ...pageNote, deleted: true });
     expect(tombstone.gsi1pk).toBeUndefined();
     expect(tombstone.gsi1sk).toBeUndefined();
+  });
+
+  it('stores archived and reads a row stored without it as not archived', () => {
+    const archived = buildNoteMetaItem({ ...pageNote, archived: true });
+    expect(archived.archived).toBe(true);
+    expect(metaToNote(parseNoteMetaItem(archived)).archived).toBe(true);
+
+    const { archived: _drop, ...legacy } = buildNoteMetaItem(pageNote);
+    expect(metaToNote(parseNoteMetaItem(legacy)).archived).toBe(false);
   });
 
   it('strips every list GSI key from a task tombstone', () => {

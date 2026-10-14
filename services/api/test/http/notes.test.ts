@@ -338,6 +338,7 @@ describe('notes over HTTP (DynamoDB Local)', () => {
       bodyMarkdown: 'hello',
       tags: [],
       pinned: false,
+      archived: false,
       taskIds: [],
       version: 1,
       createdAt: ISO,
@@ -513,6 +514,7 @@ describe('notes over HTTP (DynamoDB Local)', () => {
       bodyMarkdown: '- [ ] ship',
       tags: [],
       pinned: false,
+      archived: false,
       taskIds: [],
       version: 1,
       createdAt: ISO,
@@ -838,6 +840,57 @@ describe('daily note claims over HTTP (DynamoDB Local)', () => {
     });
     expect(pageMoved.status).toBe(200);
     expect(pageMoved.body).toMatchObject({ area: 'personal', version: 2 });
+  });
+
+  it('archives and unarchives a page; a daily note cannot be archived; older rows read as not archived', async () => {
+    const created = await createPage(PAGE_A, { title: 'Standing' });
+    expect(created.status).toBe(201);
+    expect(created.body.archived).toBe(false);
+
+    const key = keys.notebook.note.meta(USER_A, PAGE_A);
+    const { archived: _drop, ...legacy } = (await readRow(key))!;
+    await h.doc.send(new PutCommand({ TableName: h.tableName, Item: legacy }));
+    const old = await call('GET', `/api/notebook/notes/${PAGE_A}`, {});
+    expect(old.body).toMatchObject({ archived: false, version: 1 });
+
+    const archived = await call('PUT', `/api/notebook/notes/${PAGE_A}`, {
+      body: { version: 1, archived: true },
+    });
+    expect(archived.status).toBe(200);
+    expect(archived.body).toMatchObject({ archived: true, version: 2 });
+    expect(await readRow(key)).toMatchObject({ archived: true });
+
+    const edited = await call('PUT', `/api/notebook/notes/${PAGE_A}`, {
+      body: { version: 2, bodyMarkdown: 'still editable' },
+    });
+    expect(edited.body).toMatchObject({ archived: true, version: 3 });
+
+    const pages = await call('GET', '/api/notebook/notes?type=page', {});
+    expect(pages.body.items).toEqual([
+      expect.objectContaining({ id: PAGE_A, archived: true }),
+    ]);
+
+    const restored = await call('PUT', `/api/notebook/notes/${PAGE_A}`, {
+      body: { version: 3, archived: false },
+    });
+    expect(restored.body).toMatchObject({ archived: false, version: 4 });
+
+    await putDaily({ id: DAILY_1 });
+    const dailyArchived = await call('PUT', `/api/notebook/notes/${DAILY_1}`, {
+      body: { version: 1, archived: true },
+    });
+    expect(dailyArchived.status).toBe(400);
+    expect(dailyArchived.body).toEqual({
+      error: 'bad_request',
+      message: 'Only page notes can be archived',
+      fields: { archived: 'page_only' },
+    });
+
+    const notBool = await call('PUT', `/api/notebook/notes/${PAGE_A}`, {
+      body: { version: 4, archived: 'yes' },
+    });
+    expect(notBool.status).toBe(400);
+    expect(notBool.body.fields).toMatchObject({ archived: 'invalid_type' });
   });
 
   it('a placeholder writer that lost the race gets 409 with the winner; a lost-response retry is a no-op', async () => {

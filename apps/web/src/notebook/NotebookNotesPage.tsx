@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   errorMessage,
@@ -15,7 +15,6 @@ import {
   noteOpenTaskCount,
   noteSections,
   noteTitle,
-  type NoteType,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
@@ -25,12 +24,13 @@ import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
 import { noteHref } from './noteHref';
 
-type TypeFilter = 'all' | NoteType;
+type TypeFilter = 'all' | 'daily' | 'page' | 'archived';
 
 const TYPE_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'daily', label: 'Daily' },
-  { value: 'page', label: 'Pages' },
+  { value: 'page', label: 'Standing' },
+  { value: 'archived', label: 'Archived' },
 ] as const;
 
 const AREA_LABEL: Record<NotebookArea, string> = {
@@ -49,7 +49,12 @@ export default function NotebookNotesPage() {
   // Sections need every note: list pages are grouped by partition, not date.
   const notesQuery = useNotesQuery({
     area,
-    type: typeFilter === 'all' ? undefined : typeFilter,
+    type:
+      typeFilter === 'all'
+        ? undefined
+        : typeFilter === 'daily'
+          ? 'daily'
+          : 'page',
     limit: 100,
   });
   useLoadAllPages(notesQuery);
@@ -76,7 +81,10 @@ export default function NotebookNotesPage() {
   } = useNotebookExport();
 
   const sections = useMemo(() => {
-    const all = notesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+    const showArchived = typeFilter === 'archived';
+    const all = (
+      notesQuery.data?.pages.flatMap((page) => page.items) ?? []
+    ).filter((n) => Boolean(n.archived) === showArchived);
     const needle = q.trim().toLowerCase();
     const matching = needle
       ? all.filter(
@@ -86,9 +94,9 @@ export default function NotebookNotesPage() {
         )
       : all;
     return noteSections(matching, today);
-  }, [notesQuery.data, q, today]);
+  }, [notesQuery.data, q, today, typeFilter]);
 
-  const createPage = async () => {
+  const createStandingNote = async () => {
     try {
       const note = await createMutation.mutateAsync({
         id: createUlid(),
@@ -113,7 +121,7 @@ export default function NotebookNotesPage() {
         <div>
           <h1>Notes</h1>
           <p className="workspace-panel__lede">
-            Daily notes and pages
+            Daily notes and standing notes
             {areaFilter === 'all'
               ? ' · all areas'
               : ` · ${AREA_LABEL[areaFilter]}`}
@@ -130,19 +138,21 @@ export default function NotebookNotesPage() {
           >
             {exportBusy ? 'Exporting…' : 'Export'}
           </button>
-          <button
-            type="button"
-            className="kit-btn kit-btn--primary"
-            disabled={createMutation.isPending}
-            onClick={() => void createPage()}
-          >
-            New page
-          </button>
+          <NewNoteMenu
+            today={today}
+            creating={createMutation.isPending}
+            onDay={(date) =>
+              void navigate(
+                `/today?date=${date}&area=${areaForNewItem(areaFilter)}`,
+              )
+            }
+            onStanding={() => void createStandingNote()}
+          />
         </div>
       </div>
       {createMutation.error ? (
         <p className="workspace-panel__error" role="alert">
-          {errorMessage(createMutation.error, 'Could not create the page.')}
+          {errorMessage(createMutation.error, 'Could not create the note.')}
         </p>
       ) : null}
       {exportError ? (
@@ -221,5 +231,99 @@ export default function NotebookNotesPage() {
         ))
       )}
     </section>
+  );
+}
+
+function NewNoteMenu({
+  today,
+  creating,
+  onDay,
+  onStanding,
+}: {
+  today: string;
+  creating: boolean;
+  onDay: (date: string) => void;
+  onStanding: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [day, setDay] = useState(today);
+  const panelId = useId();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const close = (refocus: boolean) => {
+    setOpen(false);
+    if (refocus) triggerRef.current?.focus();
+  };
+
+  return (
+    <span
+      className="note-menu"
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          close(false);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (open && e.key === 'Escape') {
+          e.preventDefault();
+          close(true);
+        }
+      }}
+    >
+      <button
+        ref={triggerRef}
+        type="button"
+        className="kit-btn kit-btn--primary"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => {
+          if (!open) setDay(today);
+          setOpen((v) => !v);
+        }}
+      >
+        New
+      </button>
+      {open ? (
+        <div
+          id={panelId}
+          className="note-menu__panel"
+          role="group"
+          aria-label="New note"
+        >
+          <form
+            className="notebook-new-note__day"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (day) onDay(day);
+            }}
+          >
+            <label className="notebook-new-note__label">
+              Note for a day
+              <input
+                className="kit-input"
+                type="date"
+                value={day}
+                required
+                onChange={(e) => setDay(e.target.value)}
+              />
+            </label>
+            <button type="submit" className="kit-btn" disabled={!day}>
+              Open day
+            </button>
+          </form>
+          <button
+            type="button"
+            className="note-menu__item"
+            disabled={creating}
+            onClick={() => {
+              close(false);
+              onStanding();
+            }}
+          >
+            Standing note
+          </button>
+        </div>
+      ) : null}
+    </span>
   );
 }

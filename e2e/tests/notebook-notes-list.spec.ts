@@ -59,8 +59,8 @@ test('Notes groups pinned and recent notes and counts each note’s open tasks',
 
   const types = page.getByRole('radiogroup', { name: 'Note type' });
   await types.getByRole('radio', { name: 'Daily' }).click();
-  await expect(page.getByText(pinned.title)).toHaveCount(0);
-  await types.getByRole('radio', { name: 'Pages' }).click();
+  await expect(page.getByRole('main').getByText(pinned.title)).toHaveCount(0);
+  await types.getByRole('radio', { name: 'Standing' }).click();
   await expect(pinnedSection.getByText(pinned.title)).toBeVisible();
 
   const overflow = await page.evaluate(
@@ -69,4 +69,74 @@ test('Notes groups pinned and recent notes and counts each note’s open tasks',
       document.documentElement.clientWidth,
   );
   expect(overflow).toBe(0);
+});
+
+test('New opens a day or a standing note; standing notes stay in the sidebar until archived', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const pinned = await seedPage(seed, {
+    title: `${prefix} Runbook`,
+    pinned: true,
+  });
+  const project = await seedPage(seed, { title: `${prefix} Project X` });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(FRIDAY_MORNING);
+  await signIn();
+  await page.goto(`${apps.notebook}/notes?area=work`);
+
+  const sidebar = page.getByRole('navigation', { name: 'Standing notes' });
+  const sidebarTitles = async () =>
+    (await sidebar.getByRole('link').allTextContents()).filter((t) =>
+      t.startsWith(prefix),
+    );
+  await expect.poll(sidebarTitles).toEqual([pinned.title, project.title]);
+
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  const menu = page.getByRole('group', { name: 'New note' });
+  await expect(menu.getByLabel('Note for a day')).toHaveValue('2026-10-02');
+  await menu.getByLabel('Note for a day').fill('2026-09-28');
+  await menu.getByRole('button', { name: 'Open day' }).click();
+  await expect(page).toHaveURL(/\/today\?date=2026-09-28&area=work/);
+
+  await page.goto(`${apps.notebook}/notes?area=work`);
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('button', { name: 'Standing note' }).click();
+  await expect(page).toHaveURL(/\/notes\/[0-9A-Z]{26}(\?|$)/);
+  await page.getByRole('textbox', { name: 'Title' }).fill(`${prefix} Ideas`);
+  await expect
+    .poll(sidebarTitles)
+    .toEqual([pinned.title, `${prefix} Ideas`, project.title]);
+
+  await sidebar.getByRole('link', { name: project.title }).click();
+  await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    project.title,
+  );
+  await page.getByRole('button', { name: 'Note options' }).click();
+  await page.getByRole('button', { name: 'Archive note' }).click();
+  await expect(page.getByText('Work standing note · Archived')).toBeVisible();
+  await expect.poll(sidebarTitles).toEqual([pinned.title, `${prefix} Ideas`]);
+
+  await page.goto(`${apps.notebook}/notes?area=work`);
+  const list = page.getByRole('main');
+  await expect(list.getByText(pinned.title)).toBeVisible();
+  await expect(list.getByText(project.title)).toHaveCount(0);
+  const types = page.getByRole('radiogroup', { name: 'Note type' });
+  await types.getByRole('radio', { name: 'Standing' }).click();
+  await expect(list.getByText(`${prefix} Ideas`)).toBeVisible();
+  await expect(list.getByText(project.title)).toHaveCount(0);
+  await types.getByRole('radio', { name: 'Archived' }).click();
+  await expect(list.getByText(project.title)).toBeVisible();
+  await expect(list.getByText(pinned.title)).toHaveCount(0);
+
+  await list.getByRole('link', { name: new RegExp(project.title) }).click();
+  await page.getByRole('button', { name: 'Note options' }).click();
+  await page.getByRole('button', { name: 'Unarchive note' }).click();
+  await expect
+    .poll(sidebarTitles)
+    .toEqual([pinned.title, project.title, `${prefix} Ideas`]);
 });

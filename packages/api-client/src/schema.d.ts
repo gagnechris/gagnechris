@@ -6155,6 +6155,8 @@ export interface paths {
                                 bodyMarkdown: string;
                                 tags: string[];
                                 pinned: boolean;
+                                /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                                archived?: boolean;
                                 /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                                 taskIds: string[];
                                 version: number;
@@ -6298,6 +6300,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -6473,6 +6477,8 @@ export interface paths {
                                 bodyMarkdown: string;
                                 tags: string[];
                                 pinned: boolean;
+                                /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                                archived?: boolean;
                                 /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                                 taskIds: string[];
                                 version: number;
@@ -6608,6 +6614,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -6765,6 +6773,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -6975,6 +6985,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -7129,6 +7141,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -7255,6 +7269,8 @@ export interface paths {
                         bodyMarkdown?: string;
                         tags?: string[];
                         pinned?: boolean;
+                        /** @description Page notes only; archiving a daily note is a 400 */
+                        archived?: boolean;
                         /** @enum {string} */
                         area?: "work" | "personal";
                     };
@@ -7281,6 +7297,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -7478,6 +7496,8 @@ export interface paths {
                             bodyMarkdown: string;
                             tags: string[];
                             pinned: boolean;
+                            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                            archived?: boolean;
                             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                             taskIds: string[];
                             version: number;
@@ -11758,6 +11778,8 @@ export interface components {
             bodyMarkdown: string;
             tags: string[];
             pinned: boolean;
+            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+            archived?: boolean;
             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
             taskIds: string[];
             version: number;
@@ -11780,6 +11802,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                archived?: boolean;
                 /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                 taskIds: string[];
                 version: number;
@@ -11817,6 +11841,8 @@ export interface components {
             bodyMarkdown?: string;
             tags?: string[];
             pinned?: boolean;
+            /** @description Page notes only; archiving a daily note is a 400 */
+            archived?: boolean;
             /** @enum {string} */
             area?: "work" | "personal";
         };
@@ -11875,6 +11901,8 @@ export interface components {
             bodyMarkdown: string;
             tags: string[];
             pinned: boolean;
+            /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+            archived?: boolean;
             /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
             taskIds: string[];
             version: number;
@@ -12046,6 +12074,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                archived?: boolean;
                 /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                 taskIds: string[];
                 version: number;
@@ -12248,6 +12278,8 @@ export interface components {
                 bodyMarkdown: string;
                 tags: string[];
                 pinned: boolean;
+                /** @description Archived page notes leave the sidebar and the default notes list; absent means not archived */
+                archived?: boolean;
                 /** @description Tasks embedded in bodyMarkdown, derived by the server on every save */
                 taskIds: string[];
                 version: number;

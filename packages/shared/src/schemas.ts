@@ -695,6 +695,12 @@ export const NoteSchema = z
     bodyMarkdown: z.string(),
     tags: z.array(z.string()),
     pinned: z.boolean(),
+    archived: z
+      .boolean()
+      .optional()
+      .describe(
+        'Archived page notes leave the sidebar and the default notes list; absent means not archived',
+      ),
     taskIds: z
       .array(UlidSchema)
       .describe(
@@ -788,6 +794,10 @@ export const UpdateNoteRequestSchema = z.object({
   bodyMarkdown: NotebookTextSchema.optional(),
   tags: NotebookTagsSchema.optional(),
   pinned: z.boolean().optional(),
+  archived: z
+    .boolean()
+    .optional()
+    .describe('Page notes only; archiving a daily note is a 400'),
   area: NotebookAreaSchema.optional(),
 });
 

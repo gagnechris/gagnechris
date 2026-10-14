@@ -1860,6 +1860,10 @@
           "pinned": {
             "type": "boolean"
           },
+          "archived": {
+            "type": "boolean",
+            "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
+          },
           "taskIds": {
             "type": "array",
             "items": {
@@ -1950,6 +1954,10 @@
                 },
                 "pinned": {
                   "type": "boolean"
+                },
+                "archived": {
+                  "type": "boolean",
+                  "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                 },
                 "taskIds": {
                   "type": "array",
@@ -2082,6 +2090,10 @@
           },
           "pinned": {
             "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean",
+            "description": "Page notes only; archiving a daily note is a 400"
           },
           "area": {
             "type": "string",
@@ -2265,6 +2277,10 @@
               },
               "pinned": {
                 "type": "boolean"
+              },
+              "archived": {
+                "type": "boolean",
+                "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
               },
               "taskIds": {
                 "type": "array",
@@ -2921,6 +2937,10 @@
                 },
                 "pinned": {
                   "type": "boolean"
+                },
+                "archived": {
+                  "type": "boolean",
+                  "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                 },
                 "taskIds": {
                   "type": "array",
@@ -3616,6 +3636,10 @@
                   },
                   "pinned": {
                     "type": "boolean"
+                  },
+                  "archived": {
+                    "type": "boolean",
+                    "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                   },
                   "taskIds": {
                     "type": "array",
@@ -16561,6 +16585,10 @@
                           "pinned": {
                             "type": "boolean"
                           },
+                          "archived": {
+                            "type": "boolean",
+                            "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
+                          },
                           "taskIds": {
                             "type": "array",
                             "items": {
@@ -16882,6 +16910,10 @@
                     },
                     "pinned": {
                       "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean",
+                      "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                     },
                     "taskIds": {
                       "type": "array",
@@ -17224,6 +17256,10 @@
                           "pinned": {
                             "type": "boolean"
                           },
+                          "archived": {
+                            "type": "boolean",
+                            "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
+                          },
                           "taskIds": {
                             "type": "array",
                             "items": {
@@ -17507,6 +17543,10 @@
                         },
                         "pinned": {
                           "type": "boolean"
+                        },
+                        "archived": {
+                          "type": "boolean",
+                          "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                         },
                         "taskIds": {
                           "type": "array",
@@ -17915,6 +17955,10 @@
                     },
                     "pinned": {
                       "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean",
+                      "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                     },
                     "taskIds": {
                       "type": "array",
@@ -18344,6 +18388,10 @@
                         "pinned": {
                           "type": "boolean"
                         },
+                        "archived": {
+                          "type": "boolean",
+                          "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
+                        },
                         "taskIds": {
                           "type": "array",
                           "items": {
@@ -18690,6 +18738,10 @@
                     "pinned": {
                       "type": "boolean"
                     },
+                    "archived": {
+                      "type": "boolean",
+                      "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
+                    },
                     "taskIds": {
                       "type": "array",
                       "items": {
@@ -18961,6 +19013,10 @@
                   "pinned": {
                     "type": "boolean"
                   },
+                  "archived": {
+                    "type": "boolean",
+                    "description": "Page notes only; archiving a daily note is a 400"
+                  },
                   "area": {
                     "type": "string",
                     "enum": [
@@ -19032,6 +19088,10 @@
                     },
                     "pinned": {
                       "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean",
+                      "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                     },
                     "taskIds": {
                       "type": "array",
@@ -19456,6 +19516,10 @@
                     },
                     "pinned": {
                       "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean",
+                      "description": "Archived page notes leave the sidebar and the default notes list; absent means not archived"
                     },
                     "taskIds": {
                       "type": "array",

@@ -72,7 +72,10 @@ test('the Notebook app opens on Today and deep-links to its own pages', async ({
   ).toBeVisible();
 
   await page.goto(`${apps.notebook}/notes`);
-  await page.getByRole('link', { name: 'Deep link target' }).click();
+  await page
+    .getByRole('main')
+    .getByRole('link', { name: 'Deep link target' })
+    .click();
   await expect(page).toHaveURL(`${apps.notebook}/notes/${note.id}?area=work`);
 
   await page.goto(`${apps.notebook}/posts`);

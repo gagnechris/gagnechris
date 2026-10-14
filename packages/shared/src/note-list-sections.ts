@@ -12,6 +12,7 @@ export type ListNote = Pick<
   | 'title'
   | 'bodyMarkdown'
   | 'pinned'
+  | 'archived'
   | 'updatedAt'
   | 'area'
 >;
@@ -81,6 +82,19 @@ export function noteSections<T extends ListNote>(
     section.notes.push(note);
   }
   return sections.filter((s) => s.notes.length > 0);
+}
+
+/** Standing notes not archived: pinned first, then most recently updated. */
+export function sidebarStandingNotes<T extends ListNote>(
+  notes: readonly T[],
+): T[] {
+  return notes
+    .filter((n) => n.type === 'page' && !n.archived)
+    .sort(
+      (a, b) =>
+        Number(b.pinned) - Number(a.pinned) ||
+        byNewest(a.updatedAt, b.updatedAt),
+    );
 }
 
 /** Tasks the note embeds that are still open; 0 while the open list is partial. */
