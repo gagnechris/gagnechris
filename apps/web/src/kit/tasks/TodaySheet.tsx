@@ -52,6 +52,7 @@ type Props<T extends SheetTask> = {
   error?: string | null;
   /** The days `comingUp` was bucketed over, for the copy. */
   horizonDays?: number;
+  footer?: ReactNode;
 };
 
 /** How far a row or the sheet must travel before a swipe counts. */
@@ -74,6 +75,7 @@ export function TodaySheet<T extends SheetTask>({
   loading,
   error,
   horizonDays = COMING_UP_DAYS,
+  footer,
 }: Props<T>) {
   const [tab, setTab] = useState<TodaySheetTab>('open');
   const [revealed, setRevealed] = useState<string | null>(null);
@@ -260,6 +262,7 @@ export function TodaySheet<T extends SheetTask>({
             {key === tab ? body : null}
           </div>
         ))}
+        {footer}
       </section>
     </div>,
     document.body,

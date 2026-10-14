@@ -36,7 +36,7 @@ import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
-import { TodaySideRail } from './TodaySideRail';
+import { TodayTasksToggle } from './TodayTasksToggle';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
 import { readTodaySideOpen, writeTodaySideOpen } from './todaySidePreference';
 
@@ -64,11 +64,33 @@ export default function NotebookTodayPage() {
     SIDE_MAX,
   );
   const [sideOpen, setSideOpen] = useState(readTodaySideOpen);
-  const setSide = (open: boolean) => {
+  const setSide = useCallback((open: boolean) => {
     writeTodaySideOpen(open);
     setSideOpen(open);
-  };
+  }, []);
   const toggleSide = () => setSide(!sideOpen);
+  // Capture phase: CodeMirror binds the same keys to indentSelection.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (
+        e.code !== 'Backslash' ||
+        !e.altKey ||
+        e.shiftKey ||
+        e.metaKey === e.ctrlKey
+      ) {
+        return;
+      }
+      if (document.querySelector('[aria-modal="true"]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (sideOpen && sideRef.current?.contains(document.activeElement)) {
+        sideToggleRef.current?.focus();
+      }
+      setSide(!sideOpen);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [setSide, sideOpen]);
   const clearHighlight = useCallback(() => setHighlightTaskId(null), []);
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -165,6 +187,19 @@ export default function NotebookTodayPage() {
     setHighlightTaskId(taskId);
   };
   const canAddToNote = noteReady && date === today;
+  const carryFooter =
+    date >= today && !loading.stillOpen ? (
+      <CarryFooter count={buckets.carryCount} nextDay={addDays(date, 1)} />
+    ) : null;
+  const tasksToggle = (
+    <TodayTasksToggle
+      ref={sideToggleRef}
+      open={sideOpen}
+      count={loading.stillOpen ? null : stillOpenRows.length}
+      controls="notebook-today-side"
+      onToggle={toggleSide}
+    />
+  );
 
   // Push (not replace) so Back steps through the days visited.
   // Leaving a day unmounts its editor, which flushes unsaved text.
@@ -254,32 +289,6 @@ export default function NotebookTodayPage() {
                   onMonthChange={setCalendarMonth}
                 />
               </details>
-              <button
-                type="button"
-                ref={sideToggleRef}
-                className="kit-btn notebook-today__side-toggle"
-                aria-controls="notebook-today-side"
-                aria-expanded={sideOpen}
-                title={sideOpen ? 'Hide the task panel' : 'Show the task panel'}
-                onClick={toggleSide}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM15 4v16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                {sideOpen ? 'Hide tasks' : 'Show tasks'}
-              </button>
               <span className="notebook-today__phone-tools">
                 <select
                   className="kit-input notebook-today__area"
@@ -356,11 +365,13 @@ export default function NotebookTodayPage() {
                 highlightTaskId={highlightTaskId}
                 onHighlighted={clearHighlight}
                 onDeleted={() => setEditorGeneration((n) => n + 1)}
+                tasksToggle={tasksToggle}
               />
             ) : (
               <>
                 <div className="workspace-action-bar notebook-today__header">
                   <DayTitle area={null} date={date} today={today} />
+                  <div className="workspace-toolbar">{tasksToggle}</div>
                 </div>
                 <p className="workspace-panel__lede">
                   Choose Work or Personal in the area switcher to write a daily
@@ -368,12 +379,6 @@ export default function NotebookTodayPage() {
                 </p>
               </>
             )}
-            {date >= today && !loading.stillOpen ? (
-              <CarryFooter
-                count={buckets.carryCount}
-                nextDay={addDays(date, 1)}
-              />
-            ) : null}
           </div>
           <aside
             id="notebook-today-side"
@@ -417,14 +422,8 @@ export default function NotebookTodayPage() {
               onAddToNote={canAddToNote ? addToNote : undefined}
             />
             <TaskSyntaxCheatSheet />
+            {carryFooter}
           </aside>
-          {sideOpen ? null : (
-            <TodaySideRail
-              controls="notebook-today-side"
-              openCount={stillOpenRows.length}
-              onOpen={() => setSide(true)}
-            />
-          )}
         </div>
         {sheetOpen ? (
           <TodaySheet
@@ -441,6 +440,7 @@ export default function NotebookTodayPage() {
             onDrop={onDrop}
             onAddToNote={canAddToNote ? addToNote : undefined}
             taskTo={taskTo}
+            footer={carryFooter}
           />
         ) : null}
       </section>
