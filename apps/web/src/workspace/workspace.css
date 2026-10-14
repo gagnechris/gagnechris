@@ -1006,7 +1006,7 @@
 }
 
 .notebook-today__side-edge {
-  left: calc(-1 * var(--space-6) / 2 - 11px);
+  left: calc(-1 * var(--space-4) - 11px);
 }
 
 @media (max-width: 999px) {
