@@ -220,11 +220,15 @@ export class Outbox {
     const optimistic = jsonResponse(entity, status);
 
     if (plan.type === 'merge') {
-      const path = plan.path ?? merged!.path;
-      await rewriteOp(db, plan.seq, plan.body, path, plan.base);
-      merged!.body = plan.body;
-      merged!.path = path;
-      merged!.base = plan.base;
+      const rewritten = {
+        ...merged!,
+        kind: plan.kind,
+        body: plan.body,
+        path: plan.path ?? merged!.path,
+        base: plan.base,
+      };
+      await rewriteOp(db, rewritten);
+      Object.assign(merged!, rewritten);
       if (reply) {
         this.wait(plan.seq, { resolve: reply, optimistic });
         this.notify();
@@ -417,7 +421,7 @@ export class Outbox {
       await deleteOps(db, seqs);
       for (const { seq, body } of rebased) {
         const queued = rest.find((other) => other.seq === seq)!;
-        await rewriteOp(db, seq, body, queued.path, queued.base);
+        await rewriteOp(db, { ...queued, body });
         queued.body = body;
       }
     });
@@ -436,7 +440,7 @@ export class Outbox {
       await requeueOp(db, op.seq, body);
       for (const { seq, body: next } of rebased) {
         const queued = this.ops.find((other) => other.seq === seq)!;
-        await rewriteOp(db, seq, next, queued.path, queued.base);
+        await rewriteOp(db, { ...queued, body: next });
         queued.body = next;
       }
     });
@@ -463,7 +467,7 @@ export class Outbox {
       );
       for (const op of moved) {
         op.body = { ...op.body, noteId: winner.id };
-        await rewriteOp(db, op.seq, op.body, op.path, op.base);
+        await rewriteOp(db, op);
       }
     });
     this.ops = this.ops.filter((op) => op.entityId !== loserId);

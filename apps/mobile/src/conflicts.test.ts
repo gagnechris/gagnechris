@@ -194,6 +194,33 @@ describe('task conflicts', () => {
     expect(outboxConflicts()).toEqual([]);
   });
 
+  it('keeps a reopen queued after a complete when another device completes the task', async () => {
+    setOnline(false);
+    const done = cache(
+      (
+        await client.POST('/api/notebook/tasks/{id}/complete', {
+          params: { path: { id: T1 } },
+          body: { version: 1 },
+        })
+      ).data as Task,
+    );
+    cache(
+      (
+        await client.POST('/api/notebook/tasks/{id}/reopen', {
+          params: { path: { id: T1 } },
+          body: { version: done.version },
+        })
+      ).data as Task,
+    );
+    server.editTask(T1, { status: 'done' });
+    await stopOutbox();
+    await startOutbox({ db: openOutboxDb, client, queryClient });
+    await sync();
+
+    expect(server.state.taskStore.get(T1)?.status).toBe('todo');
+    expect(outboxPendingCount() + outboxFailedCount()).toBe(0);
+  });
+
   it('treats a re-sent delete that already landed as applied', async () => {
     setOnline(false);
     // The phone's first DELETE reached the server, but its response did not.
@@ -314,6 +341,18 @@ describe('a daily note started on two devices', () => {
         title: '',
       }),
     );
+  });
+
+  it('sends nothing for a day deleted before it reached the server', async () => {
+    const day = await writeDay('Started offline');
+    await client.DELETE('/api/notebook/notes/{id}', {
+      params: { path: { id: PHONE_DAY } },
+      body: { version: day.version },
+    });
+    await sync();
+    expect(server.state.requests).toEqual([]);
+    expect(outboxConflicts()).toEqual([]);
+    expect(outboxPendingCount() + outboxFailedCount()).toBe(0);
   });
 
   it('takes the other device’s note when nothing was typed', async () => {

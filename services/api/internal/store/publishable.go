@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -222,12 +221,7 @@ func (s *PublishableStore[T]) InsertDraft(ctx context.Context, e T) (T, error) {
 
 func (s *PublishableStore[T]) assertVersion(existing T, expected int) error {
 	if v := s.cfg.State(&existing).Version; v != expected {
-		return &api.ConflictError{
-			Message:        "Version conflict: expected " + strconv.Itoa(expected) + ", current " + strconv.Itoa(v),
-			Code:           api.CodeConflict,
-			CurrentVersion: &v,
-			Current:        existing,
-		}
+		return VersionConflict(expected, &v, existing)
 	}
 	return nil
 }

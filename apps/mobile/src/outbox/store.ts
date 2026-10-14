@@ -106,17 +106,15 @@ export const insertOp = async (
 
 export const rewriteOp = (
   db: OutboxDb,
-  seq: number,
-  body: Body,
-  path: string,
-  base: Body,
+  op: Pick<Op, 'seq' | 'kind' | 'body' | 'path' | 'base'>,
 ) =>
   db.runAsync(
-    'UPDATE ops SET body = ?, path = ?, base = ? WHERE seq = ?',
-    JSON.stringify(body),
-    path,
-    JSON.stringify(base),
-    seq,
+    'UPDATE ops SET kind = ?, body = ?, path = ?, base = ? WHERE seq = ?',
+    op.kind,
+    JSON.stringify(op.body),
+    op.path,
+    JSON.stringify(op.base),
+    op.seq,
   );
 
 /** A failed op goes back in line with the body the user chose. */

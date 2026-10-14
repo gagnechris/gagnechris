@@ -349,14 +349,14 @@ describe('PUT /api/admin/projects/:id', () => {
     );
   });
 
-  it('answers 409 conflict with the current project for a stale version', async () => {
+  it('answers 409 version_conflict with the current project for a stale version', async () => {
     const p = await create();
     const res = await call('PUT', `/api/admin/projects/${p.id}`, {
       body: { version: 9, pitch: 'x' },
     });
     expect(res.status).toBe(409);
     expect(res.body).toEqual({
-      error: 'conflict',
+      error: 'version_conflict',
       message: 'Version conflict: expected 9, current 1',
       currentVersion: 1,
       current: p,
