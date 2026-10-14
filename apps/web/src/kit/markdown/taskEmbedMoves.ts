@@ -1,6 +1,14 @@
 import { Transaction } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
-import { findTaskEmbeds, taskEmbedIds } from '@gagnechris/shared';
+import {
+  findTaskEmbeds,
+  indentWidth,
+  reindent,
+  TASK_NEST_WIDTH,
+  taskDropNestIndent,
+  taskEmbedIds,
+  taskNestIndent,
+} from '@gagnechris/shared';
 import { moveLinesDown, moveLinesUp } from './lineMoves';
 import {
   blockAt,
@@ -117,12 +125,9 @@ export function shiftTaskEmbedFrom(
   shiftTaskEmbed(view, lineOf(view, widget), dir, bySection);
 }
 
-const NEST = 2;
-const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
-
 /**
- * Tab nests the task, with its lines, under the task above it at its level;
- * ⇧Tab takes it out a level.
+ * Tab makes the task, with its lines, a subtask of the task above it at its
+ * level; ⇧Tab takes it out a level.
  */
 export function indentTaskEmbed(
   view: EditorView,
@@ -131,24 +136,19 @@ export function indentTaskEmbed(
 ): boolean {
   const { state } = view;
   const { doc } = state;
-  const text = doc.line(line).text;
-  const indent = indentOf(text);
+  const indent = indentWidth(doc.line(line).text);
+  let delta = -TASK_NEST_WIDTH;
   if (dir === 'in') {
-    // The task above at this task's level becomes its parent.
-    let above = line - 1;
-    while (above >= 1 && indentOf(doc.line(above).text) > indent) {
-      if (!doc.line(above).text.trim()) return false;
-      above -= 1;
-    }
-    if (above < 1 || indentOf(doc.line(above).text) !== indent) return false;
-    if (!findTaskEmbeds(doc.line(above).text).length) return false;
+    const nested = taskNestIndent(doc.toJSON(), line - 1);
+    if (nested === null) return false;
+    delta = nested - indent;
   } else if (indent === 0) {
     return false;
   }
   const spec = reindentBlock(
     state,
     blockAt(doc, line),
-    dir === 'in' ? NEST : -NEST,
+    delta,
     dir === 'in' ? 'input.indent' : 'delete.dedent',
   );
   if (!spec) return false;
@@ -202,10 +202,7 @@ export function taskEmbedBlock(view: EditorView, widget: HTMLElement) {
     for (let n = block.first; n <= block.last; n += 1) {
       rows.push(view.state.doc.line(n).text);
     }
-    const indent = /^[ \t]*/.exec(rows[0]!)![0].length;
-    return rows
-      .map((row) => row.slice(Math.min(indent, /^[ \t]*/.exec(row)![0].length)))
-      .join('\n');
+    return reindent(rows.join('\n'), -indentWidth(rows[0]!));
   };
   const remove = (): boolean => {
     if (!view.dom.isConnected) return false;
@@ -273,7 +270,7 @@ export function dragTaskEmbed(
     count.textContent = `+${carried}`;
     ghost.append(count);
   }
-  const ownIndent = indentOf(startDoc.line(block.first).text);
+  const ownIndent = indentWidth(startDoc.line(block.first).text);
   Object.assign(ghost.style, {
     left: `${rect.left}px`,
     top: `${rect.top}px`,
@@ -295,15 +292,14 @@ export function dragTaskEmbed(
   /** Sideways past a step nests under the task above, or takes it out. */
   const levelAt = (before: number) => {
     const dx = x - start.clientX;
-    if (dx < -SIDEWAYS) return ownIndent > 0 ? -Math.min(NEST, ownIndent) : 0;
+    if (dx < -SIDEWAYS) {
+      return ownIndent > 0 ? -Math.min(TASK_NEST_WIDTH, ownIndent) : 0;
+    }
     if (dx <= SIDEWAYS) return 0;
     const above = before - 1;
     if (above < 1 || (above >= block.first && above <= block.last)) return 0;
-    const text = view.state.doc.line(above).text;
-    if (!findTaskEmbeds(text).length) return 0;
-    return indentOf(text) + NEST - ownIndent > 0
-      ? indentOf(text) + NEST - ownIndent
-      : 0;
+    const target = taskDropNestIndent(view.state.doc.toJSON(), above - 1);
+    return target !== null && target > ownIndent ? target - ownIndent : 0;
   };
 
   const place = () => {

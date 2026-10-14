@@ -1,12 +1,12 @@
 import type { EditorView } from '@codemirror/view';
+import { indentWidth } from '@gagnechris/shared';
 
-const INDENT = /^[ \t]*/;
 const TASK_PREFIX = '[ ] ';
 
 function caretLine(view: EditorView) {
   const head = view.state.selection.main.head;
   const line = view.state.doc.lineAt(head);
-  const start = line.from + INDENT.exec(line.text)![0].length;
+  const start = line.from + indentWidth(line.text);
   return { head, line, start, rest: line.text.slice(start - line.from) };
 }
 

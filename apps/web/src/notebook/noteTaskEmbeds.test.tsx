@@ -1979,4 +1979,129 @@ describe('subtasks in a note', () => {
       expect(screen.getByDisplayValue('Book flights')).toHaveFocus(),
     );
   });
+
+  test('Tab in a subtask title leaves it a subtask instead of nesting it under the one above', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const note = nested(SUB_1, SUB_2);
+    const { body } = renderNote(note);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByDisplayValue('Book venue'));
+    await user.keyboard('{Tab}');
+    expect(body()).toBe(note);
+  });
+
+  test('Enter in a folded parent title opens a line after its hidden lines', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}
+    why
+after`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+
+    await user.click(screen.getByDisplayValue('Plan offsite'));
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}
+    why
+
+after`);
+    const view = await editorView(document.body);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(5).from);
+  });
+
+  test('Delete above a parent goes into its title, and Backspace under its block into the last subtask', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const note = `before
+${nested(SUB_1, SUB_2)}
+after`;
+    const { body } = renderNote(note);
+    await screen.findByDisplayValue('Book venue');
+    const view = await editorView(document.body);
+
+    act(() => {
+      view.dispatch({ selection: { anchor: view.state.doc.line(1).to } });
+    });
+    press(view, 'Delete');
+    expect(body()).toBe(note);
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Plan offsite')).toHaveFocus(),
+    );
+
+    act(() => {
+      view.dispatch({ selection: { anchor: view.state.doc.line(5).from } });
+    });
+    press(view, 'Backspace');
+    expect(body()).toBe(note);
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book venue')).toHaveFocus(),
+    );
+  });
+
+  test('arrow keys from an open parent go into its first subtask and back', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    renderNote(`before
+${nested(SUB_1, SUB_2)}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByDisplayValue('Plan offsite'));
+    await user.keyboard('{ArrowDown}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Pick dates')).toHaveFocus(),
+    );
+
+    await user.keyboard('{ArrowUp}');
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Plan offsite')).toHaveFocus(),
+    );
+
+    await user.keyboard('{ArrowUp}');
+    const view = await editorView(document.body);
+    await waitFor(() =>
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to),
+    );
+  });
+
+  test('an image pasted at the end of a parent’s line goes after its subtasks', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}
+after`);
+    await screen.findByDisplayValue('Book venue');
+    const view = await editorView(document.body);
+    act(() => {
+      view.focus();
+      view.dispatch({ selection: { anchor: view.state.doc.line(1).to } });
+    });
+    const file = new File(['png'], 'pasted.png', { type: 'image/png' });
+
+    fireEvent.paste(view.contentDOM, {
+      clipboardData: {
+        items: [{ kind: 'file', type: file.type, getAsFile: () => file }],
+      },
+    });
+
+    await waitFor(() => expect(body()).toContain('notebook-image:pasted.png'));
+    expect(body()).toBe(
+      `${nested(SUB_1, SUB_2)}\n![image](notebook-image:pasted.png)\n\n\nafter`,
+    );
+  });
 });

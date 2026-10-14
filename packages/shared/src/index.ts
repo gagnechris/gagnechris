@@ -135,11 +135,20 @@ export {
   type TaskEmbedMarkdownTask,
   type TaskEmbedNesting,
 } from './task-embeds.js';
+export { indentWidth } from './indent-width.js';
 export {
+  isMarkdownItem,
   markdownItemBlock,
+  noteHeadings,
+  reindent,
   removeTaskBlock,
+  sectionEnd,
+  TASK_NEST_WIDTH,
+  taskDropNestIndent,
   taskEmbedLineOf,
+  taskNestIndent,
   type LineBlock,
+  type NoteHeading,
 } from './task-blocks.js';
 export {
   parseTaskLine,

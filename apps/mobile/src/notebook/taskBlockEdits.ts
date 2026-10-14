@@ -1,44 +1,33 @@
 import {
-  fenceLineKind,
-  findTaskEmbeds,
+  indentWidth,
   markdownItemBlock as blockAt,
+  noteHeadings,
+  reindent,
   removeTaskBlock,
-  scanFences,
+  sectionEnd,
+  TASK_NEST_WIDTH,
+  taskDropNestIndent,
   taskEmbedLineOf as embedLine,
+  taskNestIndent,
   type LineBlock,
 } from '@gagnechris/shared';
 
-export { blockAt, embedLine, removeTaskBlock };
+export { blockAt, embedLine, noteHeadings, removeTaskBlock };
 
-export type NoteHeading = { line: number; title: string };
-
-const SECTION_HEADING = /^##[ \t]+(.+?)[ \t#]*$/;
-const NEST = 2;
-
-const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
-const blank = (text: string) => text.trim().length === 0;
-
-/** The note's `##` headings outside code fences. */
-export function noteHeadings(lines: readonly string[]): NoteHeading[] {
-  const fences = scanFences(lines);
-  const headings: NoteHeading[] = [];
-  lines.forEach((text, line) => {
-    if (fenceLineKind(fences, line)) return;
-    const match = SECTION_HEADING.exec(text);
-    if (match) headings.push({ line, title: match[1]! });
-  });
-  return headings;
-}
-
-const reindent = (rows: readonly string[], delta: number) =>
-  rows.map((row) => {
-    if (delta > 0) return row.trim() ? ' '.repeat(delta) + row : row;
-    return row.slice(Math.min(indentOf(row), -delta));
-  });
+const reindentBlock = (
+  lines: readonly string[],
+  { first, last }: LineBlock,
+  delta: number,
+) =>
+  [
+    ...lines.slice(0, first),
+    reindent(lines.slice(first, last + 1).join('\n'), delta),
+    ...lines.slice(last + 1),
+  ].join('\n');
 
 /**
- * Indent nests the task, with its lines, under the task above it at its
- * level; Outdent takes it out a level. Null when it can't.
+ * Indent makes the task, with its lines, a subtask of the task above it at
+ * its level; Outdent takes it out a level. Null when it can't.
  */
 export function indentTaskBlock(
   markdown: string,
@@ -48,43 +37,52 @@ export function indentTaskBlock(
   const lines = markdown.split('\n');
   const line = embedLine(markdown, taskId);
   if (line === null) return null;
-  const indent = indentOf(lines[line]!);
+  const indent = indentWidth(lines[line]!);
+  let delta = -TASK_NEST_WIDTH;
   if (dir === 'in') {
-    let above = line - 1;
-    while (above >= 0 && indentOf(lines[above]!) > indent) {
-      if (blank(lines[above]!)) return null;
-      above -= 1;
-    }
-    if (above < 0 || indentOf(lines[above]!) !== indent) return null;
-    if (!findTaskEmbeds(lines[above]!).length) return null;
+    const nested = taskNestIndent(lines, line);
+    if (nested === null) return null;
+    delta = nested - indent;
   } else if (indent === 0) {
     return null;
   }
-  const { first, last } = blockAt(lines, line);
-  const rows = reindent(
-    lines.slice(first, last + 1),
-    dir === 'in' ? NEST : -NEST,
-  );
-  return [...lines.slice(0, first), ...rows, ...lines.slice(last + 1)].join(
-    '\n',
-  );
+  return reindentBlock(lines, blockAt(lines, line), delta);
 }
 
-/** The line after the last text in the section under `heading`, skipping `block`. */
-function sectionEnd(
-  lines: readonly string[],
-  headings: readonly NoteHeading[],
-  heading: NoteHeading,
-  block: LineBlock,
-): number {
-  const start = heading.line + 1;
-  const next = headings.find((h) => h.line > heading.line);
-  const end = next ? next.line - 1 : lines.length - 1;
-  for (let n = end; n >= start; n -= 1) {
-    if (n >= block.first && n <= block.last) continue;
-    if (!blank(lines[n]!)) return n + 1;
-  }
-  return start;
+/**
+ * A drag sideways onto the task line above: a subtask of a top-level task,
+ * or a sibling of a subtask. Null when it would not nest.
+ */
+function nestTaskBlock(markdown: string, taskId: string): string | null {
+  const lines = markdown.split('\n');
+  const line = embedLine(markdown, taskId);
+  if (line === null) return null;
+  const indent = indentWidth(lines[line]!);
+  const target = taskDropNestIndent(lines, line - 1);
+  if (target === null || target <= indent) return null;
+  return reindentBlock(lines, blockAt(lines, line), target - indent);
+}
+
+/**
+ * A dropped row: its block moves to `target`, and a drag sideways nests it
+ * under the task line it lands below or takes it out a level. Null when
+ * nothing changes.
+ */
+export function dropTaskBlock(
+  markdown: string,
+  taskId: string,
+  target: { before: string } | { after: string } | null,
+  level: 'in' | 'out' | null,
+): string | null {
+  const moved = target ? moveTaskBlock(markdown, taskId, target) : null;
+  const leveled =
+    level === 'in'
+      ? nestTaskBlock(moved ?? markdown, taskId)
+      : level === 'out'
+        ? indentTaskBlock(moved ?? markdown, taskId, 'out')
+        : null;
+  const next = leveled ?? moved;
+  return next === markdown ? null : next;
 }
 
 /** Puts the task's block last in the section under the `index`th `##` heading. */
@@ -116,8 +114,9 @@ export function taskBlockLines(markdown: string, taskId: string) {
   const line = embedLine(markdown, taskId);
   if (line === null) return null;
   const { first, last } = blockAt(lines, line);
-  return reindent(lines.slice(first, last + 1), -indentOf(lines[line]!)).join(
-    '\n',
+  return reindent(
+    lines.slice(first, last + 1).join('\n'),
+    -indentWidth(lines[line]!),
   );
 }
 

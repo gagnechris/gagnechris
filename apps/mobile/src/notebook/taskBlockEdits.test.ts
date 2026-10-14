@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dropTaskBlock,
   indentTaskBlock,
   moveTaskBlock,
   moveTaskBlockToSection,
@@ -90,5 +91,33 @@ describe('task block edits', () => {
       [A, '  why', 'text', C, '  how', B].join('\n'),
     );
     expect(moveTaskBlock(note, B_ID, { before: C_ID })).toBeNull();
+  });
+
+  it('does not nest a subtask under the subtask above it', () => {
+    const C = '{{task:01HTASKCCCCCCCCCCCCCCCCCCC}}';
+    const C_ID = '01HTASKCCCCCCCCCCCCCCCCCCC';
+    expect(
+      indentTaskBlock([A, `  ${B}`, `  ${C}`].join('\n'), C_ID, 'in'),
+    ).toBeNull();
+  });
+
+  it('a drop sideways under a top-level task makes a subtask, under a subtask a sibling', () => {
+    const C = '{{task:01HTASKCCCCCCCCCCCCCCCCCCC}}';
+    const C_ID = '01HTASKCCCCCCCCCCCCCCCCCCC';
+    const D = '{{task:01HTASKDDDDDDDDDDDDDDDDDDD}}';
+    const note = [A, `  ${B}`, D, `  ${C}`, '    why'].join('\n');
+    expect(dropTaskBlock(note, C_ID, { after: B_ID }, 'in')).toBe(
+      [A, `  ${B}`, `  ${C}`, '    why', D].join('\n'),
+    );
+    expect(dropTaskBlock([A, D, C].join('\n'), C_ID, null, 'in')).toBe(
+      [A, D, `  ${C}`].join('\n'),
+    );
+    expect(dropTaskBlock([A, `  ${B}`, C].join('\n'), C_ID, null, 'in')).toBe(
+      [A, `  ${B}`, `  ${C}`].join('\n'),
+    );
+    expect(dropTaskBlock(['text', C].join('\n'), C_ID, null, 'in')).toBeNull();
+    expect(dropTaskBlock(note, C_ID, { after: B_ID }, 'out')).toBe(
+      [A, `  ${B}`, C, '  why', D].join('\n'),
+    );
   });
 });

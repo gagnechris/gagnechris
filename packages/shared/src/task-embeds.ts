@@ -1,3 +1,4 @@
+import { indentWidth } from './indent-width.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
 import { ULID_PATTERN, type TaskStatus } from './schemas.js';
 
@@ -125,8 +126,6 @@ export type TaskEmbedNesting = TaskEmbed & {
   /** How many task lines it sits under. */
   depth: number;
 };
-
-const indentWidth = (text: string) => /^[ \t]*/.exec(text)![0].length;
 
 /**
  * Each embed with the task it is a subtask of. A line is under the nearest
