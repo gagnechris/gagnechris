@@ -90,6 +90,7 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
     <WorkspaceFrame
       app="notebook"
       user={user}
+      collapsible
       sidebarTop={
         <SegmentedRadio
           label="Notebook area"

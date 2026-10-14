@@ -6,6 +6,8 @@ export const PUBLISHER_SERVICE_NAME = 'gagnechris-publisher' as const;
 export const RESTORE_TEST_SERVICE_NAME = 'gagnechris-restore-test' as const;
 
 export const CONTACT_PER_IP_PER_HOUR = 3;
+/** Notebook image upload URLs one user can get per UTC day. */
+export const NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY = 200;
 /** Shared by contact + resume notify; well under the SES sandbox 200/day. */
 export const SES_GLOBAL_DAILY_CAP = 100;
 /** Resume notices stop once the shared count reaches this, leaving the rest for contact messages. */
@@ -47,6 +49,7 @@ export const RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES = [
   'project',
   'home',
   'removedUser',
+  'userRevocation',
   'resume',
   'contact',
   'note',
@@ -57,7 +60,8 @@ export const RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES = [
 
 /**
  * Types whose rows carry `createdAt` or `updatedAt`, so the source can say
- * which rows provably existed at the restore point. Daily claims have neither.
+ * which rows provably existed at the restore point. Daily claims and user
+ * revocations (which expire) have neither.
  */
 export const RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES = [
   'post',

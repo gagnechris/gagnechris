@@ -46,6 +46,7 @@ func LocalClaims(authorization string, auth Auth, clients ClientIDs, now time.Ti
 		// Local sign-in is always fresh, so the recent-sign-in check never
 		// blocks.
 		"auth_time": strconv.FormatInt(now.Unix(), 10),
+		"iat":       strconv.FormatInt(now.Unix(), 10),
 	}
 	if m != nil && m[2] != localDefaultSub {
 		sub := m[2]

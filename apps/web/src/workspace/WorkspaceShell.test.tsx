@@ -1,6 +1,6 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
   ACCESS_GROUPS,
@@ -9,6 +9,7 @@ import {
 } from '@gagnechris/shared';
 import { accessLevel } from './access';
 import type { AuthUser } from './auth/session';
+import { SidebarToggle } from './ui/SidebarToggle';
 import { WorkspaceFrame, type ShellNavSection } from './WorkspaceShell';
 
 const { openAddPasskey } = vi.hoisted(() => ({ openAddPasskey: vi.fn() }));
@@ -42,7 +43,17 @@ const SECTIONS: ShellNavSection[] = [
 
 function renderFrame(
   groups: string[],
-  { rail = false, path = '/' }: { rail?: boolean; path?: string } = {},
+  {
+    rail = false,
+    path = '/',
+    app = 'admin',
+    collapsible = false,
+  }: {
+    rail?: boolean;
+    path?: string;
+    app?: 'admin' | 'notebook';
+    collapsible?: boolean;
+  } = {},
 ) {
   const user: AuthUser = { label: 'chris@example.com', userId: 'u1', groups };
   return render(
@@ -52,10 +63,11 @@ function renderFrame(
           path="*"
           element={
             <WorkspaceFrame
-              app="admin"
+              app={app}
               user={user}
               sections={SECTIONS}
               rail={rail}
+              collapsible={collapsible}
               renderSearch={(close) => (
                 <div role="dialog" aria-label="Search">
                   <button type="button" onClick={close}>
@@ -64,6 +76,8 @@ function renderFrame(
                 </div>
               )}
             >
+              <SidebarToggle />
+              <textarea aria-label="Note" />
               <h1>Page</h1>
             </WorkspaceFrame>
           }
@@ -200,6 +214,103 @@ describe('WorkspaceFrame', () => {
       'title',
       'Home page',
     );
+  });
+});
+
+describe('collapsible sidebar', () => {
+  beforeEach(() => localStorage.clear());
+
+  const shell = (container: HTMLElement) => container.firstChild as Element;
+  const sidebarToggle = () => screen.getByRole('button', { name: 'Sidebar' });
+
+  test('the toggle and ⌘\\ from inside a text field hide and show the sidebar', async () => {
+    const user = userEvent.setup();
+    const { container } = renderFrame(['notebook'], {
+      app: 'notebook',
+      collapsible: true,
+    });
+    const toggle = sidebarToggle();
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('title', 'Hide sidebar (⌘\\)');
+    expect(toggle).toHaveAttribute(
+      'aria-controls',
+      container.querySelector('.workspace-sidebar')?.id,
+    );
+
+    await user.click(toggle);
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAccessibleName('Sidebar');
+    expect(toggle).toHaveAttribute('title', 'Show sidebar (⌘\\)');
+
+    await user.click(screen.getByRole('textbox', { name: 'Note' }));
+    await user.keyboard('{Meta>}\\{/Meta}');
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+    expect(screen.getByRole('textbox', { name: 'Note' })).toHaveFocus();
+    await user.keyboard('{Control>}\\{/Control}');
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+    // ⌥⌘\\ and ⇧⌘\\ are left for the task panel.
+    await user.keyboard('{Meta>}{Alt>}\\{/Alt}{/Meta}');
+    await user.keyboard('{Meta>}{Shift>}\\{/Shift}{/Meta}');
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+  });
+
+  test('a reload keeps the sidebar closed, at its last width', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('gagnechris.notebook.sidebarWidth', '300');
+    const first = renderFrame(['notebook'], {
+      app: 'notebook',
+      collapsible: true,
+    });
+    await user.click(sidebarToggle());
+    first.unmount();
+
+    const { container } = renderFrame(['notebook'], {
+      app: 'notebook',
+      collapsible: true,
+    });
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+    expect(sidebarToggle()).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      (shell(container) as HTMLElement).style.getPropertyValue(
+        '--workspace-sidebar-width',
+      ),
+    ).toBe('300px');
+    await user.click(sidebarToggle());
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+  });
+
+  test('dragging the edge well past the minimum collapses it and keeps the width', () => {
+    localStorage.setItem('gagnechris.notebook.sidebarWidth', '240');
+    const { container } = renderFrame(['notebook'], {
+      app: 'notebook',
+      collapsible: true,
+    });
+    const handle = screen.getByRole('separator', { name: 'Resize sidebar' });
+    handle.setPointerCapture = () => {};
+    fireEvent.pointerDown(handle, { button: 0, clientX: 240, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 140, pointerId: 1 });
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+    fireEvent.pointerMove(handle, { clientX: 20, pointerId: 1 });
+    expect(shell(container)).toHaveClass('workspace--sidebar-closed');
+    expect(sidebarToggle()).toHaveFocus();
+    expect(localStorage.getItem('gagnechris.notebook.sidebarWidth')).toBe(
+      '240',
+    );
+  });
+
+  test('Admin keeps its sidebar: no toggle, and ⌘\\ does nothing', async () => {
+    const user = userEvent.setup();
+    const { container } = renderFrame(['site-admin']);
+    expect(screen.queryByRole('button', { name: 'Sidebar' })).toBeNull();
+    await user.keyboard('{Meta>}\\{/Meta}');
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+    const handle = screen.getByRole('separator', { name: 'Resize sidebar' });
+    handle.setPointerCapture = () => {};
+    fireEvent.pointerDown(handle, { button: 0, clientX: 240, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 0, pointerId: 1 });
+    expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
+    expect(localStorage.getItem('gagnechris.admin.sidebar')).toBeNull();
   });
 });
 

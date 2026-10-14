@@ -1,6 +1,5 @@
 import {
   accessChange,
-  changeToast,
   formatAdded,
   STATUS_LABELS,
   useUserActionMutation,
@@ -31,7 +30,7 @@ type Props = {
   onDone: (message: string) => void;
 };
 
-type AccountAction = Exclude<UserChange['kind'], 'access'>;
+type AccountAction = Exclude<UserChange['kind'], 'access' | 'invite'>;
 
 /** Asked first, since they act on the person straight away. */
 const CONFIRMS: Partial<Record<AccountAction, [string, string, string]>> = {
@@ -67,8 +66,9 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
   const submit = async (next: UserChange, fallback: string) => {
     setError(null);
     try {
-      if ((await perform(next)) === 'cancelled') return;
-      onDone(changeToast(next));
+      const outcome = await perform(next);
+      if (outcome.status === 'cancelled') return;
+      onDone(outcome.toast);
       if (next.kind === 'access') onClose();
     } catch (err) {
       setError(userErrorMessage(err, fallback));

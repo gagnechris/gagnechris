@@ -13,6 +13,7 @@ import (
 	"github.com/gagnechris/gagnechris/services/api/internal/data"
 	"github.com/gagnechris/gagnechris/services/api/internal/jstime"
 	"github.com/gagnechris/gagnechris/services/api/internal/keys"
+	apistore "github.com/gagnechris/gagnechris/services/api/internal/store"
 )
 
 // store is the contact rows and rate counters in the data table.
@@ -21,25 +22,8 @@ type store struct {
 	now   func() time.Time
 }
 
-// tryIncrement adds one to a counter row unless it is already at max.
 func (s store) tryIncrement(ctx context.Context, pk, sk string, maxCount int, ttl int64) (bool, error) {
-	_, err := s.table.DB.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-		TableName:                aws.String(s.table.Name),
-		Key:                      data.Key(pk, sk),
-		UpdateExpression:         aws.String("ADD #count :one SET #ttl = if_not_exists(#ttl, :ttl), entityType = if_not_exists(entityType, :etype)"),
-		ConditionExpression:      aws.String("attribute_not_exists(#count) OR #count < :max"),
-		ExpressionAttributeNames: map[string]string{"#count": "count", "#ttl": "ttl"},
-		ExpressionAttributeValues: data.Item{
-			":one":   data.N(1),
-			":max":   data.N(int64(maxCount)),
-			":ttl":   data.N(ttl),
-			":etype": data.S("rateLimit"),
-		},
-	})
-	if err != nil && data.ClassifyWriteError(err) == data.WriteConflict {
-		return false, nil
-	}
-	return err == nil, err
+	return apistore.TryIncrement(ctx, s.table, pk, sk, maxCount, ttl)
 }
 
 const errContactIPLimit = "Too many contact submissions from this address. Try again later."

@@ -7,6 +7,7 @@ import {
   type Extension,
   type Line,
   type Range,
+  type Text,
 } from '@codemirror/state';
 import {
   Decoration,
@@ -39,7 +40,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { blockEnd } from './lineMoves';
+import { blockEnd, indentOf } from './lineMoves';
 import {
   dragTaskEmbed,
   indentTaskEmbed,
@@ -51,6 +52,7 @@ import {
   taskEmbedBlock,
   taskEmbedSections,
 } from './taskEmbedMoves';
+import { reindent } from './taskBlockMoves';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 
@@ -364,6 +366,36 @@ const foldDecorations = StateField.define<DecorationSet>({
   ],
 });
 
+const unindented = (text: string) => text.replace(/^[ \t]+/gm, '');
+
+/**
+ * A typed or deleted change that would remove or join the lines a fold hides
+ * is dropped: nothing on screen says they would go. Taking out the parent's
+ * whole line, or only changing the hidden lines' indent, is fine.
+ */
+const keepFoldedLines = EditorState.transactionFilter.of((tr) => {
+  if (
+    !tr.docChanged ||
+    !(tr.isUserEvent('input') || tr.isUserEvent('delete'))
+  ) {
+    return tr;
+  }
+  const folds = tr.startState.field(foldDecorations);
+  if (folds.size === 0) return tr;
+  const { doc } = tr.startState;
+  let hidden = false;
+  tr.changes.iterChanges((a, b, _fromB, _toB, inserted) => {
+    if (a === b) return;
+    const reindented =
+      unindented(doc.sliceString(a, b)) === unindented(inserted.toString());
+    folds.between(a, b, (from, to) => {
+      const parentLine = a <= doc.lineAt(from).from && b === from + 1;
+      if (a <= to && b > from && !parentLine && !reindented) hidden = true;
+    });
+  });
+  return hidden ? {} : tr;
+});
+
 function buildDraftLines(view: EditorView) {
   const { doc } = view.state;
   const ranges: Range<Decoration>[] = [];
@@ -597,6 +629,7 @@ export function taskEmbedEditor({
     widgets,
     foldedTasksField,
     foldDecorations,
+    keepFoldedLines,
     guardEmbedLines(widgets),
     embedEdgeKeys(widgets),
     draftLines,
@@ -649,9 +682,28 @@ export function taskEmbedEditor({
 }
 
 /**
+ * The last line of the outermost block holding line `n`. A blank line inside
+ * a block would end it and take its subtasks from their parent.
+ */
+function outerBlockEnd(doc: Text, n: number): number {
+  let top = n;
+  for (let k = n - 1; k >= 1 && indentOf(doc.line(top).text) > 0; k -= 1) {
+    const text = doc.line(k).text;
+    if (!text.trim()) break;
+    if (
+      indentOf(text) < indentOf(doc.line(top).text) &&
+      blockEnd(doc, k) >= n
+    ) {
+      top = k;
+    }
+  }
+  return blockEnd(doc, top);
+}
+
+/**
  * Moves the caret out of an embed row back into the note: onto the blank line
- * below it (adding one unless the next line is already blank), or to the end
- * of the embed's own line.
+ * after its block (adding one unless the next line is already blank), or to
+ * the end of the embed's own line.
  */
 export function leaveTaskEmbed(
   view: EditorView,
@@ -666,16 +718,16 @@ export function leaveTaskEmbed(
   const line = doc.lineAt(at);
   if (!below) {
     view.dispatch({ selection: { anchor: line.to } });
-  } else if (
-    line.number < doc.lines &&
-    !doc.line(line.number + 1).text.trim()
-  ) {
-    const next = doc.line(line.number + 1);
+    return;
+  }
+  const end = doc.line(outerBlockEnd(doc, line.number));
+  if (end.number < doc.lines && !doc.line(end.number + 1).text.trim()) {
+    const next = doc.line(end.number + 1);
     view.dispatch({ selection: { anchor: next.to }, scrollIntoView: true });
   } else {
     view.dispatch({
-      changes: { from: line.to, insert: '\n' },
-      selection: { anchor: line.to + 1 },
+      changes: { from: end.to, insert: '\n' },
+      selection: { anchor: end.to + 1 },
       scrollIntoView: true,
       userEvent: 'input',
     });
@@ -694,8 +746,17 @@ export function moveFromTaskEmbed(
 ) {
   const { doc } = view.state;
   const line = doc.lineAt(view.posAtDOM(widget));
-  const n = line.number + (dir === 'up' ? -1 : 1);
+  let n = line.number + (dir === 'up' ? -1 : 1);
   if (n < 1) return;
+  // A folded block is one row: step onto its parent or past its hidden lines.
+  if (n <= doc.lines) {
+    const at = doc.line(n).from;
+    view.state.field(foldDecorations).between(at, at, (from, to) => {
+      if (from >= at || to < at) return;
+      n = doc.lineAt(dir === 'up' ? from : to).number + (dir === 'up' ? 0 : 1);
+      return false;
+    });
+  }
   if (n > doc.lines) {
     leaveTaskEmbed(view, widget, true);
     return;
@@ -715,7 +776,11 @@ export function moveFromTaskEmbed(
   });
 }
 
-/** Deletes the embed's line as a user edit; the caret ends the line above. */
+/**
+ * Deletes the embed's line as a user edit; the caret ends the line above. The
+ * lines under it move out to its level, so its subtasks don't nest under the
+ * task above instead.
+ */
 export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
   const at = view.posAtDOM(widget);
   view.focus();
@@ -725,8 +790,18 @@ export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
     line.number > 1
       ? [line.from - 1, line.to]
       : [line.from, Math.min(line.to + 1, doc.length)];
+  const last = blockEnd(doc, line.number);
+  const changes = [{ from, to, insert: '' }];
+  if (last > line.number) {
+    const under = { from: line.to + 1, to: doc.line(last).to };
+    const step = indentOf(doc.line(line.number + 1).text) - indentOf(line.text);
+    changes.push({
+      ...under,
+      insert: reindent(doc.sliceString(under.from, under.to), -step),
+    });
+  }
   view.dispatch({
-    changes: { from, to },
+    changes,
     selection: { anchor: from },
     scrollIntoView: true,
     userEvent: 'delete',

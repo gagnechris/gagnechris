@@ -124,3 +124,43 @@ test('a drag stores the width once, when it ends', () => {
   expect(localStorage.getItem(KEY)).toBe('350');
   setItem.mockRestore();
 });
+
+function RoomPanel({ room }: { room: () => number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useStoredWidth(KEY, 200, 400);
+  return (
+    <div ref={ref}>
+      <ResizeHandle
+        label="Resize panel"
+        className=""
+        target={ref}
+        width={width}
+        min={200}
+        max={400}
+        edge="left"
+        onChange={setWidth}
+        room={room}
+      />
+    </div>
+  );
+}
+
+test('dragging wider stops where the neighbour runs out of room', () => {
+  localStorage.setItem(KEY, '250');
+  render(<RoomPanel room={() => 30} />);
+  const handle = screen.getByRole('separator');
+  handle.setPointerCapture = () => {};
+  fireEvent.pointerDown(handle, { button: 0, clientX: 500, pointerId: 1 });
+  fireEvent.pointerMove(handle, { clientX: 400, pointerId: 1 });
+  expect(handle).toHaveAttribute('aria-valuenow', '280');
+  fireEvent.pointerMove(handle, { clientX: 560, pointerId: 1 });
+  expect(handle).toHaveAttribute('aria-valuenow', '200');
+});
+
+test('arrows stop growing where the neighbour runs out of room', () => {
+  localStorage.setItem(KEY, '250');
+  render(<RoomPanel room={() => 10} />);
+  const handle = screen.getByRole('separator');
+  fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+  expect(handle).toHaveAttribute('aria-valuenow', '260');
+});

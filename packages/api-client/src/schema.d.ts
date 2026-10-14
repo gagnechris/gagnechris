@@ -2946,7 +2946,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Invite a user by email; an email that belonged to a removed user restores that user */
+        /**
+         * Invite a user by email; an email that belonged to a removed user restores that user
+         * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3565,7 +3568,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Sign the user out everywhere; their open sessions end within the hour
+         * Sign the user out everywhere; tokens they already hold stop working within a minute
          * @description Needs a sign-in within the last 5 minutes (ID token `auth_time`); otherwise 403 with `{ "error": "reauth_required" }`.
          */
         post: {
@@ -9256,6 +9259,21 @@ export interface paths {
                 };
                 /** @description Gone — sync watermark older than tombstone horizon (`resync_required`) */
                 410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Rate limited */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };

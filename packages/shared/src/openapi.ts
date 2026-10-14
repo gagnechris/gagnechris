@@ -402,6 +402,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     path: '/api/admin/users',
     summary:
       'Invite a user by email; an email that belonged to a removed user restores that user',
+    description: recentSignIn,
     ...base,
     request: { body: jsonBody(InviteUserRequestSchema) },
     responses: {
@@ -427,7 +428,7 @@ function registerUserPaths(registry: OpenAPIRegistry) {
     ['enable', 'Enable sign-in'],
     [
       'sign-out',
-      'Sign the user out everywhere; their open sessions end within the hour',
+      'Sign the user out everywhere; tokens they already hold stop working within a minute',
     ],
     [
       'remove',
@@ -1049,6 +1050,7 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
         'Upload URL and markdown src',
       ),
       400: r400,
+      429: r429,
       ...notebookAuth,
     },
   });
