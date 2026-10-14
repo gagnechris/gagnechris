@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
   useQueuedAutosave,
@@ -29,6 +29,10 @@ export function useTaskDescriptionEditor(task: Task) {
     setShown(task.description);
     setDraft(task.description);
   }
+  const baseRef = useRef(shown);
+  useEffect(() => {
+    baseRef.current = shown;
+  }, [shown]);
 
   const latest = useCallback(
     () =>
@@ -60,13 +64,14 @@ export function useTaskDescriptionEditor(task: Task) {
         }
       };
       const result = await send(version);
-      // Only this field is sent, so a newer version left by another field's
-      // save is safe to write on.
+      // Only this field is sent, so a newer version is safe to write on when
+      // another field made it; a description changed elsewhere is a conflict.
       if (
         !result.ok &&
         isStaleVersion(result.status, result.error) &&
         result.current &&
-        !result.current.deleted
+        !result.current.deleted &&
+        result.current.description === baseRef.current
       ) {
         return send(result.current.version);
       }
@@ -82,6 +87,7 @@ export function useTaskDescriptionEditor(task: Task) {
     getBaseVersion: () => latest().version,
     performSave,
     onSaved: (saved) => {
+      baseRef.current = saved.description;
       setShown(saved.description);
       setCachedTask(queryClient, saved);
     },
