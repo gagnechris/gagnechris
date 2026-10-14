@@ -62,7 +62,7 @@
 .workspace-sidebar {
   position: sticky;
   top: 0;
-  flex: 0 0 15.5rem;
+  flex: 0 0 var(--workspace-sidebar-width, 15.5rem);
   box-sizing: border-box;
   height: 100vh;
   height: 100dvh;
@@ -337,6 +337,27 @@
   padding: 1.75rem 2.5rem 3rem;
 }
 
+.workspace-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.workspace-resize-handle:hover,
+.workspace-resize-handle:focus-visible,
+.workspace-resize-handle:active {
+  background: var(--primary-200);
+  outline: none;
+}
+
+.workspace-sidebar__resize {
+  right: 0;
+}
+
 /* Focused editors: the sidebar shrinks to a 64px icon rail. */
 
 .workspace--rail .workspace-sidebar {
@@ -399,6 +420,10 @@
 @media (max-width: 767px) {
   .workspace__body {
     display: block;
+  }
+
+  .workspace-resize-handle {
+    display: none;
   }
 
   .workspace-sidebar,
@@ -588,7 +613,10 @@
 
 @media (min-width: 1000px) {
   .notebook-today {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    grid-template-columns: minmax(0, 1fr) var(
+        --today-side-width,
+        minmax(16rem, 22rem)
+      );
     align-items: start;
   }
 }
@@ -669,6 +697,7 @@
 }
 
 .notebook-today__side {
+  position: relative;
   min-width: 0;
 }
 
@@ -685,6 +714,17 @@
 
 .notebook-today--side-closed .notebook-today__side {
   display: none;
+}
+
+/* In the grid gap, so it never covers the panel's cards. */
+.notebook-today__side-resize {
+  left: calc(-1 * var(--space-6) / 2 - 3px);
+}
+
+@media (max-width: 999px) {
+  .notebook-today__side-resize {
+    display: none;
+  }
 }
 
 .notebook-today__template {

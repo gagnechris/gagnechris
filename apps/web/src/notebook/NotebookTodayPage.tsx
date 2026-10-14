@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   useDailyNoteDatesQuery,
@@ -28,6 +35,8 @@ import { useLocalToday } from './useLocalToday';
 import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
+import { ResizeHandle } from '../workspace/ui/ResizeHandle';
+import { useStoredWidth } from '../workspace/ui/useStoredWidth';
 import { readTodaySideOpen, writeTodaySideOpen } from './todaySidePreference';
 
 function resolveDate(param: string | null, today: string): string {
@@ -46,6 +55,12 @@ export default function NotebookTodayPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
   const [editorGeneration, setEditorGeneration] = useState(0);
+  const sideRef = useRef<HTMLElement>(null);
+  const [sideWidth, setSideWidth] = useStoredWidth(
+    'gagnechris.notebook.todaySideWidth',
+    SIDE_MIN,
+    SIDE_MAX,
+  );
   const [sideOpen, setSideOpen] = useState(readTodaySideOpen);
   const toggleSide = () => {
     writeTodaySideOpen(!sideOpen);
@@ -165,6 +180,11 @@ export default function NotebookTodayPage() {
       <section className="workspace-panel workspace-panel--editor">
         <div
           className={`notebook-today${sideOpen ? '' : ' notebook-today--side-closed'}`}
+          style={
+            sideWidth === null
+              ? undefined
+              : ({ '--today-side-width': `${sideWidth}px` } as CSSProperties)
+          }
         >
           <div className="notebook-today__main" ref={editorRef}>
             <div className="notebook-today__day-nav">
@@ -355,7 +375,18 @@ export default function NotebookTodayPage() {
             id="notebook-today-side"
             className="notebook-today__side"
             aria-label="Today tasks"
+            ref={sideRef}
           >
+            <ResizeHandle
+              label="Resize task panel"
+              className="notebook-today__side-resize"
+              target={sideRef}
+              width={sideWidth}
+              min={SIDE_MIN}
+              max={SIDE_MAX}
+              edge="left"
+              onChange={setSideWidth}
+            />
             <StillOpenPanel
               rows={stillOpenRows}
               snoozeFrom={snoozeBaseDay(date, today)}
@@ -403,6 +434,9 @@ export default function NotebookTodayPage() {
 }
 
 const NO_IDS: ReadonlySet<string> = new Set();
+
+const SIDE_MIN = 224;
+const SIDE_MAX = 576;
 
 const UPCOMING_ROUTE = '/upcoming';
 
