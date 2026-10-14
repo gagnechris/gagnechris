@@ -222,6 +222,8 @@ const SIDEWAYS = 28;
 const NEST_PX = 28;
 const HEADING_LINE = /^##[ \t]/;
 
+const shift = (indent: number) => Math.sign(indent) * NEST_PX;
+
 /** The nearest scrolling box: the editor's own, or the page. */
 function scroller(view: EditorView): HTMLElement | null {
   const own = view.scrollDOM;
@@ -317,10 +319,12 @@ export function dragTaskEmbed(
       mark > doc.lines
         ? view.documentTop + view.lineBlockAt(doc.length).bottom
         : view.documentTop + view.lineBlockAt(doc.line(mark).from).top;
-    const shift = Math.sign(indent) * NEST_PX;
+    const pad = getComputedStyle(view.contentDOM);
+    const left = content.left + parseFloat(pad.paddingLeft) + shift(indent);
+    const right = content.right - parseFloat(pad.paddingRight);
     Object.assign(indicator.style, {
-      left: `${content.left + shift}px`,
-      width: `${content.width - shift}px`,
+      left: `${left}px`,
+      width: `${right - left}px`,
       top: `${at - 1}px`,
     });
   };
