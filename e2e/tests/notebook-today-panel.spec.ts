@@ -206,3 +206,216 @@ test('with reduced motion the task panel opens and closes without animation', as
     expect(await sideWidth(page)).toBe(expanded === 'true' ? 352 : 0);
   }
 });
+
+test.describe('at 1000px', () => {
+  test.use({ viewport: { width: 1000, height: 800 } });
+
+  const noteWidth = (page: Page) =>
+    page
+      .locator('.notebook-today__main')
+      .evaluate((el) => el.getBoundingClientRect().width);
+  const settled = (page: Page) =>
+    page.waitForFunction(
+      () =>
+        document.querySelector('#notebook-today-side')!.getAnimations()
+          .length === 0,
+    );
+
+  test('Today opens with the panel closed, and opening it covers the note without changing the note’s width', async ({
+    page,
+    apps,
+    signIn,
+    seed,
+    prefix,
+  }) => {
+    await seed.task({ title: `${prefix} overlay`, startDate: DAY });
+    await openToday(page, signIn, apps.notebook);
+    const toggle = tasksToggle(page);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(side(page)).toBeHidden();
+    const before = await noteWidth(page);
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(side(page)).toBeVisible();
+    await settled(page);
+    expect(await noteWidth(page)).toBe(before);
+    await expect(page.locator('.notebook-today__scrim')).toBeVisible();
+    await expect(
+      page.getByRole('separator', { name: 'Resize task panel' }),
+    ).toHaveCount(0);
+    const covered = await page.evaluate(() => {
+      const note = document
+        .querySelector('.notebook-today__main')!
+        .getBoundingClientRect();
+      const panel = document
+        .querySelector('#notebook-today-side')!
+        .getBoundingClientRect();
+      const x = (panel.left + Math.min(panel.right, note.right)) / 2;
+      const y = (panel.top + panel.bottom) / 2;
+      return {
+        overlaps: panel.left < note.right - 100,
+        inViewport: panel.right <= window.innerWidth,
+        topmost: Boolean(
+          document.elementFromPoint(x, y)?.closest('#notebook-today-side'),
+        ),
+      };
+    });
+    expect(covered).toEqual({
+      overlaps: true,
+      inViewport: true,
+      topmost: true,
+    });
+    await expect(
+      side(page).getByText(`${prefix} overlay`, { exact: true }),
+    ).toBeVisible();
+  });
+
+  test('Esc closes the overlay and focus returns to the Tasks toggle', async ({
+    page,
+    apps,
+    signIn,
+    seed,
+  }) => {
+    await seed.daily(DAY, 'Standup notes');
+    await openToday(page, signIn, apps.notebook);
+    const toggle = tasksToggle(page);
+
+    await toggle.click();
+    await expect(side(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+    await expect(side(page)).toBeHidden();
+    await expect(page.locator('.notebook-today__scrim')).toHaveCount(0);
+
+    await page.locator('.cm-content').getByText('Standup notes').click();
+    await page.keyboard.press('ControlOrMeta+Alt+Backslash');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(side(page)).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+
+    await toggle.click();
+    await settled(page);
+    await page
+      .locator('.notebook-today__scrim')
+      .click({ position: { x: 20, y: 400 } });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+  });
+
+  test('widening the window past 1100px restores the side-by-side panel at its remembered width and state', async ({
+    page,
+    apps,
+    signIn,
+  }) => {
+    await openToday(page, signIn, apps.notebook);
+    await page.evaluate(() => {
+      localStorage.setItem('gagnechris.notebook.todaySideWidth', '300');
+      localStorage.setItem('gagnechris.notebook.todaySide', 'closed');
+    });
+    await page.reload();
+    await expect(page.locator('.cm-content')).toBeVisible();
+    const toggle = tasksToggle(page);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.notebook-today__scrim')).toHaveCount(0);
+    await expect.poll(() => sideWidth(page)).toBe(0);
+
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    expect(
+      await page.evaluate(() => ({
+        open: localStorage.getItem('gagnechris.notebook.todaySide'),
+        width: localStorage.getItem('gagnechris.notebook.todaySideWidth'),
+      })),
+    ).toEqual({ open: 'closed', width: '300' });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(() => sideWidth(page)).toBe(300);
+    const placed = await page.evaluate(() => ({
+      note: document
+        .querySelector('.notebook-today__main')!
+        .getBoundingClientRect().right,
+      panel: document
+        .querySelector('#notebook-today-side')!
+        .getBoundingClientRect().left,
+      position: getComputedStyle(
+        document.querySelector('#notebook-today-side')!,
+      ).position,
+    }));
+    expect(placed.note).toBeLessThanOrEqual(placed.panel);
+    expect(placed.position).toBe('relative');
+    await expect(
+      page.getByRole('separator', { name: 'Resize task panel' }),
+    ).toBeVisible();
+
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect.poll(() => sideWidth(page)).toBe(300);
+  });
+
+  test('with reduced motion the overlay opens and closes without animation', async ({
+    page,
+    apps,
+    signIn,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openToday(page, signIn, apps.notebook);
+    for (const expanded of ['true', 'false']) {
+      expect(await toggleAndReadTransitions(page)).toEqual([]);
+      await expect(tasksToggle(page)).toHaveAttribute(
+        'aria-expanded',
+        expanded,
+      );
+    }
+  });
+
+  test('the overlay slides in from the right', async ({
+    page,
+    apps,
+    signIn,
+  }) => {
+    await openToday(page, signIn, apps.notebook);
+    const running = await toggleAndReadTransitions(page);
+    const slide = running.find((t) => t.property === 'transform');
+    expect(slide?.duration).toBe(180);
+  });
+});
+
+test('at 767px the strip and sheet behave as before', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  await page.setViewportSize({ width: 767, height: 900 });
+  await seed.task({ title: `${prefix} phone`, startDate: DAY });
+  await openToday(page, signIn, apps.notebook);
+  await expect(tasksToggle(page)).toBeHidden();
+  await expect(side(page)).toBeHidden();
+
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('ControlOrMeta+Alt+Backslash');
+  await expect(side(page)).toBeHidden();
+  await expect(page.locator('.notebook-today__scrim')).toHaveCount(0);
+
+  const strip = page.getByRole('button', { name: /still open, .* Show list/ });
+  await strip.click();
+  const sheet = page.getByRole('dialog', { name: 'Today’s tasks' });
+  await expect(sheet.getByText(`${prefix} phone`)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+  await expect(strip).toBeFocused();
+});
