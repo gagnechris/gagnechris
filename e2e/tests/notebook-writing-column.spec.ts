@@ -77,18 +77,42 @@ test.beforeEach(async ({ seed, signIn, apps, page, prefix }) => {
   await page.goto(apps.notebook);
 });
 
-test('at 1440px with the task panel closed, note lines stay within 720px and centred', async ({
+test('at 1440px with the task panel and sidebar closed, note lines stay within 720px and centred', async ({
   page,
   apps,
   prefix,
 }) => {
   await openToday(page, apps.notebook, 1440, prefix);
   await hideTasks(page);
+  const tasksClosed = await layout(page);
+  expect(tasksClosed.column.width).toBeCloseTo(COLUMN_MAX, 0);
+
+  await page.getByRole('button', { name: 'Sidebar' }).click();
+  await expect(page.getByRole('navigation', { name: 'Notebook' })).toBeHidden();
+  await expect
+    .poll(async () => (await layout(page)).cell.width)
+    .toBeGreaterThan(tasksClosed.cell.width + 200);
   const { cell, column, lineWidth } = await layout(page);
   expect(column.width).toBeCloseTo(COLUMN_MAX, 0);
   expect(lineWidth).toBeLessThanOrEqual(COLUMN_MAX);
   expect(column.left - cell.left).toBeGreaterThan(40);
   expect(column.left - cell.left).toBeCloseTo(cell.right - column.right, 0);
+});
+
+test('a collapsed sidebar with a remembered width hides all of it on a small window', async ({
+  page,
+  apps,
+  prefix,
+}) => {
+  await page.evaluate(() => {
+    localStorage.setItem('gagnechris.notebook.sidebarWidth', '400');
+    localStorage.setItem('gagnechris.notebook.sidebar', 'closed');
+  });
+  await openToday(page, apps.notebook, 1100, prefix);
+  const main = page.locator('.workspace-main');
+  await expect.poll(async () => (await main.boundingBox())?.x).toBe(0);
+  const { cell } = await layout(page);
+  expect(cell.width).toBeGreaterThanOrEqual(COLUMN_MIN);
 });
 
 test('at 1280px closing the task panel widens the note up to its maximum', async ({

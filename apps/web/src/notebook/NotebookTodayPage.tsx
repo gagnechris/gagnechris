@@ -24,6 +24,7 @@ import {
 } from '../kit/tasks/TodayPanels';
 import { TodaySheet } from '../kit/tasks/TodaySheet';
 import ShellIcon from '../workspace/ui/ShellIcon';
+import { SidebarToggle } from '../workspace/ui/SidebarToggle';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
 import {
   NOTEBOOK_AREA_FILTERS,
@@ -288,6 +289,7 @@ export default function NotebookTodayPage() {
         >
           <div className="notebook-today__main notebook-column" ref={editorRef}>
             <div className="notebook-today__day-nav">
+              <SidebarToggle />
               <button
                 type="button"
                 className="kit-btn"
