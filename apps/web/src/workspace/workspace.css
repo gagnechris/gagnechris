@@ -1197,6 +1197,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
+  color: var(--neutral-800);
   font: inherit;
   text-align: left;
   overflow-wrap: anywhere;
@@ -1205,6 +1206,8 @@
 
 .note-templates__item:hover {
   background: var(--neutral-100);
+  box-shadow: none;
+  transform: none;
 }
 
 .note-templates__item[aria-current='true'] {
@@ -1234,6 +1237,10 @@
   flex-direction: column;
   gap: var(--space-2);
   width: min(22rem, 100vw - 2rem);
+}
+
+.note-template-picker .kit-input {
+  flex: none;
 }
 
 .note-template-option__preview {

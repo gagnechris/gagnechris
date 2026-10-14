@@ -256,14 +256,14 @@ export default function NotebookNoteTemplatesPage() {
         <p>Loading templates…</p>
       ) : (
         <div className="note-templates">
-          <nav className="note-templates__side" aria-label="Note templates">
+          <div className="note-templates__side">
             <TemplateList
               templates={list}
               selected={selected}
               onSelect={select}
             />
             <NewTemplateForm onCreated={select} />
-          </nav>
+          </div>
           {selected ? (
             <TemplateEditor
               key={selected}
