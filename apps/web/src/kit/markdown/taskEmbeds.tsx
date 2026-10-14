@@ -694,8 +694,17 @@ export function moveFromTaskEmbed(
 ) {
   const { doc } = view.state;
   const line = doc.lineAt(view.posAtDOM(widget));
-  const n = line.number + (dir === 'up' ? -1 : 1);
+  let n = line.number + (dir === 'up' ? -1 : 1);
   if (n < 1) return;
+  // A folded block is one row: step onto its parent or past its hidden lines.
+  if (n <= doc.lines) {
+    const at = doc.line(n).from;
+    view.state.field(foldDecorations).between(at, at, (from, to) => {
+      if (from >= at || to < at) return;
+      n = doc.lineAt(dir === 'up' ? from : to).number + (dir === 'up' ? 0 : 1);
+      return false;
+    });
+  }
   if (n > doc.lines) {
     leaveTaskEmbed(view, widget, true);
     return;
