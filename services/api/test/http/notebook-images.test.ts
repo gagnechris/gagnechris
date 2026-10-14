@@ -31,6 +31,9 @@ const s3 = useApi('notebook-images-s3', {
     NOTEBOOK_MEDIA_BUCKET_NAME: 'gagnechris-it-notebook-media',
   },
 });
+const unconfigured = useApi('notebook-images-unconfigured', {
+  env: { SITE_STORAGE: 's3', NOTEBOOK_MEDIA_BUCKET_NAME: '' },
+});
 
 const uploadUrl = (h: Harness, body: unknown, user = 'alice') =>
   h.api.request('POST', '/api/notebook/images/upload-url', {
@@ -117,6 +120,18 @@ describe('POST /api/notebook/images/upload-url', () => {
       { body: { contentType: 'image/png', contentLength: 1 } },
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe('without a media bucket', () => {
+  it('answers 503 for an upload URL and a read', async () => {
+    const upload = await uploadUrl(unconfigured, {
+      contentType: 'image/png',
+      contentLength: 1,
+    });
+    expect(upload.status).toBe(503);
+    const read = await imageUrl(unconfigured, '0123456789abcdef.png');
+    expect(read.status).toBe(503);
   });
 });
 
