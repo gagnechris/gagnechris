@@ -1,4 +1,4 @@
-import { DAILY_TEMPLATE_DATE_TOKEN } from '@gagnechris/shared';
+import { DAILY_TEMPLATE_DATE_TOKEN, indentWidth } from '@gagnechris/shared';
 
 export type Selection = { start: number; end: number };
 export type TextEdit = { text: string; selection: Selection };
@@ -20,8 +20,6 @@ export type ToolbarAction =
 export const lineStart = (text: string, offset: number) =>
   offset <= 0 ? 0 : text.lastIndexOf('\n', offset - 1) + 1;
 
-const INDENT = /^[ \t]*/;
-
 /** Adds `marker` after the line's indent, or takes it off if it is there. */
 const toggleLineMarker = (
   text: string,
@@ -30,7 +28,7 @@ const toggleLineMarker = (
   existing: RegExp,
 ): TextEdit => {
   const from = lineStart(text, start);
-  const indent = INDENT.exec(text.slice(from))![0].length;
+  const indent = indentWidth(text.slice(from));
   const at = from + indent;
   const current = existing.exec(text.slice(at))?.[0];
   if (current) {

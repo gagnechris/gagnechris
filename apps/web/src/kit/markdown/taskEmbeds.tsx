@@ -22,8 +22,10 @@ import {
   createUlid,
   fenceLineKind,
   findTaskEmbeds,
+  indentWidth,
   parseTaskEmbedLine,
   parseTaskLine,
+  reindent,
   scanFences,
   taskEmbedNesting,
   taskEmbedToken,
@@ -40,7 +42,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { blockEnd, indentOf } from './lineMoves';
+import { blockEnd } from './lineMoves';
 import {
   dragTaskEmbed,
   indentTaskEmbed,
@@ -52,7 +54,6 @@ import {
   taskEmbedBlock,
   taskEmbedSections,
 } from './taskEmbedMoves';
-import { reindent } from './taskBlockMoves';
 
 export type TaskEmbedCreate = { id: string; draft: TaskLineDraft };
 
@@ -492,7 +493,8 @@ const focusEmbedTitleSoon = (
 
 /**
  * Text typed on an embed's line would break its token, so it goes to the
- * title field instead; a pasted block lands on its own lines.
+ * title field instead; a pasted block lands on its own lines, after the
+ * row's subtasks when pasted at its end.
  */
 function guardEmbedLines(widgets: StateField<DecorationSet>) {
   return EditorState.transactionFilter.of((tr) => {
@@ -516,7 +518,10 @@ function guardEmbedLines(widgets: StateField<DecorationSet>) {
       return tr;
     }
     const insert = atStart ? `${edit.text}\n` : `\n${edit.text}`;
-    const from = atStart ? line.from : line.to;
+    const from = atStart
+      ? line.from
+      : tr.startState.doc.line(outerBlockEnd(tr.startState.doc, line.number))
+          .to;
     return {
       changes: { from, insert },
       selection: { anchor: from + insert.length - (atStart ? 1 : 0) },
@@ -687,11 +692,11 @@ export function taskEmbedEditor({
  */
 function outerBlockEnd(doc: Text, n: number): number {
   let top = n;
-  for (let k = n - 1; k >= 1 && indentOf(doc.line(top).text) > 0; k -= 1) {
+  for (let k = n - 1; k >= 1 && indentWidth(doc.line(top).text) > 0; k -= 1) {
     const text = doc.line(k).text;
     if (!text.trim()) break;
     if (
-      indentOf(text) < indentOf(doc.line(top).text) &&
+      indentWidth(text) < indentWidth(doc.line(top).text) &&
       blockEnd(doc, k) >= n
     ) {
       top = k;
@@ -794,7 +799,8 @@ export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
   const changes = [{ from, to, insert: '' }];
   if (last > line.number) {
     const under = { from: line.to + 1, to: doc.line(last).to };
-    const step = indentOf(doc.line(line.number + 1).text) - indentOf(line.text);
+    const step =
+      indentWidth(doc.line(line.number + 1).text) - indentWidth(line.text);
     changes.push({
       ...under,
       insert: reindent(doc.sliceString(under.from, under.to), -step),

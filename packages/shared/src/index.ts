@@ -122,6 +122,7 @@ export {
   CARRIED_IN_HEADING,
   carriedInMarkdown,
   findTaskEmbeds,
+  indentWidth,
   parseTaskEmbedLine,
   replaceTaskEmbeds,
   removeTaskEmbedLines,
@@ -136,10 +137,18 @@ export {
   type TaskEmbedNesting,
 } from './task-embeds.js';
 export {
+  isMarkdownItem,
   markdownItemBlock,
+  noteHeadings,
+  reindent,
   removeTaskBlock,
+  sectionEnd,
+  TASK_NEST_WIDTH,
+  taskDropNestIndent,
   taskEmbedLineOf,
+  taskNestIndent,
   type LineBlock,
+  type NoteHeading,
 } from './task-blocks.js';
 export {
   parseTaskLine,

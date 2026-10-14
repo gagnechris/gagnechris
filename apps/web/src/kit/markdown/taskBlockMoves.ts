@@ -5,27 +5,20 @@ import {
   type Text,
   type TransactionSpec,
 } from '@codemirror/state';
-import { fenceLineKind, scanFences } from '@gagnechris/shared';
+import {
+  noteHeadings as headingsOf,
+  reindent,
+  sectionEnd as sectionEndOf,
+  type NoteHeading,
+} from '@gagnechris/shared';
 import { blockEnd } from './lineMoves';
 
 /** Line numbers, one-based and inclusive. */
 export type LineBlock = { first: number; last: number };
 
-export type NoteHeading = { line: number; title: string };
-
-const SECTION_HEADING = /^##[ \t]+(.+?)[ \t#]*$/;
-
-/** The note's `##` headings outside code fences. */
-export function noteHeadings(doc: Text): NoteHeading[] {
-  const fences = scanFences(doc.iterLines());
-  const headings: NoteHeading[] = [];
-  for (let n = 1; n <= doc.lines; n += 1) {
-    if (fenceLineKind(fences, n - 1)) continue;
-    const match = SECTION_HEADING.exec(doc.line(n).text);
-    if (match) headings.push({ line: n, title: match[1]! });
-  }
-  return headings;
-}
+/** The note's `##` headings outside code fences, one-based. */
+export const noteHeadings = (doc: Text): NoteHeading[] =>
+  headingsOf(doc.toJSON()).map((h) => ({ ...h, line: h.line + 1 }));
 
 /** The line at `n` and the lines indented under it. */
 export const blockAt = (doc: Text, n: number): LineBlock => ({
@@ -44,21 +37,6 @@ export function sectionOf(
     found = h;
   }
   return found;
-}
-
-const isBlank = (doc: Text, n: number) => doc.line(n).text.trim() === '';
-
-/** Adds `delta` spaces to each line, or takes up to `-delta` of its indent. */
-export function reindent(text: string, delta: number): string {
-  if (delta === 0) return text;
-  return text
-    .split('\n')
-    .map((line) => {
-      if (delta > 0) return line.trim() ? ' '.repeat(delta) + line : line;
-      const lead = /^[ \t]*/.exec(line)![0].length;
-      return line.slice(Math.min(lead, -delta));
-    })
-    .join('\n');
 }
 
 /** Indents or outdents the block in place, keeping the selection on its text. */
@@ -136,14 +114,13 @@ function sectionEnd(
   heading: NoteHeading | null,
   block: LineBlock,
 ): number {
-  const start = heading ? heading.line + 1 : 1;
-  const next = headings.find((h) => h.line > (heading?.line ?? 0));
-  const end = next ? next.line - 1 : doc.lines;
-  for (let n = end; n >= start; n -= 1) {
-    if (n >= block.first && n <= block.last) continue;
-    if (!isBlank(doc, n)) return n + 1;
-  }
-  return start;
+  const zero = (h: NoteHeading) => ({ ...h, line: h.line - 1 });
+  return (
+    sectionEndOf(doc.toJSON(), headings.map(zero), heading && zero(heading), {
+      first: block.first - 1,
+      last: block.last - 1,
+    }) + 1
+  );
 }
 
 /** Puts the block last in the section under `heading`. */

@@ -60,6 +60,9 @@ export function carriedInMarkdown(tasks: readonly CarriedInTask[]): string {
   return `${CARRIED_IN_HEADING}\n\n${lines.join('\n')}\n\n`;
 }
 
+/** Leading spaces and tabs, each counted as one column. */
+export const indentWidth = (text: string) => /^[ \t]*/.exec(text)![0].length;
+
 export function parseTaskEmbedLine(
   line: string,
 ): { id: string; indent: string } | null {
@@ -125,8 +128,6 @@ export type TaskEmbedNesting = TaskEmbed & {
   /** How many task lines it sits under. */
   depth: number;
 };
-
-const indentWidth = (text: string) => /^[ \t]*/.exec(text)![0].length;
 
 /**
  * Each embed with the task it is a subtask of. A line is under the nearest

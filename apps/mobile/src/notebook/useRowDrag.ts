@@ -6,11 +6,7 @@ import { Animated, type LayoutChangeEvent } from 'react-native';
 import { useDragScroll } from '../ui/DragScroll';
 import type { DragMove } from '../ui/DragGrip';
 import type { NoteSegment } from './noteSegments';
-import {
-  indentTaskBlock,
-  moveTaskBlock,
-  taskBlockLines,
-} from './taskBlockEdits';
+import { dropTaskBlock, taskBlockLines } from './taskBlockEdits';
 
 type Frame = { y: number; height: number };
 type Target = { before: string } | { after: string };
@@ -126,12 +122,8 @@ export function useRowDrag({
       set(null);
       dy.setValue(0);
       if (!move || !done) return;
-      const before = markdown();
-      let next = done.target ? moveTaskBlock(before, id, done.target) : null;
-      if (done.level) {
-        next = indentTaskBlock(next ?? before, id, done.level) ?? next;
-      }
-      if (next !== null && next !== before) onChange(next);
+      const next = dropTaskBlock(markdown(), id, done.target, done.level);
+      if (next !== null) onChange(next);
     },
   });
 

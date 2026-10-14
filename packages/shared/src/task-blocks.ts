@@ -1,28 +1,127 @@
-import { findTaskEmbeds } from './task-embeds.js';
+import { fenceLineKind, scanFences } from './markdown-fences.js';
+import {
+  findTaskEmbeds,
+  indentWidth,
+  taskEmbedNesting,
+  type TaskEmbedNesting,
+} from './task-embeds.js';
 
 /** Zero-based line numbers, inclusive. */
 export type LineBlock = { first: number; last: number };
 
-const ITEM = /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\[[ xX]\][ \t]|\{\{task:)/;
+export type NoteHeading = { line: number; title: string };
 
-const indentOf = (text: string) => /^[ \t]*/.exec(text)![0].length;
+/** Spaces one nesting level adds to a task's lines. */
+export const TASK_NEST_WIDTH = 2;
+
+const ITEM = /^[ \t]*(?:[-*+][ \t]|\d+[.)][ \t]|\[[ xX]\][ \t]|\{\{task:)/;
+const SECTION_HEADING = /^##[ \t]+(.+?)[ \t#]*$/;
+
 const blank = (text: string) => text.trim().length === 0;
 
-/** The item at `n` and the lines indented under it, as the web editor moves them. */
+/** A list item, checklist item or task embed: a line that carries the lines under it. */
+export const isMarkdownItem = (text: string) => ITEM.test(text);
+
+/** The item at `n` and the lines indented under it, as the editors move them. */
 export function markdownItemBlock(
   lines: readonly string[],
   n: number,
 ): LineBlock {
   const head = lines[n]!;
   if (!ITEM.test(head)) return { first: n, last: n };
-  const base = indentOf(head);
+  const base = indentWidth(head);
   let last = n;
   while (last + 1 < lines.length) {
     const next = lines[last + 1]!;
-    if (blank(next) || indentOf(next) <= base) break;
+    if (blank(next) || indentWidth(next) <= base) break;
     last += 1;
   }
   return { first: n, last };
+}
+
+/** The note's `##` headings outside code fences. */
+export function noteHeadings(lines: readonly string[]): NoteHeading[] {
+  const fences = scanFences(lines);
+  const headings: NoteHeading[] = [];
+  lines.forEach((text, line) => {
+    if (fenceLineKind(fences, line)) return;
+    const match = SECTION_HEADING.exec(text);
+    if (match) headings.push({ line, title: match[1]! });
+  });
+  return headings;
+}
+
+/**
+ * The line after the last text in the section under `heading` (null: above
+ * the first heading), skipping `block`.
+ */
+export function sectionEnd(
+  lines: readonly string[],
+  headings: readonly NoteHeading[],
+  heading: NoteHeading | null,
+  block: LineBlock,
+): number {
+  const start = heading ? heading.line + 1 : 0;
+  const next = headings.find((h) => h.line > (heading?.line ?? -1));
+  const end = next ? next.line - 1 : lines.length - 1;
+  for (let n = end; n >= start; n -= 1) {
+    if (n >= block.first && n <= block.last) continue;
+    if (!blank(lines[n]!)) return n + 1;
+  }
+  return start;
+}
+
+/** Adds `delta` spaces to each line, or takes up to `-delta` of its indent. */
+export function reindent(text: string, delta: number): string {
+  if (delta === 0) return text;
+  return text
+    .split('\n')
+    .map((line) => {
+      if (delta > 0) return line.trim() ? ' '.repeat(delta) + line : line;
+      return line.slice(Math.min(indentWidth(line), -delta));
+    })
+    .join('\n');
+}
+
+const taskLineAt = (
+  lines: readonly string[],
+  n: number,
+): TaskEmbedNesting | undefined =>
+  taskEmbedNesting(lines.join('\n')).find((e) => e.line === n);
+
+/**
+ * The indent that makes the task at `n` a subtask of the task above it at
+ * its level. Null unless that line is a task not under another task, since
+ * subtasks are one level deep.
+ */
+export function taskNestIndent(
+  lines: readonly string[],
+  n: number,
+): number | null {
+  const indent = indentWidth(lines[n]!);
+  let above = n - 1;
+  while (above >= 0 && indentWidth(lines[above]!) > indent) {
+    if (blank(lines[above]!)) return null;
+    above -= 1;
+  }
+  if (above < 0 || indentWidth(lines[above]!) !== indent) return null;
+  const task = taskLineAt(lines, above);
+  return task && !task.nested ? indent + TASK_NEST_WIDTH : null;
+}
+
+/**
+ * The indent a task dropped right under line `above` takes when nested: a
+ * subtask of a top-level task, or a sibling of a subtask. Null when `above`
+ * is not a task line.
+ */
+export function taskDropNestIndent(
+  lines: readonly string[],
+  above: number,
+): number | null {
+  const task = above >= 0 ? taskLineAt(lines, above) : undefined;
+  if (!task) return null;
+  const indent = indentWidth(lines[above]!);
+  return task.nested ? indent : indent + TASK_NEST_WIDTH;
 }
 
 /** The line of the embed for `taskId`; null when the note no longer has it. */
