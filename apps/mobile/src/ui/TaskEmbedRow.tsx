@@ -19,6 +19,9 @@ import type { Subtasks } from '../notebook/useNoteSubtasks';
 import { Icon } from './Icon';
 
 const TITLE_LINE = 24;
+// Longer than iOS's delay before Backspace starts repeating, so a held key
+// that empties the title doesn't go on to delete the task.
+const BACKSPACE_REPEAT_MS = 700;
 
 const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   high: 'High',
@@ -103,6 +106,7 @@ const TitleField = ({
     text: null,
     save: onRename,
   });
+  const lastBackspace = useRef(-Infinity);
 
   useEffect(() => {
     const current = pending.current;
@@ -137,7 +141,10 @@ const TitleField = ({
       onSubmitEditing={onSubmit}
       onKeyPress={(e) => {
         if (e.nativeEvent.key !== 'Backspace' || !onDelete) return;
-        if ((draft ?? title) !== '') return;
+        const now = Date.now();
+        const last = lastBackspace.current;
+        lastBackspace.current = now;
+        if ((draft ?? title) !== '' || now - last < BACKSPACE_REPEAT_MS) return;
         pending.current.text = null;
         onDelete();
       }}
