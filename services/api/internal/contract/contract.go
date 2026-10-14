@@ -44,14 +44,15 @@ type APIMetrics struct {
 }
 
 type API struct {
-	ServiceName             string     `json:"serviceName"`
-	MetricsNamespace        string     `json:"metricsNamespace"`
-	ApexDomain              string     `json:"apexDomain"`
-	ContactPerIPPerHour     int        `json:"contactPerIpPerHour"`
-	SESGlobalDailyCap       int        `json:"sesGlobalDailyCap"`
-	ResumeNotifySESDailyCap int        `json:"resumeNotifySesDailyCap"`
-	MinContactSubmitMs      int64      `json:"minContactSubmitMs"`
-	Metrics                 APIMetrics `json:"metrics"`
+	ServiceName                       string     `json:"serviceName"`
+	MetricsNamespace                  string     `json:"metricsNamespace"`
+	ApexDomain                        string     `json:"apexDomain"`
+	ContactPerIPPerHour               int        `json:"contactPerIpPerHour"`
+	SESGlobalDailyCap                 int        `json:"sesGlobalDailyCap"`
+	ResumeNotifySESDailyCap           int        `json:"resumeNotifySesDailyCap"`
+	MinContactSubmitMs                int64      `json:"minContactSubmitMs"`
+	NotebookImageUploadsPerUserPerDay int        `json:"notebookImageUploadsPerUserPerDay"`
+	Metrics                           APIMetrics `json:"metrics"`
 }
 
 type GSINames struct {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { MEDIA_MAX_BYTES } from '@gagnechris/shared';
+import { NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY } from '@gagnechris/shared/server';
 import { notebookUser } from './support/claims.js';
 import { useApi, type Harness } from './support/harness.js';
 
@@ -108,6 +109,17 @@ describe('POST /api/notebook/images/upload-url', () => {
     expect(url.searchParams.get('X-Amz-SignedHeaders')?.split(';')).toContain(
       'content-length',
     );
+  });
+
+  it('gives each user a daily number of upload URLs', async () => {
+    const body = { contentType: 'image/png', contentLength: 1 };
+    for (let i = 0; i < NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY; i++) {
+      expect((await uploadUrl(local, body, 'busy')).status).toBe(200);
+    }
+    const over = await uploadUrl(local, body, 'busy');
+    expect(over.status).toBe(429);
+    expect(over.body.error).toBe('rate_limited');
+    expect((await uploadUrl(local, body, 'calm')).status).toBe(200);
   });
 
   it('is a Notebook route', async () => {

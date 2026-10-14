@@ -312,11 +312,12 @@ Counter rows (`entityType` `rateLimit`) hold a `count` and expire an hour after
 their window ends (a day for `DAY#` rows). They use non-`PUBLISHED` sort keys, so the publisher stream filter ignores
 them (same as draft `META` rows).
 
-| Purpose               | `pk`                   | `sk`                   | Limit      |
-| --------------------- | ---------------------- | ---------------------- | ---------- |
-| Contact per IP / hour | `RATE#contact#ip#<ip>` | `HOUR#<yyyy-mm-ddTHH>` | 3          |
-| SES emails / UTC day  | `RATE#ses#global`      | `DAY#<yyyy-mm-dd>`     | 100        |
-| Resume notify IP/day  | `RATE#resume#ip#<ip>`  | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
+| Purpose                                 | `pk`                             | `sk`                   | Limit      |
+| --------------------------------------- | -------------------------------- | ---------------------- | ---------- |
+| Contact per IP / hour                   | `RATE#contact#ip#<ip>`           | `HOUR#<yyyy-mm-ddTHH>` | 3          |
+| SES emails / UTC day                    | `RATE#ses#global`                | `DAY#<yyyy-mm-dd>`     | 100        |
+| Resume notify IP/day                    | `RATE#resume#ip#<ip>`            | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
+| Notebook image uploads / user / UTC day | `RATE#notebook-image#user#<sub>` | `DAY#<yyyy-mm-dd>`     | 200        |
 
 ## Removed users
 

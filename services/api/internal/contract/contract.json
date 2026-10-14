@@ -7,6 +7,7 @@
     "sesGlobalDailyCap": 100,
     "resumeNotifySesDailyCap": 50,
     "minContactSubmitMs": 2000,
+    "notebookImageUploadsPerUserPerDay": 200,
     "metrics": {
       "handlerError": "HandlerError",
       "dataIntegrityError": "DataIntegrityError",
@@ -113,6 +114,7 @@
     "dailyTemplateSk()": "META",
     "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
     "rateResumeIpPk({ip})": "RATE#resume#ip#{ip}",
+    "rateNotebookImageUserPk({userId})": "RATE#notebook-image#user#{userId}",
     "rateSesGlobalPk()": "RATE#ses#global",
     "rateHourSk(2026-01-02T23:04:05.678Z)": "HOUR#2026-01-02T23",
     "rateDaySk(2026-01-02T23:04:05.678Z)": "DAY#2026-01-02",

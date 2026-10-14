@@ -692,5 +692,30 @@ describe('stack Template assertions', () => {
     expect(goPolicies).toContain('s3:PutObject');
     expect(goPolicies).toContain('/media/*');
     expect(goPolicies).toContain('cognito-idp:AdminCreateUser');
+    const mediaActions = Object.values(
+      template.findResources('AWS::IAM::Policy'),
+    )
+      .filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes('GoApiFunction'),
+      )
+      .flatMap(
+        (p) =>
+          p.Properties.PolicyDocument.Statement as {
+            Action: string | string[];
+            Resource: unknown;
+          }[],
+      )
+      .filter((st) => JSON.stringify(st.Resource).includes('NotebookMedia'))
+      .flatMap((st) => {
+        expect(JSON.stringify(st.Resource)).toContain('/images/*');
+        return [st.Action].flat();
+      });
+    expect(mediaActions).toContain('s3:GetObject');
+    expect(mediaActions).toContain('s3:PutObject');
+    expect(
+      mediaActions.filter(
+        (a) => /^s3:(Get|List)/.test(a) && a !== 's3:GetObject',
+      ),
+    ).toEqual([]);
   });
 });

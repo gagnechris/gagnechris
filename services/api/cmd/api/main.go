@@ -83,7 +83,7 @@ func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Co
 	routes = append(routes, notebook.Routes(table, nil)...)
 	routes = append(routes, users.Routes(userDeps)...)
 	presign := s3.NewPresignClient(s3.NewFromConfig(cfg))
-	routes = append(routes, noteimages.Routes(presign, conf.images, nil)...)
+	routes = append(routes, noteimages.Routes(presign, table, conf.images, nil)...)
 	return append(routes, media.Routes(presign, conf.media, nil)...)
 }
 

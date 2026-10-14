@@ -137,6 +137,8 @@ func RateContactIPPk(ip string) string { return "RATE#contact#ip#" + ip }
 
 func RateResumeIPPk(ip string) string { return "RATE#resume#ip#" + ip }
 
+func RateNotebookImageUserPk(userID string) string { return "RATE#notebook-image#user#" + userID }
+
 func RateSESGlobalPk() string { return "RATE#ses#global" }
 
 func RateHourSk(at time.Time) string { return "HOUR#" + at.UTC().Format("2006-01-02T15") }

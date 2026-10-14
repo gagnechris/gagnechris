@@ -58,6 +58,7 @@ func TestKeysMatchTheTypeScriptBuilders(t *testing.T) {
 		"dailyTemplateSk()":                              DailyTemplateSk(),
 		"rateContactIpPk({ip})":                          RateContactIPPk("{ip}"),
 		"rateResumeIpPk({ip})":                           RateResumeIPPk("{ip}"),
+		"rateNotebookImageUserPk({userId})":              RateNotebookImageUserPk("{userId}"),
 		"rateSesGlobalPk()":                              RateSESGlobalPk(),
 		"rateHourSk(" + keyTime + ")":                    RateHourSk(at),
 		"rateDaySk(" + keyTime + ")":                     RateDaySk(at),
