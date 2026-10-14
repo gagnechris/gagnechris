@@ -64,7 +64,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 - **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com` and `notebook.gagnechris.com`, one distribution each. Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4, only in the production public build (`GA_MEASUREMENT_ID`, set by `scripts/deploy-web.sh`); local, preview and e2e builds load no GA
-- **Node**: requires Node.js 22.12+ (see `.nvmrc`)
+- **Node**: requires Node.js 22.22.2+ (see `.nvmrc`)
 - **Go**: the version in `services/api/go.mod`; any Go 1.21+ fetches it (`GOTOOLCHAIN=auto`). CDK synth compiles the Go Lambdas and the local stack, e2e and HTTP suite build the Go API, so all of them need Go
 
 ## Code Style Guidelines

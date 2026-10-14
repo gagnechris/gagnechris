@@ -136,15 +136,14 @@ upload_fonts "${DIST}" "${BUCKET}"
 
 # Excludes protect keys this sync doesn't own from --delete: the publisher's
 # output (generated from its targets), hashed assets and fonts uploaded above,
-# admin media and the reserved notebook/ prefix. Anything else the public
-# build doesn't produce is deleted. .vite/ is the build manifest
-# check:web-shells reads; it is not part of the site.
+# and admin media. Anything else the public build doesn't produce is deleted.
+# .vite/ is the build manifest check:web-shells reads; it is not part of the
+# site.
 SYNC_EXCLUDES=(
   --exclude ".vite/*"
   --exclude "assets/*"
   --exclude "fonts/*.woff2"
   --exclude "media/*"
-  --exclude "notebook/*"
 )
 while IFS= read -r pattern; do
   [[ -z "${pattern}" || "${pattern}" == \#* ]] && continue

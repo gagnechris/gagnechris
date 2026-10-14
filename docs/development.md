@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** 22.12+ (see `.nvmrc`; `.npmrc` sets `engine-strict=true`)
+- **Node.js** 22.22.2+ (see `.nvmrc`; `.npmrc` sets `engine-strict=true`)
 - **npm** (workspaces)
 - **Go** 1.21+ (it downloads the exact version in `services/api/go.mod`); CDK synth and the infra tests compile the Go Lambdas
 - **Docker** for DynamoDB Local (`npm run local:dev`, `e2e:local`, `e2e:browser`)
@@ -21,14 +21,16 @@ npm ci --prefix apps/mobile
 
 `.claude/hooks/session-start.sh` runs at the start of each cloud session (it
 exits immediately on a local machine). It installs the Node version from
-`.nvmrc` with nvm, puts it first on `PATH` for the session, then installs root
-dependencies and `apps/mobile` dependencies, then downloads the Go toolchain
-and modules for `services/api/`. Lint, typecheck, `npm test`, the Go gates and the mobile
-tests work without further setup.
-
-Docker isn't running when a cloud session starts. `npm run local:dev`,
-`e2e:local`, `e2e:browser` and `test:integration` need it: start the daemon
-with `(dockerd >/tmp/dockerd.log 2>&1 &)` first.
+`.nvmrc` with nvm and puts it first on `PATH` for the session, installs root
+dependencies (`npm install`, without Playwright browser downloads) and
+`apps/mobile` dependencies (`npm ci`), downloads the Go toolchain and modules
+for `services/api/` and its tools, installs `rsync` if it is missing (the
+scripts tests and `seed-shell` need it), starts the Docker daemon (logging to
+`/var/log/dockerd.log`) and sets `E2E_CHROMIUM_EXECUTABLE` to the image's
+Chromium at `/opt/pw-browsers/chromium`. Lint, typecheck, `npm test`, the Go
+gates, the mobile tests, `npm run local:dev`, `test:integration` and the
+Chromium e2e projects work without further setup; the session has no WebKit
+([local-e2e.md](./local-e2e.md#browser-tests-playwright)).
 
 Linear is reached through the claude.ai Linear connector, which must be
 enabled for the project or session; the repository holds no Linear

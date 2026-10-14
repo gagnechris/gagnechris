@@ -264,7 +264,6 @@ describe('deploy-web.sh', () => {
         'assets/*',
         'fonts/*.woff2',
         'media/*',
-        'notebook/*',
         ...publisherOwnedPaths(),
       ].sort(),
     );
@@ -274,6 +273,7 @@ describe('deploy-web.sh', () => {
       'manifest.json',
       'icons/apple-touch-icon.png',
       'icons/icon-192.png',
+      'notebook/x.png',
     ]) {
       expect(excluded(key), key).toBe(false);
     }

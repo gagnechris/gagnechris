@@ -5,7 +5,7 @@ Run the Blog CMS API + publisher against **DynamoDB Local** and a filesystem sit
 ## Prerequisites
 
 - Docker (for DynamoDB Local)
-- Node.js 22.12+ (see `.nvmrc`)
+- Node.js 22.22.2+ (see `.nvmrc`)
 - Repo dependencies: `npm ci`
 
 ## Publish lifecycle smoke
