@@ -350,6 +350,8 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   position: fixed;
   z-index: 60;
   box-sizing: border-box;
+  /* The padding is outside the row's own box, so the clone lands on it. */
+  margin-left: calc(-1 * var(--space-2));
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
   background: white;
@@ -360,7 +362,8 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 
 .task-drop-indicator {
   position: fixed;
-  z-index: 59;
+  /* Over the ghost, which often sits on the drop point. */
+  z-index: 61;
   height: 2px;
   border-radius: 1px;
   background: var(--primary-500);
@@ -985,6 +988,13 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 .markdown-single--notebook .cm-task-embed {
   font-size: var(--text-base);
   line-height: var(--line-normal, 1.5);
+}
+
+/* Room left of the text for the task rows' drag grip, inside the border. */
+@media (hover: hover) {
+  .markdown-single--notebook .cm-live .cm-content {
+    padding-left: 1.5rem;
+  }
 }
 
 .markdown-editor .cm-md-image {
