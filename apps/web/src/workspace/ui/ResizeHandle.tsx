@@ -8,6 +8,8 @@ import {
 } from 'react';
 
 const STEP = 16;
+// How far past the minimum a drag must go before it collapses the panel.
+const COLLAPSE_PAST = 80;
 
 type Props = {
   label: string;
@@ -20,6 +22,8 @@ type Props = {
   /** Which edge of the target the handle sits on. */
   edge: 'left' | 'right';
   onChange: (width: number | null) => void;
+  /** Dragging well past the minimum, or shrinking from it by key, calls this. */
+  onCollapse?: () => void;
 };
 
 /** A drag handle on a panel's edge; arrows nudge it, double-click resets it. */
@@ -32,8 +36,13 @@ export function ResizeHandle({
   max,
   edge,
   onChange,
+  onCollapse,
 }: Props) {
-  const drag = useRef<{ x: number; width: number } | null>(null);
+  const drag = useRef<{
+    x: number;
+    width: number;
+    initial: number | null;
+  } | null>(null);
   const sign = edge === 'right' ? 1 : -1;
   const current = () =>
     width ?? target.current?.getBoundingClientRect().width ?? min;
@@ -56,12 +65,23 @@ export function ResizeHandle({
     if (e.button !== 0) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { x: e.clientX, width: current() };
+    drag.current = { x: e.clientX, width: current(), initial: width };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     const start = drag.current;
     if (!start) return;
-    onChange(start.width + sign * (e.clientX - start.x));
+    const next = start.width + sign * (e.clientX - start.x);
+    if (onCollapse && next < min - COLLAPSE_PAST) {
+      drag.current = null;
+      if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+      // Reopening shows the panel at the width it had before this drag.
+      onChange(start.initial);
+      onCollapse();
+      return;
+    }
+    onChange(next);
   };
   const endDrag = () => {
     drag.current = null;
@@ -70,7 +90,12 @@ export function ResizeHandle({
     const dir = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : null;
     if (dir === null) return;
     e.preventDefault();
-    onChange(current() + sign * dir * STEP);
+    const next = current() + sign * dir * STEP;
+    if (onCollapse && next < min && Math.round(current()) <= min) {
+      onCollapse();
+      return;
+    }
+    onChange(next);
   };
 
   return (
