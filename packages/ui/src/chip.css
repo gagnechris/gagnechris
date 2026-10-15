@@ -1,0 +1,112 @@
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  height: 26px;
+  max-width: 100%;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-chip__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ui-chip--neutral {
+  background: var(--neutral-100);
+  color: var(--neutral-700);
+}
+
+.ui-chip--selected {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-800);
+}
+
+.ui-chip--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.ui-chip--danger {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.ui-chip--outline {
+  border-color: var(--neutral-300);
+  background: white;
+  color: var(--neutral-700);
+}
+
+.ui-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+
+.ui-chip__icon {
+  display: inline-flex;
+}
+
+.ui-chip__icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ui-chip--button {
+  cursor: pointer;
+}
+
+.ui-chip--button:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.ui-chip--button:focus-visible,
+.ui-chip__remove:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.ui-chip--button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ui-chip__remove:hover {
+  background: rgb(0 0 0 / 0.08);
+}
+
+.ui-chip-select--empty {
+  color: var(--neutral-500);
+}
+
+.ui-chip-select__chevron {
+  margin-right: -2px;
+  color: var(--neutral-500);
+}

@@ -1,0 +1,106 @@
+.ui-check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--neutral-800);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.ui-check__input {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(-50%);
+  cursor: inherit;
+}
+
+.ui-check__box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--neutral-400);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: white;
+}
+
+.ui-check--round .ui-check__box {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+}
+
+.ui-check__mark,
+.ui-check__dash {
+  display: none;
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+
+.ui-check:hover .ui-check__box {
+  border-color: var(--neutral-600);
+}
+
+.ui-check__input:checked + .ui-check__box,
+.ui-check__input:indeterminate + .ui-check__box {
+  border-color: var(--primary-600);
+  background: var(--primary-600);
+}
+
+.ui-check__input:checked + .ui-check__box .ui-check__mark,
+.ui-check__input:indeterminate:not(:checked) + .ui-check__box .ui-check__dash {
+  display: block;
+}
+
+.ui-check--dropped .ui-check__box {
+  border-color: var(--neutral-400);
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+}
+
+.ui-check--dropped
+  .ui-check__input:not(:checked)
+  + .ui-check__box
+  .ui-check__dash {
+  display: block;
+}
+
+.ui-check--round .ui-check__input:checked ~ .ui-check__label,
+.ui-check--dropped .ui-check__label {
+  color: var(--neutral-500);
+  text-decoration: line-through;
+}
+
+.ui-check__input:focus-visible + .ui-check__box {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.ui-check--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .ui-check {
+    min-height: 44px;
+  }
+
+  .ui-check__input {
+    width: 44px;
+    height: 44px;
+    left: -12px;
+  }
+}

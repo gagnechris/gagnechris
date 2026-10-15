@@ -1,0 +1,17 @@
+.ui-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 4px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.ui-toolbar__separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--neutral-200);
+}

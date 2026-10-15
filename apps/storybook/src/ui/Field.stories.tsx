@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Field, Select, TextArea, TextInput } from '@gagnechris/ui';
+import { Field, TextInput } from '@gagnechris/ui';
 import { catalog } from '../catalog';
 
 const meta = {
@@ -7,7 +7,7 @@ const meta = {
   component: Field,
   parameters: catalog(
     'none; screens use React Native `TextInput` directly',
-    'A labelled form control with an optional hint. `TextInput`, `TextArea` and `Select` share the `.kit-input` look.',
+    'Labels one control and describes it by its hint. An `error` replaces the hint, and the control gets `aria-invalid` and `aria-describedby`. `tone="editorial"` is the public contact form look. The controls have their own entries.',
   ),
   args: { label: 'Title', children: null },
 } satisfies Meta<typeof Field>;
@@ -30,41 +30,28 @@ export const WithHint: Story = {
   },
 };
 
-export const WithTextArea: Story = {
+export const WithError: Story = {
   args: {
-    label: 'Summary',
-    fullWidth: true,
-    children: (
-      <TextArea
-        rows={4}
-        defaultValue="One library of components shared by Admin, Notebook and the public site."
-      />
-    ),
+    label: 'Slug',
+    hint: 'Lowercase letters, numbers and dashes.',
+    error: 'That slug is taken.',
+    children: <TextInput defaultValue="hello-world" />,
   },
 };
 
-export const WithSelect: Story = {
+export const Editorial: Story = {
   args: {
-    label: 'Area',
-    children: (
-      <Select defaultValue="work">
-        <option value="work">Work</option>
-        <option value="home">Home</option>
-      </Select>
-    ),
+    label: 'Email',
+    tone: 'editorial',
+    children: <TextInput type="email" placeholder="you@example.com" />,
   },
 };
 
-export const Disabled: Story = {
+export const EditorialWithError: Story = {
   args: {
-    label: 'Created',
-    children: <TextInput disabled defaultValue="Oct 15, 2026" />,
-  },
-};
-
-export const Placeholder: Story = {
-  args: {
-    label: 'Search',
-    children: <TextInput placeholder="Search notes" />,
+    label: 'Email',
+    tone: 'editorial',
+    error: 'Enter an email address.',
+    children: <TextInput type="email" defaultValue="chris@" />,
   },
 };

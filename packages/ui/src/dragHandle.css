@@ -1,0 +1,36 @@
+.ui-drag-handle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: grab;
+  touch-action: none;
+}
+
+.ui-drag-handle:hover {
+  color: var(--neutral-600);
+}
+
+.ui-drag-handle:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.ui-drag-handle--grabbed {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  cursor: grabbing;
+}
+
+@media (max-width: 767px) {
+  .ui-drag-handle {
+    height: 44px;
+  }
+}

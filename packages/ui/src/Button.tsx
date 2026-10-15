@@ -3,37 +3,51 @@ import type {
   ButtonHTMLAttributes,
   ReactNode,
 } from 'react';
+import { cx, type ControlSize, type Tone } from './cx.js';
 
-type Variant = 'default' | 'primary' | 'danger';
+type Variant = 'default' | 'primary' | 'danger' | 'ghost' | 'link';
 
-type ButtonAsButton = ButtonHTMLAttributes<HTMLButtonElement> & {
+type Common = {
   variant?: Variant;
-  href?: undefined;
+  size?: ControlSize;
+  /** The public site's look: taller, rounder, `--color-link` primary. */
+  tone?: Tone;
   children: ReactNode;
 };
 
-type ButtonAsLink = AnchorHTMLAttributes<HTMLAnchorElement> & {
-  variant?: Variant;
-  href: string;
-  children: ReactNode;
-};
+type ButtonAsButton = ButtonHTMLAttributes<HTMLButtonElement> &
+  Common & {
+    href?: undefined;
+    /** Shows a spinner and sets `aria-busy`; the button stays focusable. */
+    loading?: boolean;
+  };
+
+type ButtonAsLink = AnchorHTMLAttributes<HTMLAnchorElement> &
+  Common & {
+    href: string;
+    loading?: undefined;
+  };
 
 type Props = ButtonAsButton | ButtonAsLink;
 
-const variantClass: Record<Variant, string> = {
-  default: 'kit-btn',
-  primary: 'kit-btn kit-btn--primary',
-  danger: 'kit-btn kit-btn--danger',
-};
-
-export function Button({
+export const Button = ({
   variant = 'default',
+  size = 'md',
+  tone = 'default',
   href,
+  loading,
   className,
   children,
   ...rest
-}: Props) {
-  const classes = [variantClass[variant], className].filter(Boolean).join(' ');
+}: Props) => {
+  const classes = cx(
+    'kit-btn',
+    variant !== 'default' && `kit-btn--${variant}`,
+    size !== 'md' && `kit-btn--${size}`,
+    tone === 'editorial' && 'kit-btn--editorial',
+    loading && 'kit-btn--loading',
+    className,
+  );
 
   if (href) {
     const anchorRest = rest as AnchorHTMLAttributes<HTMLAnchorElement>;
@@ -44,11 +58,23 @@ export function Button({
     );
   }
 
-  const { type = 'button', ...buttonRest } =
-    rest as ButtonHTMLAttributes<HTMLButtonElement>;
+  const {
+    type = 'button',
+    onClick,
+    ...buttonRest
+  } = rest as ButtonHTMLAttributes<HTMLButtonElement>;
   return (
-    <button type={type} className={classes} {...buttonRest}>
+    <button
+      type={type}
+      className={classes}
+      aria-busy={loading || undefined}
+      onClick={loading ? (e) => e.preventDefault() : onClick}
+      {...buttonRest}
+    >
+      {loading ? (
+        <span className="kit-btn__spinner" aria-hidden="true" />
+      ) : null}
       {children}
     </button>
   );
-}
+};

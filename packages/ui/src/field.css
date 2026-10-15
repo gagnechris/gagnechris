@@ -1,6 +1,8 @@
 .kit-input {
+  box-sizing: border-box;
   flex: 1 1 10rem;
   min-width: 8rem;
+  min-height: 36px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--neutral-300);
   border-radius: var(--radius-md);
@@ -9,9 +11,168 @@
   color: inherit;
 }
 
+.kit-input::placeholder,
+.kit-input-group__control::placeholder {
+  color: var(--color-placeholder);
+}
+
+.kit-input:hover:not(:disabled, :focus, :focus-within) {
+  border-color: var(--neutral-400);
+}
+
+.kit-input:focus,
+.kit-input-group:focus-within {
+  outline: none;
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.kit-input:disabled,
+.kit-input-group:has(:disabled) {
+  background: var(--neutral-100);
+  color: var(--neutral-500);
+}
+
+.kit-input--invalid,
+.kit-input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.kit-input--sm {
+  min-height: 32px;
+  padding-block: var(--space-1);
+}
+
+.kit-input--lg {
+  min-height: 44px;
+}
+
+.kit-input-group {
+  display: inline-flex;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+.kit-input-group__prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-right: 1px solid var(--neutral-200);
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.kit-input-group__control {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+}
+
+.kit-input-group__control:focus {
+  outline: none;
+}
+
 .kit-textarea {
   resize: vertical;
   width: 100%;
+}
+
+.kit-textarea--grow {
+  resize: none;
+}
+
+select.kit-select {
+  appearance: none;
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.625rem center;
+  background-repeat: no-repeat;
+  background-size: 14px;
+}
+
+.kit-date,
+.kit-search-input {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 10rem;
+  min-width: 8rem;
+}
+
+.kit-date__input,
+.kit-search-input__control {
+  width: 100%;
+}
+
+.kit-date__input {
+  padding-right: 2.25rem;
+}
+
+.kit-date__input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0;
+  width: 2.25rem;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.kit-date__icon,
+.kit-search-input__icon {
+  position: absolute;
+  top: 50%;
+  color: var(--neutral-500);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.kit-date__icon {
+  right: var(--space-3);
+}
+
+.kit-search-input__icon {
+  left: var(--space-3);
+}
+
+.kit-search-input__control {
+  padding-left: 2.25rem;
+  padding-right: 2.25rem;
+}
+
+.kit-search-input__control::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.kit-search-input__clear {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--neutral-500);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.kit-search-input__clear:hover {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.kit-search-input__clear:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
 }
 
 .kit-field {
@@ -33,6 +194,18 @@
   color: var(--neutral-500);
 }
 
+.kit-field > .kit-hint {
+  margin-top: 0;
+  font-size: var(--text-caption);
+  font-weight: 400;
+}
+
+.kit-field__error {
+  font-size: var(--text-caption);
+  font-weight: 500;
+  color: var(--color-error);
+}
+
 .kit-hint code {
   font-family: var(--font-mono);
   font-size: 0.9em;
@@ -42,9 +215,45 @@
   border-radius: var(--radius-sm);
 }
 
-/* Phones: iOS Safari zooms into a focused field under 16px. */
+.kit-field--editorial {
+  gap: 6px;
+  color: var(--neutral-700);
+}
+
+.kit-field--editorial .kit-field__error {
+  font-size: var(--text-sm);
+}
+
+.kit-input--editorial {
+  min-height: 48px;
+  padding: 11px 14px;
+  border-color: var(--neutral-500);
+  border-radius: var(--radius-editorial);
+  font-size: var(--text-base);
+}
+
+.kit-input--editorial:focus,
+.kit-input--editorial.kit-input-group:focus-within {
+  border-color: var(--color-link);
+  box-shadow: none;
+  outline: 2px solid var(--color-link);
+  outline-offset: 0;
+}
+
+.kit-input--editorial.kit-input--invalid,
+.kit-input--editorial[aria-invalid='true'] {
+  border-color: var(--color-error);
+  box-shadow: inset 0 0 0 1px var(--color-error);
+}
+
+/* Phones: iOS Safari zooms into a focused field under 16px, and a finger needs 44px. */
 @media (max-width: 767px) {
-  .kit-input {
+  .kit-input,
+  .kit-input-group__control {
     font-size: max(16px, 1em);
+  }
+
+  .kit-input:not(textarea) {
+    min-height: 44px;
   }
 }

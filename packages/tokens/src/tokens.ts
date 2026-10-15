@@ -131,6 +131,7 @@ export const tokens = {
     sm: 4,
     md: 8,
     lg: 16,
+    editorial: 10,
     full: 9999,
   },
   breakpoint,
