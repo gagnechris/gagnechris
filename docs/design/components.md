@@ -14,49 +14,52 @@ Small, app-agnostic building blocks. Shared web primitives live in
 more sit in `apps/web/src/workspace/ui`. iOS primitives live in
 `apps/mobile/src/ui`.
 
-| Component        | Web                                                                                                              | Used by         | iOS counterpart                                                   |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------- |
-| Button           | `@gagnechris/ui` `Button` (`default`, `primary`, `danger`, `ghost`, `link`; `sm`, `md`, `lg`; `loading`; `href`) | Admin, Notebook | `ui/Button.tsx` (`primary`, `secondary`)                          |
-| IconButton       | `@gagnechris/ui` `IconButton` (`ghost`, `outline`, `danger`; `sm`, `md`, `lg`; `pressed`, `count`)               | Admin, Notebook | none (screens use `Pressable` + `Icon`)                           |
-| Field            | `@gagnechris/ui` `Field` (label, hint, `error`)                                                                  | Admin, Notebook | none; screens use `TextInput` directly                            |
-| Text inputs      | `@gagnechris/ui` `TextInput` (`prefix`), `TextArea` (grows to 12 lines), `Select`, `DateInput`, `SearchInput`    | Admin, Notebook | `ui/SearchField.tsx` for search                                   |
-| FileInput        | `@gagnechris/ui` `FileInput` (drop zone, upload progress)                                                        | Admin           | none                                                              |
-| Combobox         | `@gagnechris/ui` `Combobox`                                                                                      | Notebook        | none                                                              |
-| Checkbox         | `@gagnechris/ui` `Checkbox` (`square` with a mixed state; `round` for tasks, with `dropped`)                     | Admin, Notebook | check inside `ui/TaskRow.tsx`                                     |
-| RadioCardGroup   | `@gagnechris/ui` `RadioCardGroup`                                                                                | Admin           | none                                                              |
-| Chip             | `@gagnechris/ui` `Chip` (`neutral`, `selected`, `warning`, `danger`), `ChipSelect`                               | Notebook        | `ui/AreaChip.tsx`                                                 |
-| Tabs             | `@gagnechris/ui` `Tabs` (`end` slot)                                                                             | Notebook        | `ui/SpaceTabs.tsx`                                                |
-| Menu             | `@gagnechris/ui` `Menu`, `MenuItem`, `MenuRadioGroup`, `MenuGroup`, `MenuSeparator`                              | Admin, Notebook | `ActionSheetIOS` (`ui/AreaChip.tsx`, `notebook/taskActionSheets`) |
-| Dialog, Drawer   | `@gagnechris/ui` `Dialog` (`sm`, `md`, `lg`), `Drawer`; both open as a BottomSheet under 768px                   | Admin           | modal screens in `apps/mobile/app/`                               |
-| Scrim            | `@gagnechris/ui` `Scrim`                                                                                         | Admin, Notebook | n/a                                                               |
-| StatusBadge      | `@gagnechris/ui` `StatusBadge` (`draft`, `published`, `unpublished`, `deleted`)                                  | Admin           | none                                                              |
-| BottomSheet      | `@gagnechris/ui` `BottomSheet`                                                                                   | Admin           | none                                                              |
-| Card             | `@gagnechris/ui` `Card` (`boxed`, `flat`; `compact`, `selected`, interactive with `href` or `onClick`)           | none yet        | `Card` in `site/ui.tsx`, `ui/AccountCard.tsx`                     |
-| ListRow          | `@gagnechris/ui` `List`, `ListRow`                                                                               | Admin, Notebook | `ui/Row.tsx`                                                      |
-| Toolbar          | `@gagnechris/ui` `Toolbar`, `ToolbarSeparator`                                                                   | Admin, Notebook | keyboard toolbar in `ui/LiveMarkdownInput.tsx`                    |
-| DragHandle       | `@gagnechris/ui` `DragHandle`                                                                                    | Admin           | `ui/DragGrip.tsx`                                                 |
-| EmptyState       | `@gagnechris/ui` `EmptyState`                                                                                    | none yet        | `ui/EmptyState.tsx`                                               |
-| Chips input      | `@gagnechris/ui` `ChipsInput` (a Chip per item)                                                                  | Admin           | none                                                              |
-| Confirm dialog   | `@gagnechris/ui` `ConfirmDialog`, mounted by `workspace/ui/ConfirmDialogHost.tsx`                                | Admin, Notebook | `ui/confirm.ts` (native alert)                                    |
-| SegmentedRadio   | `@gagnechris/ui` `SegmentedRadio`                                                                                | Admin, Notebook | `ui/SegmentedControl.tsx`                                         |
-| Search palette   | `workspace/ui/SearchPalette.tsx`                                                                                 | Admin, Notebook | `ui/SearchField.tsx` (field only)                                 |
-| Icon             | `workspace/ui/ShellIcon.tsx` (shell icons only; other icons are inline SVG)                                      | Admin, Notebook | `ui/Icon.tsx`                                                     |
-| Panel edge       | `workspace/ui/PanelEdge.tsx`                                                                                     | Notebook        | web only                                                          |
-| Resize handle    | `workspace/ui/ResizeHandle.tsx`                                                                                  | Notebook        | web only                                                          |
-| Save indicator   | `workspace/ui/SaveIndicator.tsx`                                                                                 | Notebook        | none                                                              |
-| Editor actions   | `workspace/ui/EditorActionBar.tsx`                                                                               | Admin           | screen header buttons                                             |
-| Repeater         | `workspace/ui/Repeater.tsx`                                                                                      | Admin           | none                                                              |
-| Row actions menu | `admin/PostRowActions.tsx` (`Menu` from an `IconButton`)                                                         | Admin           | `ui/SwipeRow.tsx`                                                 |
-| Table, list      | `.kit-table`, `.kit-list` CSS only                                                                               | Admin           | `ui/Row.tsx`, `ui/Section.tsx`                                    |
-| Hooks            | `@gagnechris/ui` `useModalDialog`, `useDismiss`, `useTabs`; `kit/useMediaQuery.ts`, `kit/useDebouncedValue.ts`   | Admin, Notebook | n/a                                                               |
+| Component        | Web                                                                                                              | Used by                      | iOS counterpart                                                   |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------- |
+| Button           | `@gagnechris/ui` `Button` (`default`, `primary`, `danger`, `ghost`, `link`; `sm`, `md`, `lg`; `loading`; `href`) | Admin, Notebook, public site | `ui/Button.tsx` (`primary`, `secondary`)                          |
+| IconButton       | `@gagnechris/ui` `IconButton` (`ghost`, `outline`, `danger`; `sm`, `md`, `lg`; `pressed`, `count`)               | Admin, Notebook, public site | none (screens use `Pressable` + `Icon`)                           |
+| Field            | `@gagnechris/ui` `Field` (label, hint, `error`)                                                                  | Admin, Notebook, public site | none; screens use `TextInput` directly                            |
+| Text inputs      | `@gagnechris/ui` `TextInput` (`prefix`), `TextArea` (grows to 12 lines), `Select`, `DateInput`, `SearchInput`    | Admin, Notebook, public site | `ui/SearchField.tsx` for search                                   |
+| FileInput        | `@gagnechris/ui` `FileInput` (drop zone, upload progress)                                                        | Admin                        | none                                                              |
+| Combobox         | `@gagnechris/ui` `Combobox`                                                                                      | Notebook                     | none                                                              |
+| Checkbox         | `@gagnechris/ui` `Checkbox` (`square` with a mixed state; `round` for tasks, with `dropped`)                     | Admin, Notebook              | check inside `ui/TaskRow.tsx`                                     |
+| RadioCardGroup   | `@gagnechris/ui` `RadioCardGroup`                                                                                | Admin                        | none                                                              |
+| Chip             | `@gagnechris/ui` `Chip` (`neutral`, `selected`, `warning`, `danger`), `ChipSelect`                               | Notebook                     | `ui/AreaChip.tsx`                                                 |
+| Tabs             | `@gagnechris/ui` `Tabs` (`end` slot)                                                                             | Notebook                     | `ui/SpaceTabs.tsx`                                                |
+| Menu             | `@gagnechris/ui` `Menu`, `MenuItem`, `MenuRadioGroup`, `MenuGroup`, `MenuSeparator`                              | Admin, Notebook              | `ActionSheetIOS` (`ui/AreaChip.tsx`, `notebook/taskActionSheets`) |
+| Dialog, Drawer   | `@gagnechris/ui` `Dialog` (`sm`, `md`, `lg`), `Drawer`; both open as a BottomSheet under 768px                   | Admin                        | modal screens in `apps/mobile/app/`                               |
+| Scrim            | `@gagnechris/ui` `Scrim`                                                                                         | Admin, Notebook              | n/a                                                               |
+| StatusBadge      | `@gagnechris/ui` `StatusBadge` (`draft`, `published`, `unpublished`, `deleted`)                                  | Admin                        | none                                                              |
+| BottomSheet      | `@gagnechris/ui` `BottomSheet`                                                                                   | Admin                        | none                                                              |
+| Card             | `@gagnechris/ui` `Card` (`boxed`, `flat`; `compact`, `selected`, interactive with `href` or `onClick`)           | public site                  | `Card` in `site/ui.tsx`, `ui/AccountCard.tsx`                     |
+| ListRow          | `@gagnechris/ui` `List`, `ListRow`                                                                               | Admin, Notebook              | `ui/Row.tsx`                                                      |
+| Toolbar          | `@gagnechris/ui` `Toolbar`, `ToolbarSeparator`                                                                   | Admin, Notebook              | keyboard toolbar in `ui/LiveMarkdownInput.tsx`                    |
+| DragHandle       | `@gagnechris/ui` `DragHandle`                                                                                    | Admin                        | `ui/DragGrip.tsx`                                                 |
+| EmptyState       | `@gagnechris/ui` `EmptyState`                                                                                    | none yet                     | `ui/EmptyState.tsx`                                               |
+| Chips input      | `@gagnechris/ui` `ChipsInput` (a Chip per item)                                                                  | Admin                        | none                                                              |
+| Confirm dialog   | `@gagnechris/ui` `ConfirmDialog`, mounted by `workspace/ui/ConfirmDialogHost.tsx`                                | Admin, Notebook              | `ui/confirm.ts` (native alert)                                    |
+| SegmentedRadio   | `@gagnechris/ui` `SegmentedRadio`                                                                                | Admin, Notebook              | `ui/SegmentedControl.tsx`                                         |
+| Search palette   | `workspace/ui/SearchPalette.tsx`                                                                                 | Admin, Notebook              | `ui/SearchField.tsx` (field only)                                 |
+| Icon             | `workspace/ui/ShellIcon.tsx` (shell icons only; other icons are inline SVG)                                      | Admin, Notebook              | `ui/Icon.tsx`                                                     |
+| Panel edge       | `workspace/ui/PanelEdge.tsx`                                                                                     | Notebook                     | web only                                                          |
+| Resize handle    | `workspace/ui/ResizeHandle.tsx`                                                                                  | Notebook                     | web only                                                          |
+| Save indicator   | `workspace/ui/SaveIndicator.tsx`                                                                                 | Notebook                     | none                                                              |
+| Editor actions   | `workspace/ui/EditorActionBar.tsx`                                                                               | Admin                        | screen header buttons                                             |
+| Repeater         | `workspace/ui/Repeater.tsx`                                                                                      | Admin                        | none                                                              |
+| Row actions menu | `admin/PostRowActions.tsx` (`Menu` from an `IconButton`)                                                         | Admin                        | `ui/SwipeRow.tsx`                                                 |
+| Table, list      | `.kit-table`, `.kit-list` CSS only                                                                               | Admin                        | `ui/Row.tsx`, `ui/Section.tsx`                                    |
+| Hooks            | `@gagnechris/ui` `useModalDialog`, `useDismiss`, `useTabs`; `kit/useMediaQuery.ts`, `kit/useDebouncedValue.ts`   | Admin, Notebook              | n/a                                                               |
 
 `tone="editorial"` on Button, IconButton, Field, TextInput and Card gives the
-public site's look (see Editorial variants below).
+public site's look (see Editorial variants below). The public site loads only
+the stylesheets of the components it uses (`@gagnechris/ui/button.css` and so
+on, from `apps/web/src/public.css`); Admin and Notebook load
+`@gagnechris/ui/styles.css`.
 
 iOS primitives with no web component: `ui/Screen.tsx`, `ui/DragScroll.tsx`,
 `ui/AccountCard.tsx`, `ui/YourApps.tsx`.
 
-The public site uses none of the primitives above yet.
+The public site uses Button, IconButton, Field, TextInput, TextArea and Card.
 
 ## Feature components
 
@@ -81,18 +84,19 @@ catalog.
 ## Public page components
 
 `packages/public-ui` holds the public page bodies, rendered by the publisher
-and hydrated in the browser. Their styles are per page in `apps/web/src/pages`,
+and hydrated in the browser. They are built on the editorial library
+components; page layout styles are per page in `apps/web/src/pages`,
 `apps/web/src/projects`, `apps/web/src/home` and `apps/web/src/public.css`.
 
-| Component                | Source                                                                        | Styles                                                                   |
-| ------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Site header, nav, footer | `public-ui/src/chrome/SiteChrome.tsx`, `apps/web/src/components/SiteMenu.tsx` | `public.css` (`.site-header`, `.site-nav`, `.site-menu`, `.site-footer`) |
-| Project card, preview    | `public-ui/src/projects/ProjectCard.tsx`, `ProjectPreview.tsx`                | `projects/ProjectCard.css`, `ProjectPreview.css`                         |
-| Post list row            | `public-ui/src/posts/PostsIndexBody.tsx`, `home/HomeBody.tsx`                 | `pages/PostsIndex.css`, `home/homeSections.css`                          |
-| Post page, reading bar   | `public-ui/src/posts/PostPageBody.tsx`, `apps/web/src/pages/ReadingBar.tsx`   | `pages/PostPage.css`                                                     |
-| Resume                   | `public-ui/src/resume/ResumePageBody.tsx`                                     | `pages/Resume.css`                                                       |
-| Contact form             | `public-ui/src/pages/ContactPageBody.tsx`, `apps/web/src/pages/Contact.tsx`   | `pages/Contact.css`                                                      |
-| Not found                | `public-ui/src/pages/NotFoundBody.tsx`                                        | `public.css`                                                             |
+| Component                | Source                                                                                                                             | Styles                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Site header, nav, footer | `public-ui/src/chrome/SiteChrome.tsx`, `apps/web/src/components/SiteMenu.tsx`                                                      | `public.css` (`.site-header`, `.site-nav`, `.site-menu`, `.site-footer`) |
+| Project card, preview    | editorial `Card` in `public-ui/src/projects/ProjectCard.tsx`, `ProjectPreview.tsx`                                                 | `projects/ProjectCard.css`, `ProjectPreview.css`                         |
+| Post list row            | editorial `Card` in `public-ui/src/posts/PostsIndexBody.tsx`, `home/HomeBody.tsx`                                                  | `pages/PostsIndex.css`, `home/homeSections.css`                          |
+| Post page, reading bar   | `public-ui/src/posts/PostPageBody.tsx`, `apps/web/src/pages/ReadingBar.tsx` (editorial `IconButton`)                               | `pages/PostPage.css`                                                     |
+| Resume                   | `public-ui/src/resume/ResumePageBody.tsx` (Download PDF is a `Button` link)                                                        | `pages/Resume.css`                                                       |
+| Contact form             | `public-ui/src/pages/ContactPageBody.tsx`, `apps/web/src/pages/Contact.tsx` (editorial `Field`, `TextInput`, `TextArea`, `Button`) | `pages/Contact.css`                                                      |
+| Not found                | `public-ui/src/pages/NotFoundBody.tsx`                                                                                             | `public.css`                                                             |
 
 iOS renders the public site natively with its own components in
 `apps/mobile/src/site/ui.tsx` (`PostPreview`, `Card`, `LoadError`) and
@@ -127,11 +131,10 @@ None: Admin screens use the `@gagnechris/ui` components.
 
 ### Public site
 
-| File                   | Elements                       | Styled as                                                 | Target                                         |
-| ---------------------- | ------------------------------ | --------------------------------------------------------- | ---------------------------------------------- |
-| `pages/Contact.tsx`    | 1 button, 2 inputs, 1 textarea | `.contact-form__*`                                        | Button (editorial), Field, TextInput, Textarea |
-| `pages/ReadingBar.tsx` | 3 buttons                      | `.reading-bar__button`                                    | IconButton (editorial)                         |
-| `pages/Resume.tsx`     | 2 buttons                      | `.resume-load-error__retry`, `.resume-bear-note__dismiss` | Button, IconButton                             |
+| File                                  | Elements                      | Styled as       | Target                                              |
+| ------------------------------------- | ----------------------------- | --------------- | --------------------------------------------------- |
+| `public-ui/src/chrome/SiteChrome.tsx` | 1 `summary` (the phone menu)  | `.site-menu__*` | stays: a `<details>` menu that opens without script |
+| `pages/Contact.tsx`                   | 1 hidden input (the honeypot) | `.hp-field`     | stays: never shown                                  |
 
 ### Demos
 
@@ -142,14 +145,12 @@ button (`.posts-demo__view`, `.notebook-demo__tab`). Target: Tabs.
 
 The same control is styled several ways:
 
-- **Buttons:** `.kit-btn`, `.bottom-sheet__button`, `.contact-form__submit`,
-  `.resume-load-error__retry`.
-- **Icon buttons:** `.reading-bar__button`.
+- **Buttons:** `.kit-btn`, `.bottom-sheet__button`.
 - **Menus:** `.workspace-actions`, `.workspace-more`, `.site-menu`.
 - **Chips and pills:** `.today-row__chip`, `.task-embed__pill`,
   `.notebook-upcoming__chip`, `.users-chip`.
 - **Cards:** `.admin-form-card`, `.admin-project-card`, `.notebook-card`,
-  `.no-access__card`, `.users-level-card`, `.project-card`.
+  `.no-access__card`, `.users-level-card`.
 - **Button sizes and variants on iOS:** `primary` and `secondary`, while web
   uses `default`, `primary` and `danger`.
 
@@ -362,7 +363,12 @@ the same on the library:
 - IconButton: 44px square, outline by default (`--neutral-300`), ghost for
   dismiss buttons; disabled icons `--neutral-400`.
 - Card: the editorial card is an entry in a ruled list, not a box: a
-  `--color-ink` rule above the list, `--neutral-200` rules between entries, a
-  240px preview column, a 32px serif name that underlines on hover and Inter
-  meta. Specs for the public pages themselves are in
+  `--color-ink` rule above the first entry, a `--neutral-200` rule under each,
+  36px vertical padding, a 240px preview column 32px from the text (stacked at
+  480px and under), an optional `kicker` above the title, a 32px serif title
+  (`headingLevel`, h3 by default) and Inter meta. `as="li"` makes it a list
+  item. With `href` the title is the link (`linkAs` renders it, such as a
+  router link), its hit area covers the card, it underlines while the card is
+  hovered, and its focus ring is drawn around the card; without `href` a link
+  passed in `title` is the only target. Specs for the public pages themselves are in
   [public-redesign/README.md](./public-redesign/README.md).

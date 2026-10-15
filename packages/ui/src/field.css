@@ -16,7 +16,15 @@
   color: var(--color-placeholder);
 }
 
-.kit-input:hover:not(:disabled, :focus, :focus-within) {
+/* An invalid field stays red on hover; editorial fields keep their border. */
+.kit-input:hover:not(
+    :disabled,
+    :focus,
+    :focus-within,
+    .kit-input--invalid,
+    [aria-invalid='true'],
+    .kit-input--editorial
+  ) {
   border-color: var(--neutral-400);
 }
 
@@ -218,10 +226,16 @@ select.kit-select {
 .kit-field--editorial {
   gap: 6px;
   color: var(--neutral-700);
+  line-height: 1.3;
+}
+
+.kit-field--editorial .kit-input {
+  color: var(--color-ink);
 }
 
 .kit-field--editorial .kit-field__error {
   font-size: var(--text-sm);
+  line-height: 1.4;
 }
 
 .kit-input--editorial {
@@ -230,6 +244,7 @@ select.kit-select {
   border-color: var(--neutral-500);
   border-radius: var(--radius-editorial);
   font-size: var(--text-base);
+  line-height: 1.5;
 }
 
 .kit-input--editorial:focus,
@@ -237,7 +252,7 @@ select.kit-select {
   border-color: var(--color-link);
   box-shadow: none;
   outline: 2px solid var(--color-link);
-  outline-offset: 0;
+  outline-offset: 1px;
 }
 
 .kit-input--editorial.kit-input--invalid,

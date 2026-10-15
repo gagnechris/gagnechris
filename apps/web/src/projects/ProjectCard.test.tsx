@@ -61,7 +61,7 @@ describe('ProjectsIndexBody in the public app', () => {
     },
   );
 
-  test('lists by order; each entry with a destination is one link', () => {
+  test('lists by order; each entry with a destination is one link, its name', () => {
     render(
       <InApp>
         <ProjectsIndexBody projects={projectCardViews(SAMPLE_PROJECTS)} />
@@ -81,8 +81,9 @@ describe('ProjectsIndexBody in the public app', () => {
       '/projects/notebook',
       '/dont-feed-the-bears',
     ]);
-    // The whole card is the link: preview, stage, name, pitch and stack.
-    expect(links[0]![0]!.closest('li')!.firstElementChild).toBe(links[0]![0]);
+    expect(
+      within(items[0]!).getByRole('heading', { level: 2 }),
+    ).toContainElement(links[0]![0]!);
   });
 
   test('an idea with no page is not focusable', () => {

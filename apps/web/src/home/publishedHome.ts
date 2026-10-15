@@ -39,15 +39,17 @@ export const fallbackHomeView = (): HomeView => ({
 
 const recentPostsFromDocument = (main: Element): HomeRecentPost[] =>
   [...main.querySelectorAll('.home-posts > li.home-post')].flatMap((item) => {
-    const href =
-      item.querySelector('.home-post__title a')?.getAttribute('href') ?? '';
+    // Both markups: a cold load can land between a web deploy and the
+    // republish that follows it.
+    const title = item.querySelector('.ui-card__title, .home-post__title');
+    const href = title?.querySelector('a')?.getAttribute('href') ?? '';
     const slug = href.replace(/^\/posts\//, '');
     if (!slug || slug === href) return [];
     return [
       {
         id: item.getAttribute('data-id') || slug,
         slug,
-        title: item.querySelector('.home-post__title')?.textContent ?? '',
+        title: title?.textContent ?? '',
         excerpt: item.querySelector('.home-post__excerpt')?.textContent ?? '',
         publishedAt:
           item.querySelector('time')?.getAttribute('datetime') || null,

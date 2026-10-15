@@ -357,31 +357,11 @@
     gap: 8px;
   }
 
-  .reading-bar__button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 1px solid var(--neutral-300);
-    border-radius: 10px;
-    background: white;
-    color: var(--color-ink);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .reading-bar__button:disabled {
-    color: var(--neutral-400);
-    cursor: default;
-  }
-
-  .reading-bar__button--smaller {
+  .reading-bar .reading-bar__button--smaller {
     font-size: 14px;
   }
 
-  .reading-bar__button--larger {
+  .reading-bar .reading-bar__button--larger {
     font-size: 20px;
   }
 

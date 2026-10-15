@@ -7,25 +7,33 @@ import {
   type PostsIndexEntry,
   type PostsIndexYear,
 } from '@gagnechris/shared';
+import { Card } from '@gagnechris/ui';
 import { PublicLink } from '../link.js';
 
 const PostPreview = ({ post }: { post: PostsIndexEntry }) => (
-  <li className="post-preview" data-id={post.id}>
-    <PublicLink className="post-preview__link" href={`/posts/${post.slug}`}>
-      <h3 className="post-preview__title">{post.title}</h3>
-      {post.date ? (
+  <Card
+    tone="editorial"
+    as="li"
+    className="post-preview"
+    data-id={post.id}
+    href={`/posts/${post.slug}`}
+    linkAs={PublicLink}
+    title={post.title}
+    meta={
+      post.date ? (
         <time
           className="post-preview__date"
           dateTime={post.dateTime || undefined}
         >
           {post.date}
         </time>
-      ) : null}
-      {post.excerpt ? (
-        <p className="post-preview__excerpt">{post.excerpt}</p>
-      ) : null}
-    </PublicLink>
-  </li>
+      ) : null
+    }
+  >
+    {post.excerpt ? (
+      <p className="post-preview__excerpt">{post.excerpt}</p>
+    ) : null}
+  </Card>
 );
 
 export const PostsIndexBody = ({

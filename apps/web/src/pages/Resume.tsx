@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { pageTitle, RESUME_PAGE_TITLE } from '@gagnechris/shared/render';
 import { siteUrl } from '@gagnechris/shared';
 import { ResumePageBody, ResumeUnavailableBody } from '@gagnechris/public-ui';
+import { Button, IconButton } from '@gagnechris/ui';
 import { trackResumeDownload, trackResumeView } from '../utils/analytics';
 import {
   documentResumeView,
@@ -14,6 +15,19 @@ import { usePublishedView } from '../prerender/usePublishedView';
 import SiteLink from '../components/SiteLink';
 import './Resume.css';
 import PageHead from '../components/PageHead';
+
+const CloseIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    aria-hidden="true"
+  >
+    <path d="M6 6l12 12M18 6 6 18" />
+  </svg>
+);
 
 function Resume() {
   const [attempt, setAttempt] = useState(0);
@@ -68,13 +82,13 @@ function Resume() {
             <p>
               Could not load the resume. Check your connection and try again.
             </p>
-            <button
-              type="button"
+            <Button
+              tone="editorial"
               className="resume-load-error__retry"
               onClick={() => setAttempt((n) => n + 1)}
             >
               Try again
-            </button>
+            </Button>
           </div>
         ) : null}
       </main>
@@ -107,14 +121,15 @@ function Resume() {
                 </SiteLink>
                 ?
               </p>
-              <button
-                type="button"
+              <IconButton
+                tone="editorial"
+                variant="ghost"
                 className="resume-bear-note__dismiss"
+                label="Dismiss bear game note"
                 onClick={() => setShowBearNote(false)}
-                aria-label="Dismiss bear game note"
               >
-                ×
-              </button>
+                <CloseIcon />
+              </IconButton>
             </div>
           ) : null
         }

@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDialog } from './useModalDialog.js';

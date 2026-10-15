@@ -1,12 +1,12 @@
 // @vitest-environment node
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { tokenCssEntries } from '@gagnechris/tokens';
 
+// The contact form's fields are the editorial TextInput and TextArea.
 const css = fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), 'Contact.css'),
+  createRequire(import.meta.url).resolve('@gagnechris/ui/field.css'),
   'utf8',
 );
 const tokens = Object.fromEntries(tokenCssEntries());
@@ -29,15 +29,10 @@ const contrastOnWhite = (hex: string): number => 1.05 / (luminance(hex) + 0.05);
 describe('Contact field border', () => {
   // WCAG 1.4.11: a control's boundary needs 3:1 against its background.
   it('has at least 3:1 contrast against white', () => {
-    const declared = /--contact-control-border:\s*([^;]+);/.exec(css)![1]!;
+    const declared =
+      /\.kit-input--editorial\s*{[^}]*border-color:\s*([^;]+);/.exec(css)![1]!;
     const color = resolve(declared);
     expect(color).toMatch(/^#[0-9a-f]{6}$/i);
     expect(contrastOnWhite(color)).toBeGreaterThanOrEqual(3);
-  });
-
-  it('is used by the inputs and the textarea', () => {
-    expect(css).toMatch(
-      /\.contact-field input,\s*\.contact-field textarea\s*{[^}]*border: 1px solid var\(--contact-control-border\);/,
-    );
   });
 });

@@ -171,7 +171,7 @@ describe('publisher render', () => {
     ]) {
       expect(main).toMatch(
         new RegExp(
-          `href="/posts/${slug}"><h3 class="post-preview__title">[^<]+</h3><time class="post-preview__date" dateTime="${iso}">${date}</time><p class="post-preview__excerpt">${excerpt.replace('.', '\\.')}</p></a>`,
+          `href="/posts/${slug}">[^<]+</a></h3><p class="ui-card__meta"><time class="post-preview__date" dateTime="${iso}">${date}</time></p><p class="post-preview__excerpt">${excerpt.replace('.', '\\.')}</p>`,
         ),
       );
     }
@@ -215,7 +215,7 @@ describe('publisher render', () => {
       pdfPath: '/old/resume.pdf',
     });
     expect(html).toContain(
-      '<a class="resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf">',
+      '<a class="kit-btn resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf">',
     );
     expect(html).not.toContain('/old/resume.pdf');
   });

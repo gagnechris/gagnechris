@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useId, useState } from 'react';
 import { Chip } from './Chip.js';
 

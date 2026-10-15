@@ -23,7 +23,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gagnechris/shared": "*"
+    "@gagnechris/shared": "*",
+    "@gagnechris/ui": "*"
   },
   "peerDependencies": {
     "react": "^19.0.0",

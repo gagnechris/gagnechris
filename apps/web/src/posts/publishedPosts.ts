@@ -57,7 +57,9 @@ export function postsIndexFromDocument(
         {
           id: entry.getAttribute('data-id') || slug,
           slug,
-          title: text('.post-preview__title'),
+          // Both markups: a cold load can land between a web deploy and the
+          // republish that follows it.
+          title: text('.ui-card__title, .post-preview__title'),
           excerpt: text('.post-preview__excerpt'),
           date: text('time'),
           dateTime: entry.querySelector('time')?.getAttribute('datetime') ?? '',

@@ -39,7 +39,9 @@ test.describe('the posts index', () => {
       expect(items.length).toBeGreaterThan(0);
       expect(await page.locator('li.post-preview').count()).toBe(items.length);
       for (const post of items) {
-        const entry = page.locator(`a[href="/posts/${post.slug}"]`);
+        const entry = page.locator('li.post-preview', {
+          has: page.locator(`a[href="/posts/${post.slug}"]`),
+        });
         await expect(entry, post.slug).toHaveCount(1, { timeout: 0 });
         if (post.excerpt) {
           await expect(entry).toContainText(post.excerpt, { timeout: 0 });
@@ -121,8 +123,9 @@ test.describe('the posts index', () => {
     await focusJustBefore(item);
     await page.keyboard.press(tab);
     await expect(entry).toBeFocused();
+    // The title is the link; its ring is drawn around the whole entry.
     const ring = await entry.evaluate((el) => {
-      const style = getComputedStyle(el);
+      const style = getComputedStyle(el, '::after');
       return {
         style: style.outlineStyle,
         width: parseFloat(style.outlineWidth),
@@ -130,9 +133,6 @@ test.describe('the posts index', () => {
     });
     expect(ring.style).not.toBe('none');
     expect(ring.width).toBeGreaterThanOrEqual(2);
-    await expect(entry.locator('.post-preview__title')).toHaveCSS(
-      'text-decoration-line',
-      'underline',
-    );
+    await expect(entry).toHaveCSS('text-decoration-line', 'underline');
   });
 });

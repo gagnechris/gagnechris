@@ -82,7 +82,7 @@ test.describe('phone layout at 390px', () => {
       '.home-hero__title': 21,
       '.home-hero__about p': 19,
       '.home-hero__links': 17,
-      '.home-post__title': 24,
+      '.home-post .ui-card__title': 24,
       '.home-post__excerpt': 17,
     });
     await expectGaps(page, [
@@ -115,12 +115,12 @@ test.describe('phone layout at 390px', () => {
       [
         'rule to title',
         `${HOME_POST}@top`,
-        `${HOME_POST} .home-post__title@top`,
+        `${HOME_POST} .ui-card__title@top`,
         16,
       ],
       [
         'title to excerpt',
-        `${HOME_POST} .home-post__title@bottom`,
+        `${HOME_POST} .ui-card__title@bottom`,
         `${HOME_POST} .home-post__excerpt@top`,
         5,
       ],
@@ -145,7 +145,7 @@ test.describe('phone layout at 390px', () => {
     await expectFontSizes(page, {
       '.posts-index h1': 46,
       '.posts-index__intro': 19,
-      '.post-preview__title': 24,
+      '.post-preview .ui-card__title': 24,
       '.post-preview__excerpt': 17,
     });
     await expectGaps(page, [
@@ -169,15 +169,10 @@ test.describe('phone layout at 390px', () => {
         13,
       ],
       ['label row', '.posts-year__label@top', '.posts-year__label@bottom', 27],
-      [
-        'rule to title',
-        `${entry}@top`,
-        `${entry} .post-preview__title@top`,
-        16,
-      ],
+      ['rule to title', `${entry}@top`, `${entry} .ui-card__title@top`, 16],
       [
         'title to excerpt',
-        `${entry} .post-preview__title@bottom`,
+        `${entry} .ui-card__title@bottom`,
         `${entry} .post-preview__excerpt@top`,
         5,
       ],

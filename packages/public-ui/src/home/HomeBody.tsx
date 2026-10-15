@@ -17,6 +17,7 @@ import {
   type HomeLink,
   type HomeRecentPost,
 } from '@gagnechris/shared/render';
+import { Card } from '@gagnechris/ui';
 import { PublicLink } from '../link.js';
 import { ProjectCard } from '../projects/ProjectCard.js';
 
@@ -31,13 +32,19 @@ const HeroLink = ({ link }: { link: HomeLink }) => (
   </PublicLink>
 );
 
+/** Only the title is a link, so the card has no `href`. */
 const RecentPost = ({ post }: { post: HomeRecentPost }) => {
   const date = formatPostDate(post.publishedAt);
   return (
-    <li className="home-post" data-id={post.id}>
-      <h3 className="home-post__title">
+    <Card
+      tone="editorial"
+      as="li"
+      className="home-post"
+      data-id={post.id}
+      title={
         <PublicLink href={homePostHref(post.slug)}>{post.title}</PublicLink>
-      </h3>
+      }
+    >
       {post.excerpt ? (
         <p className="home-post__excerpt">{post.excerpt}</p>
       ) : null}
@@ -49,7 +56,7 @@ const RecentPost = ({ post }: { post: HomeRecentPost }) => {
           {date}
         </time>
       ) : null}
-    </li>
+    </Card>
   );
 };
 

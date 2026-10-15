@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
@@ -54,5 +55,44 @@ describe('Card', () => {
     expect(
       screen.getByRole('heading', { level: 3, name: 'Notebook' }),
     ).toContainElement(screen.getByRole('link', { name: 'Notebook' }));
+  });
+
+  test('an editorial entry can be a list item with a kicker, a heading level and a router link', () => {
+    const RouterLink = ({
+      href,
+      className,
+      children,
+    }: {
+      href: string;
+      className?: string;
+      children: ReactNode;
+    }) => (
+      <a className={className} href={href} data-router="">
+        {children}
+      </a>
+    );
+    render(
+      <ul>
+        <Card
+          tone="editorial"
+          as="li"
+          data-slug="notebook"
+          kicker={<p>Live</p>}
+          headingLevel={2}
+          title="Notebook"
+          href="/projects/notebook"
+          linkAs={RouterLink}
+        />
+      </ul>,
+    );
+    const item = screen.getByRole('listitem');
+    expect(item).toHaveClass('ui-card--editorial');
+    expect(item).toHaveAttribute('data-slug', 'notebook');
+    expect(
+      item.querySelector('.ui-card__body')?.firstElementChild,
+    ).toHaveTextContent('Live');
+    const link = screen.getByRole('link', { name: 'Notebook' });
+    expect(link).toHaveAttribute('data-router');
+    expect(screen.getByRole('heading', { level: 2 })).toContainElement(link);
   });
 });

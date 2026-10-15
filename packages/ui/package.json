@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "description": "Shared web UI primitives for the public site, Admin and Notebook. Components import no CSS; apps load styles.css once.",
+  "description": "Shared web UI primitives for the public site, Admin and Notebook. Components import no CSS; apps load styles.css once, or the public site the per-component files it uses.",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./*.css": "./src/*.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

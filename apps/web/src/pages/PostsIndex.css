@@ -64,58 +64,34 @@
   color: var(--color-ink);
 }
 
+/* Each entry is the editorial Card; the year label draws the rule above them. */
 .posts-year__list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.post-preview {
-  border-bottom: 1px solid var(--neutral-200);
+.posts-year .posts-year__list > .post-preview {
+  padding: 25px 0 28px;
+  border-top: 0;
 }
 
-.post-preview__link {
+.post-preview .ui-card__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   column-gap: var(--space-6);
-  padding: 25px 0 28px;
-  font-weight: inherit;
-  color: inherit;
-  text-decoration: none;
 }
 
-.post-preview__link:hover {
-  color: inherit;
-  text-decoration: none;
-}
-
-.post-preview__link:focus-visible {
-  outline-offset: 4px;
-}
-
-.post-preview__title {
-  margin: 0;
+.posts-year__list .post-preview .ui-card__title {
   font-size: 1.75rem;
-  font-weight: 500;
   line-height: 1.25;
-  color: var(--color-ink);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.15em;
-}
-
-.post-preview__link:hover .post-preview__title,
-.post-preview__link:focus-visible .post-preview__title {
-  text-decoration-line: underline;
 }
 
 .post-preview__date {
-  font-family: var(--font-sans);
-  font-size: var(--text-caption);
-  line-height: 1.4;
+  display: block;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--neutral-600);
 }
 
 .post-preview__excerpt {
@@ -152,18 +128,21 @@
     padding-bottom: 8px;
   }
 
-  .post-preview__link {
+  .posts-year .posts-year__list > .post-preview {
+    padding: 16px 0;
+  }
+
+  .post-preview .ui-card__body {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 16px 0 16px;
   }
 
-  .post-preview__title {
+  .posts-year__list .post-preview .ui-card__title {
     font-size: 1.5rem;
   }
 
-  .post-preview__date {
+  .posts-year__list .post-preview .ui-card__meta {
     order: 1;
     margin-top: 3px;
   }

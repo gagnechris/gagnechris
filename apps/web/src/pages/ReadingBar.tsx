@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { IconButton } from '@gagnechris/ui';
 import { useHydrated } from '../prerender/useHydrated';
 
 const TEXT_SCALES = [0.9, 1, 1.15, 1.3] as const;
@@ -98,32 +99,34 @@ export const ReadingBar = ({ title }: { title: string }) => {
     <aside className="reading-bar" aria-label="Reading">
       <span className="reading-bar__label">Text size</span>
       <div className="reading-bar__actions">
-        <button
-          type="button"
-          className="reading-bar__button reading-bar__button--smaller"
-          aria-label="Smaller text"
+        <IconButton
+          tone="editorial"
+          size="lg"
+          className="reading-bar__button--smaller"
+          label="Smaller text"
           disabled={step === 0}
           onClick={() => resize(step - 1)}
         >
           A
-        </button>
-        <button
-          type="button"
-          className="reading-bar__button reading-bar__button--larger"
-          aria-label="Larger text"
+        </IconButton>
+        <IconButton
+          tone="editorial"
+          size="lg"
+          className="reading-bar__button--larger"
+          label="Larger text"
           disabled={step === TEXT_SCALES.length - 1}
           onClick={() => resize(step + 1)}
         >
           A
-        </button>
-        <button
-          type="button"
-          className="reading-bar__button"
-          aria-label="Share"
+        </IconButton>
+        <IconButton
+          tone="editorial"
+          size="lg"
+          label="Share"
           onClick={() => void share()}
         >
           <ShareIcon />
-        </button>
+        </IconButton>
       </div>
       <p className="reading-bar__notice" role="status">
         {notice}

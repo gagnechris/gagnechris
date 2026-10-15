@@ -72,7 +72,7 @@ describe('PostsIndexBody in the public app', () => {
     },
   );
 
-  test('years newest first, posts newest first, each entry one link', () => {
+  test('years newest first, posts newest first, each entry one link, its title', () => {
     render(
       <InApp>
         <PostsIndexBody
@@ -91,9 +91,10 @@ describe('PostsIndexBody in the public app', () => {
     ]);
     for (const entry of within(section2026).getAllByRole('listitem')) {
       expect(within(entry).getAllByRole('link')).toHaveLength(1);
-      const link = within(entry).getByRole('link');
-      expect(link).toContainElement(within(entry).getByRole('heading'));
-      expect(link).toContainElement(entry.querySelector('time'));
+      expect(within(entry).getByRole('heading')).toContainElement(
+        within(entry).getByRole('link'),
+      );
+      expect(entry.querySelector('time')).not.toBeNull();
     }
     expect(screen.getByText('Sep 28')).toHaveAttribute(
       'datetime',

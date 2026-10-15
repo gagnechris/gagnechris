@@ -98,6 +98,7 @@
 
 .ui-icon-btn--editorial.ui-icon-btn--outline {
   border-color: var(--neutral-300);
+  color: var(--color-ink);
 }
 
 .ui-icon-btn--editorial:disabled {

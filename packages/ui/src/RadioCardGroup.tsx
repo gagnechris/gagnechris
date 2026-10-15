@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { cx } from './cx.js';
 

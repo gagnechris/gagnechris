@@ -210,7 +210,7 @@ describe('PostsDemo', () => {
   test('Home puts the new post on top, highlighted once, and its link opens the post page in the demo', async () => {
     const { site, page, publish } = await setup();
     await publish();
-    const titles = [...site.querySelectorAll('.home-post__title')].map(
+    const titles = [...site.querySelectorAll('.home-post .ui-card__title')].map(
       (h) => h.textContent,
     );
     expect(titles).toEqual(['Hello from the demo', 'Welcome']);
