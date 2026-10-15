@@ -20,6 +20,13 @@ import DraftPreviewPage from './preview/DraftPreviewPage';
 
 const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
+const imageButton = (label: string) =>
+  screen.getByRole('button', { name: new RegExp(`^${label}: `) });
+const imageUpload = (label: string) =>
+  imageButton(label)
+    .closest('.ui-file')!
+    .querySelector<HTMLInputElement>('input[type=file]')!;
+
 vi.mock('../workspace/api/client', () =>
   import('../mockAdminApi').then((m) => m.mockAdminApi()),
 );
@@ -181,7 +188,7 @@ describe('ProjectEditorPage fields', () => {
     });
   });
 
-  test('stack chips: Enter and commas add, duplicates are skipped, × removes', async () => {
+  test('stack chips: Enter and commas add, duplicates are skipped, Remove drops one', async () => {
     const user = userEvent.setup();
     renderEditor();
     await screen.findByDisplayValue('Notebook');
@@ -191,9 +198,9 @@ describe('ProjectEditorPage fields', () => {
     await user.type(input, 'react, Vite,');
     const chips = within(screen.getByRole('list', { name: 'Stack items' }));
     expect(chips.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
-      'React×',
-      'DynamoDB×',
-      'Vite×',
+      'React',
+      'DynamoDB',
+      'Vite',
     ]);
     await user.click(screen.getByRole('button', { name: 'Remove React' }));
     await save(user);
@@ -353,7 +360,7 @@ describe('ProjectEditorPage preview image', () => {
     await screen.findByDisplayValue('Notebook');
 
     const file = new File(['png'], 'preview.png', { type: 'image/png' });
-    await user.upload(screen.getByLabelText('Upload preview image'), file);
+    await user.upload(imageUpload('Preview image'), file);
 
     expect(
       await screen.findByRole('img', { name: 'Preview image' }),
@@ -399,7 +406,7 @@ describe('ProjectEditorPage preview image', () => {
     renderEditor();
     await screen.findByDisplayValue('Notebook');
     await user.upload(
-      screen.getByLabelText('Upload preview image'),
+      imageUpload('Preview image'),
       new File(['png'], 'preview.png', { type: 'image/png' }),
     );
     expect(
@@ -448,9 +455,7 @@ describe('ProjectEditorPage demo without a preview image', () => {
 
     await user.selectOptions(screen.getByLabelText('Demo'), 'notebook');
     expect(screen.getByText(HINT)).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('Upload preview image'),
-    ).toHaveAccessibleDescription(HINT);
+    expect(imageButton('Preview image')).toHaveAccessibleDescription(HINT);
     await save(user);
     expect(lastPutBody()).toMatchObject({
       demo: 'notebook',
@@ -464,7 +469,7 @@ describe('ProjectEditorPage demo without a preview image', () => {
     expect(publishCalls()).toHaveLength(0);
 
     await user.upload(
-      screen.getByLabelText('Upload preview image'),
+      imageUpload('Preview image'),
       new File(['png'], 'preview.png', { type: 'image/png' }),
     );
     await screen.findByRole('img', { name: 'Preview image' });

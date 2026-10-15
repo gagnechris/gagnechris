@@ -3,6 +3,7 @@ export { Button } from './Button.js';
 export { Card } from './Card.js';
 export { Checkbox } from './Checkbox.js';
 export { Chip, ChipSelect, type ChipTone } from './Chip.js';
+export { ChipsInput } from './ChipsInput.js';
 export { Combobox, type ComboboxOption } from './Combobox.js';
 export { ConfirmDialog } from './ConfirmDialog.js';
 export { DateInput } from './DateInput.js';

@@ -61,6 +61,7 @@ button.ui-row__title {
 
 a.ui-row__title:hover,
 button.ui-row__title:hover {
+  background: none;
   text-decoration: underline;
 }
 

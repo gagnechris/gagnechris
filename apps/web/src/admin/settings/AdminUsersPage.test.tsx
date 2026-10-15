@@ -167,25 +167,24 @@ describe('AdminUsersPage', () => {
     expect(trigger).toHaveFocus();
   });
 
-  test('the panel traps focus, closes on Esc and arrows move the radio', async () => {
+  test('the panel starts on the current access, traps focus, closes on Esc and arrows move the radio', async () => {
     renderPage();
     const trigger = within(await row('Sam Rivera')).getByRole('button', {
       name: /Edit access/,
     });
     await userEvent.click(trigger);
     const panel = screen.getByRole('dialog');
-    const close = within(panel).getAllByRole('button', { name: 'Close' })[0]!;
-    expect(close).toHaveFocus();
+    const cms = within(panel).getByRole('radio', { name: /Public CMS/ });
+    expect(cms).toHaveFocus();
     await userEvent.tab({ shift: true });
     expect(panel).toContainElement(document.activeElement as HTMLElement);
 
-    const cms = within(panel).getByRole('radio', { name: /Public CMS/ });
     cms.focus();
     await userEvent.keyboard('{ArrowDown}');
     const notebook = within(panel).getByRole('radio', {
       name: /Notebook only/,
     });
-    expect(notebook).toHaveAttribute('aria-checked', 'true');
+    expect(notebook).toBeChecked();
     expect(notebook).toHaveFocus();
 
     await userEvent.keyboard('{Escape}');
@@ -283,7 +282,7 @@ describe('AdminUsersPage', () => {
     const dialog = screen.getByRole('dialog', { name: 'Invite user' });
     expect(
       within(dialog).getByRole('radio', { name: /Notebook only/ }),
-    ).toHaveAttribute('aria-checked', 'true');
+    ).toBeChecked();
     expect(within(dialog).getByLabelText('Name')).toHaveFocus();
     await userEvent.type(within(dialog).getByLabelText('Name'), 'Alex Kim');
     await userEvent.type(

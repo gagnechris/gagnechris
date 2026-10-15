@@ -26,6 +26,8 @@ import {
 } from '@gagnechris/shared';
 import {
   BottomSheet,
+  Button,
+  ChipsInput,
   Field,
   SegmentedRadio,
   Select,
@@ -34,7 +36,6 @@ import {
 } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { Repeater } from '../workspace/ui/Repeater';
-import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
 
@@ -78,7 +79,6 @@ export function ProjectEditorFields({
       <ChipsInput
         label="Stack"
         listLabel="Stack items"
-        removeLabel={(item) => `Remove ${item}`}
         placeholder="Add, then Enter"
         fullPlaceholder="Stack is full"
         inputMaxLength={PROJECT_STACK_ITEM_MAX_LENGTH * 4}
@@ -251,8 +251,8 @@ export function ProjectEditorFields({
           onUpload={onUploadPreview}
         />
         {phone ? (
-          <button
-            type="button"
+          <Button
+            size="lg"
             className="admin-sheet-open"
             onClick={() => setSheetOpen(true)}
           >
@@ -260,7 +260,7 @@ export function ProjectEditorFields({
             {secondaryInvalid ? (
               <span className="kit-field-error">Needs a fix</span>
             ) : null}
-          </button>
+          </Button>
         ) : (
           secondary
         )}

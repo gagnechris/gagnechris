@@ -8,6 +8,7 @@ import {
   USER_ADMIN_GROUP,
 } from '@gagnechris/shared';
 import { useUserActionMutation, useUsersQuery } from '@gagnechris/app-core';
+import { Button } from '@gagnechris/ui';
 import { getAuthTime } from '../../workspace/auth/session';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import type { AdminOutletContext } from '../AdminLayout';
@@ -136,9 +137,9 @@ export default function AdminUsersPage() {
             see this page.
           </p>
         </div>
-        <button
-          type="button"
-          className="users-btn users-btn--primary users-btn--tall"
+        <Button
+          variant="primary"
+          size="lg"
           onClick={(e) => {
             // Safari doesn't focus a clicked button, and the dialog returns
             // focus to whatever had it when it opened.
@@ -148,7 +149,7 @@ export default function AdminUsersPage() {
         >
           <ShellIcon name="plus" />
           Invite user
-        </button>
+        </Button>
       </div>
 
       <section className="users-levels" aria-label="Access levels">
@@ -240,24 +241,23 @@ export default function AdminUsersPage() {
                         {STATUS_LABELS[user.status]}
                       </span>
                       {user.status === 'invited' ? (
-                        <button
-                          type="button"
-                          className="users-link-btn"
+                        <Button
+                          variant="link"
+                          className="users-resend"
                           disabled={resend.isPending}
                           aria-label={`Resend invite to ${name}`}
                           onClick={() => void resendInvite(user)}
                         >
                           Resend invite
-                        </button>
+                        </Button>
                       ) : null}
                     </td>
                     <td className="users-muted">
                       {formatAdded(user.createdAt)}
                     </td>
                     <td className="users-table__actions">
-                      <button
-                        type="button"
-                        className="users-btn users-btn--small"
+                      <Button
+                        size="sm"
                         aria-label={`Edit access for ${name}`}
                         onClick={(e) => {
                           e.currentTarget.focus();
@@ -265,7 +265,7 @@ export default function AdminUsersPage() {
                         }}
                       >
                         Edit
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 );

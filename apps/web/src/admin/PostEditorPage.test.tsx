@@ -17,6 +17,13 @@ import DraftPreviewPage from './preview/DraftPreviewPage';
 
 const { GET: get, PUT: put, POST: post, DELETE: del } = adminApi;
 
+const imageButton = (label: string) =>
+  screen.getByRole('button', { name: new RegExp(`^${label}: `) });
+const imageUpload = (label: string) =>
+  imageButton(label)
+    .closest('.ui-file')!
+    .querySelector<HTMLInputElement>('input[type=file]')!;
+
 vi.mock('../workspace/api/client', () =>
   import('../mockAdminApi').then((m) => m.mockAdminApi()),
 );
@@ -1034,7 +1041,7 @@ describe('PostEditorPage Details panel', () => {
     await screen.findByDisplayValue('Hello');
 
     await user.upload(
-      screen.getByLabelText('Upload cover image'),
+      imageUpload('Cover image'),
       new File(['png'], 'cover.png', { type: 'image/png' }),
     );
     expect(
@@ -1055,7 +1062,7 @@ describe('PostEditorPage Details panel', () => {
     await screen.findByDisplayValue('Hello');
 
     await user.upload(
-      screen.getByLabelText('Upload cover image'),
+      imageUpload('Cover image'),
       new File(['png'], 'cover.png', { type: 'image/png' }),
     );
     const panel = screen.getByRole('complementary', { name: 'Post details' });
