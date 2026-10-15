@@ -30,7 +30,14 @@ const hasSearchTerm = (filters: unknown) =>
   typeof filters.q === 'string' &&
   filters.q.trim() !== '';
 
+// The area switch reads it, so an offline launch shows the user's own areas.
+const areasKey = queryKeys.notebookAreas();
+const isAreasKey = (key: QueryKey) =>
+  key.length === areasKey.length &&
+  areasKey.every((part, i) => key[i] === part);
+
 export const isPersistedQueryKey = (key: QueryKey): boolean => {
+  if (isAreasKey(key)) return true;
   const root = notebookRoots.find((prefix) =>
     prefix.every((part, i) => key[i] === part),
   );
@@ -51,7 +58,7 @@ export const createAppQueryClient = () => {
   // An unused query is collected after gcTime and then drops out of the next
   // persist, so persisted ones are never collected; the persister's maxAge
   // expires the cache. A finite 30 days overflows setTimeout's 32-bit delay.
-  for (const root of notebookRoots) {
+  for (const root of [...notebookRoots, areasKey]) {
     queryClient.setQueryDefaults(root, { gcTime: Infinity });
   }
   return queryClient;

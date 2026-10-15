@@ -2,12 +2,13 @@ import {
   noteResource,
   useDeleteNoteMutation,
   useLatest,
+  useNotebookAreas,
   useNoteTaskEmbedSync,
   useVersionedDocEditor,
 } from '@gagnechris/app-core';
 import {
   emptyNoteDraft,
-  NOTEBOOK_AREA_LABELS,
+  notebookAreaName,
   noteDraftFromNote,
   notePayloadFromDraft,
   noteTitle,
@@ -57,6 +58,7 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
   const today = useLocalToday();
   const [preview, setPreview] = useState(false);
   const deleteMutation = useDeleteNoteMutation();
+  const areas = useNotebookAreas();
 
   const editor = useVersionedDocEditor({
     resource: noteResource,
@@ -221,10 +223,10 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
             <View
               style={styles.chip}
               accessible
-              accessibilityLabel={`Area: ${NOTEBOOK_AREA_LABELS[note.area]}`}
+              accessibilityLabel={`Area: ${notebookAreaName(areas, note.area)}`}
             >
               <Text style={styles.chipText}>
-                {NOTEBOOK_AREA_LABELS[note.area]}
+                {notebookAreaName(areas, note.area)}
               </Text>
             </View>
             {draft.pinned ? (

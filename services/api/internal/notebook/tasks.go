@@ -186,6 +186,8 @@ func (r *tasksRepo) delete(ctx context.Context, userID, id string, expected api.
 
 // listTasksQuery is ListTasksQuerySchema.
 type listTasksQuery struct {
+	// areas are walked when area is unset: the user's list, in order.
+	areas                                        []string
 	area, status, priority, dueOn, dueBefore     string
 	startOn, startOnOrBefore, startAfter, before string
 	someday                                      *bool
@@ -262,7 +264,7 @@ func (r *tasksRepo) list(ctx context.Context, userID string, q listTasksQuery, o
 		SortTasksForList(page.Items, today)
 		return page, err
 	}
-	areas := Areas
+	areas := q.areas
 	if q.area != "" {
 		areas = []string{q.area}
 	}

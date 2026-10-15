@@ -26,12 +26,11 @@ type Props = {
   comingUp: ComingUpDay<Task>[];
   loading: boolean;
   error: string | null;
-  readOnly: boolean;
   onToggle: (task: Task) => void;
   onOpenTask: (task: Task) => void;
   onOpenNote: (noteId: string) => void;
   onMore: (task: Task) => void;
-  /** Absent when the day's note can't take a task (not today, or All). */
+  /** Absent when the day's note can't take a task (not today). */
   onAddToNote?: (task: Task) => void;
 };
 
@@ -44,7 +43,6 @@ export const TodaySheet = ({
   comingUp,
   loading,
   error,
-  readOnly,
   onToggle,
   onOpenTask,
   onOpenNote,
@@ -57,14 +55,11 @@ export const TodaySheet = ({
     ...stillOpen.map((row) => row.task),
     ...comingUp.flatMap((d) => d.tasks),
   ];
-  const rowActions = (task: Task) =>
-    readOnly
-      ? {}
-      : {
-          onToggle: () => onToggle(task),
-          onMore: () => onMore(task),
-          onAddToNote: onAddToNote ? () => onAddToNote(task) : undefined,
-        };
+  const rowActions = (task: Task) => ({
+    onToggle: () => onToggle(task),
+    onMore: () => onMore(task),
+    onAddToNote: onAddToNote ? () => onAddToNote(task) : undefined,
+  });
 
   return (
     <Modal
@@ -140,14 +135,10 @@ export const TodaySheet = ({
                       key={task.id}
                       task={task}
                       onOpen={() => onOpenTask(task)}
-                      {...(readOnly
-                        ? {}
-                        : {
-                            onToggle: () => onToggle(task),
-                            onAddToNote: onAddToNote
-                              ? () => onAddToNote(task)
-                              : undefined,
-                          })}
+                      onToggle={() => onToggle(task)}
+                      onAddToNote={
+                        onAddToNote ? () => onAddToNote(task) : undefined
+                      }
                     />
                   ))}
                 </View>

@@ -2,7 +2,6 @@ import {
   useTaskPatch,
   useTaskToggle,
   useTodayTasks,
-  type NotebookArea,
   type Task,
 } from '@gagnechris/app-core';
 import {
@@ -10,7 +9,6 @@ import {
   carryFooterText,
   formatCalendarDay,
   isCalendarDay,
-  isNotebookAreaFilter,
   snoozeBaseDay,
   weekdayName,
 } from '@gagnechris/shared';
@@ -30,14 +28,12 @@ import { color, font, MIN_TARGET } from '../../../src/theme';
 import { AreaChip } from '../../../src/ui/AreaChip';
 import { Icon } from '../../../src/ui/Icon';
 
-const NO_IDS: ReadonlySet<string> = new Set();
-
 const TodayScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { openTask, openNote } = useDetailRoutes();
   const today = useLocalToday();
-  const { area, setArea } = useArea();
+  const { area, areaName, areas, setArea } = useArea();
   // Null follows the device's day, so midnight moves it on.
   const [picked, setPicked] = useState<string | null>(null);
   // A daily note opened from elsewhere (dailyNotePath) lands here.
@@ -51,43 +47,37 @@ const TodayScreen = () => {
   }
   useEffect(() => {
     if (!params.date && !params.area) return;
-    if (params.area && isNotebookAreaFilter(params.area)) setArea(params.area);
+    const linked = params.area;
+    if (linked && areas.some((a) => a.id === linked)) setArea(linked);
     router.setParams({ date: undefined, area: undefined });
-  }, [params.date, params.area, router, setArea]);
+  }, [params.date, params.area, areas, router, setArea]);
   // Midnight can make the picked day today; from then on, follow the device.
   if (picked === today) setPicked(null);
   const date = picked ?? today;
-  const writingArea: NotebookArea | null = area === 'all' ? null : area;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [snoozing, setSnoozing] = useState<Task | null>(null);
   const appendEmbedRef = useRef<((taskId: string) => void) | null>(null);
 
-  const noteKey = writingArea ? `${writingArea}:${date}` : null;
+  const noteKey = `${area}:${date}`;
   const [embedded, setEmbedded] = useState<{
     key: string;
     ids: ReadonlySet<string> | null;
   } | null>(null);
   const onEmbeddedIds = useCallback(
     (ids: ReadonlySet<string> | null) => {
-      if (noteKey) setEmbedded({ key: noteKey, ids });
+      setEmbedded({ key: noteKey, ids });
     },
     [noteKey],
   );
-  // With no note on the page (All), nothing is embedded.
-  const embeddedIds = noteKey
-    ? embedded?.key === noteKey
-      ? embedded.ids
-      : null
-    : NO_IDS;
+  const embeddedIds = embedded?.key === noteKey ? embedded.ids : null;
 
   const { buckets, stillOpenRows, loading, loadError } = useTodayTasks({
-    area: writingArea ?? undefined,
+    area,
     day: date,
     embeddedIds,
   });
   const { toggle, error: toggleError } = useTaskToggle();
   const { patch, error: patchError } = useTaskPatch();
-  const readOnly = writingArea === null;
   const comingUpCount = buckets.comingUp.reduce(
     (n, d) => n + d.tasks.length,
     0,
@@ -97,7 +87,7 @@ const TodayScreen = () => {
     ? 'Could not load tasks.'
     : (patchError ?? toggleError ?? null);
   const snoozeFrom = snoozeBaseDay(date, today);
-  const canAddToNote = writingArea !== null && date === today;
+  const canAddToNote = date === today;
 
   const addToNote = (task: Task) => {
     appendEmbedRef.current?.(task.id);
@@ -209,22 +199,16 @@ const TodayScreen = () => {
         <Icon name="chevron.up" size={14} color={color.accentInk} />
       </Pressable>
 
-      {writingArea ? (
-        <TodayNote
-          key={`${writingArea}:${date}`}
-          area={writingArea}
-          date={date}
-          today={today}
-          onEmbeddedIds={onEmbeddedIds}
-          appendEmbedRef={appendEmbedRef}
-          onOpenTask={openTask}
-        />
-      ) : (
-        <Text style={styles.hint}>
-          Choose Work or Personal to write a daily note or act on tasks. All
-          shows both areas, read-only.
-        </Text>
-      )}
+      <TodayNote
+        key={noteKey}
+        area={area}
+        areaName={areaName}
+        date={date}
+        today={today}
+        onEmbeddedIds={onEmbeddedIds}
+        appendEmbedRef={appendEmbedRef}
+        onOpenTask={openTask}
+      />
 
       {date >= today && !loading.stillOpen ? (
         <Text style={styles.footer} accessibilityLabel={carryText}>
@@ -240,7 +224,6 @@ const TodayScreen = () => {
         comingUp={buckets.comingUp}
         loading={tasksLoading}
         error={tasksError}
-        readOnly={readOnly}
         onToggle={(task) => void toggle(task)}
         onOpenTask={(task) => {
           setSheetOpen(false);
@@ -333,11 +316,6 @@ const styles = StyleSheet.create({
     color: color.accentInk,
   },
   bannerStrong: { ...font.semibold },
-  hint: {
-    ...font.regular,
-    fontSize: tokens.text.base,
-    color: color.inkSoft,
-  },
   footer: {
     ...font.regular,
     fontSize: tokens.text.caption,

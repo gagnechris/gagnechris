@@ -16,7 +16,7 @@ import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { LinkedNotePicker } from './LinkedNotePicker';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { TaskMentions } from './TaskMentions';
-import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import { useNotebookAreaName } from './useNotebookAreaName';
 import { useLocalToday } from './useLocalToday';
 import {
   TASK_PRIORITY_OPTIONS,
@@ -24,6 +24,7 @@ import {
 } from '../kit/tasks/taskOptions';
 
 export default function NotebookTaskPage() {
+  const areaName = useNotebookAreaName();
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,9 +172,7 @@ export default function NotebookTaskPage() {
       <h1 className="workspace-visually-hidden">
         {entity.title || 'Untitled task'}
       </h1>
-      <p className="workspace-panel__lede">
-        {NOTEBOOK_AREA_LABELS[entity.area]} task
-      </p>
+      <p className="workspace-panel__lede">{areaName(entity.area)} task</p>
 
       <Field label="Title">
         <TextInput
@@ -271,7 +270,7 @@ export default function NotebookTaskPage() {
       </Field>
 
       <NotebookMarkdownBody
-        templates={{ date: today, area: entity.area }}
+        templates={{ date: today, areaName: areaName(entity.area) }}
         value={draft.description}
         onChange={(description) =>
           updateDraft((prev) => ({ ...prev, description }))

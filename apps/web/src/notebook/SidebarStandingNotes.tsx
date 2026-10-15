@@ -2,20 +2,13 @@ import { NavLink } from 'react-router-dom';
 import { useLoadAllPages, useNotesQuery } from '@gagnechris/app-core';
 import { noteTitle, sidebarStandingNotes } from '@gagnechris/shared';
 import ShellIcon from '../workspace/ui/ShellIcon';
-import {
-  areaQueryParam,
-  type NotebookAreaFilter,
-} from './notebookAreaPreference';
+import type { NotebookArea } from '@gagnechris/app-core';
 
 /** Standing notes until archived, so each is one click away. */
-export default function SidebarStandingNotes({
-  areaFilter,
-}: {
-  areaFilter: NotebookAreaFilter;
-}) {
+export default function SidebarStandingNotes({ area }: { area: NotebookArea }) {
   // Same query as the Notes page's Standing and Archived filters.
   const notesQuery = useNotesQuery({
-    area: areaQueryParam(areaFilter),
+    area,
     type: 'page',
     limit: 100,
   });
@@ -31,7 +24,7 @@ export default function SidebarStandingNotes({
       {notes.map((note) => (
         <NavLink
           key={note.id}
-          to={`/notes/${note.id}?area=${areaFilter}`}
+          to={`/notes/${note.id}?area=${area}`}
           className={({ isActive }) =>
             isActive
               ? 'workspace-nav__item workspace-nav__item--active'

@@ -18,6 +18,7 @@ describe('what the cache persists', () => {
     ['a batch of notes', queryKeys.notes.batch(['n1', 'n2'])],
     ['the tasks list', queryKeys.tasks.list({ open: true })],
     ['a task', queryKeys.tasks.detail('t1')],
+    ['the area list', queryKeys.notebookAreas()],
   ])('persists %s', (_label, key) => {
     expect(isPersistedQueryKey(key)).toBe(true);
   });
@@ -43,6 +44,9 @@ describe('what the cache persists', () => {
   it('never collects persisted queries; the persister maxAge expires them', async () => {
     const client = createAppQueryClient();
     expect(client.getQueryDefaults(queryKeys.notes.detail('n1')).gcTime).toBe(
+      Infinity,
+    );
+    expect(client.getQueryDefaults(queryKeys.notebookAreas()).gcTime).toBe(
       Infinity,
     );
     expect(

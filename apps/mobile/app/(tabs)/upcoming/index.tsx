@@ -7,11 +7,8 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import {
-  areaQueryParam,
   formatTaskDay,
   groupUpcomingTasks,
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_LABELS,
   noteChipLabel,
   taskDue,
   type TaskLineDraft,
@@ -33,19 +30,19 @@ import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
 const UpcomingScreen = () => {
   const { openTask, openNote } = useDetailRoutes();
-  const { area, setArea } = useArea();
+  const { area, areas, setArea } = useArea();
   const today = useLocalToday();
   const [refreshing, setRefreshing] = useState(false);
 
   const scheduled = useTasksQuery({
-    area: areaQueryParam(area),
+    area,
     open: true,
     startAfter: today,
     today,
     limit: 100,
   });
   const parked = useTasksQuery({
-    area: areaQueryParam(area),
+    area,
     open: true,
     someday: true,
     limit: 100,
@@ -123,8 +120,8 @@ const UpcomingScreen = () => {
       <Text style={styles.subtitle}>Hidden until their day</Text>
       <SegmentedControl
         label="Area"
-        options={NOTEBOOK_AREA_FILTERS}
-        labels={NOTEBOOK_AREA_LABELS}
+        options={areas.map((a) => a.id)}
+        labels={Object.fromEntries(areas.map((a) => [a.id, a.name]))}
         value={area}
         onChange={setArea}
       />

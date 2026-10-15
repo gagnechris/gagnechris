@@ -29,7 +29,7 @@ func TestSparseTaskFilterReadsWholePages(t *testing.T) {
 		}, nil, nil))
 	}
 
-	q := listTasksQuery{priority: "high", limit: 1, today: "2026-10-11"}
+	q := listTasksQuery{areas: []string{"work", "personal"}, priority: "high", limit: 1, today: "2026-10-11"}
 	var found []Task
 	requests := 0
 	for {

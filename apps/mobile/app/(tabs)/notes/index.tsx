@@ -6,9 +6,6 @@ import {
   type Note,
 } from '@gagnechris/app-core';
 import {
-  areaForNewItem,
-  areaQueryParam,
-  NOTEBOOK_AREA_LABELS,
   noteDay,
   noteDayLabel,
   noteFirstLine,
@@ -110,14 +107,14 @@ const NotesScreen = () => {
   const searching = q.trim().length > 0;
 
   const notes = useNotesQuery({
-    area: areaQueryParam(area),
+    area,
     type: kind === 'all' ? undefined : kind === 'daily' ? 'daily' : 'page',
     limit: 100,
   });
   useLoadAllPages(notes);
   const openIds = useOpenTaskIds();
   const search = useDebouncedNotebookSearch(q, {
-    area: areaQueryParam(area),
+    area,
     limit: 50,
   });
   const create = useCreateNoteMutation();
@@ -137,7 +134,6 @@ const NotesScreen = () => {
           note,
           meta: [
             noteDayLabel(noteDay(note), today),
-            area === 'all' ? NOTEBOOK_AREA_LABELS[note.area] : '',
             ((n) => (n > 0 ? `${n} open` : ''))(
               noteOpenTaskCount(note.bodyMarkdown, openIds),
             ),
@@ -146,7 +142,7 @@ const NotesScreen = () => {
             .join(' · '),
         })),
       })),
-    [noteList, today, area, openIds],
+    [noteList, today, openIds],
   );
   const hits = search.notes.filter((hit) => hitMatchesKind(hit, kind));
   const sections: ListSection[] = searching
@@ -176,7 +172,7 @@ const NotesScreen = () => {
     try {
       const note = await create.mutateAsync({
         id: createUlid(),
-        area: areaForNewItem(area),
+        area,
         type: 'page',
         title: 'Untitled',
         bodyMarkdown: '',

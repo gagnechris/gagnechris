@@ -27,6 +27,7 @@ var Builders = map[string]string{
 	"notePage":              "notebook",
 	"task":                  "notebook",
 	"noteTemplate":          "notebook",
+	"notebookAreas":         "notebook",
 	"project":               "projects",
 	"projectPublished":      "projects",
 	"postTagged":            "posts",

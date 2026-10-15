@@ -57,6 +57,7 @@ export const RESTORE_TEST_SCHEMA_CHECKED_ENTITY_TYPES = [
   'dailyNoteClaim',
   'dailyTemplate',
   'noteTemplate',
+  'notebookAreas',
 ] as const;
 
 /**
@@ -75,6 +76,7 @@ export const RESTORE_TEST_COUNT_FLOOR_ENTITY_TYPES = [
   'task',
   'dailyTemplate',
   'noteTemplate',
+  'notebookAreas',
 ] as const;
 
 /**

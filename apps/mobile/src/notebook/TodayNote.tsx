@@ -9,7 +9,6 @@ import {
 } from '@gagnechris/app-core';
 import {
   emptyNoteDraft,
-  NOTEBOOK_AREA_LABELS,
   noteDraftFromNote,
   notePayloadFromDraft,
   removeTaskEmbedLines,
@@ -45,6 +44,7 @@ export const appendTaskEmbed = (markdown: string, taskId: string) => {
 
 type Props = {
   area: NotebookArea;
+  areaName: string;
   date: string;
   today: string;
   /** The note's embeds, which Still open leaves out; null while loading. */
@@ -63,6 +63,7 @@ export const TodayNote = (props: Props) => (
 
 const DailyNoteEditor = ({
   area,
+  areaName,
   date,
   today,
   onEmbeddedIds,
@@ -161,8 +162,8 @@ const DailyNoteEditor = ({
       {isTemplateStartedDaily(entity!) && !dirty && saveState !== 'saving' ? (
         <View style={styles.template} accessibilityRole="summary">
           <Text style={styles.templateText}>
-            Started from your {NOTEBOOK_AREA_LABELS[area]} template. It’s saved
-            as soon as you type.
+            Started from your {areaName} template. It’s saved as soon as you
+            type.
           </Text>
           <View style={styles.templateActions}>
             <Button

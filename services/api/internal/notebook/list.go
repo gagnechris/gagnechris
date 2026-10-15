@@ -114,3 +114,9 @@ func SortTasksForList(tasks []Task, today string) {
 		return strings.Compare(a.ID, b.ID)
 	})
 }
+
+// AreaIDs is the user's areas, in order.
+func (rd Reader) AreaIDs(ctx context.Context, userID string) ([]string, error) {
+	a, err := (&areasRepo{table: rd.Table}).get(ctx, userID)
+	return a.IDs(), err
+}

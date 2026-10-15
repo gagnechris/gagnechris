@@ -178,6 +178,30 @@ func (r *ItemReader) OptMap(key string) *ItemReader {
 	return &ItemReader{item: m.Value, prefix: r.prefix + key + ".", problems: r.problems}
 }
 
+// MapList reads a required list of maps, one reader per element.
+func (r *ItemReader) MapList(key string) []*ItemReader {
+	v, ok := r.item[key]
+	if !ok {
+		r.bad(key, "missing")
+		return nil
+	}
+	l, isL := v.(*types.AttributeValueMemberL)
+	if !isL {
+		r.bad(key, "not a list")
+		return nil
+	}
+	out := make([]*ItemReader, 0, len(l.Value))
+	for i, e := range l.Value {
+		m, isM := e.(*types.AttributeValueMemberM)
+		if !isM {
+			r.bad(key+"."+strconv.Itoa(i), "not a map")
+			continue
+		}
+		out = append(out, &ItemReader{item: m.Value, prefix: r.prefix + key + "." + strconv.Itoa(i) + ".", problems: r.problems})
+	}
+	return out
+}
+
 // Err is a DataIntegrityError naming the row, or nil.
 func (r *ItemReader) Err(label string) error {
 	if len(*r.problems) == 0 {

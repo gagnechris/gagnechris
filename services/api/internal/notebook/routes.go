@@ -26,6 +26,7 @@ func Routes(table *data.Table, now func() time.Time) []api.Route {
 		notes:         newNotesRepo(table, now),
 		tasks:         newTasksRepo(table, now),
 		templates:     &templatesRepo{table: table, now: now},
+		areas:         &areasRepo{table: table, now: now},
 		noteTemplates: &noteTemplatesRepo{table: table, now: now},
 		table:         table,
 		now:           now,
@@ -56,6 +57,9 @@ func Routes(table *data.Table, now func() time.Time) []api.Route {
 		route(http.MethodPut, "/notebook/tasks/:id", "UpdateTask", h.updateTask),
 		route(http.MethodDelete, "/notebook/tasks/:id", "DeleteTask", h.deleteTask),
 
+		route(http.MethodGet, "/notebook/areas", "GetNotebookAreas", h.getAreas),
+		route(http.MethodPut, "/notebook/areas", "UpdateNotebookAreas", h.updateAreas),
+
 		route(http.MethodGet, template, "GetDailyTemplate", h.getTemplate),
 		route(http.MethodPut, template, "UpdateDailyTemplate", h.updateTemplate),
 		route(http.MethodDelete, template, "ResetDailyTemplate", h.resetTemplate),
@@ -74,6 +78,7 @@ type handlers struct {
 	notes         *notesRepo
 	tasks         *tasksRepo
 	templates     *templatesRepo
+	areas         *areasRepo
 	noteTemplates *noteTemplatesRepo
 	table         *data.Table
 	now           func() time.Time
@@ -163,14 +168,14 @@ func idParam(r *api.Request) (string, error) {
 
 func dailyParams(r *api.Request) (area, date string, err error) {
 	v := api.NewQueryValidator(map[string]string{"area": r.Params["area"], "date": r.Params["date"]})
-	area, _ = v.Enum("area", true, Areas...)
+	area, _ = v.String("area", true, false, AreaRule)
 	date, _ = v.String("date", true, false, calendarDay)
 	return area, date, v.ErrWith("Invalid path parameters")
 }
 
 func areaParam(r *api.Request) (string, error) {
 	v := api.NewQueryValidator(map[string]string{"area": r.Params["area"]})
-	area, _ := v.Enum("area", true, Areas...)
+	area, _ := v.String("area", true, false, AreaRule)
 	return area, v.ErrWith("Invalid path parameters")
 }
 
@@ -249,7 +254,7 @@ func (h handlers) batchNotes(ctx context.Context, r *api.Request) (*api.Response
 func (h handlers) listNotes(ctx context.Context, r *api.Request) (*api.Response, error) {
 	v := api.NewQueryValidator(r.Query)
 	q := listNotesQuery{}
-	q.area, _ = v.Enum("area", false, Areas...)
+	q.area, _ = v.String("area", false, false, AreaRule)
 	q.from, _ = v.String("from", false, false, calendarDay)
 	q.to, _ = v.String("to", false, false, calendarDay)
 	q.noteType, _ = v.Enum("type", false, NoteTypes...)
@@ -261,6 +266,10 @@ func (h handlers) listNotes(ctx context.Context, r *api.Request) (*api.Response,
 	}
 	if q.limit == 0 {
 		q.limit = contract.Data.Notebook.PageSize
+	}
+	var err error
+	if q.areas, err = h.areaIDs(ctx, r.UserID(), q.area); err != nil {
+		return nil, err
 	}
 	page, err := h.notes.list(ctx, r.UserID(), q, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
@@ -276,7 +285,7 @@ func (h handlers) createNote(ctx context.Context, r *api.Request) (*api.Response
 	}
 	in := createNoteInput{tags: []string{}}
 	in.id, _ = v.ULID("id", true)
-	in.area, _ = v.Enum("area", true, Areas...)
+	in.area, _ = v.String("area", true, false, AreaRule)
 	in.noteType, _ = v.Enum("type", true, NoteTypes...)
 	in.date = optStr(v.String("date", false, false, calendarDay))
 	in.title, _ = title(v, "title", 0, false)
@@ -299,6 +308,9 @@ func (h handlers) createNote(ctx context.Context, r *api.Request) (*api.Response
 	if err := v.ErrMaybeTooLarge(); err != nil {
 		return nil, err
 	}
+	if _, err := h.areas.require(ctx, r.UserID(), in.area); err != nil {
+		return nil, err
+	}
 	n, err := h.notes.create(ctx, r.UserID(), in)
 	if err != nil {
 		return nil, err
@@ -317,7 +329,7 @@ func readNoteFields(v *api.Validator, byID bool) noteFields {
 	f.pinned = optBool(v, "pinned")
 	if byID {
 		f.archived = optBool(v, "archived")
-		f.area = optStr(v.Enum("area", false, Areas...))
+		f.area = optStr(v.String("area", false, false, AreaRule))
 	}
 	return f
 }
@@ -331,13 +343,17 @@ func (h handlers) nestSubtasks(ctx context.Context, r *api.Request, n Note) {
 }
 
 func (h handlers) emptyDay(ctx context.Context, userID, area, date string) (*api.Response, error) {
+	areas, err := h.areas.get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	template, err := h.templates.get(ctx, userID, area)
 	if err != nil {
 		return nil, err
 	}
 	return api.JSON(http.StatusOK, emptyDaily{
 		Exists: false, UserID: userID, Area: area, Type: "daily", Date: date, Tags: []string{},
-		TemplateMarkdown: FillDailyTemplate(template.BodyMarkdown, area, date),
+		TemplateMarkdown: FillDailyTemplate(template.BodyMarkdown, areas.Name(area), date),
 	}), nil
 }
 
@@ -346,6 +362,16 @@ func (h handlers) dayResponse(ctx context.Context, userID, area, date string, n 
 		return h.emptyDay(ctx, userID, area, date)
 	}
 	return noteResponse(http.StatusOK, *n)
+}
+
+// areaIDs is the areas a list walks: the one asked for, else every area of
+// the user's.
+func (h handlers) areaIDs(ctx context.Context, userID, area string) ([]string, error) {
+	if area != "" {
+		return []string{area}, nil
+	}
+	areas, err := h.areas.get(ctx, userID)
+	return areas.IDs(), err
 }
 
 func (h handlers) getDaily(ctx context.Context, r *api.Request) (*api.Response, error) {
@@ -383,6 +409,10 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 		}
 		return h.dayResponse(ctx, userID, area, date, existing)
 	}
+	areas, err := h.areas.require(ctx, userID, area)
+	if err != nil {
+		return nil, err
+	}
 	carried, err := h.tasks.carriedInto(ctx, userID, area, date, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
 		return nil, err
@@ -394,7 +424,7 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	body := FillDailyTemplate(CarryIntoDailyTemplate(template.BodyMarkdown, carried, template.CarryOverSection), area, date)
+	body := FillDailyTemplate(CarryIntoDailyTemplate(template.BodyMarkdown, carried, template.CarryOverSection), areas.Name(area), date)
 	n, err := h.notes.createDaily(ctx, userID, area, date, dailyFields{id: id, noteFields: noteFields{bodyMarkdown: &body}})
 	var conflict *api.ConflictError
 	if errors.As(err, &conflict) {
@@ -428,6 +458,9 @@ func (h handlers) upsertDaily(ctx context.Context, r *api.Request) (*api.Respons
 	}
 	area, date, err := dailyParams(r)
 	if err != nil {
+		return nil, err
+	}
+	if _, err := h.areas.require(ctx, r.UserID(), area); err != nil {
 		return nil, err
 	}
 	e, err := expected(r, version, false)
@@ -480,6 +513,11 @@ func (h handlers) updateNote(ctx context.Context, r *api.Request) (*api.Response
 	if err != nil {
 		return nil, err
 	}
+	if f.area != nil {
+		if _, err := h.areas.require(ctx, r.UserID(), *f.area); err != nil {
+			return nil, err
+		}
+	}
 	n, err := h.notes.update(ctx, r.UserID(), id, e, f)
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
@@ -525,7 +563,7 @@ func (h handlers) deleteNote(ctx context.Context, r *api.Request) (*api.Response
 func (h handlers) listTasks(ctx context.Context, r *api.Request) (*api.Response, error) {
 	v := api.NewQueryValidator(r.Query)
 	q := listTasksQuery{}
-	q.area, _ = v.Enum("area", false, Areas...)
+	q.area, _ = v.String("area", false, false, AreaRule)
 	q.status, _ = v.Enum("status", false, TaskStatuses...)
 	q.priority, _ = v.Enum("priority", false, TaskPriorities...)
 	q.dueOn, _ = v.String("dueOn", false, false, calendarDay)
@@ -570,6 +608,10 @@ func (h handlers) listTasks(ctx context.Context, r *api.Request) (*api.Response,
 	}
 	if q.limit == 0 {
 		q.limit = contract.Data.Notebook.PageSize
+	}
+	var err error
+	if q.areas, err = h.areaIDs(ctx, r.UserID(), q.area); err != nil {
+		return nil, err
 	}
 	page, err := h.tasks.list(ctx, r.UserID(), q, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
@@ -625,7 +667,7 @@ func (h handlers) createTask(ctx context.Context, r *api.Request) (*api.Response
 	}
 	in := createTaskInput{description: "", priority: "med", status: "todo", tags: []string{}}
 	in.id, _ = v.ULID("id", true)
-	in.area, _ = v.Enum("area", true, Areas...)
+	in.area, _ = v.String("area", true, false, AreaRule)
 	in.title, _ = title(v, "title", 1, true)
 	in.description, _ = text(v, "description", false)
 	if p, ok := v.Enum("priority", false, TaskPriorities...); ok {
@@ -643,6 +685,9 @@ func (h handlers) createTask(ctx context.Context, r *api.Request) (*api.Response
 	}
 	rejectDatedSomeday(v, in.someday, nonNullStart(v))
 	if err := v.ErrMaybeTooLarge(); err != nil {
+		return nil, err
+	}
+	if _, err := h.areas.require(ctx, r.UserID(), in.area); err != nil {
 		return nil, err
 	}
 	if err := h.checkLinkedNote(ctx, r.UserID(), in.noteID); err != nil {
@@ -674,7 +719,7 @@ func (h handlers) updateTask(ctx context.Context, r *api.Request) (*api.Response
 	}
 	version := bodyVersion(v)
 	var f taskFields
-	f.area = optStr(v.Enum("area", false, Areas...))
+	f.area = optStr(v.String("area", false, false, AreaRule))
 	f.title = optStr(title(v, "title", 1, false))
 	f.description = optStr(text(v, "description", false))
 	f.priority = optStr(v.Enum("priority", false, TaskPriorities...))
@@ -695,6 +740,11 @@ func (h handlers) updateTask(ctx context.Context, r *api.Request) (*api.Response
 	e, err := expected(r, version, true)
 	if err != nil {
 		return nil, err
+	}
+	if f.area != nil {
+		if _, err := h.areas.require(ctx, r.UserID(), *f.area); err != nil {
+			return nil, err
+		}
 	}
 	// Only a changed link is checked: the web resends noteId on every save,
 	// and a task whose note was later deleted must stay editable.
@@ -799,6 +849,9 @@ func (h handlers) updateTemplate(ctx context.Context, r *api.Request) (*api.Resp
 	if err != nil {
 		return nil, err
 	}
+	if _, err := h.areas.require(ctx, r.UserID(), area); err != nil {
+		return nil, err
+	}
 	e, err := expected(r, version, true)
 	if err != nil {
 		return nil, err
@@ -823,6 +876,9 @@ func (h handlers) resetTemplate(ctx context.Context, r *api.Request) (*api.Respo
 	if err != nil {
 		return nil, err
 	}
+	if _, err := h.areas.require(ctx, r.UserID(), area); err != nil {
+		return nil, err
+	}
 	e, err := expected(r, version, true)
 	if err != nil {
 		return nil, err
@@ -832,6 +888,45 @@ func (h handlers) resetTemplate(ctx context.Context, r *api.Request) (*api.Respo
 		return nil, e.IfMatchConflict(err)
 	}
 	return templateResponse(t), nil
+}
+
+// Areas.
+
+func areasResponse(a Areas) *api.Response {
+	return api.JSONWithETag(http.StatusOK, a, a.Version)
+}
+
+func (h handlers) getAreas(ctx context.Context, r *api.Request) (*api.Response, error) {
+	a, err := h.areas.get(ctx, r.UserID())
+	if err != nil {
+		return nil, err
+	}
+	return areasResponse(a), nil
+}
+
+func (h handlers) updateAreas(ctx context.Context, r *api.Request) (*api.Response, error) {
+	v, err := api.NewValidator(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	version := bodyVersion(v)
+	list := readAreaList(v)
+	if err := v.Err(); err != nil {
+		return nil, err
+	}
+	e, err := expected(r, version, true)
+	if err != nil {
+		return nil, err
+	}
+	a, err := h.areas.write(ctx, r.UserID(), list, e)
+	var conflict *api.ConflictError
+	if errors.As(err, &conflict) && conflict.Code == api.CodeVersionConflict {
+		err = e.IfMatchConflict(err)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return areasResponse(a), nil
 }
 
 // Note templates.

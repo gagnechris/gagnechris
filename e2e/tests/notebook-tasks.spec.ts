@@ -30,9 +30,14 @@ test('tasks are added, completed and filtered in each area', async ({
   await expect(personal).toHaveAttribute('aria-checked', 'true');
   await add(`${prefix} personal errand`);
   await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
+  await expect(open.getByText(`${prefix} work urgent`)).toBeVisible();
+
+  const areaFilter = page.getByRole('combobox', { name: 'Filter by area' });
+  await areaFilter.selectOption('personal');
+  await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
   await expect(page.getByText(`${prefix} work urgent`)).toHaveCount(0);
 
-  await area.getByRole('radio', { name: 'Work' }).click();
+  await areaFilter.selectOption('work');
   await expect(open.getByText(`${prefix} work later`)).toBeVisible();
   await expect(page.getByText(`${prefix} personal errand`)).toHaveCount(0);
 

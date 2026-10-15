@@ -31,14 +31,10 @@ export const queryKeys = {
     /** Sorted ids, so the same set is one cache entry. */
     batch: (ids: readonly string[]) =>
       [...queryKeys.notes.all, 'batch', ids] as const,
-    daily: (area: 'work' | 'personal', date: string) =>
+    daily: (area: string, date: string) =>
       [...queryKeys.notes.all, 'daily', area, date] as const,
-    dailyDates: (
-      area: 'work' | 'personal' | undefined,
-      from: string,
-      to: string,
-    ) =>
-      [...queryKeys.notes.all, 'daily-dates', area ?? 'all', from, to] as const,
+    dailyDates: (area: string | undefined, from: string, to: string) =>
+      [...queryKeys.notes.all, 'daily-dates', area ?? '*', from, to] as const,
   },
   tasks: {
     all: ['admin', 'notebook', 'tasks'] as const,
@@ -51,7 +47,8 @@ export const queryKeys = {
     batch: (ids: readonly string[]) =>
       [...queryKeys.tasks.all, 'batch', ids] as const,
   },
-  dailyTemplate: (area: 'work' | 'personal') =>
+  notebookAreas: () => ['admin', 'notebook', 'areas'] as const,
+  dailyTemplate: (area: string) =>
     ['admin', 'notebook', 'templates', 'daily', area] as const,
   noteTemplates: {
     all: ['admin', 'notebook', 'templates', 'notes'] as const,
@@ -59,9 +56,6 @@ export const queryKeys = {
     detail: (id: string) =>
       [...queryKeys.noteTemplates.all, 'detail', id] as const,
   },
-  search: (filters: {
-    q: string;
-    area?: 'work' | 'personal';
-    limit?: number;
-  }) => ['admin', 'notebook', 'search', filters] as const,
+  search: (filters: { q: string; area?: string; limit?: number }) =>
+    ['admin', 'notebook', 'search', filters] as const,
 };

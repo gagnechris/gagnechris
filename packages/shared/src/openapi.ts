@@ -78,6 +78,12 @@ import {
   UpdateDailyTemplateRequestSchema,
 } from './daily-templates.js';
 import {
+  NOTEBOOK_AREAS_MAX,
+  NotebookAreaEntrySchema,
+  NotebookAreasSchema,
+  UpdateNotebookAreasRequestSchema,
+} from './notebook-area.js';
+import {
   CreateNoteTemplateRequestSchema,
   NOTE_TEMPLATE_MAX_COUNT,
   NoteTemplateListResponseSchema,
@@ -374,6 +380,39 @@ function registerDailyTemplatePaths(registry: OpenAPIRegistry) {
         DailyTemplateSchema,
         'The built-in template, at a new version',
       ),
+      400: r400,
+      409: r409,
+      ...versionedAuth,
+    },
+  });
+}
+
+function registerAreaPaths(registry: OpenAPIRegistry) {
+  const base = { tags: ['Notebook'], security: [{ bearerAuth: [] }] };
+  const path = '/api/notebook/areas';
+
+  registry.registerPath({
+    method: 'get',
+    path,
+    summary: "List the user's Notebook areas (stored, or Work and Personal)",
+    ...base,
+    responses: {
+      200: okWithEtag(NotebookAreasSchema, 'Areas, in order'),
+      ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'put',
+    path,
+    summary: `Rename, reorder, add (up to ${NOTEBOOK_AREAS_MAX}) or remove areas; an area that still has notes or tasks can't be removed (409)`,
+    ...base,
+    request: {
+      headers: IfMatchHeadersSchema,
+      body: jsonBody(UpdateNotebookAreasRequestSchema),
+    },
+    responses: {
+      200: okWithEtag(NotebookAreasSchema, 'Saved'),
       400: r400,
       409: r409,
       ...versionedAuth,
@@ -759,6 +798,12 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
   registry.register('EmptyDailyNote', EmptyDailyNoteSchema);
   registry.register('DailyNoteGetResponse', DailyNoteGetResponseSchema);
   registry.register('UpsertDailyNoteRequest', UpsertDailyNoteRequestSchema);
+  registry.register('NotebookAreaEntry', NotebookAreaEntrySchema);
+  registry.register('NotebookAreas', NotebookAreasSchema);
+  registry.register(
+    'UpdateNotebookAreasRequest',
+    UpdateNotebookAreasRequestSchema,
+  );
   registry.register('DailyTemplate', DailyTemplateSchema);
   registry.register(
     'UpdateDailyTemplateRequest',
@@ -1189,6 +1234,7 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
     },
   });
 
+  registerAreaPaths(registry);
   registerDailyTemplatePaths(registry);
   registerNoteTemplatePaths(registry);
 

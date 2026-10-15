@@ -6115,8 +6115,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description Filter by Work or Personal */
-                    area?: "work" | "personal";
+                    /** @description Filter by one area */
+                    area?: string;
                     /** @description Inclusive start date (yyyy-mm-dd) for calendar ranges */
                     from?: string;
                     /** @description Inclusive end date (yyyy-mm-dd) for calendar ranges */
@@ -6146,8 +6146,8 @@ export interface paths {
                             items: {
                                 id: string;
                                 userId: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 /** @enum {string} */
                                 type: "daily" | "page";
                                 date: string | null;
@@ -6260,8 +6260,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         id: string;
-                        /** @enum {string} */
-                        area: "work" | "personal";
+                        /** @description An area id from the user's area list, such as work or personal */
+                        area: string;
                         /** @enum {string} */
                         type: "daily" | "page";
                         date?: string;
@@ -6291,8 +6291,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -6468,8 +6468,8 @@ export interface paths {
                             items: {
                                 id: string;
                                 userId: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 /** @enum {string} */
                                 type: "daily" | "page";
                                 date: string | null;
@@ -6587,7 +6587,8 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                     date: string;
                 };
                 cookie?: never;
@@ -6605,8 +6606,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -6628,8 +6629,8 @@ export interface paths {
                             /** @enum {boolean} */
                             exists: false;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily";
                             date: string;
@@ -6733,7 +6734,8 @@ export interface paths {
                     "if-match"?: string;
                 };
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                     date: string;
                 };
                 cookie?: never;
@@ -6764,8 +6766,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -6951,7 +6953,8 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                     date: string;
                 };
                 cookie?: never;
@@ -6976,8 +6979,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -6999,8 +7002,8 @@ export interface paths {
                             /** @enum {boolean} */
                             exists: false;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily";
                             date: string;
@@ -7132,8 +7135,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -7271,8 +7274,8 @@ export interface paths {
                         pinned?: boolean;
                         /** @description Page notes only; archiving a daily note is a 400 */
                         archived?: boolean;
-                        /** @enum {string} */
-                        area?: "work" | "personal";
+                        /** @description An area id from the user's area list, such as work or personal */
+                        area?: string;
                     };
                 };
             };
@@ -7288,8 +7291,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -7487,8 +7490,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             /** @enum {string} */
                             type: "daily" | "page";
                             date: string | null;
@@ -7653,7 +7656,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    area?: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area?: string;
                     status?: "todo" | "in_progress" | "done" | "dropped";
                     priority?: "low" | "med" | "high";
                     /** @description Tasks due on this date */
@@ -7698,8 +7702,8 @@ export interface paths {
                             items: {
                                 id: string;
                                 userId: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 title: string;
                                 description: string;
                                 /** @enum {string} */
@@ -7816,8 +7820,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         id: string;
-                        /** @enum {string} */
-                        area: "work" | "personal";
+                        /** @description An area id from the user's area list, such as work or personal */
+                        area: string;
                         title: string;
                         /**
                          * @description Up to 100 KB (UTF-8); larger → 413
@@ -7856,8 +7860,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -8037,8 +8041,8 @@ export interface paths {
                             items: {
                                 id: string;
                                 userId: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 title: string;
                                 description: string;
                                 /** @enum {string} */
@@ -8189,8 +8193,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -8391,8 +8395,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -8582,8 +8586,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -8718,8 +8722,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         version?: number;
-                        /** @enum {string} */
-                        area?: "work" | "personal";
+                        /** @description An area id from the user's area list, such as work or personal */
+                        area?: string;
                         title?: string;
                         /** @description Up to 100 KB (UTF-8); larger → 413 */
                         description?: string;
@@ -8747,8 +8751,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -8950,8 +8954,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             userId: string;
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -9133,8 +9137,8 @@ export interface paths {
                 content: {
                     "application/json": {
                         q: string;
-                        /** @enum {string} */
-                        area?: "work" | "personal";
+                        /** @description An area id from the user's area list, such as work or personal */
+                        area?: string;
                         limit?: number;
                     };
                 };
@@ -9151,8 +9155,8 @@ export interface paths {
                                 /** @enum {string} */
                                 type: "note" | "task";
                                 id: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 title: string;
                                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                                 date?: string;
@@ -9173,8 +9177,8 @@ export interface paths {
                                 /** @enum {string} */
                                 type: "note" | "task";
                                 id: string;
-                                /** @enum {string} */
-                                area: "work" | "personal";
+                                /** @description An area id from the user's area list, such as work or personal */
+                                area: string;
                                 title: string;
                                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                                 date?: string;
@@ -9727,6 +9731,274 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/notebook/areas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the user's Notebook areas (stored, or Work and Personal) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Areas, in order */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description 1 to 4 areas, in the order the switch shows */
+                            areas: {
+                                /** @description Fixed once the area is created; notes, tasks and keys store it */
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description 0 until the list is first saved */
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        /** Rename, reorder, add (up to 4) or remove areas; an area that still has notes or tasks can't be removed (409) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*` */
+                    "if-match"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        version?: number;
+                        /** @description 1 to 4 areas, in the order the switch shows */
+                        areas: {
+                            /** @description Fixed once the area is created; notes, tasks and keys store it */
+                            id: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved */
+                200: {
+                    headers: {
+                        /** @description Strong entity version tag (quoted integer), e.g. `"3"` */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description 1 to 4 areas, in the order the switch shows */
+                            areas: {
+                                /** @description Fixed once the area is created; notes, tasks and keys store it */
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description 0 until the list is first saved */
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+                /** @description Validation error (may include `fields`) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Forbidden: the token is not a `notebook-web` client token with the `notebook` group */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Conflict (may include `currentVersion` / `current`) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "version_conflict" | "deleted" | "payload_mismatch" | "slug_taken" | "daily_taken";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Precondition failed (`If-Match` version mismatch) */
+                412: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "precondition_failed";
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                            currentVersion?: number;
+                            current?: unknown;
+                        };
+                    };
+                };
+                /** @description Internal error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Service unavailable (throttling) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                            fields?: {
+                                [key: string]: string;
+                            };
+                        };
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notebook/templates/daily/{area}": {
         parameters: {
             query?: never;
@@ -9740,7 +10012,8 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                 };
                 cookie?: never;
             };
@@ -9755,8 +10028,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             bodyMarkdown: string;
                             /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
                             carryOverSection: string | null;
@@ -9855,7 +10128,8 @@ export interface paths {
                     "if-match"?: string;
                 };
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                 };
                 cookie?: never;
             };
@@ -9880,8 +10154,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             bodyMarkdown: string;
                             /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
                             carryOverSection: string | null;
@@ -10032,7 +10306,8 @@ export interface paths {
                     "if-match"?: string;
                 };
                 path: {
-                    area: "work" | "personal";
+                    /** @description An area id from the user's area list, such as work or personal */
+                    area: string;
                 };
                 cookie?: never;
             };
@@ -10053,8 +10328,8 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @enum {string} */
-                            area: "work" | "personal";
+                            /** @description An area id from the user's area list, such as work or personal */
+                            area: string;
                             bodyMarkdown: string;
                             /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
                             carryOverSection: string | null;
@@ -11769,8 +12044,8 @@ export interface components {
         Note: {
             id: string;
             userId: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             /** @enum {string} */
             type: "daily" | "page";
             date: string | null;
@@ -11793,8 +12068,8 @@ export interface components {
             items: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 /** @enum {string} */
                 type: "daily" | "page";
                 date: string | null;
@@ -11817,8 +12092,8 @@ export interface components {
         };
         CreateNoteRequest: {
             id: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             /** @enum {string} */
             type: "daily" | "page";
             date?: string;
@@ -11843,15 +12118,12 @@ export interface components {
             pinned?: boolean;
             /** @description Page notes only; archiving a daily note is a 400 */
             archived?: boolean;
-            /** @enum {string} */
-            area?: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area?: string;
         };
         ListNotesQuery: {
-            /**
-             * @description Filter by Work or Personal
-             * @enum {string}
-             */
-            area?: "work" | "personal";
+            /** @description Filter by one area */
+            area?: string;
             /** @description Inclusive start date (yyyy-mm-dd) for calendar ranges */
             from?: string;
             /** @description Inclusive end date (yyyy-mm-dd) for calendar ranges */
@@ -11872,8 +12144,8 @@ export interface components {
             /** @enum {boolean} */
             exists: false;
             userId: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             /** @enum {string} */
             type: "daily";
             date: string;
@@ -11892,8 +12164,8 @@ export interface components {
         DailyNoteGetResponse: {
             id: string;
             userId: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             /** @enum {string} */
             type: "daily" | "page";
             date: string | null;
@@ -11915,8 +12187,8 @@ export interface components {
             /** @enum {boolean} */
             exists: false;
             userId: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             /** @enum {string} */
             type: "daily";
             date: string;
@@ -11942,9 +12214,35 @@ export interface components {
             tags?: string[];
             pinned?: boolean;
         };
+        NotebookAreaEntry: {
+            /** @description Fixed once the area is created; notes, tasks and keys store it */
+            id: string;
+            name: string;
+        };
+        NotebookAreas: {
+            /** @description 1 to 4 areas, in the order the switch shows */
+            areas: {
+                /** @description Fixed once the area is created; notes, tasks and keys store it */
+                id: string;
+                name: string;
+            }[];
+            /** @description 0 until the list is first saved */
+            version: number;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        UpdateNotebookAreasRequest: {
+            version?: number;
+            /** @description 1 to 4 areas, in the order the switch shows */
+            areas: {
+                /** @description Fixed once the area is created; notes, tasks and keys store it */
+                id: string;
+                name: string;
+            }[];
+        };
         DailyTemplate: {
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             bodyMarkdown: string;
             /** @description Heading text, unfilled, whose section new days carry open tasks into; null means the first heading */
             carryOverSection: string | null;
@@ -12003,8 +12301,8 @@ export interface components {
         Task: {
             id: string;
             userId: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             title: string;
             description: string;
             /** @enum {string} */
@@ -12031,8 +12329,8 @@ export interface components {
             items: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 title: string;
                 description: string;
                 /** @enum {string} */
@@ -12065,8 +12363,8 @@ export interface components {
             items: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 /** @enum {string} */
                 type: "daily" | "page";
                 date: string | null;
@@ -12091,8 +12389,8 @@ export interface components {
             items: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 title: string;
                 description: string;
                 /** @enum {string} */
@@ -12118,8 +12416,8 @@ export interface components {
         };
         CreateTaskRequest: {
             id: string;
-            /** @enum {string} */
-            area: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area: string;
             title: string;
             /**
              * @description Up to 100 KB (UTF-8); larger → 413
@@ -12146,8 +12444,8 @@ export interface components {
         };
         UpdateTaskRequest: {
             version?: number;
-            /** @enum {string} */
-            area?: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area?: string;
             title?: string;
             /** @description Up to 100 KB (UTF-8); larger → 413 */
             description?: string;
@@ -12162,8 +12460,8 @@ export interface components {
             tags?: string[];
         };
         ListTasksQuery: {
-            /** @enum {string} */
-            area?: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area?: string;
             /** @enum {string} */
             status?: "todo" | "in_progress" | "done" | "dropped";
             /** @enum {string} */
@@ -12205,8 +12503,8 @@ export interface components {
         };
         NotebookSearchRequest: {
             q: string;
-            /** @enum {string} */
-            area?: "work" | "personal";
+            /** @description An area id from the user's area list, such as work or personal */
+            area?: string;
             limit?: number;
         };
         NotebookSearchResponse: {
@@ -12214,8 +12512,8 @@ export interface components {
                 /** @enum {string} */
                 type: "note" | "task";
                 id: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 title: string;
                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                 date?: string;
@@ -12236,8 +12534,8 @@ export interface components {
                 /** @enum {string} */
                 type: "note" | "task";
                 id: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 title: string;
                 /** @description A daily note's day (yyyy-mm-dd); absent for pages and tasks */
                 date?: string;
@@ -12269,8 +12567,8 @@ export interface components {
             entity: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 /** @enum {string} */
                 type: "daily" | "page";
                 date: string | null;
@@ -12311,8 +12609,8 @@ export interface components {
             entity: {
                 id: string;
                 userId: string;
-                /** @enum {string} */
-                area: "work" | "personal";
+                /** @description An area id from the user's area list, such as work or personal */
+                area: string;
                 title: string;
                 description: string;
                 /** @enum {string} */

@@ -310,17 +310,15 @@ func NormalizeTags(tags []string) []string {
 	return out
 }
 
-var areaLabels = map[string]string{"work": "Work", "personal": "Personal"}
-
 var templateToken = regexp.MustCompile(`\{\{(weekday|date|area)\}\}`)
 
-// FillDailyTemplate fills {{weekday}}, {{date}} and {{area}} for the note's
-// own day; other {{…}} stay.
-func FillDailyTemplate(markdown, area, date string) string {
+// FillDailyTemplate fills {{weekday}}, {{date}} and {{area}} (the area's
+// name) for the note's own day; other {{…}} stay.
+func FillDailyTemplate(markdown, areaName, date string) string {
 	values := map[string]string{
 		"weekday": date,
 		"date":    date,
-		"area":    areaLabels[area],
+		"area":    areaName,
 	}
 	if t, ok := ParseCalendarDay(date); ok {
 		values["weekday"] = t.Weekday().String()

@@ -19,6 +19,9 @@ func TestBuildersRebuildContractSamples(t *testing.T) {
 		case et != nil && et.Value == "noteTemplate":
 			t, err := parseNoteTemplate(item)
 			return noteTemplateItem(t), err
+		case et != nil && et.Value == "notebookAreas":
+			a, err := parseAreas(item)
+			return notebookAreasItem("user-sub-1", a), err
 		}
 		note, err := ParseNote(item)
 		return noteItem(note), err

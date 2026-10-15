@@ -73,7 +73,7 @@ describe('opening a daily note carries in open tasks', () => {
     const body = String(monday.body.bodyMarkdown);
     expect(body).toBe(
       fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
-        area: 'work',
+        areaName: 'Work',
         date: MON,
       }).replace(
         '## Focus for Monday\n- \n\n',
@@ -175,7 +175,7 @@ describe('opening a daily note carries in open tasks', () => {
       exists: false,
       date: MON,
       templateMarkdown: fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
-        area: 'work',
+        areaName: 'Work',
         date: MON,
       }),
     });

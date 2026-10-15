@@ -1,7 +1,3 @@
-import {
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_LABELS,
-} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useCallback } from 'react';
 import { ActionSheetIOS, Pressable, StyleSheet, Text } from 'react-native';
@@ -10,36 +6,36 @@ import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from './Icon';
 
 export function useAreaPicker(): () => void {
-  const { area, setArea } = useArea();
+  const { area, areas, setArea } = useArea();
   return useCallback(() => {
-    const labels = NOTEBOOK_AREA_FILTERS.map((f) => NOTEBOOK_AREA_LABELS[f]);
+    const labels = areas.map((a) => a.name);
     ActionSheetIOS.showActionSheetWithOptions(
       {
         title: 'Show notes and tasks from',
         options: [...labels, 'Cancel'],
         cancelButtonIndex: labels.length,
-        disabledButtonIndices: [NOTEBOOK_AREA_FILTERS.indexOf(area)],
+        disabledButtonIndices: [areas.findIndex((a) => a.id === area)],
       },
       (index) => {
-        const picked = NOTEBOOK_AREA_FILTERS[index];
-        if (picked) setArea(picked);
+        const picked = areas[index];
+        if (picked) setArea(picked.id);
       },
     );
-  }, [area, setArea]);
+  }, [area, areas, setArea]);
 }
 
 export const AreaChip = () => {
-  const { area } = useArea();
+  const { areaName, areas } = useArea();
   const pick = useAreaPicker();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Area: ${NOTEBOOK_AREA_LABELS[area]}`}
-      accessibilityHint="Chooses Work, Personal or All"
+      accessibilityLabel={`Area: ${areaName}`}
+      accessibilityHint={`Chooses ${areas.map((a) => a.name).join(', ')}`}
       onPress={pick}
       style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
     >
-      <Text style={styles.label}>{NOTEBOOK_AREA_LABELS[area]}</Text>
+      <Text style={styles.label}>{areaName}</Text>
       <Icon name="chevron.down" size={12} color={color.inkSoft} />
     </Pressable>
   );

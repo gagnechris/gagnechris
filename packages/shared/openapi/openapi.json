@@ -1828,10 +1828,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "type": {
             "type": "string",
@@ -1923,10 +1922,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "type": {
                   "type": "string",
@@ -2019,10 +2017,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "type": {
             "type": "string",
@@ -2097,10 +2094,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           }
         }
       },
@@ -2109,11 +2105,9 @@
         "properties": {
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ],
-            "description": "Filter by Work or Personal"
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Filter by one area"
           },
           "from": {
             "type": "string",
@@ -2167,10 +2161,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "type": {
             "type": "string",
@@ -2246,10 +2239,9 @@
               },
               "area": {
                 "type": "string",
-                "enum": [
-                  "work",
-                  "personal"
-                ]
+                "maxLength": 24,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "An area id from the user's area list, such as work or personal"
               },
               "type": {
                 "type": "string",
@@ -2338,10 +2330,9 @@
               },
               "area": {
                 "type": "string",
-                "enum": [
-                  "work",
-                  "personal"
-                ]
+                "maxLength": 24,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "An area id from the user's area list, such as work or personal"
               },
               "type": {
                 "type": "string",
@@ -2440,15 +2431,118 @@
           "id"
         ]
       },
+      "NotebookAreaEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Fixed once the area is created; notes, tasks and keys store it"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "NotebookAreas": {
+        "type": "object",
+        "properties": {
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Fixed once the area is created; notes, tasks and keys store it"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 30
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "1 to 4 areas, in the order the switch shows"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "0 until the list is first saved"
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "areas",
+          "version",
+          "updatedAt"
+        ]
+      },
+      "UpdateNotebookAreasRequest": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "Fixed once the area is created; notes, tasks and keys store it"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 30
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "1 to 4 areas, in the order the switch shows"
+          }
+        },
+        "required": [
+          "areas"
+        ]
+      },
       "DailyTemplate": {
         "type": "object",
         "properties": {
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "bodyMarkdown": {
             "type": "string"
@@ -2641,10 +2735,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "title": {
             "type": "string",
@@ -2760,10 +2853,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "title": {
                   "type": "string",
@@ -2906,10 +2998,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "type": {
                   "type": "string",
@@ -3008,10 +3099,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "title": {
                   "type": "string",
@@ -3125,10 +3215,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "title": {
             "type": "string",
@@ -3203,10 +3292,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "title": {
             "type": "string",
@@ -3267,10 +3355,9 @@
         "properties": {
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "status": {
             "type": "string",
@@ -3375,10 +3462,9 @@
           },
           "area": {
             "type": "string",
-            "enum": [
-              "work",
-              "personal"
-            ]
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
           },
           "limit": {
             "type": "integer",
@@ -3412,10 +3498,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "title": {
                   "type": "string"
@@ -3491,10 +3576,9 @@
                 },
                 "area": {
                   "type": "string",
-                  "enum": [
-                    "work",
-                    "personal"
-                  ]
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "An area id from the user's area list, such as work or personal"
                 },
                 "title": {
                   "type": "string"
@@ -3605,10 +3689,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "type": {
                     "type": "string",
@@ -3772,10 +3855,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "title": {
                     "type": "string",
@@ -16447,14 +16529,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ],
-              "description": "Filter by Work or Personal"
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "Filter by one area"
             },
             "required": false,
-            "description": "Filter by Work or Personal",
+            "description": "Filter by one area",
             "name": "area",
             "in": "query"
           },
@@ -16553,10 +16633,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "type": {
                             "type": "string",
@@ -16802,10 +16881,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "type": {
                     "type": "string",
@@ -16879,10 +16957,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "type": {
                       "type": "string",
@@ -17224,10 +17301,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "type": {
                             "type": "string",
@@ -17464,12 +17540,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           },
@@ -17512,10 +17588,9 @@
                         },
                         "area": {
                           "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
+                          "maxLength": 24,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "An area id from the user's area list, such as work or personal"
                         },
                         "type": {
                           "type": "string",
@@ -17604,10 +17679,9 @@
                         },
                         "area": {
                           "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
+                          "maxLength": 24,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "An area id from the user's area list, such as work or personal"
                         },
                         "type": {
                           "type": "string",
@@ -17824,12 +17898,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           },
@@ -17924,10 +17998,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "type": {
                       "type": "string",
@@ -18288,12 +18361,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           },
@@ -18356,10 +18429,9 @@
                         },
                         "area": {
                           "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
+                          "maxLength": 24,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "An area id from the user's area list, such as work or personal"
                         },
                         "type": {
                           "type": "string",
@@ -18448,10 +18520,9 @@
                         },
                         "area": {
                           "type": "string",
-                          "enum": [
-                            "work",
-                            "personal"
-                          ]
+                          "maxLength": 24,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "An area id from the user's area list, such as work or personal"
                         },
                         "type": {
                           "type": "string",
@@ -18706,10 +18777,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "type": {
                       "type": "string",
@@ -19019,10 +19089,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   }
                 }
               }
@@ -19057,10 +19126,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "type": {
                       "type": "string",
@@ -19485,10 +19553,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "type": {
                       "type": "string",
@@ -19822,12 +19889,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": false,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "query"
           },
@@ -20033,10 +20100,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "title": {
                             "type": "string",
@@ -20306,10 +20372,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "title": {
                     "type": "string",
@@ -20406,10 +20471,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -20775,10 +20839,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "title": {
                             "type": "string",
@@ -21105,10 +21168,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -21532,10 +21594,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -21929,10 +21990,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -22243,10 +22303,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "title": {
                     "type": "string",
@@ -22333,10 +22392,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -22785,10 +22843,9 @@
                     },
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "title": {
                       "type": "string",
@@ -23156,10 +23213,9 @@
                   },
                   "area": {
                     "type": "string",
-                    "enum": [
-                      "work",
-                      "personal"
-                    ]
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "An area id from the user's area list, such as work or personal"
                   },
                   "limit": {
                     "type": "integer",
@@ -23202,10 +23258,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "title": {
                             "type": "string"
@@ -23281,10 +23336,9 @@
                           },
                           "area": {
                             "type": "string",
-                            "enum": [
-                              "work",
-                              "personal"
-                            ]
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "An area id from the user's area list, such as work or personal"
                           },
                           "title": {
                             "type": "string"
@@ -24231,6 +24285,536 @@
         }
       }
     },
+    "/api/notebook/areas": {
+      "get": {
+        "summary": "List the user's Notebook areas (stored, or Work and Personal)",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Areas, in order",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "Fixed once the area is created; notes, tasks and keys store it"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 30
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "description": "1 to 4 areas, in the order the switch shows"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "0 until the list is first saved"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "areas",
+                    "version",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Rename, reorder, add (up to 4) or remove areas; an area that still has notes or tasks can't be removed (409)",
+        "tags": [
+          "Notebook"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+              "example": "\"3\""
+            },
+            "required": false,
+            "description": "Optimistic concurrency expectation: `\"<version>\"`, `W/\"<version>\"`, or `*`",
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "areas": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "maxLength": 24,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                          "description": "Fixed once the area is created; notes, tasks and keys store it"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 30
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "description": "1 to 4 areas, in the order the switch shows"
+                  }
+                },
+                "required": [
+                  "areas"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "headers": {
+              "ETag": {
+                "description": "Strong entity version tag (quoted integer), e.g. `\"3\"`",
+                "schema": {
+                  "type": "string",
+                  "example": "\"3\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "areas": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "Fixed once the area is created; notes, tasks and keys store it"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 30
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      },
+                      "minItems": 1,
+                      "maxItems": 4,
+                      "description": "1 to 4 areas, in the order the switch shows"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "0 until the list is first saved"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "nullable": true,
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "areas",
+                    "version",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (may include `fields`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: the token is not a `notebook-web` client token with the `notebook` group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (may include `currentVersion` / `current`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "conflict",
+                        "version_conflict",
+                        "deleted",
+                        "payload_mismatch",
+                        "slug_taken",
+                        "daily_taken"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Precondition failed (`If-Match` version mismatch)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "precondition_failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    },
+                    "current": {
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable (throttling)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "fields": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notebook/templates/daily/{area}": {
       "get": {
         "summary": "Get the area's daily note template (stored, or the built-in one)",
@@ -24246,12 +24830,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           }
@@ -24275,10 +24859,9 @@
                   "properties": {
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "bodyMarkdown": {
                       "type": "string"
@@ -24466,12 +25049,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           },
@@ -24534,10 +25117,9 @@
                   "properties": {
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "bodyMarkdown": {
                       "type": "string"
@@ -24829,12 +25411,12 @@
           {
             "schema": {
               "type": "string",
-              "enum": [
-                "work",
-                "personal"
-              ]
+              "maxLength": 24,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "description": "An area id from the user's area list, such as work or personal"
             },
             "required": true,
+            "description": "An area id from the user's area list, such as work or personal",
             "name": "area",
             "in": "path"
           },
@@ -24888,10 +25470,9 @@
                   "properties": {
                     "area": {
                       "type": "string",
-                      "enum": [
-                        "work",
-                        "personal"
-                      ]
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "An area id from the user's area list, such as work or personal"
                     },
                     "bodyMarkdown": {
                       "type": "string"

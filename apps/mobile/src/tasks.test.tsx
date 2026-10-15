@@ -270,8 +270,10 @@ describe('All tasks', () => {
     );
     const renderer = await launch(TasksScreen);
     expect(allText(renderer)).toContain('High');
-    expect(has(renderer.root, 'File taxes, due Mon, High priority')).toBe(1);
-    expect(has(renderer.root, 'Water plants, Low priority')).toBe(1);
+    expect(has(renderer.root, 'File taxes, Work, due Mon, High priority')).toBe(
+      1,
+    );
+    expect(has(renderer.root, 'Water plants, Work, Low priority')).toBe(1);
   });
 
   it('filters by show-on day', async () => {

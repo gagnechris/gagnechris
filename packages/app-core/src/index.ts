@@ -137,6 +137,8 @@ export {
   fetchDailyNote,
   fetchDailyTemplate,
   fetchNoteTemplates,
+  fetchNotebookAreas,
+  updateNotebookAreas,
   fetchHome,
   fetchNote,
   fetchNotesBatch,
@@ -187,6 +189,8 @@ export {
   type MutateResult,
   type Note,
   type NotebookArea,
+  type NotebookAreaEntry,
+  type NotebookAreas,
   type NotebookSearchQuery,
   type NotebookSearchResponse,
   type NoteType,
@@ -278,6 +282,11 @@ export {
   type DailyNoteResourceParams,
   type NoteResourceParams,
 } from './query/notes.js';
+export {
+  useNotebookAreas,
+  useNotebookAreasQuery,
+  useSaveNotebookAreasMutation,
+} from './query/areas.js';
 export {
   dailyTemplateResource,
   useResetDailyTemplateMutation,

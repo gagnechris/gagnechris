@@ -5,6 +5,7 @@ import {
   carryIntoDailyTemplate,
   dailyTemplateHasTasks,
   dailyTemplateHeadings,
+  defaultDailyTemplate,
   fillDailyTemplate,
 } from './daily-templates.js';
 
@@ -16,7 +17,7 @@ describe('fillDailyTemplate', () => {
   it("fills tokens for the note's own date and leaves unknown ones", () => {
     expect(
       fillDailyTemplate('{{weekday}} | {{date}} | {{area}} | {{x}}', {
-        area: 'personal',
+        areaName: 'Personal',
         date: '2026-10-09',
       }),
     ).toBe('Friday | Friday, October 9 | Personal | {{x}}');
@@ -24,11 +25,29 @@ describe('fillDailyTemplate', () => {
 
   it('fills the Work default heading', () => {
     expect(
-      fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
-        area: 'work',
+      fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work!, {
+        areaName: 'Work',
         date: '2026-10-12',
       }).split('\n')[0],
     ).toBe('## Focus for Monday');
+  });
+});
+
+describe('defaultDailyTemplate', () => {
+  it('keeps the built-in Work and Personal templates and starts a new area blank', () => {
+    expect(defaultDailyTemplate('work').bodyMarkdown).toBe(
+      DEFAULT_DAILY_TEMPLATES.work,
+    );
+    expect(defaultDailyTemplate('personal').bodyMarkdown).toContain(
+      '## Errands',
+    );
+    expect(defaultDailyTemplate('family')).toMatchObject({
+      area: 'family',
+      bodyMarkdown: '',
+      isDefault: true,
+      version: 0,
+    });
+    expect(defaultDailyTemplate('constructor').bodyMarkdown).toBe('');
   });
 });
 

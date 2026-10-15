@@ -5,13 +5,11 @@ import {
   type Task,
 } from '@gagnechris/app-core';
 import {
-  areaQueryParam,
   isOpenTaskStatus,
   matchesTaskShowOn,
   sortTasksForList,
   taskShowOnQuery,
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_LABELS,
+  notebookAreaName,
   TASK_SHOW_ON_FILTERS,
   TASK_SHOW_ON_LABELS,
   taskDue,
@@ -42,6 +40,8 @@ import { SwipeRow } from '../../../src/ui/SwipeRow';
 import { TaskRow } from '../../../src/ui/TaskRow';
 import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
+// Not a valid area id, so it can't collide with one.
+const ALL_AREAS = '*';
 const STATUSES = ['open', 'done', 'dropped'] as const;
 type StatusFilter = (typeof STATUSES)[number];
 const STATUS_LABELS: Record<StatusFilter, string> = {
@@ -70,14 +70,17 @@ const scheduleText = (task: Task) =>
 
 const TasksScreen = () => {
   const router = useRouter();
-  const { area, setArea } = useArea();
+  const { area, areaName, areas, setArea } = useArea();
   const today = useLocalToday();
+  // Every area until one is picked; quick add goes to the switch's area.
+  const [allAreas, setAllAreas] = useState(true);
+  const listArea = allAreas ? undefined : area;
   const [status, setStatus] = useState<StatusFilter>('open');
   const [showOn, setShowOn] = useState<TaskShowOnFilter>('');
   const [refreshing, setRefreshing] = useState(false);
 
   const tasks = useTasksQuery({
-    area: areaQueryParam(area),
+    area: listArea,
     today,
     limit: 50,
     ...(status === 'open' ? { open: true } : { status }),
@@ -145,16 +148,22 @@ const TasksScreen = () => {
     >
       <SegmentedControl
         label="Area"
-        options={NOTEBOOK_AREA_FILTERS}
-        labels={NOTEBOOK_AREA_LABELS}
-        value={area}
-        onChange={setArea}
+        options={[ALL_AREAS, ...areas.map((a) => a.id)]}
+        labels={{
+          [ALL_AREAS]: 'All',
+          ...Object.fromEntries(areas.map((a) => [a.id, a.name])),
+        }}
+        value={listArea ?? ALL_AREAS}
+        onChange={(picked) => {
+          setAllAreas(picked === ALL_AREAS);
+          if (picked !== ALL_AREAS) setArea(picked);
+        }}
       />
       <QuickAddTask
         area={area}
         today={today}
         label="Quick add task"
-        placeholder="Call Sam @tomorrow !high"
+        placeholder={`Add to ${areaName}: Call Sam @tomorrow`}
       />
       <SegmentedControl
         label="Status"
@@ -243,7 +252,7 @@ const TasksScreen = () => {
                   <TaskRow
                     task={task}
                     detail={[
-                      area === 'all' ? NOTEBOOK_AREA_LABELS[task.area] : '',
+                      allAreas ? notebookAreaName(areas, task.area) : '',
                       scheduleText(task),
                     ]
                       .filter(Boolean)

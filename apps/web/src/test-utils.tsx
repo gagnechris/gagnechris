@@ -1,7 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
 import { AppApiProvider, AUTOSAVE_DEBOUNCE_MS } from '@gagnechris/app-core';
 import { PublicLinkContext } from '@gagnechris/public-ui';
-import { NOTEBOOK_GROUP, SITE_ADMIN_GROUP } from '@gagnechris/shared';
+import {
+  DEFAULT_NOTEBOOK_AREAS,
+  NOTEBOOK_GROUP,
+  SITE_ADMIN_GROUP,
+} from '@gagnechris/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderOptions } from '@testing-library/react';
 import { onTestFinished, vi } from 'vitest';
@@ -12,6 +16,7 @@ import { ConfirmDialogHost } from './workspace/ui/ConfirmDialogHost';
 import { confirmStore } from './workspace/confirmDialog';
 import { createApiClient } from './workspace/api/client';
 import type { AuthUser } from './workspace/auth/session';
+import type { NotebookOutletContext } from './notebook/NotebookLayout';
 
 /** Fake-timer advance that is just past the autosave debounce. */
 export const PAST_AUTOSAVE_MS = AUTOSAVE_DEBOUNCE_MS + 50;
@@ -20,6 +25,14 @@ export const testAuthUser: AuthUser = {
   label: 'chris@example.com',
   userId: 'u1',
   groups: [SITE_ADMIN_GROUP, NOTEBOOK_GROUP],
+};
+
+/** What NotebookLayout gives its pages with the Work area chosen. */
+export const workOutletContext: NotebookOutletContext = {
+  area: 'work',
+  areaName: 'Work',
+  areas: DEFAULT_NOTEBOOK_AREAS,
+  setArea: () => {},
 };
 
 export const createTestQueryClient = () =>

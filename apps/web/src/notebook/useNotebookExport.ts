@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   fetchDailyTemplate,
+  fetchNotebookAreas,
   fetchNoteTemplates,
   fetchNotesPage,
   fetchTasksPage,
@@ -55,15 +56,15 @@ export function useNotebookExport() {
     setError(null);
     try {
       const client = getClient();
-      const [notes, tasks, work, personal, noteTemplates] = await Promise.all([
+      const { areas } = await fetchNotebookAreas(client);
+      const [notes, tasks, templates, noteTemplates] = await Promise.all([
         collectAllPages((cursor) =>
           fetchNotesPage(client, { cursor, limit: 100 }),
         ),
         collectAllPages((cursor) =>
           fetchTasksPage(client, { cursor, limit: 100 }),
         ),
-        fetchDailyTemplate(client, 'work'),
-        fetchDailyTemplate(client, 'personal'),
+        Promise.all(areas.map((a) => fetchDailyTemplate(client, a.id))),
         fetchNoteTemplates(client),
       ]);
       const images = await collectImages(getClient, [
@@ -73,7 +74,7 @@ export function useNotebookExport() {
       const { blob } = buildNotebookExportZip(
         notes,
         tasks,
-        [work, personal],
+        templates,
         images,
         noteTemplates,
       );
