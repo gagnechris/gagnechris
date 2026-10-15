@@ -14,6 +14,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `packages/ops` — operator tools on the data table: note and task copy-back from a restore and row migrations; the CLIs are root `scripts/restore-copy-back.ts` and `scripts/migrate-*.ts`
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free hooks shared by the admin and Notebook web apps and the iOS app (autosave, versioned entity editor, TanStack Query resources)
+- `packages/ui` — shared web UI primitives (`Button`, `Field` and inputs, `StatusBadge`, `SegmentedRadio`, `BottomSheet`, `ConfirmDialog`, `useModalDialog`, `useTabs`, `useDismiss`); components import no CSS and render on the server, and each app loads `@gagnechris/ui/styles.css` once. `docs/design/components.md` is the inventory
 - `packages/public-ui` — router-free public page components; the publisher renders them with `react-dom/server` (`/server` entry) and the public app hydrates them
 - `packages/tokens` — design tokens (TS → generated CSS variables for web)
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`

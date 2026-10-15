@@ -14,8 +14,7 @@ import {
   PostEditorTitle,
 } from './PostEditorSections';
 import { publicUrl } from './publicUrl';
-import { BottomSheet } from '../kit/BottomSheet';
-import { Button } from '../kit/Button';
+import { BottomSheet, Button } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { EditorError, EditorFrame, EditorNotice } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';

@@ -13,8 +13,7 @@ import {
   useCreateStarterProjectsMutation,
   useProjectsQuery,
 } from '@gagnechris/app-core';
-import { Button } from '../kit/Button';
-import { StatusBadge } from '../kit/StatusBadge';
+import { Button, StatusBadge } from '@gagnechris/ui';
 import './projects.css';
 
 export default function AdminProjectsPage() {

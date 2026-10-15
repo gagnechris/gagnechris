@@ -13,7 +13,7 @@ import {
   type TextRange,
 } from '@gagnechris/shared';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { SegmentedRadio } from '@gagnechris/ui';
 import { noteHref } from './noteHref';
 
 type Props = {

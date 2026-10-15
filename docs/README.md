@@ -58,6 +58,7 @@ packages/shared/       Domain schemas/types; `/server`, `/render`, `/openapi` an
 packages/data/         DynamoDB keys, item schemas and builders for the publisher, ops, infra and tests
 packages/api-client/   OpenAPI types and `createApiClient`
 packages/app-core/     UI-free hooks shared by the web apps and the iOS app
+packages/ui/           Shared web UI primitives and their styles.css
 packages/public-ui/    Public page components: publisher SSR, hydrated by the site
 packages/tokens/       Design tokens (TS → CSS variables)
 packages/ops/          Restore copy-back and row migrations

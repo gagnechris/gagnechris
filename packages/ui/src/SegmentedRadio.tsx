@@ -11,7 +11,7 @@ type Props<T extends string> = {
 };
 
 /** A radio group drawn as a segmented control: one tab stop, arrows move. */
-export default function SegmentedRadio<T extends string>({
+export function SegmentedRadio<T extends string>({
   label,
   options,
   value,

@@ -13,7 +13,7 @@ import {
 } from '@gagnechris/shared';
 import { WorkspaceFrame } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { SegmentedRadio } from '@gagnechris/ui';
 import {
   readStoredNotebookArea,
   writeStoredNotebookArea,

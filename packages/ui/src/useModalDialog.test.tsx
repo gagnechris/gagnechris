@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { describe, expect, test, vi } from 'vitest';
-import { useModalDialog } from './useModalDialog';
+import { useModalDialog } from './useModalDialog.js';
 
 function Modal({ onClose, start }: { onClose: () => void; start?: boolean }) {
   const input = useRef<HTMLInputElement>(null);

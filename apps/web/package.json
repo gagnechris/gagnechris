@@ -28,6 +28,7 @@
     "@gagnechris/public-ui": "*",
     "@gagnechris/shared": "*",
     "@gagnechris/tokens": "*",
+    "@gagnechris/ui": "*",
     "@tanstack/react-query": "^5.104.1",
     "aws-amplify": "^6.22.1",
     "react": "^19.3.0",

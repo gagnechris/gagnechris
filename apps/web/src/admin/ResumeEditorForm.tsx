@@ -1,6 +1,5 @@
 import { useEffect, useRef, type FormEvent } from 'react';
-import { Button } from '../kit/Button';
-import { Field, TextArea, TextInput } from '../kit/Field';
+import { Button, Field, TextArea, TextInput } from '@gagnechris/ui';
 import { Repeater } from '../workspace/ui/Repeater';
 import { ResumeRoleList } from './ResumeRoleList';
 import type { SetDraftField } from './editor/useDraftFields';

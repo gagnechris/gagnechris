@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
-import { Button } from '../../kit/Button';
+import { Button, StatusBadge } from '@gagnechris/ui';
 import { SaveIndicator } from './SaveIndicator';
-import { StatusBadge } from '../../kit/StatusBadge';
 
 export type EditorActionBarProps = VersionedEntityActionBarProps & {
   leading?: ReactNode;

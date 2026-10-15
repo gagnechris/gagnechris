@@ -6,7 +6,7 @@ import {
   PROJECT_STAGE_LABELS,
   sortProjectsByOrder,
 } from '@gagnechris/shared';
-import { Field, TextArea, TextInput } from '../kit/Field';
+import { Field, TextArea, TextInput } from '@gagnechris/ui';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';

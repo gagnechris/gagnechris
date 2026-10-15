@@ -1,7 +1,6 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { useModalDialog } from './useModalDialog';
-import './bottomSheet.css';
+import { useModalDialog } from './useModalDialog.js';
 
 const DISMISS_PX = 80;
 
@@ -51,6 +50,9 @@ export function BottomSheet({
       setDragY(0);
     },
   };
+
+  // Sheets open only in response to a user, so a server render has none.
+  if (typeof document === 'undefined') return null;
 
   return createPortal(
     <div className="bottom-sheet">

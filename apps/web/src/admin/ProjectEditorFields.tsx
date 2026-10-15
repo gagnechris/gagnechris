@@ -24,11 +24,16 @@ import {
   type ProjectDemo,
   type ProjectStage,
 } from '@gagnechris/shared';
-import { BottomSheet } from '../kit/BottomSheet';
-import { Field, Select, TextArea, TextInput } from '../kit/Field';
+import {
+  BottomSheet,
+  Field,
+  SegmentedRadio,
+  Select,
+  TextArea,
+  TextInput,
+} from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { Repeater } from '../workspace/ui/Repeater';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';

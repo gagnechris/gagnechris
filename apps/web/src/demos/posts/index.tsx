@@ -16,11 +16,9 @@ import {
   postArticleView,
   selectHomeRecentPosts,
 } from '@gagnechris/shared/render';
-import { Button } from '../../kit/Button';
+import { Button, Field, StatusBadge, TextInput } from '@gagnechris/ui';
 import { DemoFrame } from '../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../kit/demo/useDemoReducer';
-import { Field, TextInput } from '../../kit/Field';
-import { StatusBadge } from '../../kit/StatusBadge';
 import { useMediaQuery } from '../../kit/useMediaQuery';
 import {
   canPublish,

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { breakpoint } from '@gagnechris/tokens';
-import { Button } from '../../kit/Button';
+import { Button, useTabs } from '@gagnechris/ui';
 import {
   formatCalendarDay,
   taskDue,
@@ -12,7 +12,6 @@ import { TaskEmbedRow } from '../../kit/tasks/TaskEmbedRow';
 import { TaskSyntaxInput } from '../../kit/tasks/TaskSyntaxInput';
 import { ComingUpPanel, StillOpenPanel } from '../../kit/tasks/TodayPanels';
 import { useMediaQuery } from '../../kit/useMediaQuery';
-import { useTabs } from '../../kit/useTabs';
 import {
   NOTEBOOK_DEMO_NOTE,
   notebookDemoHintText,

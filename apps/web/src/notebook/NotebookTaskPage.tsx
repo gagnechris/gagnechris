@@ -8,7 +8,7 @@ import {
   useTaskToggle,
 } from '@gagnechris/app-core';
 import { snoozeBaseDay } from '@gagnechris/shared';
-import { Field, Select, TextInput } from '../kit/Field';
+import { Field, Select, TextInput } from '@gagnechris/ui';
 import { SnoozeMenu } from '../kit/tasks/SnoozeMenu';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';

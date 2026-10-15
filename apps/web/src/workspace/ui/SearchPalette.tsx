@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useModalDialog } from '../../kit/useModalDialog';
+import { useModalDialog } from '@gagnechris/ui';
 
 export type SearchHit = {
   key: string;

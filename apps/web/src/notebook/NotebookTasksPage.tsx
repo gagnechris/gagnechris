@@ -29,7 +29,7 @@ import { TaskRow } from '../kit/tasks/TaskRow';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { SegmentedRadio } from '@gagnechris/ui';
 import { useLocalToday } from './useLocalToday';
 
 import type { NotebookOutletContext } from './NotebookLayout';
