@@ -43,3 +43,6 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Storybook static build
+storybook-static

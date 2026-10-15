@@ -30,6 +30,7 @@ WEB_PATTERNS=(
   'packages/public-ui/*'
   'packages/shared/*'
   'packages/tokens/*'
+  'packages/ui/*'
   'packages/data/*'
   'services/publisher/*'
   'infra/lib/stacks/publisher-stack.ts'

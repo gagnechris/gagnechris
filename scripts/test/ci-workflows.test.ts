@@ -824,6 +824,8 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   const ssmParams = commit('infra/lib/config/ssm-params.json');
   const ownedPaths = commit('scripts/publisher-owned-paths.generated.txt');
   const ssmNames = commit('scripts/ssm-param-name.sh');
+  const uiPkg = commit('packages/ui/src/Button.tsx');
+  const story = commit('apps/storybook/src/ui/Button.stories.tsx');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -875,6 +877,10 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
     expect(paths(runbook, goSource)).toBe('cdk=true\nweb=false');
     // The public app bundles public-ui, as the publisher does.
     expect(paths(goSource, publicUi)).toBe('cdk=true\nweb=true');
+    // The Admin and Notebook apps bundle packages/ui.
+    expect(paths(ssmNames, uiPkg)).toBe('cdk=true\nweb=true');
+    // The Storybook catalog isn't part of the site.
+    expect(paths(uiPkg, story)).toBe('cdk=false\nweb=false');
   });
 
   it('skips the web deploy for infra and API changes that the site never sees', () => {
