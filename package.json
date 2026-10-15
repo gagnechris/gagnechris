@@ -6,6 +6,7 @@
   "type": "module",
   "workspaces": [
     "apps/web",
+    "apps/storybook",
     "packages/*",
     "services/publisher",
     "services/api/test",
@@ -24,6 +25,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "npm run preview -w @gagnechris/web",
+    "storybook": "npm run storybook -w @gagnechris/storybook",
+    "storybook:build": "npm run storybook:build -w @gagnechris/storybook",
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch -w @gagnechris/web",
     "test:coverage": "npm run test:coverage -w @gagnechris/web",

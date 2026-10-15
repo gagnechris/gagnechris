@@ -74,6 +74,24 @@ npm run dev:prod-api        # API → https://gagnechris.com (prints PRODUCTION 
 
 Prefer `local:dev` unless you intentionally need the production API.
 
+## Storybook
+
+```bash
+npm run storybook        # the component catalog on http://localhost:6006
+npm run storybook:build  # static catalog → apps/storybook/storybook-static (CI)
+```
+
+`apps/storybook` catalogs the shared UI (`packages/ui`), the Admin, Notebook and
+workspace components in `apps/web` and the public page bodies in
+`packages/public-ui`. Stories live in `apps/storybook/src/<area>/` and import
+`apps/web` modules through the `@web/*` alias. The preview loads the token CSS,
+the shared UI and workspace styles and the Notebook fonts; public stories import
+the page CSS the public site loads. Every story wraps a `MemoryRouter`, uses
+sample data and never calls the API (ESLint bans the API client, React Query,
+app-core and auth imports there). Each component's docs page names its iOS
+counterpart through `catalog()` in `apps/storybook/src/catalog.ts`. A new
+component gets a story in the same PR.
+
 ## Quality gates
 
 `npm run verify` runs the checks below that the branch's changes can affect,
@@ -89,7 +107,7 @@ Go lint and test run one after another, since they write and read the same
 generated files; everything else runs in parallel. `npm run verify:all` runs the full
 set. `npm install` points `core.hooksPath` at `.githooks`, whose `pre-push`
 runs `npm run verify`; `git push --no-verify` skips it. The build, web shell,
-RN bundle, CDK synth, e2e and integration checks stay CI-only (run them
+RN bundle, Storybook build, CDK synth, e2e and integration checks stay CI-only (run them
 yourself when the change touches them).
 
 ```bash
@@ -107,6 +125,7 @@ npm run tokens:check  # design token CSS drift (CI)
 npm run publish-surface:check # Option B pages, KVS keys, publish routes and publisher-owned S3 keys from publisher targets (CI)
 npm run format        # Prettier write
 npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-admin, dist-notebook
+npm run storybook:build # the static Storybook catalog; a story that fails to build fails CI
 npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, entry JS within budget and without zod, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
 npm run check:rn-bundles            # every package and subpath mobile imports bundles without Node-only or banned imports, and both lockfiles agree on their runtime deps (CI)
 npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)

@@ -484,6 +484,7 @@ export default tseslint.config(
       '**/dist/**',
       'apps/web/dist-admin/**',
       'apps/web/dist-notebook/**',
+      '**/storybook-static/**',
       '**/coverage/**',
       '**/cdk.out/**',
       '**/node_modules/**',
@@ -653,6 +654,56 @@ export default tseslint.config(
     },
   },
   ...webAppZones,
+  // The catalog renders components with sample data and never signs in or calls the API.
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['apps/storybook/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      ...unusedVarsRule,
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@gagnechris/api-client',
+              message: 'Stories use sample data and never call the API.',
+            },
+            {
+              name: '@tanstack/react-query',
+              message: 'Stories use sample data and never call the API.',
+            },
+            {
+              name: '@gagnechris/app-core',
+              message: 'Stories use sample data and never call the API.',
+            },
+            {
+              name: 'aws-amplify',
+              message: 'Stories never sign anyone in.',
+            },
+          ],
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            {
+              group: ['@web/api/**', '@web/mockAdminApi*'],
+              message: 'Stories use sample data and never call the API.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/storybook/.storybook/main.ts'],
+    languageOptions: { globals: globals.node },
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['apps/mobile/**/*.{ts,tsx}'],

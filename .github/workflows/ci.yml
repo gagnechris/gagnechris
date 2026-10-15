@@ -89,6 +89,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Storybook build
+        run: npm run storybook:build
+
       # The public build's bundle-boundary plugin already failed above if any
       # admin, Notebook or auth module reached it.
       - name: Web shell guard
