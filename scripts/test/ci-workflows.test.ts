@@ -41,6 +41,7 @@ interface Job extends RunDefaults {
   permissions?: Record<string, string> | string;
   steps?: Step[];
   concurrency?: { group?: string; 'cancel-in-progress'?: boolean };
+  outputs?: Record<string, string>;
 }
 
 interface Workflow extends RunDefaults {
@@ -543,7 +544,7 @@ describe('deploy job guards', () => {
 
   it('runs the web deploy only when plan says web, and records every deploy', () => {
     expect(deploy.if).toBe(
-      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true'",
+      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'",
     );
     const web = stepIndex(
       deploy,
@@ -566,6 +567,29 @@ describe('deploy job guards', () => {
     );
     expect(record).toBeGreaterThan(web);
     expect(deploy.steps![record]!.if).toBe('success()');
+  });
+
+  it('publishes the component catalog after CDK deploy, only when plan says components', () => {
+    const cdkDeploy = stepIndex(
+      deploy,
+      (s) => s.run?.includes('cdk -- deploy') ?? false,
+    );
+    const components = stepIndex(
+      deploy,
+      (s) => s.run?.includes('scripts/deploy-components.sh') ?? false,
+    );
+    const record = stepIndex(
+      deploy,
+      (s) => s.run?.includes('deployedSha') ?? false,
+    );
+    expect(components).toBeGreaterThan(cdkDeploy);
+    expect(record).toBeGreaterThan(components);
+    expect(deploy.steps![components]!.if).toBe(
+      "needs.plan.outputs.components == 'true'",
+    );
+    expect(cdk.jobs.plan!.outputs?.components).toBe(
+      '${{ steps.filter.outputs.components }}',
+    );
   });
 
   it('checks the built web shells in the Lint, test, and build job', () => {
@@ -826,6 +850,7 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   const ssmNames = commit('scripts/ssm-param-name.sh');
   const uiPkg = commit('packages/ui/src/Button.tsx');
   const story = commit('apps/storybook/src/ui/Button.stories.tsx');
+  const componentsStack = commit('infra/lib/stacks/components-stack.ts');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -862,9 +887,13 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
     expect(r.stderr).toMatch(/not in the repository/);
   });
 
+  const deployPaths = (from: string, to: string) =>
+    runScript('deploy-paths.sh', [from, to], {}, repo).stdout.split('\n');
+  const paths = (from: string, to: string) =>
+    deployPaths(from, to).slice(0, 2).join('\n');
+  const components = (from: string, to: string) => deployPaths(from, to)[2];
+
   it('filters cdk and web paths', () => {
-    const paths = (from: string, to: string) =>
-      runScript('deploy-paths.sh', [from, to], {}, repo).stdout;
     expect(paths(base, docs)).toBe('cdk=false\nweb=false');
     expect(paths(docs, infra)).toBe('cdk=true\nweb=false');
     expect(paths(infra, web)).toBe('cdk=false\nweb=true');
@@ -883,9 +912,19 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
     expect(paths(uiPkg, story)).toBe('cdk=false\nweb=false');
   });
 
+  it('publishes the component catalog when a story, a component or its stack changes', () => {
+    expect(components(uiPkg, story)).toBe('components=true');
+    expect(components(ssmNames, uiPkg)).toBe('components=true');
+    expect(components(infra, web)).toBe('components=true');
+    expect(components(goSource, publicUi)).toBe('components=true');
+    expect(components(story, componentsStack)).toBe('components=true');
+    expect(components(base, docs)).toBe('components=false');
+    expect(components(docs, infra)).toBe('components=false');
+    expect(components(publicUi, apiStack)).toBe('components=false');
+    expect(components(goLambda, publisher)).toBe('components=false');
+  });
+
   it('skips the web deploy for infra and API changes that the site never sees', () => {
-    const paths = (from: string, to: string) =>
-      runScript('deploy-paths.sh', [from, to], {}, repo).stdout;
     expect(paths(publicUi, apiStack)).toBe('cdk=true\nweb=false');
     expect(paths(publicUi, goLambda)).toBe('cdk=true\nweb=false');
   });
@@ -893,8 +932,6 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   // Prerendered pages only change on republishAll, and the build bakes in
   // Cognito client IDs and SSM names, so these still run the web deploy.
   it('runs the web deploy for publisher, hosting, auth and deploy-input changes', () => {
-    const paths = (from: string, to: string) =>
-      runScript('deploy-paths.sh', [from, to], {}, repo).stdout;
     const chain = [
       goLambda,
       publisher,

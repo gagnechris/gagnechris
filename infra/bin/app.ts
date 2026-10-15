@@ -9,6 +9,8 @@ import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
+import { ComponentsStack } from '../lib/stacks/components-stack.js';
+// from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
@@ -120,6 +122,13 @@ const publisher = new PublisherStack(app, `Publisher-${config.name}`, {
 });
 // Site must write bucket / distribution / KVS SSM params before Publisher.
 publisher.node.addDependency(site);
+
+new ComponentsStack(app, `Components-${config.name}`, {
+  env: stackEnv,
+  description: `Storybook component catalog at components.${config.domainName} (${config.name}).`,
+  config,
+  alertsTopic: guardrails.alertsTopic,
+});
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
   env: stackEnv,

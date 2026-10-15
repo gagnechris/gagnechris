@@ -9,6 +9,8 @@
     "adminDistributionId": "admin-cloudfront-distribution-id",
     "notebookSiteBucketName": "notebook-site-bucket-name",
     "notebookDistributionId": "notebook-cloudfront-distribution-id",
+    "componentsBucketName": "components-bucket-name",
+    "componentsDistributionId": "components-cloudfront-distribution-id",
     "httpApiId": "http-api-id",
     "httpApiUrl": "http-api-url",
     "dataTableName": "data-table-name",

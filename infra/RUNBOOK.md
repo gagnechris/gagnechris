@@ -65,7 +65,8 @@ Deploy order (CDK `addDependency` + props):
 3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, and the bucket and distribution IDs for the admin and notebook hosts)
 4. Dns (needs Site's three distributions for Route 53 aliases)
 5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
-6. CiDeployRole
+6. Components (self-contained: its own certificate, DNS records and log bucket; imports only the alerts topic)
+7. CiDeployRole
 
 Site depends on Api so a replaced HttpApi updates CloudFront `/api/*` in the same deploy wave. Publisher looks up Site via SSM, not CloudFormation exports.
 
@@ -157,11 +158,12 @@ bash scripts/apply-branch-protection.sh
    - **CDK** (`.github/workflows/cdk.yml`):
      - **PR (`CDK diff (PR)`):** `cdk synth` + `check:deployed-gsi` (early warning) + `cdk diff` (diff role); sticky PR comment.
      - **main deploy:** runs only after CI succeeds (`workflow_run`), as two jobs that share concurrency group `cdk-prod` (never cancels in flight):
-       - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK and/or web, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy, including `*.md` under `infra/` (markdown never changes synth).
+       - **`Plan deploy (main)`** — read-only drift role. Runs only SHA-pinned `actions/checkout` and `aws-actions/configure-aws-credentials`, git, bash and the AWS CLI (no npm, no third-party action). `scripts/ci/read-deployed-sha.sh` reads SSM `deployed-sha`: `ParameterNotFound` (first deploy) → deploy everything; **any other SSM error fails the run**. `scripts/ci/check-deploy-ancestry.sh` refuses a deploy whose head is not a descendant of `deployed-sha`; if that SHA is not in the clone it is fetched, and if it still cannot be found the run fails instead of deploying everything. `scripts/ci/deploy-paths.sh` diffs `deployed-sha..head` (not `HEAD~1`) to decide CDK, web and components, so a cancelled infra build cannot strand changes behind a later docs-only commit. Docs-only merges skip deploy, including `*.md` under `infra/` (markdown never changes synth).
          - `cdk=true` for any non-markdown change under `infra/`, `services/` or `packages/`, root `package.json`, `package-lock.json`, `tsconfig.base.json` or `.nvmrc`, `cdk.yml` or the setup action.
          - `web=true` (build, sync, invalidate and `republishAll`) for the web app and the packages it bundles (`api-client`, `app-core`, `public-ui`, `shared`, `tokens`); the publisher and what it renders with (`services/publisher/`, `packages/data/`, `infra/lib/stacks/publisher-stack.ts`), since existing pages only change on a republish; what the site is served from (`site-stack.ts`, `constructs/site-hosting.ts`, `constructs/app-host.ts`, `infra/lib/cloudfront/`); what the build and sync read (`auth-stack.ts` for the Cognito client IDs, `infra/lib/config/ssm-params.json`, `scripts/publisher-owned-paths.generated.txt`, `scripts/deploy-web.sh` and the `scripts/ssm-param-name.sh` it sources); and the root files, `cdk.yml` and the setup action. Any other infra or API change (the Go API, data and API stacks, alarms) deploys CDK only.
+         - `components=true` (Storybook build, sync and invalidate) for any non-markdown change under `apps/storybook/`, `apps/web/` or the packages its stories import (`app-core`, `public-ui`, `shared`, `tokens`, `ui`); `components-stack.ts`, `ssm-params.json`, `scripts/deploy-components.sh` and `scripts/ssm-param-name.sh`; and the root files, `cdk.yml` and the setup action.
          - `scripts/test/ci-workflows.test.ts` pins this: a docs-only head after an infra commit whose build never deployed gives `cdk=true` from `deployed-sha` (a `HEAD~1` base would give `cdk=false`).
-       - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all` (when `cdk=true`), `scripts/deploy-web.sh` (when `web=true`), and finally writes `deployed-sha`, so a CDK-only deploy still records the SHA and clears deploy lag. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
+       - **`CDK + web deploy (main)`** — checkout, `setup-node`, and `npm ci --ignore-scripts` all run **before** the AdministratorAccess deploy role is requested. It then re-reads `deployed-sha` (must equal what plan saw), runs `npm run check:deployed-gsi` against the live table, then `cdk deploy --all` (when `cdk=true`), `scripts/deploy-web.sh` (when `web=true`), `scripts/deploy-components.sh` (when `components=true`), and finally writes `deployed-sha`, so a CDK-only deploy still records the SHA and clears deploy lag. Deploys never run a restore (see [Weekly restore testing](#weekly-restore-testing)). `workflow_dispatch` (mode `deploy`) deploys everything but still runs the ancestry and GSI checks.
      - **Supply chain:** `id-token: write` is job-wide: any step of such a job can mint an OIDC token, and the deploy and drift roles both trust `environment:prod`. So the rule is per job: every job with `id-token: write`, and every job that reads a `secrets.*` value (the TestFlight release), installs with `npm ci --ignore-scripts` (`.github/actions/setup` input `ignore-scripts: 'true'`); a native build that runs install scripts runs only after the last step that holds a secret, in a step without it; and every `uses:` in `.github/` is pinned to a full commit SHA with a `# vX.Y.Z` comment. esbuild and Rollup load their platform binaries from optionalDependencies, so synth and the Vite build work without install scripts. `scripts/test/ci-workflows.test.ts` fails on a tag-pinned action, an install with scripts in an `id-token` or secret-reading job, an `eas build`, `npx` or `pod install` at or before a step that holds a secret, or a deploy job that runs `cdk deploy` before `check:deployed-gsi`. To bump an action: `git ls-remote https://github.com/<owner>/<repo> refs/tags/<tag> 'refs/tags/<tag>^{}'` and use the peeled (`^{}`) SHA when there is one.
      - **Nightly / workflow_dispatch drift:** `cdk drift --fail` with the **read-only drift role**; concurrency group `cdk-drift`, separate from deploy (sharing `cdk-prod` would let a queued drift run cancel a pending deploy). `scripts/ci/prod-stack-activity.sh` skips drift while any `*-prod` stack is `*_IN_PROGRESS`, and discards a failing result (warning, no alert) if a stack was updated while drift ran. On failure it alerts through `scripts/ci/notify-alerts.sh`. Check recent scheduled runs: `gh run list --workflow cdk.yml --event schedule --limit 5`.
 
@@ -188,8 +190,8 @@ Both workflows, and nightly drift, publish with `scripts/ci/notify-alerts.sh <su
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → the public distribution; `admin.` and `notebook.` (A + AAAA) → their own distributions; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
-- ACM certs in **us-east-1** via `Certificate-prod` (DNS validation; CloudFormation writes the validation CNAMEs into the zone): `SiteCertificateV2` (apex + www), `AuthCertificate` (`auth.gagnechris.com`) and `AppHostsCertificate` (`admin.gagnechris.com` + `notebook.gagnechris.com`). Separate certs avoid replacing one when another changes (cross-stack export).
+- Apex/www → the public distribution; `admin.` and `notebook.` (A + AAAA) → their own distributions; `components.` (A + AAAA) → the catalog distribution, in `Components-prod`; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
+- ACM certs in **us-east-1** via `Certificate-prod` (DNS validation; CloudFormation writes the validation CNAMEs into the zone): `SiteCertificateV2` (apex + www), `AuthCertificate` (`auth.gagnechris.com`) and `AppHostsCertificate` (`admin.gagnechris.com` + `notebook.gagnechris.com`). Separate certs avoid replacing one when another changes (cross-stack export). `Components-prod` holds its own cert for `components.gagnechris.com`.
 - DNSSEC is not enabled (cost).
 
 ```bash
@@ -251,6 +253,22 @@ curl -sS https://admin.gagnechris.com/.well-known/apple-app-site-association
 curl -sS https://app-site-association.cdn-apple.com/a/v1/admin.gagnechris.com
 curl -sS https://app-site-association.cdn-apple.com/a/v1/gagnechris.com
 # Expect the same JSON from each host and the CDN; the notebook one has applinks and webcredentials.
+```
+
+### Component catalog (`components.gagnechris.com`)
+
+- `Components-prod` stack: the Storybook build of `apps/storybook`, public with sample data only. Private, versioned bucket (no AWS Backup, build output only), its own `AccessLogs` bucket (30-day expiry), one distribution, its own certificate and A + AAAA records.
+- Behaviours: default on a five-minute HTML cache, `/assets/*` (Storybook's hashed chunks) on a one-year cache. No viewer functions: Storybook routes by query string (`/?path=/docs/...`, `iframe.html?id=...`).
+- Response headers `gagnechris-prod-components-headers`: `X-Robots-Tag: noindex, nofollow` on every response, HSTS (preload), nosniff, `X-Frame-Options: SAMEORIGIN` and the shared base CSP with `'unsafe-inline'` scripts (Storybook's `index.html` and `iframe.html` carry inline scripts) and `frame-ancestors 'self'` (the manager frames its own `iframe.html`).
+- Deploy: `scripts/deploy-components.sh` runs `npm run storybook:build`, syncs `assets/` (immutable, never deleted) and then the rest with `--delete`, and invalidates `/*`. CI runs it when `deploy-paths.sh` reports `components=true`. SSM: `components-bucket-name`, `components-cloudfront-distribution-id`.
+- 5xx alarm `gagnechris-prod-components-cloudfront-5xx`.
+
+Manual deploy and smoke:
+
+```bash
+AWS_PROFILE=gagnechris-admin bash scripts/deploy-components.sh
+curl -sI https://components.gagnechris.com/ | grep -iE '^(HTTP|x-robots-tag|x-frame-options)'
+# Expect: 200, x-robots-tag: noindex, nofollow, x-frame-options: SAMEORIGIN
 ```
 
 ## Web deploy pipeline

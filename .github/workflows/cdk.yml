@@ -140,6 +140,7 @@ jobs:
       base_sha: ${{ steps.base.outputs.base_sha }}
       cdk: ${{ steps.filter.outputs.cdk }}
       web: ${{ steps.filter.outputs.web }}
+      components: ${{ steps.filter.outputs.components }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -181,7 +182,7 @@ jobs:
         run: |
           if [ "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ] || [ -z "${BASE}" ]; then
             echo "Manual deploy or no deployed-sha: deploying everything."
-            printf 'cdk=true\nweb=true\n' | tee -a "$GITHUB_OUTPUT"
+            printf 'cdk=true\nweb=true\ncomponents=true\n' | tee -a "$GITHUB_OUTPUT"
             exit 0
           fi
           bash scripts/ci/deploy-paths.sh "${BASE}" "${HEAD_SHA}" | tee -a "$GITHUB_OUTPUT"
@@ -189,7 +190,7 @@ jobs:
   deploy:
     name: CDK + web deploy (main)
     needs: plan
-    if: needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true'
+    if: needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -257,6 +258,12 @@ jobs:
       - name: Build, sync to S3, invalidate CloudFront
         if: needs.plan.outputs.web == 'true'
         run: bash scripts/deploy-web.sh
+        env:
+          ENV_NAME: prod
+
+      - name: Build and publish the component catalog
+        if: needs.plan.outputs.components == 'true'
+        run: bash scripts/deploy-components.sh
         env:
           ENV_NAME: prod
 
