@@ -1,11 +1,32 @@
 import { useId, useState } from 'react';
-import { addChipItems, type ChipLimits } from './chips';
+import { Chip } from './Chip.js';
 
-type Props = ChipLimits & {
+type Limits = { maxItems?: number; maxItemLength?: number };
+
+/** Adds comma-separated items from typed text, skipping blanks and case-insensitive duplicates. */
+const addChipItems = (
+  items: readonly string[],
+  text: string,
+  { maxItems = Infinity, maxItemLength }: Limits = {},
+): string[] => {
+  const next = [...items];
+  for (const raw of text.split(',')) {
+    const item = raw.trim().slice(0, maxItemLength);
+    if (!item || next.length >= maxItems) continue;
+    if (next.some((s) => s.toLowerCase() === item.toLowerCase())) continue;
+    next.push(item);
+  }
+  return next;
+};
+
+type Props = Limits & {
   label: string;
+  /** Names the list of chips. */
   listLabel: string;
-  removeLabel: (item: string) => string;
+  /** What each chip's remove button names, read as "Remove {itemLabel}". */
+  itemLabel?: (item: string) => string;
   placeholder: string;
+  /** Shown once `maxItems` is reached. */
   fullPlaceholder?: string;
   /** Caps the typed text, which may hold several comma-separated items. */
   inputMaxLength?: number;
@@ -13,10 +34,14 @@ type Props = ChipLimits & {
   onChange: (items: string[]) => void;
 };
 
-export function ChipsInput({
+/**
+ * Short values typed as chips: Enter, a comma or leaving the box adds one;
+ * Backspace on an empty box removes the last.
+ */
+export const ChipsInput = ({
   label,
   listLabel,
-  removeLabel,
+  itemLabel = (item) => item,
   placeholder,
   fullPlaceholder,
   inputMaxLength,
@@ -24,7 +49,7 @@ export function ChipsInput({
   maxItemLength,
   value,
   onChange,
-}: Props) {
+}: Props) => {
   const [text, setText] = useState('');
   const inputId = useId();
   const full = maxItems !== undefined && value.length >= maxItems;
@@ -43,25 +68,22 @@ export function ChipsInput({
   return (
     <div className="kit-field">
       <label htmlFor={inputId}>{label}</label>
-      <div className="kit-chips">
-        <ul className="kit-chips__list" aria-label={listLabel}>
+      <div className="ui-chips">
+        <ul className="ui-chips__list" aria-label={listLabel}>
           {value.map((item) => (
-            <li key={item} className="kit-chip">
-              {item}
-              <button
-                type="button"
-                className="kit-chip__remove"
-                aria-label={removeLabel(item)}
-                onClick={() => onChange(value.filter((s) => s !== item))}
+            <li key={item}>
+              <Chip
+                removeLabel={itemLabel(item)}
+                onRemove={() => onChange(value.filter((s) => s !== item))}
               >
-                ×
-              </button>
+                {item}
+              </Chip>
             </li>
           ))}
         </ul>
         <input
           id={inputId}
-          className="kit-chips__input"
+          className="ui-chips__input"
           value={text}
           maxLength={inputMaxLength}
           disabled={full}
@@ -88,4 +110,4 @@ export function ChipsInput({
       </div>
     </div>
   );
-}
+};

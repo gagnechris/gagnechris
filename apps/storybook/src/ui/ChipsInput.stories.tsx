@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ChipsInput } from '@web/admin/editor/ChipsInput';
+import { ChipsInput } from '@gagnechris/ui';
 import { catalog } from '../catalog';
 
 const Tags = ({
@@ -15,7 +15,7 @@ const Tags = ({
     <ChipsInput
       label="Tags"
       listLabel="Post tags"
-      removeLabel={(tag) => `Remove tag ${tag}`}
+      itemLabel={(tag) => `tag ${tag}`}
       placeholder="Add tag"
       fullPlaceholder="Tag limit reached"
       maxItems={maxItems}
@@ -26,7 +26,7 @@ const Tags = ({
 };
 
 const meta = {
-  title: 'Admin/ChipsInput',
+  title: 'Shared UI/ChipsInput',
   component: Tags,
   parameters: catalog(
     'none',

@@ -4,12 +4,11 @@ import {
   displayName,
   type ManagedUser,
 } from '@gagnechris/shared';
-import { BottomSheet } from '@gagnechris/ui';
+import { createPortal } from 'react-dom';
+import { Button, Drawer } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
-import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { UserAvatar } from './UserAvatar';
-import { UsersOverlay } from './UsersOverlay';
 import { useUserChange } from './useUserChange';
 import {
   accessChange,
@@ -35,7 +34,7 @@ export default function EditUserDrawer({
   onClose,
   onToast,
 }: Props) {
-  const panelRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const phone = useMediaQuery(PHONE_QUERY);
   const { perform, isPending: busy } = useUserChange(requesterId);
   const [confirming, setConfirming] = useState(false);
@@ -60,10 +59,9 @@ export default function EditUserDrawer({
     } catch (err) {
       setError(userErrorMessage(err, fallback));
     }
-    const panel = panelRef.current;
-    if (panel && !panel.contains(document.activeElement)) {
-      panel.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-    }
+    // An action that disables its own button drops focus out of the panel.
+    const panel = contentRef.current?.closest<HTMLElement>('[role="dialog"]');
+    if (panel && !panel.contains(document.activeElement)) panel.focus();
   };
 
   const save = () =>
@@ -105,41 +103,26 @@ export default function EditUserDrawer({
         </div>
         <div className="users-account-row__hint">{hint}</div>
       </div>
-      <button
-        type="button"
-        className={
-          danger
-            ? 'users-btn users-btn--small users-btn--danger'
-            : 'users-btn users-btn--small'
-        }
+      <Button
+        size="sm"
+        variant={danger ? 'danger' : 'default'}
         disabled={busy || confirming || (kind === 'restore' && !draft)}
         onClick={() => void run(kind)}
       >
         {button}
-      </button>
+      </Button>
     </div>
   );
 
   const content = (
-    <>
+    <div ref={contentRef} className="users-drawer__content">
       <div className="users-drawer__head">
         <UserAvatar user={user} size="large" />
         <div className="users-drawer__who">
-          <h2>{name}</h2>
+          <h3>{name}</h3>
           <div className="users-muted">{user.email}</div>
           <div className="users-meta">Added: {formatAdded(user.createdAt)}</div>
         </div>
-        {phone ? null : (
-          <button
-            type="button"
-            className="users-icon-btn"
-            aria-label="Close"
-            data-autofocus
-            onClick={onClose}
-          >
-            <ShellIcon name="close" />
-          </button>
-        )}
       </div>
 
       <AccessLevelRadios
@@ -228,56 +211,28 @@ export default function EditUserDrawer({
           passkey if you haven’t signed in in the last few minutes.
         </p>
       )}
-    </>
+    </div>
   );
 
-  if (phone) {
-    return (
-      <BottomSheet
-        title="Edit access"
-        label={`Edit access for ${name}`}
-        onClose={onClose}
-        done={
-          removed ? undefined : (
-            <button
-              type="button"
-              className="bottom-sheet__button bottom-sheet__button--done"
-              disabled={!changed || busy || confirming}
-              onClick={() => void save()}
-            >
-              {busy ? 'Saving…' : 'Save'}
-            </button>
-          )
-        }
-      >
-        {content}
-      </BottomSheet>
-    );
-  }
-
-  return (
-    <UsersOverlay
-      kind="drawer"
+  return createPortal(
+    <Drawer
+      title="Edit access"
       label={`Edit access for ${name}`}
       onClose={onClose}
-      panelRef={panelRef}
-    >
-      {content}
-      <div className="users-drawer__foot">
-        <button type="button" className="users-btn" onClick={onClose}>
-          Cancel
-        </button>
-        {removed ? null : (
-          <button
-            type="button"
-            className="users-btn users-btn--primary"
+      actions={
+        removed ? undefined : (
+          <Button
+            variant="primary"
             disabled={!changed || busy || confirming}
             onClick={() => void save()}
           >
-            {busy ? 'Saving…' : 'Save access'}
-          </button>
-        )}
-      </div>
-    </UsersOverlay>
+            {busy ? 'Saving…' : phone ? 'Save' : 'Save access'}
+          </Button>
+        )
+      }
+    >
+      {content}
+    </Drawer>,
+    document.body,
   );
 }

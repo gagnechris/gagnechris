@@ -1,11 +1,11 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { cx } from './cx.js';
 
 export const List = ({
   className,
   children,
   ...rest
-}: HTMLAttributes<HTMLUListElement>) => (
+}: ComponentProps<'ul'>) => (
   <ul className={cx('ui-list', className)} {...rest}>
     {children}
   </ul>

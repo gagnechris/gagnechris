@@ -22,12 +22,13 @@ test('on a phone, a post is published and unpublished from its row', async ({
   expect(box.width).toBeGreaterThanOrEqual(44);
   expect(box.height).toBeGreaterThanOrEqual(44);
 
+  // On a phone the row menu opens as a bottom sheet.
   await menu.click();
-  await row.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('menuitem', { name: 'Publish' }).click();
   await expect(row.getByText('Published')).toBeVisible();
 
   await menu.click();
-  await row.getByRole('button', { name: 'Unpublish' }).click();
+  await page.getByRole('menuitem', { name: 'Unpublish' }).click();
   await expect(row.getByText('Draft')).toBeVisible();
 
   // The title link covers the whole row.

@@ -270,9 +270,7 @@ describe('AdminResumePage structured dates', () => {
     ).toHaveValue(2012);
     const roles = within(screen.getByRole('list', { name: 'Roles' }));
     expect(
-      roles
-        .getAllByRole('button', { name: /^(Director|Architect)/ })
-        .map((row) => row.textContent),
+      roles.getAllByRole('listitem').map((row) => row.textContent),
     ).toEqual([
       'DirectorRo · Jul 2019 – Present',
       'ArchitectViacom · Sep 2014 – Apr 2015',
@@ -299,7 +297,7 @@ describe('AdminResumePage structured dates', () => {
     );
   });
 
-  test('the arrow keys on a role handle reorder the roles', async () => {
+  test('Space then the arrow keys on a role handle reorder the roles', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderResume();
     const handle = await screen.findByRole('button', {
@@ -307,6 +305,12 @@ describe('AdminResumePage structured dates', () => {
     });
     handle.focus();
     await user.keyboard('{ArrowDown}');
+    expect(
+      within(screen.getByRole('list', { name: 'Roles' }))
+        .getAllByRole('button', { name: /^Reorder/ })
+        .map((b) => b.getAttribute('aria-label')),
+    ).toEqual(['Reorder Director', 'Reorder Architect']);
+    await user.keyboard(' {ArrowDown} ');
     expect(handle).toHaveFocus();
     expect(
       within(screen.getByRole('list', { name: 'Roles' }))
