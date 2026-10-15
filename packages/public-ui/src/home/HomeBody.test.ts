@@ -75,10 +75,10 @@ describe('HomeBody', () => {
         '<a class="home-section__more" href="/posts">All posts</a>',
     );
     expect(html).toContain(
-      '<li class="home-post" data-id="02">' +
-        '<h3 class="home-post__title"><a href="/posts/post-2">Post 2</a></h3>' +
+      '<li class="ui-card--editorial home-post" data-id="02"><div class="ui-card__body">' +
+        '<h3 class="ui-card__title"><a href="/posts/post-2">Post 2</a></h3>' +
         '<p class="home-post__excerpt">Excerpt 2.</p>' +
-        '<time class="home-post__date" dateTime="2026-02-01">February 1, 2026</time></li>',
+        '<time class="home-post__date" dateTime="2026-02-01">February 1, 2026</time></div></li>',
     );
   });
 
@@ -96,13 +96,16 @@ describe('HomeBody', () => {
     const projectsAt = html.indexOf(
       '<h2 class="home-section__label" id="home-projects">What I’m building</h2>' +
         '<a class="home-section__more" href="/projects">All projects</a>' +
-        '</div><ul class="project-list project-list--home"><li class="project-card"',
+        '</div><ul class="project-list project-list--home"><li class="ui-card--editorial project-card"',
     );
     expect(recentAt).toBeGreaterThan(-1);
     expect(projectsAt).toBeGreaterThan(recentAt);
-    expect(html.match(/<h3 class="project-card__name">[^<]+/g)).toEqual([
-      '<h3 class="project-card__name">Posts',
-      '<h3 class="project-card__name">Notebook',
+    const projects = html.slice(projectsAt);
+    expect(
+      projects.match(/<h3 class="ui-card__title">(<a [^>]+>)?[^<]+/g),
+    ).toEqual([
+      '<h3 class="ui-card__title"><a class="ui-card__link" href="/projects/posts">Posts',
+      '<h3 class="ui-card__title"><a class="ui-card__link" href="/projects/notebook">Notebook',
     ]);
   });
 });

@@ -397,7 +397,7 @@ test.describe('the Posts demo on the built site', () => {
     ).toBeLessThan(4);
     const caption = slot.locator('.posts-demo__caption');
     await expect(caption).toHaveText(/^Draft: only the editor sees it/);
-    await expect(publicSite.locator('.home-post__title')).toHaveText([
+    await expect(publicSite.locator('.home-post .ui-card__title')).toHaveText([
       'Welcome',
     ]);
 
@@ -409,7 +409,7 @@ test.describe('the Posts demo on the built site', () => {
     );
     await editor.getByRole('button', { name: 'Publish' }).click();
     await expect(caption).toHaveText(/^Published\. In the real system/);
-    await expect(publicSite.locator('.home-post__title')).toHaveText([
+    await expect(publicSite.locator('.home-post .ui-card__title')).toHaveText([
       'Hello from the demo',
       'Welcome',
     ]);

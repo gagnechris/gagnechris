@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Button } from './Button.js';
 import { cx } from './cx.js';

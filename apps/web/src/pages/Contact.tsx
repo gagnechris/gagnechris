@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { pageTitle, siteUrl } from '@gagnechris/shared';
 import { ContactPageBody } from '@gagnechris/public-ui';
 import { CONTACT_DESCRIPTION } from '@gagnechris/shared/public-pages';
+import { Button, Field, TextArea, TextInput } from '@gagnechris/ui';
 import { createPublicApiClient } from '../api/public-client';
 import { trackEvent } from '../utils/analytics';
 import './Contact.css';
@@ -56,8 +57,6 @@ const fieldsSummary = (count: number): string =>
   count === 1
     ? 'Please fix the highlighted field.'
     : `Please fix the ${count} highlighted fields.`;
-
-const errorId = (name: FieldName) => `contact-${name}-error`;
 
 function Contact() {
   const hydrated = useHydrated();
@@ -249,17 +248,13 @@ function Contact() {
 
                 {FIELDS.map(
                   ({ name, label, placeholder, type, autoComplete }) => {
-                    const error = fieldErrors[name];
                     const props = {
-                      id: name,
                       name,
                       value: values[name],
                       onChange: handleChange,
                       placeholder,
                       autoComplete,
                       'aria-required': true,
-                      'aria-invalid': error ? true : undefined,
-                      'aria-describedby': error ? errorId(name) : undefined,
                     } as const;
                     const ref = (
                       el: HTMLInputElement | HTMLTextAreaElement | null,
@@ -267,22 +262,23 @@ function Contact() {
                       fieldRefs.current[name] = el;
                     };
                     return (
-                      <div className="contact-field" key={name}>
-                        <label htmlFor={name}>{label}</label>
+                      <Field
+                        key={name}
+                        label={label}
+                        error={fieldErrors[name]}
+                        tone="editorial"
+                      >
                         {type ? (
-                          <input {...props} type={type} ref={ref} />
+                          <TextInput {...props} type={type} ref={ref} />
                         ) : (
-                          <textarea {...props} rows={4} ref={ref} />
+                          <TextArea
+                            {...props}
+                            rows={4}
+                            autoGrow={false}
+                            ref={ref}
+                          />
                         )}
-                        {error ? (
-                          <p
-                            className="contact-field__error"
-                            id={errorId(name)}
-                          >
-                            {error}
-                          </p>
-                        ) : null}
-                      </div>
+                      </Field>
                     );
                   },
                 )}
@@ -293,13 +289,16 @@ function Contact() {
                   ) : null}
                 </p>
 
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
+                  tone="editorial"
                   className="contact-form__submit"
+                  loading={submitting}
                   aria-disabled={submitting || undefined}
                 >
                   {submitting ? 'Sending…' : 'Send message'}
-                </button>
+                </Button>
               </form>
             )}
           </div>

@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 type Props = {
   status: 'draft' | 'published' | 'deleted';
   hasUnpublishedChanges?: boolean;

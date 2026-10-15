@@ -1,47 +1,8 @@
-/* Specs in docs/design/public-redesign/README.md (Projects). */
+/* Specs in docs/design/public-redesign/README.md (Projects). The entry itself is the editorial Card. */
 .project-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--color-ink);
-}
-
-.project-card {
-  border-bottom: 1px solid var(--neutral-200);
-}
-
-.project-card__link {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  align-items: start;
-  column-gap: var(--space-8);
-  padding: 36px 0;
-  font-weight: inherit;
-  color: inherit;
-  text-decoration: none;
-}
-
-a.project-card__link:hover {
-  color: inherit;
-  text-decoration: none;
-}
-
-a.project-card__link:focus-visible {
-  outline-offset: 4px;
-}
-
-.project-card__name {
-  margin: 8px 0 0;
-  font-size: 2rem;
-  line-height: 1.2;
-  color: var(--color-ink);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 0.15em;
-}
-
-a.project-card__link:hover .project-card__name,
-a.project-card__link:focus-visible .project-card__name {
-  text-decoration-line: underline;
 }
 
 .project-card__pitch {
@@ -66,18 +27,14 @@ a.project-card__link:focus-visible .project-card__name {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-8);
   padding-top: var(--space-8);
-  border-top: 0;
 }
 
-.project-list--home .project-card {
-  border-bottom: 0;
-}
-
-.project-list--home .project-card__link {
+.project-list.project-list--home > .project-card {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   padding: 0;
+  border: 0;
 }
 
 .project-list--home .project-preview {
@@ -85,7 +42,7 @@ a.project-card__link:focus-visible .project-card__name {
   margin-bottom: 15px;
 }
 
-.project-list--home .project-card__name {
+.project-list--home .project-card .ui-card__title:not(:first-child) {
   margin-top: 14px;
   font-size: 1.75rem;
 }
@@ -101,21 +58,14 @@ a.project-card__link:focus-visible .project-card__name {
 
 /* Phone · Projects: the preview stacks above the text and the stack line is dropped. */
 @media (max-width: 480px) {
-  .project-card__link {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    padding: 20px 0 19px;
-  }
-
   .project-preview,
   .project-list--home .project-preview {
     height: 130px;
     margin-bottom: 8px;
   }
 
-  .project-card__name,
-  .project-list--home .project-card__name {
+  .project-list .project-card .ui-card__title:not(:first-child),
+  .project-list--home .project-card .ui-card__title:not(:first-child) {
     margin-top: 7px;
     font-size: 1.625rem;
   }
@@ -137,11 +87,8 @@ a.project-card__link:focus-visible .project-card__name {
     padding-top: 0;
   }
 
-  .project-list--home .project-card {
-    border-bottom: 1px solid var(--neutral-200);
-  }
-
-  .project-list--home .project-card__link {
+  .project-list.project-list--home > .project-card {
     padding: 20px 0;
+    border-bottom: 1px solid var(--neutral-200);
   }
 }

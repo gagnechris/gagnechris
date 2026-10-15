@@ -30,7 +30,10 @@ describe('projects index', () => {
       { ...base, id: '02B', slug: 'b', name: 'B', order: 2 },
       { ...base, id: '01A', slug: 'a', name: 'A', order: 1, stage: 'live' },
     ]);
-    expect(html.indexOf('>A</h2>')).toBeLessThan(html.indexOf('>B</h2>'));
+    expect(html.indexOf('>A</a></h2>')).toBeGreaterThan(-1);
+    expect(html.indexOf('>A</a></h2>')).toBeLessThan(
+      html.indexOf('>B</a></h2>'),
+    );
     expect(html).toContain(
       '<p class="project-stage" data-stage="live">Live · since 2026</p>',
     );
@@ -39,17 +42,19 @@ describe('projects index', () => {
     );
   });
 
-  it('makes each card one link to its page or href, and leaves a pageless idea unlinked', () => {
+  it('links each card’s name to its page or href, and leaves a pageless idea unlinked', () => {
     const html = renderProjectsIndexBodyHtml(SAMPLE_PROJECTS);
-    const cards = html.split('<li class="project-card"').slice(1);
+    const cards = html
+      .split('<li class="ui-card--editorial project-card"')
+      .slice(1);
     expect(cards.map((c) => (c.match(/<a /g) ?? []).length)).toEqual([
       1, 1, 1, 0,
     ]);
-    expect(cards[0]).toMatch(
-      /^[^>]*><a class="project-card__link" href="\/projects\/posts">/,
+    expect(cards[0]).toContain(
+      '<h2 class="ui-card__title"><a class="ui-card__link" href="/projects/posts">',
     );
     expect(cards[2]).toContain('href="/dont-feed-the-bears"');
-    expect(cards[3]).toContain('<div class="project-card__link">');
+    expect(cards[3]).toMatch(/<h2 class="ui-card__title">[^<]+<\/h2>/);
     expect(cards[3]).not.toContain('tabindex');
   });
 

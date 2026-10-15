@@ -150,7 +150,7 @@
   display: none;
 }
 
-.posts-demo__site .home-post {
+.posts-demo__site .home-posts > .home-post {
   padding: 12px 0 10px;
 }
 
@@ -160,11 +160,11 @@
   color: var(--color-ink);
 }
 
-.posts-demo__site .home-post__title {
+.posts-demo__site .home-post .ui-card__title {
   font-size: 1.375rem;
 }
 
-.demo-frame .posts-demo__site .home-post__title a {
+.demo-frame .posts-demo__site .home-post .ui-card__title a {
   color: var(--color-ink);
 }
 

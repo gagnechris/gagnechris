@@ -1,5 +1,12 @@
 /* Public site only (gagnechris.com). Admin and Notebook share index.css but not this file. */
 
+/* Only the library components the public pages use, in their editorial tone. */
+@import '@gagnechris/ui/base.css';
+@import '@gagnechris/ui/button.css';
+@import '@gagnechris/ui/iconButton.css';
+@import '@gagnechris/ui/field.css';
+@import '@gagnechris/ui/card.css';
+
 @font-face {
   font-family: 'Newsreader';
   src: url('/fonts/newsreader-roman.c4b10fbd.woff2') format('woff2');
@@ -86,6 +93,13 @@ h4 {
 :focus-visible {
   outline: 2px solid var(--color-link);
   outline-offset: 2px;
+}
+
+/* index.css lifts every button on hover; library controls stay flat. */
+.kit-btn:hover,
+.ui-icon-btn:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 #root {

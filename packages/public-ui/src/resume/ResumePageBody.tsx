@@ -15,6 +15,7 @@ import {
   RESUME_UNAVAILABLE_TEXT,
   type ResumeIntro,
 } from '@gagnechris/shared/render';
+import { Button } from '@gagnechris/ui';
 import { PublicLink } from '../link.js';
 
 // Text runs are single template strings: adjacent text children would make
@@ -49,7 +50,7 @@ const IntroHeader = ({
     <p className="resume-intro__summary">{summary}</p>
     <p className="resume-intro__actions">
       {pdfPath ? (
-        <a
+        <Button
           className="resume-download"
           href={pdfPath}
           download={RESUME_DOWNLOAD_FILENAME}
@@ -57,7 +58,7 @@ const IntroHeader = ({
         >
           <DownloadIcon />
           {RESUME_DOWNLOAD_LABEL}
-        </a>
+        </Button>
       ) : null}
       {RESUME_ACTION_LINKS.map((link) => (
         <PublicLink

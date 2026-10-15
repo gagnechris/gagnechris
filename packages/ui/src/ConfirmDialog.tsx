@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { Button } from './Button.js';
 import { useModalDialog } from './useModalDialog.js';
 

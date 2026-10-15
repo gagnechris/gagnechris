@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { cx } from './cx.js';
 
 /** The backdrop behind every modal surface; clicking it closes. */

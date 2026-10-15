@@ -6,6 +6,7 @@ import {
   ResumeUnavailableBody,
 } from '@gagnechris/public-ui';
 import { DEFAULT_RESUME, resumeIntro } from '@gagnechris/shared/render';
+import { IconButton } from '@gagnechris/ui';
 import '@web/public.css';
 import '@web/pages/Resume.css';
 import { catalog } from '../catalog';
@@ -58,13 +59,23 @@ export const AfterDownload: Story = {
           </PublicLink>
           ?
         </p>
-        <button
-          type="button"
+        <IconButton
+          tone="editorial"
+          variant="ghost"
           className="resume-bear-note__dismiss"
-          aria-label="Dismiss bear game note"
+          label="Dismiss bear game note"
         >
-          ×
-        </button>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </IconButton>
       </div>
     ),
   },

@@ -119,9 +119,9 @@ const homeScope = () =>
   ]);
 
 const recentSlugs = (html: string) =>
-  [
-    ...html.matchAll(/class="home-post__title"><a href="\/posts\/([^"]+)"/g),
-  ].map((m) => m[1]);
+  [...html.matchAll(/class="ui-card__title"><a href="\/posts\/([^"]+)"/g)].map(
+    (m) => m[1],
+  );
 
 /** A site where Home and posts 1–3 were already published together. */
 async function seededSite(posts: Post[], home?: () => PublishedLookup<Home>) {

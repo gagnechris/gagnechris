@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import type { ReactNode } from 'react';
 import { cx } from './cx.js';
 import { useTabs } from './useTabs.js';

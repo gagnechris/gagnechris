@@ -133,7 +133,7 @@
     min-height: 44px;
   }
 
-  .kit-btn--editorial {
+  .kit-btn.kit-btn--editorial {
     min-height: 50px;
   }
 }

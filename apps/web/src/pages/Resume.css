@@ -38,31 +38,21 @@
   margin: 28px 0 0;
 }
 
-.resume-download {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
+/* The library Button, drawn white on ink as the design has it. */
+.resume-intro__actions .kit-btn.resume-download {
   min-height: 44px;
   padding: 0 18px;
+  border: 0;
   border-radius: 6px;
   background-color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 600;
   line-height: 1;
   color: white;
-  text-decoration: none;
 }
 
-.resume-download:hover {
+.resume-intro__actions .kit-btn.resume-download:hover {
   background-color: var(--neutral-800);
   color: white;
   text-decoration: none;
-}
-
-.resume-download:focus-visible {
-  outline-offset: 2px;
 }
 
 .resume-download__icon {
@@ -98,21 +88,7 @@
 }
 
 .resume-load-error__retry {
-  min-height: 44px;
   margin-top: var(--space-4);
-  padding: 0 18px;
-  border: 1px solid var(--neutral-300);
-  border-radius: 6px;
-  background: transparent;
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-ink);
-  cursor: pointer;
-}
-
-.resume-load-error__retry:hover {
-  border-color: var(--neutral-600);
 }
 
 .resume-bear-note {
@@ -140,18 +116,7 @@
 }
 
 .resume-bear-note__dismiss {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--neutral-500);
-  cursor: pointer;
-  font-size: var(--text-lg);
-  line-height: 1;
-  padding: 0 var(--space-1);
-}
-
-.resume-bear-note__dismiss:hover {
-  color: var(--neutral-800);
+  margin: -10px -12px -10px 0;
 }
 
 .resume-section {
@@ -372,7 +337,7 @@
     font-size: var(--text-lead);
   }
 
-  .resume-download {
+  .resume-intro__actions .kit-btn.resume-download {
     flex: 1 0 100%;
     min-height: 48px;
     border-radius: 8px;
