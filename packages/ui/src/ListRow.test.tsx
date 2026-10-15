@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
@@ -43,5 +44,13 @@ describe('ListRow', () => {
     expect(onArchive).toHaveBeenCalled();
     await user.tab();
     expect(screen.getByRole('button', { name: 'Second' })).toHaveFocus();
+  });
+});
+
+describe('List', () => {
+  test('passes a ref to the list element', () => {
+    const ref = createRef<HTMLUListElement>();
+    render(<List ref={ref} aria-label="Roles" />);
+    expect(ref.current).toBe(screen.getByRole('list', { name: 'Roles' }));
   });
 });

@@ -69,4 +69,21 @@ describe('FileInput', () => {
     ).toHaveAttribute('value', '0.4');
     expect(screen.queryByRole('button')).toBeNull();
   });
+
+  test('aria-describedby adds a description outside a Field', () => {
+    render(
+      <>
+        <FileInput
+          aria-label="Preview"
+          aria-describedby="err"
+          hint="PNG"
+          onFiles={() => {}}
+        />
+        <p id="err">Add a preview image.</p>
+      </>,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Preview: Choose file' }),
+    ).toHaveAccessibleDescription('PNG Add a preview image.');
+  });
 });

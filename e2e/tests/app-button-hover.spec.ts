@@ -46,3 +46,25 @@ test('app buttons and the search backdrop keep their look on hover', async ({
   await expect.poll(() => look(backdrop)).toEqual(resting);
   expect(resting.transform).toBe('none');
 });
+
+test('a dialog scrim keeps its look under the pointer', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await signIn();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${apps.admin}/settings/users`);
+  await page.getByRole('button', { name: 'Invite user' }).click();
+  const scrim = page
+    .getByRole('button', { name: 'Close' })
+    .and(page.locator('.ui-scrim'));
+  await scrim.hover({ position: { x: 4, y: 4 } });
+  await expect
+    .poll(() => look(scrim))
+    .toEqual({
+      background: 'rgba(18, 25, 38, 0.4)',
+      transform: 'none',
+      boxShadow: 'none',
+    });
+});

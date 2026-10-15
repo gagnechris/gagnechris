@@ -15,6 +15,8 @@ type Props = {
   uploading?: { name: string; progress?: number };
   /** Names the control when it is not inside a Field. */
   'aria-label'?: string;
+  /** Describes it further, such as an error shown outside a Field. */
+  'aria-describedby'?: string;
   className?: string;
 };
 
@@ -28,6 +30,7 @@ export const FileInput = ({
   hint,
   uploading,
   className,
+  'aria-describedby': describedBy,
   ...aria
 }: Props) => {
   const input = useRef<HTMLInputElement>(null);
@@ -35,7 +38,10 @@ export const FileInput = ({
   const hintId = useId();
   const buttonId = useId();
   const field = useFieldControl(
-    { 'aria-describedby': hint ? hintId : undefined },
+    {
+      'aria-describedby':
+        cx(hint ? hintId : undefined, describedBy) || undefined,
+    },
     false,
   );
   const name = aria['aria-label'];

@@ -11,6 +11,8 @@ import { usePhone } from './usePhone.js';
 
 type Common = {
   title: string;
+  /** The dialog's name, when it should say more than the title. */
+  label?: string;
   onClose: () => void;
   children: ReactNode;
   /** The primary action, shown after Cancel in the footer (or as Done in a sheet). */
@@ -30,6 +32,7 @@ type SurfaceProps = Common & {
 const Surface = ({
   kind,
   title,
+  label,
   onClose,
   children,
   actions,
@@ -41,7 +44,7 @@ const Surface = ({
   const titleId = useId();
   const body = useRef<HTMLDivElement>(null);
   const { dialogProps } = useModalDialog<HTMLElement>({
-    label: title,
+    label: label ?? title,
     onClose,
     initialFocus: initialFocus ?? body,
     lockScroll: true,
@@ -51,8 +54,8 @@ const Surface = ({
       <Scrim onClick={onClose} />
       <section
         {...dialogProps}
-        aria-label={undefined}
-        aria-labelledby={titleId}
+        aria-label={label}
+        aria-labelledby={label ? undefined : titleId}
         className={cx(`ui-${kind}`, kind === 'dialog' && `ui-dialog--${size}`)}
       >
         <header className="ui-dialog__head">
@@ -97,6 +100,7 @@ export const Dialog = (props: DialogProps) => {
     return (
       <BottomSheet
         title={props.title}
+        label={props.label}
         onClose={props.onClose}
         done={props.actions}
       >
@@ -114,6 +118,7 @@ export const Drawer = (props: Common) => {
     return (
       <BottomSheet
         title={props.title}
+        label={props.label}
         onClose={props.onClose}
         done={props.actions}
       >

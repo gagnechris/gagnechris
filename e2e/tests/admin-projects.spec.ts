@@ -22,6 +22,15 @@ const saved = (page: Page) =>
 // disabled. The shortcut saves whatever is still pending, or nothing.
 const saveNow = (page: Page) => page.keyboard.press('ControlOrMeta+S');
 
+const uploadPreview = async (
+  page: Page,
+  file: { name: string; mimeType: string; buffer: Buffer },
+) => {
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: /^Preview image: / }).click();
+  await (await chooser).setFiles(file);
+};
+
 const seedProject = (seed: Seed, input: ProjectInput) =>
   seed.project({ bodyMarkdown: 'Seeded by e2e.', ...input });
 
@@ -110,7 +119,7 @@ test('upload a preview image', async ({ page, apps, signIn, prefix, seed }) => {
   await signIn();
   await openProject(page, apps.admin, project.id, name);
 
-  await page.getByLabel('Upload preview image').setInputFiles({
+  await uploadPreview(page, {
     name: 'preview.png',
     mimeType: 'image/png',
     buffer: PNG_1X1,
@@ -267,7 +276,7 @@ test('a demo with no preview image blocks Publish until an image is added', asyn
   await page.getByRole('heading', { name: 'Body' }).click();
   await page.keyboard.press('ControlOrMeta+Enter');
 
-  await page.getByLabel('Upload preview image').setInputFiles({
+  await uploadPreview(page, {
     name: 'preview.png',
     mimeType: 'image/png',
     buffer: PNG_1X1,

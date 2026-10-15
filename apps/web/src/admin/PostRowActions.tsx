@@ -1,10 +1,11 @@
-import { useCallback, useId, useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   errorMessage,
   postResource,
   type PostSummary,
 } from '@gagnechris/app-core';
-import { useDismiss } from '@gagnechris/ui';
+import { IconButton, Menu, MenuItem } from '@gagnechris/ui';
+import ShellIcon from '../workspace/ui/ShellIcon';
 
 type Props = {
   post: PostSummary;
@@ -13,12 +14,7 @@ type Props = {
 
 /** A post row's "…" menu: Publish or Unpublish without opening the editor. */
 export function PostRowActions({ post, onError }: Props) {
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const menuId = useId();
-  const container = useRef<HTMLDivElement>(null);
-  const close = useCallback(() => setOpen(false), []);
-  useDismiss(open, close, container);
   const { publish, unpublish } = postResource.useLifecycleMutators({
     id: post.id,
   });
@@ -27,7 +23,6 @@ export function PostRowActions({ post, onError }: Props) {
     action: typeof publish,
     fallback: string,
   ): Promise<void> => {
-    setOpen(false);
     setBusy(true);
     onError(null);
     const result = await action({ version: post.version });
@@ -38,38 +33,30 @@ export function PostRowActions({ post, onError }: Props) {
   const canPublish = post.status === 'draft' || post.hasUnpublishedChanges;
 
   return (
-    <div className="kit-row-actions" ref={container}>
-      <button
-        type="button"
-        className="kit-row-actions__toggle"
-        aria-label={`Actions for ${post.title}`}
-        aria-expanded={open}
-        aria-controls={menuId}
-        disabled={busy}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span aria-hidden="true">…</span>
-      </button>
-      {open ? (
-        <div id={menuId} className="kit-row-actions__menu">
-          {canPublish ? (
-            <button
-              type="button"
-              onClick={() => void run(publish, 'Could not publish.')}
-            >
-              {post.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
-            </button>
-          ) : null}
-          {post.status === 'published' ? (
-            <button
-              type="button"
-              onClick={() => void run(unpublish, 'Could not unpublish.')}
-            >
-              Unpublish
-            </button>
-          ) : null}
-        </div>
+    <Menu
+      label={`Actions for ${post.title}`}
+      align="end"
+      width={176}
+      trigger={(props) => (
+        <IconButton
+          {...props}
+          label={`Actions for ${post.title}`}
+          disabled={busy}
+        >
+          <ShellIcon name="more" />
+        </IconButton>
+      )}
+    >
+      {canPublish ? (
+        <MenuItem onSelect={() => void run(publish, 'Could not publish.')}>
+          {post.hasUnpublishedChanges ? 'Publish changes' : 'Publish'}
+        </MenuItem>
       ) : null}
-    </div>
+      {post.status === 'published' ? (
+        <MenuItem onSelect={() => void run(unpublish, 'Could not unpublish.')}>
+          Unpublish
+        </MenuItem>
+      ) : null}
+    </Menu>
   );
 }
