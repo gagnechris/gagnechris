@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Outlet, createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { bucketTodayTasks } from '@gagnechris/shared';
 import type { Task } from '@gagnechris/app-core';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, workOutletContext } from '../test-utils';
 import { NotebookCalendar } from './NotebookCalendar';
 import NotebookTasksPage from './NotebookTasksPage';
 import { useNotebookExport } from './useNotebookExport';
@@ -22,6 +22,12 @@ vi.mock('../workspace/api/client', () => ({
     ) => {
       if (path === '/api/notebook/tasks') {
         api.taskQueries.push(init?.params?.query ?? {});
+      }
+      if (path === '/api/notebook/areas') {
+        return {
+          data: { areas: [{ id: 'work', name: 'Work' }], version: 0 },
+          response: { status: 200 },
+        };
       }
       return { data: { items: [] }, response: { status: 200 } };
     },
@@ -115,7 +121,7 @@ describe('Notebook days are local days', () => {
       [
         {
           path: '/',
-          element: <Outlet context={{ areaFilter: 'work' }} />,
+          element: <Outlet context={workOutletContext} />,
           children: [{ path: 'tasks', element: <NotebookTasksPage /> }],
         },
       ],

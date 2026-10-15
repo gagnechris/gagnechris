@@ -56,24 +56,6 @@ func (e ContactResponseOk) Valid() bool {
 	}
 }
 
-// Defines values for CreateNoteRequestArea.
-const (
-	CreateNoteRequestAreaPersonal CreateNoteRequestArea = "personal"
-	CreateNoteRequestAreaWork     CreateNoteRequestArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the CreateNoteRequestArea enum.
-func (e CreateNoteRequestArea) Valid() bool {
-	switch e {
-	case CreateNoteRequestAreaPersonal:
-		return true
-	case CreateNoteRequestAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for CreateNoteRequestType.
 const (
 	CreateNoteRequestTypeDaily CreateNoteRequestType = "daily"
@@ -134,24 +116,6 @@ func (e CreateProjectRequestStage) Valid() bool {
 	}
 }
 
-// Defines values for CreateTaskRequestArea.
-const (
-	CreateTaskRequestAreaPersonal CreateTaskRequestArea = "personal"
-	CreateTaskRequestAreaWork     CreateTaskRequestArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the CreateTaskRequestArea enum.
-func (e CreateTaskRequestArea) Valid() bool {
-	switch e {
-	case CreateTaskRequestAreaPersonal:
-		return true
-	case CreateTaskRequestAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for CreateTaskRequestPriority.
 const (
 	CreateTaskRequestPriorityHigh CreateTaskRequestPriority = "high"
@@ -197,24 +161,6 @@ func (e CreateTaskRequestStatus) Valid() bool {
 	}
 }
 
-// Defines values for DailyNoteGetResponse0Area.
-const (
-	DailyNoteGetResponse0AreaPersonal DailyNoteGetResponse0Area = "personal"
-	DailyNoteGetResponse0AreaWork     DailyNoteGetResponse0Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the DailyNoteGetResponse0Area enum.
-func (e DailyNoteGetResponse0Area) Valid() bool {
-	switch e {
-	case DailyNoteGetResponse0AreaPersonal:
-		return true
-	case DailyNoteGetResponse0AreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DailyNoteGetResponse0Type.
 const (
 	DailyNoteGetResponse0TypeDaily DailyNoteGetResponse0Type = "daily"
@@ -227,24 +173,6 @@ func (e DailyNoteGetResponse0Type) Valid() bool {
 	case DailyNoteGetResponse0TypeDaily:
 		return true
 	case DailyNoteGetResponse0TypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DailyNoteGetResponse1Area.
-const (
-	DailyNoteGetResponse1AreaPersonal DailyNoteGetResponse1Area = "personal"
-	DailyNoteGetResponse1AreaWork     DailyNoteGetResponse1Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the DailyNoteGetResponse1Area enum.
-func (e DailyNoteGetResponse1Area) Valid() bool {
-	switch e {
-	case DailyNoteGetResponse1AreaPersonal:
-		return true
-	case DailyNoteGetResponse1AreaWork:
 		return true
 	default:
 		return false
@@ -335,42 +263,6 @@ const (
 func (e DailyNoteGetResponse1Version) Valid() bool {
 	switch e {
 	case DailyNoteGetResponse1VersionN0:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DailyTemplateArea.
-const (
-	DailyTemplateAreaPersonal DailyTemplateArea = "personal"
-	DailyTemplateAreaWork     DailyTemplateArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the DailyTemplateArea enum.
-func (e DailyTemplateArea) Valid() bool {
-	switch e {
-	case DailyTemplateAreaPersonal:
-		return true
-	case DailyTemplateAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for EmptyDailyNoteArea.
-const (
-	EmptyDailyNoteAreaPersonal EmptyDailyNoteArea = "personal"
-	EmptyDailyNoteAreaWork     EmptyDailyNoteArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the EmptyDailyNoteArea enum.
-func (e EmptyDailyNoteArea) Valid() bool {
-	switch e {
-	case EmptyDailyNoteAreaPersonal:
-		return true
-	case EmptyDailyNoteAreaWork:
 		return true
 	default:
 		return false
@@ -518,24 +410,6 @@ func (e HomeStatus) Valid() bool {
 	}
 }
 
-// Defines values for ListNotesQueryArea.
-const (
-	ListNotesQueryAreaPersonal ListNotesQueryArea = "personal"
-	ListNotesQueryAreaWork     ListNotesQueryArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the ListNotesQueryArea enum.
-func (e ListNotesQueryArea) Valid() bool {
-	switch e {
-	case ListNotesQueryAreaPersonal:
-		return true
-	case ListNotesQueryAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for ListNotesQueryType.
 const (
 	ListNotesQueryTypeDaily ListNotesQueryType = "daily"
@@ -548,24 +422,6 @@ func (e ListNotesQueryType) Valid() bool {
 	case ListNotesQueryTypeDaily:
 		return true
 	case ListNotesQueryTypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for ListTasksQueryArea.
-const (
-	ListTasksQueryAreaPersonal ListTasksQueryArea = "personal"
-	ListTasksQueryAreaWork     ListTasksQueryArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the ListTasksQueryArea enum.
-func (e ListTasksQueryArea) Valid() bool {
-	switch e {
-	case ListTasksQueryAreaPersonal:
-		return true
-	case ListTasksQueryAreaWork:
 		return true
 	default:
 		return false
@@ -692,24 +548,6 @@ func (e MediaUploadURLRequestContentType) Valid() bool {
 	}
 }
 
-// Defines values for NoteArea.
-const (
-	NoteAreaPersonal NoteArea = "personal"
-	NoteAreaWork     NoteArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NoteArea enum.
-func (e NoteArea) Valid() bool {
-	switch e {
-	case NoteAreaPersonal:
-		return true
-	case NoteAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for NoteType.
 const (
 	NoteTypeDaily NoteType = "daily"
@@ -728,24 +566,6 @@ func (e NoteType) Valid() bool {
 	}
 }
 
-// Defines values for NoteBatchResponseItemsArea.
-const (
-	NoteBatchResponseItemsAreaPersonal NoteBatchResponseItemsArea = "personal"
-	NoteBatchResponseItemsAreaWork     NoteBatchResponseItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NoteBatchResponseItemsArea enum.
-func (e NoteBatchResponseItemsArea) Valid() bool {
-	switch e {
-	case NoteBatchResponseItemsAreaPersonal:
-		return true
-	case NoteBatchResponseItemsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for NoteBatchResponseItemsType.
 const (
 	NoteBatchResponseItemsTypeDaily NoteBatchResponseItemsType = "daily"
@@ -758,24 +578,6 @@ func (e NoteBatchResponseItemsType) Valid() bool {
 	case NoteBatchResponseItemsTypeDaily:
 		return true
 	case NoteBatchResponseItemsTypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for NoteListResponseItemsArea.
-const (
-	NoteListResponseItemsAreaPersonal NoteListResponseItemsArea = "personal"
-	NoteListResponseItemsAreaWork     NoteListResponseItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NoteListResponseItemsArea enum.
-func (e NoteListResponseItemsArea) Valid() bool {
-	switch e {
-	case NoteListResponseItemsAreaPersonal:
-		return true
-	case NoteListResponseItemsAreaWork:
 		return true
 	default:
 		return false
@@ -809,24 +611,6 @@ const (
 func (e NoteSyncChange0Deleted) Valid() bool {
 	switch e {
 	case NoteSyncChange0DeletedFalse:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for NoteSyncChange0EntityArea.
-const (
-	NoteSyncChange0EntityAreaPersonal NoteSyncChange0EntityArea = "personal"
-	NoteSyncChange0EntityAreaWork     NoteSyncChange0EntityArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NoteSyncChange0EntityArea enum.
-func (e NoteSyncChange0EntityArea) Valid() bool {
-	switch e {
-	case NoteSyncChange0EntityAreaPersonal:
-		return true
-	case NoteSyncChange0EntityAreaWork:
 		return true
 	default:
 		return false
@@ -920,42 +704,6 @@ func (e NotebookImageUploadURLRequestContentType) Valid() bool {
 	}
 }
 
-// Defines values for NotebookSearchRequestArea.
-const (
-	NotebookSearchRequestAreaPersonal NotebookSearchRequestArea = "personal"
-	NotebookSearchRequestAreaWork     NotebookSearchRequestArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NotebookSearchRequestArea enum.
-func (e NotebookSearchRequestArea) Valid() bool {
-	switch e {
-	case NotebookSearchRequestAreaPersonal:
-		return true
-	case NotebookSearchRequestAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for NotebookSearchResponseNotesArea.
-const (
-	NotebookSearchResponseNotesAreaPersonal NotebookSearchResponseNotesArea = "personal"
-	NotebookSearchResponseNotesAreaWork     NotebookSearchResponseNotesArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NotebookSearchResponseNotesArea enum.
-func (e NotebookSearchResponseNotesArea) Valid() bool {
-	switch e {
-	case NotebookSearchResponseNotesAreaPersonal:
-		return true
-	case NotebookSearchResponseNotesAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for NotebookSearchResponseNotesStatus.
 const (
 	NotebookSearchResponseNotesStatusDone       NotebookSearchResponseNotesStatus = "done"
@@ -992,24 +740,6 @@ func (e NotebookSearchResponseNotesType) Valid() bool {
 	case NotebookSearchResponseNotesTypeNote:
 		return true
 	case NotebookSearchResponseNotesTypeTask:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for NotebookSearchResponseTasksArea.
-const (
-	NotebookSearchResponseTasksAreaPersonal NotebookSearchResponseTasksArea = "personal"
-	NotebookSearchResponseTasksAreaWork     NotebookSearchResponseTasksArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the NotebookSearchResponseTasksArea enum.
-func (e NotebookSearchResponseTasksArea) Valid() bool {
-	switch e {
-	case NotebookSearchResponseTasksAreaPersonal:
-		return true
-	case NotebookSearchResponseTasksAreaWork:
 		return true
 	default:
 		return false
@@ -1298,24 +1028,6 @@ func (e ResumeDownloadNotifyResponseOk) Valid() bool {
 	}
 }
 
-// Defines values for TaskArea.
-const (
-	TaskAreaPersonal TaskArea = "personal"
-	TaskAreaWork     TaskArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the TaskArea enum.
-func (e TaskArea) Valid() bool {
-	switch e {
-	case TaskAreaPersonal:
-		return true
-	case TaskAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for TaskPriority.
 const (
 	TaskPriorityHigh TaskPriority = "high"
@@ -1361,24 +1073,6 @@ func (e TaskStatus) Valid() bool {
 	}
 }
 
-// Defines values for TaskBatchResponseItemsArea.
-const (
-	TaskBatchResponseItemsAreaPersonal TaskBatchResponseItemsArea = "personal"
-	TaskBatchResponseItemsAreaWork     TaskBatchResponseItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the TaskBatchResponseItemsArea enum.
-func (e TaskBatchResponseItemsArea) Valid() bool {
-	switch e {
-	case TaskBatchResponseItemsAreaPersonal:
-		return true
-	case TaskBatchResponseItemsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for TaskBatchResponseItemsPriority.
 const (
 	TaskBatchResponseItemsPriorityHigh TaskBatchResponseItemsPriority = "high"
@@ -1418,24 +1112,6 @@ func (e TaskBatchResponseItemsStatus) Valid() bool {
 	case TaskBatchResponseItemsStatusInProgress:
 		return true
 	case TaskBatchResponseItemsStatusTodo:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TaskListResponseItemsArea.
-const (
-	TaskListResponseItemsAreaPersonal TaskListResponseItemsArea = "personal"
-	TaskListResponseItemsAreaWork     TaskListResponseItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the TaskListResponseItemsArea enum.
-func (e TaskListResponseItemsArea) Valid() bool {
-	switch e {
-	case TaskListResponseItemsAreaPersonal:
-		return true
-	case TaskListResponseItemsAreaWork:
 		return true
 	default:
 		return false
@@ -1496,24 +1172,6 @@ const (
 func (e TaskSyncChange0Deleted) Valid() bool {
 	switch e {
 	case TaskSyncChange0DeletedFalse:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for TaskSyncChange0EntityArea.
-const (
-	TaskSyncChange0EntityAreaPersonal TaskSyncChange0EntityArea = "personal"
-	TaskSyncChange0EntityAreaWork     TaskSyncChange0EntityArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the TaskSyncChange0EntityArea enum.
-func (e TaskSyncChange0EntityArea) Valid() bool {
-	switch e {
-	case TaskSyncChange0EntityAreaPersonal:
-		return true
-	case TaskSyncChange0EntityAreaWork:
 		return true
 	default:
 		return false
@@ -1610,24 +1268,6 @@ func (e TaskSyncChange1Type) Valid() bool {
 	}
 }
 
-// Defines values for UpdateNoteRequestArea.
-const (
-	UpdateNoteRequestAreaPersonal UpdateNoteRequestArea = "personal"
-	UpdateNoteRequestAreaWork     UpdateNoteRequestArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the UpdateNoteRequestArea enum.
-func (e UpdateNoteRequestArea) Valid() bool {
-	switch e {
-	case UpdateNoteRequestAreaPersonal:
-		return true
-	case UpdateNoteRequestAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for UpdateProjectRequestDemo.
 const (
 	UpdateProjectRequestDemoLessThanNil UpdateProjectRequestDemo = "<nil>"
@@ -1664,24 +1304,6 @@ func (e UpdateProjectRequestStage) Valid() bool {
 	case UpdateProjectRequestStageIdea:
 		return true
 	case UpdateProjectRequestStageLive:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for UpdateTaskRequestArea.
-const (
-	UpdateTaskRequestAreaPersonal UpdateTaskRequestArea = "personal"
-	UpdateTaskRequestAreaWork     UpdateTaskRequestArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the UpdateTaskRequestArea enum.
-func (e UpdateTaskRequestArea) Valid() bool {
-	switch e {
-	case UpdateTaskRequestAreaPersonal:
-		return true
-	case UpdateTaskRequestAreaWork:
 		return true
 	default:
 		return false
@@ -4157,6 +3779,51 @@ func (e GetAPIHealth200JSONResponseBodyStatus) Valid() bool {
 	}
 }
 
+// Defines values for PutAPINotebookAreas409JSONResponseBodyError.
+const (
+	PutAPINotebookAreas409JSONResponseBodyErrorConflict        PutAPINotebookAreas409JSONResponseBodyError = "conflict"
+	PutAPINotebookAreas409JSONResponseBodyErrorDailyTaken      PutAPINotebookAreas409JSONResponseBodyError = "daily_taken"
+	PutAPINotebookAreas409JSONResponseBodyErrorDeleted         PutAPINotebookAreas409JSONResponseBodyError = "deleted"
+	PutAPINotebookAreas409JSONResponseBodyErrorPayloadMismatch PutAPINotebookAreas409JSONResponseBodyError = "payload_mismatch"
+	PutAPINotebookAreas409JSONResponseBodyErrorSlugTaken       PutAPINotebookAreas409JSONResponseBodyError = "slug_taken"
+	PutAPINotebookAreas409JSONResponseBodyErrorVersionConflict PutAPINotebookAreas409JSONResponseBodyError = "version_conflict"
+)
+
+// Valid indicates whether the value is a known member of the PutAPINotebookAreas409JSONResponseBodyError enum.
+func (e PutAPINotebookAreas409JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PutAPINotebookAreas409JSONResponseBodyErrorConflict:
+		return true
+	case PutAPINotebookAreas409JSONResponseBodyErrorDailyTaken:
+		return true
+	case PutAPINotebookAreas409JSONResponseBodyErrorDeleted:
+		return true
+	case PutAPINotebookAreas409JSONResponseBodyErrorPayloadMismatch:
+		return true
+	case PutAPINotebookAreas409JSONResponseBodyErrorSlugTaken:
+		return true
+	case PutAPINotebookAreas409JSONResponseBodyErrorVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PutAPINotebookAreas412JSONResponseBodyError.
+const (
+	PutAPINotebookAreas412JSONResponseBodyErrorPreconditionFailed PutAPINotebookAreas412JSONResponseBodyError = "precondition_failed"
+)
+
+// Valid indicates whether the value is a known member of the PutAPINotebookAreas412JSONResponseBodyError enum.
+func (e PutAPINotebookAreas412JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PutAPINotebookAreas412JSONResponseBodyErrorPreconditionFailed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PostAPINotebookImagesUploadURLJSONBodyContentType.
 const (
 	PostAPINotebookImagesUploadURLJSONBodyContentTypeImageGif  PostAPINotebookImagesUploadURLJSONBodyContentType = "image/gif"
@@ -4181,24 +3848,6 @@ func (e PostAPINotebookImagesUploadURLJSONBodyContentType) Valid() bool {
 	}
 }
 
-// Defines values for GetAPINotebookNotesParamsArea.
-const (
-	GetAPINotebookNotesParamsAreaPersonal GetAPINotebookNotesParamsArea = "personal"
-	GetAPINotebookNotesParamsAreaWork     GetAPINotebookNotesParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotesParamsArea enum.
-func (e GetAPINotebookNotesParamsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookNotesParamsAreaPersonal:
-		return true
-	case GetAPINotebookNotesParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetAPINotebookNotesParamsType.
 const (
 	GetAPINotebookNotesParamsTypeDaily GetAPINotebookNotesParamsType = "daily"
@@ -4211,24 +3860,6 @@ func (e GetAPINotebookNotesParamsType) Valid() bool {
 	case GetAPINotebookNotesParamsTypeDaily:
 		return true
 	case GetAPINotebookNotesParamsTypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookNotes200JSONResponseBodyItemsArea.
-const (
-	GetAPINotebookNotes200JSONResponseBodyItemsAreaPersonal GetAPINotebookNotes200JSONResponseBodyItemsArea = "personal"
-	GetAPINotebookNotes200JSONResponseBodyItemsAreaWork     GetAPINotebookNotes200JSONResponseBodyItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotes200JSONResponseBodyItemsArea enum.
-func (e GetAPINotebookNotes200JSONResponseBodyItemsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookNotes200JSONResponseBodyItemsAreaPersonal:
-		return true
-	case GetAPINotebookNotes200JSONResponseBodyItemsAreaWork:
 		return true
 	default:
 		return false
@@ -4253,24 +3884,6 @@ func (e GetAPINotebookNotes200JSONResponseBodyItemsType) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookNotesJSONBodyArea.
-const (
-	PostAPINotebookNotesJSONBodyAreaPersonal PostAPINotebookNotesJSONBodyArea = "personal"
-	PostAPINotebookNotesJSONBodyAreaWork     PostAPINotebookNotesJSONBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotesJSONBodyArea enum.
-func (e PostAPINotebookNotesJSONBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookNotesJSONBodyAreaPersonal:
-		return true
-	case PostAPINotebookNotesJSONBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookNotesJSONBodyType.
 const (
 	PostAPINotebookNotesJSONBodyTypeDaily PostAPINotebookNotesJSONBodyType = "daily"
@@ -4283,24 +3896,6 @@ func (e PostAPINotebookNotesJSONBodyType) Valid() bool {
 	case PostAPINotebookNotesJSONBodyTypeDaily:
 		return true
 	case PostAPINotebookNotesJSONBodyTypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookNotes201JSONResponseBodyArea.
-const (
-	PostAPINotebookNotes201JSONResponseBodyAreaPersonal PostAPINotebookNotes201JSONResponseBodyArea = "personal"
-	PostAPINotebookNotes201JSONResponseBodyAreaWork     PostAPINotebookNotes201JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotes201JSONResponseBodyArea enum.
-func (e PostAPINotebookNotes201JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookNotes201JSONResponseBodyAreaPersonal:
-		return true
-	case PostAPINotebookNotes201JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -4355,24 +3950,6 @@ func (e PostAPINotebookNotes409JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookNotesBatch200JSONResponseBodyItemsArea.
-const (
-	PostAPINotebookNotesBatch200JSONResponseBodyItemsAreaPersonal PostAPINotebookNotesBatch200JSONResponseBodyItemsArea = "personal"
-	PostAPINotebookNotesBatch200JSONResponseBodyItemsAreaWork     PostAPINotebookNotesBatch200JSONResponseBodyItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotesBatch200JSONResponseBodyItemsArea enum.
-func (e PostAPINotebookNotesBatch200JSONResponseBodyItemsArea) Valid() bool {
-	switch e {
-	case PostAPINotebookNotesBatch200JSONResponseBodyItemsAreaPersonal:
-		return true
-	case PostAPINotebookNotesBatch200JSONResponseBodyItemsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookNotesBatch200JSONResponseBodyItemsType.
 const (
 	PostAPINotebookNotesBatch200JSONResponseBodyItemsTypeDaily PostAPINotebookNotesBatch200JSONResponseBodyItemsType = "daily"
@@ -4391,42 +3968,6 @@ func (e PostAPINotebookNotesBatch200JSONResponseBodyItemsType) Valid() bool {
 	}
 }
 
-// Defines values for GetAPINotebookNotesDailyAreaDateParamsArea.
-const (
-	GetAPINotebookNotesDailyAreaDateParamsAreaPersonal GetAPINotebookNotesDailyAreaDateParamsArea = "personal"
-	GetAPINotebookNotesDailyAreaDateParamsAreaWork     GetAPINotebookNotesDailyAreaDateParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotesDailyAreaDateParamsArea enum.
-func (e GetAPINotebookNotesDailyAreaDateParamsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookNotesDailyAreaDateParamsAreaPersonal:
-		return true
-	case GetAPINotebookNotesDailyAreaDateParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area.
-const (
-	GetAPINotebookNotesDailyAreaDate200JSONResponseBody0AreaPersonal GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area = "personal"
-	GetAPINotebookNotesDailyAreaDate200JSONResponseBody0AreaWork     GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area enum.
-func (e GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area) Valid() bool {
-	switch e {
-	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody0AreaPersonal:
-		return true
-	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody0AreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type.
 const (
 	GetAPINotebookNotesDailyAreaDate200JSONResponseBody0TypeDaily GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type = "daily"
@@ -4439,24 +3980,6 @@ func (e GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type) Valid() bool {
 	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody0TypeDaily:
 		return true
 	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody0TypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area.
-const (
-	GetAPINotebookNotesDailyAreaDate200JSONResponseBody1AreaPersonal GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area = "personal"
-	GetAPINotebookNotesDailyAreaDate200JSONResponseBody1AreaWork     GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area enum.
-func (e GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area) Valid() bool {
-	switch e {
-	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody1AreaPersonal:
-		return true
-	case GetAPINotebookNotesDailyAreaDate200JSONResponseBody1AreaWork:
 		return true
 	default:
 		return false
@@ -4553,42 +4076,6 @@ func (e GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Version) Valid() boo
 	}
 }
 
-// Defines values for PutAPINotebookNotesDailyAreaDateParamsArea.
-const (
-	PutAPINotebookNotesDailyAreaDateParamsAreaPersonal PutAPINotebookNotesDailyAreaDateParamsArea = "personal"
-	PutAPINotebookNotesDailyAreaDateParamsAreaWork     PutAPINotebookNotesDailyAreaDateParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookNotesDailyAreaDateParamsArea enum.
-func (e PutAPINotebookNotesDailyAreaDateParamsArea) Valid() bool {
-	switch e {
-	case PutAPINotebookNotesDailyAreaDateParamsAreaPersonal:
-		return true
-	case PutAPINotebookNotesDailyAreaDateParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea.
-const (
-	PutAPINotebookNotesDailyAreaDate200JSONResponseBodyAreaPersonal PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea = "personal"
-	PutAPINotebookNotesDailyAreaDate200JSONResponseBodyAreaWork     PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea enum.
-func (e PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookNotesDailyAreaDate200JSONResponseBodyAreaPersonal:
-		return true
-	case PutAPINotebookNotesDailyAreaDate200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PutAPINotebookNotesDailyAreaDate200JSONResponseBodyType.
 const (
 	PutAPINotebookNotesDailyAreaDate200JSONResponseBodyTypeDaily PutAPINotebookNotesDailyAreaDate200JSONResponseBodyType = "daily"
@@ -4652,42 +4139,6 @@ func (e PutAPINotebookNotesDailyAreaDate412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookNotesDailyAreaDateOpenParamsArea.
-const (
-	PostAPINotebookNotesDailyAreaDateOpenParamsAreaPersonal PostAPINotebookNotesDailyAreaDateOpenParamsArea = "personal"
-	PostAPINotebookNotesDailyAreaDateOpenParamsAreaWork     PostAPINotebookNotesDailyAreaDateOpenParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotesDailyAreaDateOpenParamsArea enum.
-func (e PostAPINotebookNotesDailyAreaDateOpenParamsArea) Valid() bool {
-	switch e {
-	case PostAPINotebookNotesDailyAreaDateOpenParamsAreaPersonal:
-		return true
-	case PostAPINotebookNotesDailyAreaDateOpenParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area.
-const (
-	PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0AreaPersonal PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area = "personal"
-	PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0AreaWork     PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area enum.
-func (e PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area) Valid() bool {
-	switch e {
-	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0AreaPersonal:
-		return true
-	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0AreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type.
 const (
 	PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0TypeDaily PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type = "daily"
@@ -4700,24 +4151,6 @@ func (e PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type) Valid() b
 	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0TypeDaily:
 		return true
 	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0TypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area.
-const (
-	PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1AreaPersonal PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area = "personal"
-	PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1AreaWork     PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area enum.
-func (e PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area) Valid() bool {
-	switch e {
-	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1AreaPersonal:
-		return true
-	case PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1AreaWork:
 		return true
 	default:
 		return false
@@ -4814,24 +4247,6 @@ func (e PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Version) Valid(
 	}
 }
 
-// Defines values for DeleteAPINotebookNotesID200JSONResponseBodyArea.
-const (
-	DeleteAPINotebookNotesID200JSONResponseBodyAreaPersonal DeleteAPINotebookNotesID200JSONResponseBodyArea = "personal"
-	DeleteAPINotebookNotesID200JSONResponseBodyAreaWork     DeleteAPINotebookNotesID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the DeleteAPINotebookNotesID200JSONResponseBodyArea enum.
-func (e DeleteAPINotebookNotesID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case DeleteAPINotebookNotesID200JSONResponseBodyAreaPersonal:
-		return true
-	case DeleteAPINotebookNotesID200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeleteAPINotebookNotesID200JSONResponseBodyType.
 const (
 	DeleteAPINotebookNotesID200JSONResponseBodyTypeDaily DeleteAPINotebookNotesID200JSONResponseBodyType = "daily"
@@ -4895,24 +4310,6 @@ func (e DeleteAPINotebookNotesID412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for GetAPINotebookNotesID200JSONResponseBodyArea.
-const (
-	GetAPINotebookNotesID200JSONResponseBodyAreaPersonal GetAPINotebookNotesID200JSONResponseBodyArea = "personal"
-	GetAPINotebookNotesID200JSONResponseBodyAreaWork     GetAPINotebookNotesID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookNotesID200JSONResponseBodyArea enum.
-func (e GetAPINotebookNotesID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case GetAPINotebookNotesID200JSONResponseBodyAreaPersonal:
-		return true
-	case GetAPINotebookNotesID200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetAPINotebookNotesID200JSONResponseBodyType.
 const (
 	GetAPINotebookNotesID200JSONResponseBodyTypeDaily GetAPINotebookNotesID200JSONResponseBodyType = "daily"
@@ -4925,42 +4322,6 @@ func (e GetAPINotebookNotesID200JSONResponseBodyType) Valid() bool {
 	case GetAPINotebookNotesID200JSONResponseBodyTypeDaily:
 		return true
 	case GetAPINotebookNotesID200JSONResponseBodyTypePage:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookNotesIDJSONBodyArea.
-const (
-	PutAPINotebookNotesIDJSONBodyAreaPersonal PutAPINotebookNotesIDJSONBodyArea = "personal"
-	PutAPINotebookNotesIDJSONBodyAreaWork     PutAPINotebookNotesIDJSONBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookNotesIDJSONBodyArea enum.
-func (e PutAPINotebookNotesIDJSONBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookNotesIDJSONBodyAreaPersonal:
-		return true
-	case PutAPINotebookNotesIDJSONBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookNotesID200JSONResponseBodyArea.
-const (
-	PutAPINotebookNotesID200JSONResponseBodyAreaPersonal PutAPINotebookNotesID200JSONResponseBodyArea = "personal"
-	PutAPINotebookNotesID200JSONResponseBodyAreaWork     PutAPINotebookNotesID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookNotesID200JSONResponseBodyArea enum.
-func (e PutAPINotebookNotesID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookNotesID200JSONResponseBodyAreaPersonal:
-		return true
-	case PutAPINotebookNotesID200JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -5030,42 +4391,6 @@ func (e PutAPINotebookNotesID412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookSearchJSONBodyArea.
-const (
-	PostAPINotebookSearchJSONBodyAreaPersonal PostAPINotebookSearchJSONBodyArea = "personal"
-	PostAPINotebookSearchJSONBodyAreaWork     PostAPINotebookSearchJSONBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookSearchJSONBodyArea enum.
-func (e PostAPINotebookSearchJSONBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookSearchJSONBodyAreaPersonal:
-		return true
-	case PostAPINotebookSearchJSONBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookSearch200JSONResponseBodyNotesArea.
-const (
-	PostAPINotebookSearch200JSONResponseBodyNotesAreaPersonal PostAPINotebookSearch200JSONResponseBodyNotesArea = "personal"
-	PostAPINotebookSearch200JSONResponseBodyNotesAreaWork     PostAPINotebookSearch200JSONResponseBodyNotesArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookSearch200JSONResponseBodyNotesArea enum.
-func (e PostAPINotebookSearch200JSONResponseBodyNotesArea) Valid() bool {
-	switch e {
-	case PostAPINotebookSearch200JSONResponseBodyNotesAreaPersonal:
-		return true
-	case PostAPINotebookSearch200JSONResponseBodyNotesAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookSearch200JSONResponseBodyNotesStatus.
 const (
 	PostAPINotebookSearch200JSONResponseBodyNotesStatusDone       PostAPINotebookSearch200JSONResponseBodyNotesStatus = "done"
@@ -5102,24 +4427,6 @@ func (e PostAPINotebookSearch200JSONResponseBodyNotesType) Valid() bool {
 	case PostAPINotebookSearch200JSONResponseBodyNotesTypeNote:
 		return true
 	case PostAPINotebookSearch200JSONResponseBodyNotesTypeTask:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookSearch200JSONResponseBodyTasksArea.
-const (
-	PostAPINotebookSearch200JSONResponseBodyTasksAreaPersonal PostAPINotebookSearch200JSONResponseBodyTasksArea = "personal"
-	PostAPINotebookSearch200JSONResponseBodyTasksAreaWork     PostAPINotebookSearch200JSONResponseBodyTasksArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookSearch200JSONResponseBodyTasksArea enum.
-func (e PostAPINotebookSearch200JSONResponseBodyTasksArea) Valid() bool {
-	switch e {
-	case PostAPINotebookSearch200JSONResponseBodyTasksAreaPersonal:
-		return true
-	case PostAPINotebookSearch200JSONResponseBodyTasksAreaWork:
 		return true
 	default:
 		return false
@@ -5177,24 +4484,6 @@ const (
 func (e GetAPINotebookSyncChanges426JSONResponseBodyError) Valid() bool {
 	switch e {
 	case GetAPINotebookSyncChanges426JSONResponseBodyErrorUpgradeRequired:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookTasksParamsArea.
-const (
-	GetAPINotebookTasksParamsAreaPersonal GetAPINotebookTasksParamsArea = "personal"
-	GetAPINotebookTasksParamsAreaWork     GetAPINotebookTasksParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookTasksParamsArea enum.
-func (e GetAPINotebookTasksParamsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookTasksParamsAreaPersonal:
-		return true
-	case GetAPINotebookTasksParamsAreaWork:
 		return true
 	default:
 		return false
@@ -5297,24 +4586,6 @@ func (e GetAPINotebookTasksParamsOpen) Valid() bool {
 	}
 }
 
-// Defines values for GetAPINotebookTasks200JSONResponseBodyItemsArea.
-const (
-	GetAPINotebookTasks200JSONResponseBodyItemsAreaPersonal GetAPINotebookTasks200JSONResponseBodyItemsArea = "personal"
-	GetAPINotebookTasks200JSONResponseBodyItemsAreaWork     GetAPINotebookTasks200JSONResponseBodyItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookTasks200JSONResponseBodyItemsArea enum.
-func (e GetAPINotebookTasks200JSONResponseBodyItemsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookTasks200JSONResponseBodyItemsAreaPersonal:
-		return true
-	case GetAPINotebookTasks200JSONResponseBodyItemsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetAPINotebookTasks200JSONResponseBodyItemsPriority.
 const (
 	GetAPINotebookTasks200JSONResponseBodyItemsPriorityHigh GetAPINotebookTasks200JSONResponseBodyItemsPriority = "high"
@@ -5360,24 +4631,6 @@ func (e GetAPINotebookTasks200JSONResponseBodyItemsStatus) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookTasksJSONBodyArea.
-const (
-	PostAPINotebookTasksJSONBodyAreaPersonal PostAPINotebookTasksJSONBodyArea = "personal"
-	PostAPINotebookTasksJSONBodyAreaWork     PostAPINotebookTasksJSONBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookTasksJSONBodyArea enum.
-func (e PostAPINotebookTasksJSONBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookTasksJSONBodyAreaPersonal:
-		return true
-	case PostAPINotebookTasksJSONBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookTasksJSONBodyPriority.
 const (
 	PostAPINotebookTasksJSONBodyPriorityHigh PostAPINotebookTasksJSONBodyPriority = "high"
@@ -5417,24 +4670,6 @@ func (e PostAPINotebookTasksJSONBodyStatus) Valid() bool {
 	case PostAPINotebookTasksJSONBodyStatusInProgress:
 		return true
 	case PostAPINotebookTasksJSONBodyStatusTodo:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookTasks201JSONResponseBodyArea.
-const (
-	PostAPINotebookTasks201JSONResponseBodyAreaPersonal PostAPINotebookTasks201JSONResponseBodyArea = "personal"
-	PostAPINotebookTasks201JSONResponseBodyAreaWork     PostAPINotebookTasks201JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookTasks201JSONResponseBodyArea enum.
-func (e PostAPINotebookTasks201JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookTasks201JSONResponseBodyAreaPersonal:
-		return true
-	case PostAPINotebookTasks201JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -5516,24 +4751,6 @@ func (e PostAPINotebookTasks409JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookTasksBatch200JSONResponseBodyItemsArea.
-const (
-	PostAPINotebookTasksBatch200JSONResponseBodyItemsAreaPersonal PostAPINotebookTasksBatch200JSONResponseBodyItemsArea = "personal"
-	PostAPINotebookTasksBatch200JSONResponseBodyItemsAreaWork     PostAPINotebookTasksBatch200JSONResponseBodyItemsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookTasksBatch200JSONResponseBodyItemsArea enum.
-func (e PostAPINotebookTasksBatch200JSONResponseBodyItemsArea) Valid() bool {
-	switch e {
-	case PostAPINotebookTasksBatch200JSONResponseBodyItemsAreaPersonal:
-		return true
-	case PostAPINotebookTasksBatch200JSONResponseBodyItemsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority.
 const (
 	PostAPINotebookTasksBatch200JSONResponseBodyItemsPriorityHigh PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority = "high"
@@ -5573,24 +4790,6 @@ func (e PostAPINotebookTasksBatch200JSONResponseBodyItemsStatus) Valid() bool {
 	case PostAPINotebookTasksBatch200JSONResponseBodyItemsStatusInProgress:
 		return true
 	case PostAPINotebookTasksBatch200JSONResponseBodyItemsStatusTodo:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteAPINotebookTasksID200JSONResponseBodyArea.
-const (
-	DeleteAPINotebookTasksID200JSONResponseBodyAreaPersonal DeleteAPINotebookTasksID200JSONResponseBodyArea = "personal"
-	DeleteAPINotebookTasksID200JSONResponseBodyAreaWork     DeleteAPINotebookTasksID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the DeleteAPINotebookTasksID200JSONResponseBodyArea enum.
-func (e DeleteAPINotebookTasksID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case DeleteAPINotebookTasksID200JSONResponseBodyAreaPersonal:
-		return true
-	case DeleteAPINotebookTasksID200JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -5687,24 +4886,6 @@ func (e DeleteAPINotebookTasksID412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for GetAPINotebookTasksID200JSONResponseBodyArea.
-const (
-	GetAPINotebookTasksID200JSONResponseBodyAreaPersonal GetAPINotebookTasksID200JSONResponseBodyArea = "personal"
-	GetAPINotebookTasksID200JSONResponseBodyAreaWork     GetAPINotebookTasksID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookTasksID200JSONResponseBodyArea enum.
-func (e GetAPINotebookTasksID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case GetAPINotebookTasksID200JSONResponseBodyAreaPersonal:
-		return true
-	case GetAPINotebookTasksID200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for GetAPINotebookTasksID200JSONResponseBodyPriority.
 const (
 	GetAPINotebookTasksID200JSONResponseBodyPriorityHigh GetAPINotebookTasksID200JSONResponseBodyPriority = "high"
@@ -5750,24 +4931,6 @@ func (e GetAPINotebookTasksID200JSONResponseBodyStatus) Valid() bool {
 	}
 }
 
-// Defines values for PutAPINotebookTasksIDJSONBodyArea.
-const (
-	PutAPINotebookTasksIDJSONBodyAreaPersonal PutAPINotebookTasksIDJSONBodyArea = "personal"
-	PutAPINotebookTasksIDJSONBodyAreaWork     PutAPINotebookTasksIDJSONBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookTasksIDJSONBodyArea enum.
-func (e PutAPINotebookTasksIDJSONBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookTasksIDJSONBodyAreaPersonal:
-		return true
-	case PutAPINotebookTasksIDJSONBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PutAPINotebookTasksIDJSONBodyPriority.
 const (
 	PutAPINotebookTasksIDJSONBodyPriorityHigh PutAPINotebookTasksIDJSONBodyPriority = "high"
@@ -5807,24 +4970,6 @@ func (e PutAPINotebookTasksIDJSONBodyStatus) Valid() bool {
 	case PutAPINotebookTasksIDJSONBodyStatusInProgress:
 		return true
 	case PutAPINotebookTasksIDJSONBodyStatusTodo:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookTasksID200JSONResponseBodyArea.
-const (
-	PutAPINotebookTasksID200JSONResponseBodyAreaPersonal PutAPINotebookTasksID200JSONResponseBodyArea = "personal"
-	PutAPINotebookTasksID200JSONResponseBodyAreaWork     PutAPINotebookTasksID200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookTasksID200JSONResponseBodyArea enum.
-func (e PutAPINotebookTasksID200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookTasksID200JSONResponseBodyAreaPersonal:
-		return true
-	case PutAPINotebookTasksID200JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -5921,24 +5066,6 @@ func (e PutAPINotebookTasksID412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for PostAPINotebookTasksIDComplete200JSONResponseBodyArea.
-const (
-	PostAPINotebookTasksIDComplete200JSONResponseBodyAreaPersonal PostAPINotebookTasksIDComplete200JSONResponseBodyArea = "personal"
-	PostAPINotebookTasksIDComplete200JSONResponseBodyAreaWork     PostAPINotebookTasksIDComplete200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookTasksIDComplete200JSONResponseBodyArea enum.
-func (e PostAPINotebookTasksIDComplete200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookTasksIDComplete200JSONResponseBodyAreaPersonal:
-		return true
-	case PostAPINotebookTasksIDComplete200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostAPINotebookTasksIDComplete200JSONResponseBodyPriority.
 const (
 	PostAPINotebookTasksIDComplete200JSONResponseBodyPriorityHigh PostAPINotebookTasksIDComplete200JSONResponseBodyPriority = "high"
@@ -6023,24 +5150,6 @@ const (
 func (e PostAPINotebookTasksIDComplete412JSONResponseBodyError) Valid() bool {
 	switch e {
 	case PostAPINotebookTasksIDComplete412JSONResponseBodyErrorPreconditionFailed:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PostAPINotebookTasksIDReopen200JSONResponseBodyArea.
-const (
-	PostAPINotebookTasksIDReopen200JSONResponseBodyAreaPersonal PostAPINotebookTasksIDReopen200JSONResponseBodyArea = "personal"
-	PostAPINotebookTasksIDReopen200JSONResponseBodyAreaWork     PostAPINotebookTasksIDReopen200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PostAPINotebookTasksIDReopen200JSONResponseBodyArea enum.
-func (e PostAPINotebookTasksIDReopen200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PostAPINotebookTasksIDReopen200JSONResponseBodyAreaPersonal:
-		return true
-	case PostAPINotebookTasksIDReopen200JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -6137,42 +5246,6 @@ func (e PostAPINotebookTasksIDReopen412JSONResponseBodyError) Valid() bool {
 	}
 }
 
-// Defines values for DeleteAPINotebookTemplatesDailyAreaParamsArea.
-const (
-	DeleteAPINotebookTemplatesDailyAreaParamsAreaPersonal DeleteAPINotebookTemplatesDailyAreaParamsArea = "personal"
-	DeleteAPINotebookTemplatesDailyAreaParamsAreaWork     DeleteAPINotebookTemplatesDailyAreaParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the DeleteAPINotebookTemplatesDailyAreaParamsArea enum.
-func (e DeleteAPINotebookTemplatesDailyAreaParamsArea) Valid() bool {
-	switch e {
-	case DeleteAPINotebookTemplatesDailyAreaParamsAreaPersonal:
-		return true
-	case DeleteAPINotebookTemplatesDailyAreaParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea.
-const (
-	DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "personal"
-	DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork     DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea enum.
-func (e DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal:
-		return true
-	case DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for DeleteAPINotebookTemplatesDailyArea409JSONResponseBodyError.
 const (
 	DeleteAPINotebookTemplatesDailyArea409JSONResponseBodyErrorConflict        DeleteAPINotebookTemplatesDailyArea409JSONResponseBodyError = "conflict"
@@ -6212,78 +5285,6 @@ const (
 func (e DeleteAPINotebookTemplatesDailyArea412JSONResponseBodyError) Valid() bool {
 	switch e {
 	case DeleteAPINotebookTemplatesDailyArea412JSONResponseBodyErrorPreconditionFailed:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookTemplatesDailyAreaParamsArea.
-const (
-	GetAPINotebookTemplatesDailyAreaParamsAreaPersonal GetAPINotebookTemplatesDailyAreaParamsArea = "personal"
-	GetAPINotebookTemplatesDailyAreaParamsAreaWork     GetAPINotebookTemplatesDailyAreaParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookTemplatesDailyAreaParamsArea enum.
-func (e GetAPINotebookTemplatesDailyAreaParamsArea) Valid() bool {
-	switch e {
-	case GetAPINotebookTemplatesDailyAreaParamsAreaPersonal:
-		return true
-	case GetAPINotebookTemplatesDailyAreaParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea.
-const (
-	GetAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "personal"
-	GetAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork     GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea enum.
-func (e GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case GetAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal:
-		return true
-	case GetAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookTemplatesDailyAreaParamsArea.
-const (
-	PutAPINotebookTemplatesDailyAreaParamsAreaPersonal PutAPINotebookTemplatesDailyAreaParamsArea = "personal"
-	PutAPINotebookTemplatesDailyAreaParamsAreaWork     PutAPINotebookTemplatesDailyAreaParamsArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookTemplatesDailyAreaParamsArea enum.
-func (e PutAPINotebookTemplatesDailyAreaParamsArea) Valid() bool {
-	switch e {
-	case PutAPINotebookTemplatesDailyAreaParamsAreaPersonal:
-		return true
-	case PutAPINotebookTemplatesDailyAreaParamsAreaWork:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea.
-const (
-	PutAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "personal"
-	PutAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork     PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea = "work"
-)
-
-// Valid indicates whether the value is a known member of the PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea enum.
-func (e PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea) Valid() bool {
-	switch e {
-	case PutAPINotebookTemplatesDailyArea200JSONResponseBodyAreaPersonal:
-		return true
-	case PutAPINotebookTemplatesDailyArea200JSONResponseBodyAreaWork:
 		return true
 	default:
 		return false
@@ -6510,7 +5511,8 @@ type ContactResponseOk bool
 
 // CreateNoteRequest defines model for CreateNoteRequest.
 type CreateNoteRequest struct {
-	Area CreateNoteRequestArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string               `json:"bodyMarkdown,omitempty"`
@@ -6521,9 +5523,6 @@ type CreateNoteRequest struct {
 	Title        *string               `json:"title,omitempty"`
 	Type         CreateNoteRequestType `json:"type"`
 }
-
-// CreateNoteRequestArea defines model for CreateNoteRequest.Area.
-type CreateNoteRequestArea string
 
 // CreateNoteRequestType defines model for CreateNoteRequest.Type.
 type CreateNoteRequestType string
@@ -6585,7 +5584,8 @@ type CreateProjectRequestStage string
 
 // CreateTaskRequest defines model for CreateTaskRequest.
 type CreateTaskRequest struct {
-	Area CreateTaskRequestArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Description Up to 100 KB (UTF-8); larger → 413
 	Description *string                    `json:"description,omitempty"`
@@ -6602,9 +5602,6 @@ type CreateTaskRequest struct {
 	Title     string                    `json:"title"`
 }
 
-// CreateTaskRequestArea defines model for CreateTaskRequest.Area.
-type CreateTaskRequestArea string
-
 // CreateTaskRequestPriority defines model for CreateTaskRequest.Priority.
 type CreateTaskRequestPriority string
 
@@ -6619,17 +5616,16 @@ type DailyNoteGetResponse struct {
 // DailyNoteGetResponse0 defines model for DailyNoteGetResponse.0.
 type DailyNoteGetResponse0 DailyNoteGetResponse_0
 
-// DailyNoteGetResponse0Area defines model for DailyNoteGetResponse.0.Area.
-type DailyNoteGetResponse0Area string
-
 // DailyNoteGetResponse0Type defines model for DailyNoteGetResponse.0.Type.
 type DailyNoteGetResponse0Type string
 
 // DailyNoteGetResponse_0 defines model for DailyNoteGetResponse.0.
 type DailyNoteGetResponse_0 struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                     `json:"archived,omitempty"`
-	Area         DailyNoteGetResponse0Area `json:"area"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
 	Date         nullable.Nullable[string] `json:"date"`
@@ -6649,9 +5645,6 @@ type DailyNoteGetResponse_0 struct {
 
 // DailyNoteGetResponse1 defines model for DailyNoteGetResponse.1.
 type DailyNoteGetResponse1 DailyNoteGetResponse_1
-
-// DailyNoteGetResponse1Area defines model for DailyNoteGetResponse.1.Area.
-type DailyNoteGetResponse1Area string
 
 // DailyNoteGetResponse1BodyMarkdown defines model for DailyNoteGetResponse.1.BodyMarkdown.
 type DailyNoteGetResponse1BodyMarkdown string
@@ -6673,7 +5666,8 @@ type DailyNoteGetResponse1Version float32
 
 // DailyNoteGetResponse_1 defines model for DailyNoteGetResponse.1.
 type DailyNoteGetResponse_1 struct {
-	Area         DailyNoteGetResponse1Area         `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                            `json:"area"`
 	BodyMarkdown DailyNoteGetResponse1BodyMarkdown `json:"bodyMarkdown"`
 	Date         string                            `json:"date"`
 	Exists       DailyNoteGetResponse1Exists       `json:"exists"`
@@ -6690,8 +5684,9 @@ type DailyNoteGetResponse_1 struct {
 
 // DailyTemplate defines model for DailyTemplate.
 type DailyTemplate struct {
-	Area         DailyTemplateArea `json:"area"`
-	BodyMarkdown string            `json:"bodyMarkdown"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string `json:"area"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 
 	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
 	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
@@ -6704,12 +5699,10 @@ type DailyTemplate struct {
 	Version int `json:"version"`
 }
 
-// DailyTemplateArea defines model for DailyTemplate.Area.
-type DailyTemplateArea string
-
 // EmptyDailyNote defines model for EmptyDailyNote.
 type EmptyDailyNote struct {
-	Area         EmptyDailyNoteArea         `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                     `json:"area"`
 	BodyMarkdown EmptyDailyNoteBodyMarkdown `json:"bodyMarkdown"`
 	Date         string                     `json:"date"`
 	Exists       EmptyDailyNoteExists       `json:"exists"`
@@ -6723,9 +5716,6 @@ type EmptyDailyNote struct {
 	UserID           string                `json:"userId"`
 	Version          EmptyDailyNoteVersion `json:"version"`
 }
-
-// EmptyDailyNoteArea defines model for EmptyDailyNote.Area.
-type EmptyDailyNoteArea string
 
 // EmptyDailyNoteBodyMarkdown defines model for EmptyDailyNote.BodyMarkdown.
 type EmptyDailyNoteBodyMarkdown string
@@ -6794,8 +5784,8 @@ type HomeStatus string
 
 // ListNotesQuery defines model for ListNotesQuery.
 type ListNotesQuery struct {
-	// Area Filter by Work or Personal
-	Area *ListNotesQueryArea `json:"area,omitempty"`
+	// Area Filter by one area
+	Area *string `json:"area,omitempty"`
 
 	// Cursor Opaque pagination cursor from a previous list response
 	Cursor *string `json:"cursor,omitempty"`
@@ -6816,16 +5806,14 @@ type ListNotesQuery struct {
 	Type *ListNotesQueryType `json:"type,omitempty"`
 }
 
-// ListNotesQueryArea Filter by Work or Personal
-type ListNotesQueryArea string
-
 // ListNotesQueryType Filter by daily or page notes
 type ListNotesQueryType string
 
 // ListTasksQuery defines model for ListTasksQuery.
 type ListTasksQuery struct {
-	Area   *ListTasksQueryArea `json:"area,omitempty"`
-	Cursor *string             `json:"cursor,omitempty"`
+	// Area An area id from the user's area list, such as work or personal
+	Area   *string `json:"area,omitempty"`
+	Cursor *string `json:"cursor,omitempty"`
 
 	// DueBefore Tasks due strictly before this date
 	DueBefore *string `json:"dueBefore,omitempty"`
@@ -6865,9 +5853,6 @@ type ListTasksQuery struct {
 	// Undated Only tasks with no startDate that are not someday
 	Undated *ListTasksQueryUndated `json:"undated,omitempty"`
 }
-
-// ListTasksQueryArea defines model for ListTasksQuery.Area.
-type ListTasksQueryArea string
 
 // ListTasksQueryOpen Only todo and in_progress tasks; done and dropped are closed (ignored when status is set)
 type ListTasksQueryOpen string
@@ -6910,8 +5895,10 @@ type MediaUploadURLResponse_Headers struct {
 // Note defines model for Note.
 type Note struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                     `json:"archived,omitempty"`
-	Area         NoteArea                  `json:"area"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
 	Date         nullable.Nullable[string] `json:"date"`
@@ -6929,9 +5916,6 @@ type Note struct {
 	Version   int      `json:"version"`
 }
 
-// NoteArea defines model for Note.Area.
-type NoteArea string
-
 // NoteType defines model for Note.Type.
 type NoteType string
 
@@ -6941,24 +5925,23 @@ type NoteBatchResponse struct {
 	Items []NoteBatchResponse_Items `json:"items"`
 }
 
-// NoteBatchResponseItemsArea defines model for NoteBatchResponse.Items.Area.
-type NoteBatchResponseItemsArea string
-
 // NoteBatchResponseItemsType defines model for NoteBatchResponse.Items.Type.
 type NoteBatchResponseItemsType string
 
 // NoteBatchResponse_Items defines model for NoteBatchResponse.Items.
 type NoteBatchResponse_Items struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                      `json:"archived,omitempty"`
-	Area         NoteBatchResponseItemsArea `json:"area"`
-	BodyMarkdown string                     `json:"bodyMarkdown"`
-	CreatedAt    string                     `json:"createdAt"`
-	Date         nullable.Nullable[string]  `json:"date"`
-	Deleted      bool                       `json:"deleted"`
-	ID           string                     `json:"id"`
-	Pinned       bool                       `json:"pinned"`
-	Tags         []string                   `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                   `json:"taskIds"`
@@ -6975,17 +5958,16 @@ type NoteListResponse struct {
 	NextCursor *string                  `json:"nextCursor,omitempty"`
 }
 
-// NoteListResponseItemsArea defines model for NoteListResponse.Items.Area.
-type NoteListResponseItemsArea string
-
 // NoteListResponseItemsType defines model for NoteListResponse.Items.Type.
 type NoteListResponseItemsType string
 
 // NoteListResponse_Items defines model for NoteListResponse.Items.
 type NoteListResponse_Items struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                     `json:"archived,omitempty"`
-	Area         NoteListResponseItemsArea `json:"area"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
 	Date         nullable.Nullable[string] `json:"date"`
@@ -7014,17 +5996,16 @@ type NoteSyncChange0 NoteSyncChange_0
 // NoteSyncChange0Deleted defines model for NoteSyncChange.0.Deleted.
 type NoteSyncChange0Deleted bool
 
-// NoteSyncChange0EntityArea defines model for NoteSyncChange.0.Entity.Area.
-type NoteSyncChange0EntityArea string
-
 // NoteSyncChange0EntityType defines model for NoteSyncChange.0.Entity.Type.
 type NoteSyncChange0EntityType string
 
 // NoteSyncChange_0_Entity defines model for NoteSyncChange.0.Entity.
 type NoteSyncChange_0_Entity struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                     `json:"archived,omitempty"`
-	Area         NoteSyncChange0EntityArea `json:"area"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
 	BodyMarkdown string                    `json:"bodyMarkdown"`
 	CreatedAt    string                    `json:"createdAt"`
 	Date         nullable.Nullable[string] `json:"date"`
@@ -7099,6 +6080,30 @@ type NoteTemplateListResponse_Items struct {
 	Version      int    `json:"version"`
 }
 
+// NotebookAreaEntry defines model for NotebookAreaEntry.
+type NotebookAreaEntry struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// NotebookAreas defines model for NotebookAreas.
+type NotebookAreas struct {
+	// Areas 1 to 4 areas, in the order the switch shows
+	Areas     []NotebookAreas_Areas     `json:"areas"`
+	UpdatedAt nullable.Nullable[string] `json:"updatedAt"`
+
+	// Version 0 until the list is first saved
+	Version int `json:"version"`
+}
+
+// NotebookAreas_Areas defines model for NotebookAreas.Areas.
+type NotebookAreas_Areas struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // NotebookBatchRequest defines model for NotebookBatchRequest.
 type NotebookBatchRequest struct {
 	Ids []string `json:"ids"`
@@ -7134,13 +6139,11 @@ type NotebookImageURLResponse struct {
 
 // NotebookSearchRequest defines model for NotebookSearchRequest.
 type NotebookSearchRequest struct {
-	Area  *NotebookSearchRequestArea `json:"area,omitempty"`
-	Limit *int                       `json:"limit,omitempty"`
-	Q     string                     `json:"q"`
+	// Area An area id from the user's area list, such as work or personal
+	Area  *string `json:"area,omitempty"`
+	Limit *int    `json:"limit,omitempty"`
+	Q     string  `json:"q"`
 }
-
-// NotebookSearchRequestArea defines model for NotebookSearchRequest.Area.
-type NotebookSearchRequestArea string
 
 // NotebookSearchResponse defines model for NotebookSearchResponse.
 type NotebookSearchResponse struct {
@@ -7150,9 +6153,6 @@ type NotebookSearchResponse struct {
 	// Truncated True when the notebook held more notes or tasks than one search reads; the oldest went unsearched
 	Truncated bool `json:"truncated"`
 }
-
-// NotebookSearchResponseNotesArea defines model for NotebookSearchResponse.Notes.Area.
-type NotebookSearchResponseNotesArea string
 
 // NotebookSearchResponse_Notes_Matches defines model for NotebookSearchResponse.Notes.Matches.
 type NotebookSearchResponse_Notes_Matches struct {
@@ -7168,7 +6168,8 @@ type NotebookSearchResponseNotesType string
 
 // NotebookSearchResponse_Notes defines model for NotebookSearchResponse.Notes.
 type NotebookSearchResponse_Notes struct {
-	Area NotebookSearchResponseNotesArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Date A daily note's day (yyyy-mm-dd); absent for pages and tasks
 	Date    *string                                `json:"date,omitempty"`
@@ -7185,9 +6186,6 @@ type NotebookSearchResponse_Notes struct {
 	Version *int `json:"version,omitempty"`
 }
 
-// NotebookSearchResponseTasksArea defines model for NotebookSearchResponse.Tasks.Area.
-type NotebookSearchResponseTasksArea string
-
 // NotebookSearchResponse_Tasks_Matches defines model for NotebookSearchResponse.Tasks.Matches.
 type NotebookSearchResponse_Tasks_Matches struct {
 	End   int `json:"end"`
@@ -7202,7 +6200,8 @@ type NotebookSearchResponseTasksType string
 
 // NotebookSearchResponse_Tasks defines model for NotebookSearchResponse.Tasks.
 type NotebookSearchResponse_Tasks struct {
-	Area NotebookSearchResponseTasksArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Date A daily note's day (yyyy-mm-dd); absent for pages and tasks
 	Date    *string                                `json:"date,omitempty"`
@@ -7549,7 +6548,8 @@ type SyncChangesResponse struct {
 
 // Task defines model for Task.
 type Task struct {
-	Area        TaskArea                  `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
 	CompletedAt nullable.Nullable[string] `json:"completedAt"`
 	CreatedAt   string                    `json:"createdAt"`
 	Deleted     bool                      `json:"deleted"`
@@ -7571,9 +6571,6 @@ type Task struct {
 	Version   int                       `json:"version"`
 }
 
-// TaskArea defines model for Task.Area.
-type TaskArea string
-
 // TaskPriority defines model for Task.Priority.
 type TaskPriority string
 
@@ -7586,9 +6583,6 @@ type TaskBatchResponse struct {
 	Items []TaskBatchResponse_Items `json:"items"`
 }
 
-// TaskBatchResponseItemsArea defines model for TaskBatchResponse.Items.Area.
-type TaskBatchResponseItemsArea string
-
 // TaskBatchResponseItemsPriority defines model for TaskBatchResponse.Items.Priority.
 type TaskBatchResponseItemsPriority string
 
@@ -7597,14 +6591,15 @@ type TaskBatchResponseItemsStatus string
 
 // TaskBatchResponse_Items defines model for TaskBatchResponse.Items.
 type TaskBatchResponse_Items struct {
-	Area        TaskBatchResponseItemsArea `json:"area"`
-	CompletedAt nullable.Nullable[string]  `json:"completedAt"`
-	CreatedAt   string                     `json:"createdAt"`
-	Deleted     bool                       `json:"deleted"`
-	Description string                     `json:"description"`
-	DueDate     nullable.Nullable[string]  `json:"dueDate"`
-	ID          string                     `json:"id"`
-	NoteID      nullable.Nullable[string]  `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]      `json:"parentId"`
@@ -7625,9 +6620,6 @@ type TaskListResponse struct {
 	NextCursor *string                  `json:"nextCursor,omitempty"`
 }
 
-// TaskListResponseItemsArea defines model for TaskListResponse.Items.Area.
-type TaskListResponseItemsArea string
-
 // TaskListResponseItemsPriority defines model for TaskListResponse.Items.Priority.
 type TaskListResponseItemsPriority string
 
@@ -7636,7 +6628,8 @@ type TaskListResponseItemsStatus string
 
 // TaskListResponse_Items defines model for TaskListResponse.Items.
 type TaskListResponse_Items struct {
-	Area        TaskListResponseItemsArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
 	CompletedAt nullable.Nullable[string] `json:"completedAt"`
 	CreatedAt   string                    `json:"createdAt"`
 	Deleted     bool                      `json:"deleted"`
@@ -7669,9 +6662,6 @@ type TaskSyncChange0 TaskSyncChange_0
 // TaskSyncChange0Deleted defines model for TaskSyncChange.0.Deleted.
 type TaskSyncChange0Deleted bool
 
-// TaskSyncChange0EntityArea defines model for TaskSyncChange.0.Entity.Area.
-type TaskSyncChange0EntityArea string
-
 // TaskSyncChange0EntityPriority defines model for TaskSyncChange.0.Entity.Priority.
 type TaskSyncChange0EntityPriority string
 
@@ -7680,7 +6670,8 @@ type TaskSyncChange0EntityStatus string
 
 // TaskSyncChange_0_Entity defines model for TaskSyncChange.0.Entity.
 type TaskSyncChange_0_Entity struct {
-	Area        TaskSyncChange0EntityArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
 	CompletedAt nullable.Nullable[string] `json:"completedAt"`
 	CreatedAt   string                    `json:"createdAt"`
 	Deleted     bool                      `json:"deleted"`
@@ -7762,8 +6753,10 @@ type UpdateHomeRequest_Seo struct {
 // UpdateNoteRequest defines model for UpdateNoteRequest.
 type UpdateNoteRequest struct {
 	// Archived Page notes only; archiving a daily note is a 400
-	Archived *bool                  `json:"archived,omitempty"`
-	Area     *UpdateNoteRequestArea `json:"area,omitempty"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area *string `json:"area,omitempty"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string   `json:"bodyMarkdown,omitempty"`
@@ -7773,15 +6766,26 @@ type UpdateNoteRequest struct {
 	Version      *int      `json:"version,omitempty"`
 }
 
-// UpdateNoteRequestArea defines model for UpdateNoteRequest.Area.
-type UpdateNoteRequestArea string
-
 // UpdateNoteTemplateRequest defines model for UpdateNoteTemplateRequest.
 type UpdateNoteTemplateRequest struct {
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
 	Version      *int    `json:"version,omitempty"`
+}
+
+// UpdateNotebookAreasRequest defines model for UpdateNotebookAreasRequest.
+type UpdateNotebookAreasRequest struct {
+	// Areas 1 to 4 areas, in the order the switch shows
+	Areas   []UpdateNotebookAreasRequest_Areas `json:"areas"`
+	Version *int                               `json:"version,omitempty"`
+}
+
+// UpdateNotebookAreasRequest_Areas defines model for UpdateNotebookAreasRequest.Areas.
+type UpdateNotebookAreasRequest_Areas struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // UpdatePostRequest defines model for UpdatePostRequest.
@@ -7889,7 +6893,8 @@ type UpdateResumeRequest_Seo struct {
 
 // UpdateTaskRequest defines model for UpdateTaskRequest.
 type UpdateTaskRequest struct {
-	Area *UpdateTaskRequestArea `json:"area,omitempty"`
+	// Area An area id from the user's area list, such as work or personal
+	Area *string `json:"area,omitempty"`
 
 	// Description Up to 100 KB (UTF-8); larger → 413
 	Description *string                    `json:"description,omitempty"`
@@ -7903,9 +6908,6 @@ type UpdateTaskRequest struct {
 	Title       *string                    `json:"title,omitempty"`
 	Version     *int                       `json:"version,omitempty"`
 }
-
-// UpdateTaskRequestArea defines model for UpdateTaskRequest.Area.
-type UpdateTaskRequestArea string
 
 // UpdateTaskRequestPriority defines model for UpdateTaskRequest.Priority.
 type UpdateTaskRequestPriority string
@@ -11271,6 +10273,147 @@ type GetAPIHealth503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
+// GetAPINotebookAreas200JSONResponseBody_Areas defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas200JSONResponseBody_Areas struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetAPINotebookAreas200JSONResponseBody defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas200JSONResponseBody struct {
+	// Areas 1 to 4 areas, in the order the switch shows
+	Areas     []GetAPINotebookAreas200JSONResponseBody_Areas `json:"areas"`
+	UpdatedAt nullable.Nullable[string]                      `json:"updatedAt"`
+
+	// Version 0 until the list is first saved
+	Version int `json:"version"`
+}
+
+// GetAPINotebookAreas401JSONResponseBody defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookAreas403JSONResponseBody defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookAreas500JSONResponseBody defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// GetAPINotebookAreas503JSONResponseBody defines parameters for GetAPINotebookAreas.
+type GetAPINotebookAreas503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreasJSONBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreasJSONBody struct {
+	// Areas 1 to 4 areas, in the order the switch shows
+	Areas   []PutAPINotebookAreasJSONBody_Areas `json:"areas"`
+	Version *int                                `json:"version,omitempty"`
+}
+
+// PutAPINotebookAreasParams defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreasParams struct {
+	// IfMatch Optimistic concurrency expectation: `"<version>"`, `W/"<version>"`, or `*`
+	IfMatch *string `json:"if-match,omitempty"`
+}
+
+// PutAPINotebookAreasJSONBody_Areas defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreasJSONBody_Areas struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// PutAPINotebookAreas200JSONResponseBody_Areas defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas200JSONResponseBody_Areas struct {
+	// ID Fixed once the area is created; notes, tasks and keys store it
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// PutAPINotebookAreas200JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas200JSONResponseBody struct {
+	// Areas 1 to 4 areas, in the order the switch shows
+	Areas     []PutAPINotebookAreas200JSONResponseBody_Areas `json:"areas"`
+	UpdatedAt nullable.Nullable[string]                      `json:"updatedAt"`
+
+	// Version 0 until the list is first saved
+	Version int `json:"version"`
+}
+
+// PutAPINotebookAreas400JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas401JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas403JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas409JSONResponseBodyError defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas409JSONResponseBodyError string
+
+// PutAPINotebookAreas409JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas409JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]              `json:"current,omitempty"`
+	CurrentVersion *int                                        `json:"currentVersion,omitempty"`
+	Error          PutAPINotebookAreas409JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                          `json:"fields,omitempty"`
+	Message        *string                                     `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas412JSONResponseBodyError defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas412JSONResponseBodyError string
+
+// PutAPINotebookAreas412JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas412JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]              `json:"current,omitempty"`
+	CurrentVersion *int                                        `json:"currentVersion,omitempty"`
+	Error          PutAPINotebookAreas412JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                          `json:"fields,omitempty"`
+	Message        *string                                     `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas500JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PutAPINotebookAreas503JSONResponseBody defines parameters for PutAPINotebookAreas.
+type PutAPINotebookAreas503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PutAPINotebookImagesObjectsKey400JSONResponseBody defines parameters for PutAPINotebookImagesObjectsKey.
 type PutAPINotebookImagesObjectsKey400JSONResponseBody struct {
 	Error   string             `json:"error"`
@@ -11448,8 +10591,8 @@ type GetAPINotebookImagesName503JSONResponseBody struct {
 
 // GetAPINotebookNotesParams defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotesParams struct {
-	// Area Filter by Work or Personal
-	Area *GetAPINotebookNotesParamsArea `form:"area,omitempty" json:"area,omitempty"`
+	// Area Filter by one area
+	Area *string `form:"area,omitempty" json:"area,omitempty"`
 
 	// From Inclusive start date (yyyy-mm-dd) for calendar ranges
 	From *string `form:"from,omitempty" json:"from,omitempty"`
@@ -11470,14 +10613,8 @@ type GetAPINotebookNotesParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// GetAPINotebookNotesParamsArea defines parameters for GetAPINotebookNotes.
-type GetAPINotebookNotesParamsArea string
-
 // GetAPINotebookNotesParamsType defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotesParamsType string
-
-// GetAPINotebookNotes200JSONResponseBodyItemsArea defines parameters for GetAPINotebookNotes.
-type GetAPINotebookNotes200JSONResponseBodyItemsArea string
 
 // GetAPINotebookNotes200JSONResponseBodyItemsType defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotes200JSONResponseBodyItemsType string
@@ -11485,15 +10622,17 @@ type GetAPINotebookNotes200JSONResponseBodyItemsType string
 // GetAPINotebookNotes200JSONResponseBody_Items defines parameters for GetAPINotebookNotes.
 type GetAPINotebookNotes200JSONResponseBody_Items struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                           `json:"archived,omitempty"`
-	Area         GetAPINotebookNotes200JSONResponseBodyItemsArea `json:"area"`
-	BodyMarkdown string                                          `json:"bodyMarkdown"`
-	CreatedAt    string                                          `json:"createdAt"`
-	Date         nullable.Nullable[string]                       `json:"date"`
-	Deleted      bool                                            `json:"deleted"`
-	ID           string                                          `json:"id"`
-	Pinned       bool                                            `json:"pinned"`
-	Tags         []string                                        `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                        `json:"taskIds"`
@@ -11547,7 +10686,8 @@ type GetAPINotebookNotes503JSONResponseBody struct {
 
 // PostAPINotebookNotesJSONBody defines parameters for PostAPINotebookNotes.
 type PostAPINotebookNotesJSONBody struct {
-	Area PostAPINotebookNotesJSONBodyArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string                          `json:"bodyMarkdown,omitempty"`
@@ -11559,14 +10699,8 @@ type PostAPINotebookNotesJSONBody struct {
 	Type         PostAPINotebookNotesJSONBodyType `json:"type"`
 }
 
-// PostAPINotebookNotesJSONBodyArea defines parameters for PostAPINotebookNotes.
-type PostAPINotebookNotesJSONBodyArea string
-
 // PostAPINotebookNotesJSONBodyType defines parameters for PostAPINotebookNotes.
 type PostAPINotebookNotesJSONBodyType string
-
-// PostAPINotebookNotes201JSONResponseBodyArea defines parameters for PostAPINotebookNotes.
-type PostAPINotebookNotes201JSONResponseBodyArea string
 
 // PostAPINotebookNotes201JSONResponseBodyType defines parameters for PostAPINotebookNotes.
 type PostAPINotebookNotes201JSONResponseBodyType string
@@ -11574,15 +10708,17 @@ type PostAPINotebookNotes201JSONResponseBodyType string
 // PostAPINotebookNotes201JSONResponseBody defines parameters for PostAPINotebookNotes.
 type PostAPINotebookNotes201JSONResponseBody struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                       `json:"archived,omitempty"`
-	Area         PostAPINotebookNotes201JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                      `json:"bodyMarkdown"`
-	CreatedAt    string                                      `json:"createdAt"`
-	Date         nullable.Nullable[string]                   `json:"date"`
-	Deleted      bool                                        `json:"deleted"`
-	ID           string                                      `json:"id"`
-	Pinned       bool                                        `json:"pinned"`
-	Tags         []string                                    `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                    `json:"taskIds"`
@@ -11652,24 +10788,23 @@ type PostAPINotebookNotesBatchJSONBody struct {
 	Ids []string `json:"ids"`
 }
 
-// PostAPINotebookNotesBatch200JSONResponseBodyItemsArea defines parameters for PostAPINotebookNotesBatch.
-type PostAPINotebookNotesBatch200JSONResponseBodyItemsArea string
-
 // PostAPINotebookNotesBatch200JSONResponseBodyItemsType defines parameters for PostAPINotebookNotesBatch.
 type PostAPINotebookNotesBatch200JSONResponseBodyItemsType string
 
 // PostAPINotebookNotesBatch200JSONResponseBody_Items defines parameters for PostAPINotebookNotesBatch.
 type PostAPINotebookNotesBatch200JSONResponseBody_Items struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                                 `json:"archived,omitempty"`
-	Area         PostAPINotebookNotesBatch200JSONResponseBodyItemsArea `json:"area"`
-	BodyMarkdown string                                                `json:"bodyMarkdown"`
-	CreatedAt    string                                                `json:"createdAt"`
-	Date         nullable.Nullable[string]                             `json:"date"`
-	Deleted      bool                                                  `json:"deleted"`
-	ID           string                                                `json:"id"`
-	Pinned       bool                                                  `json:"pinned"`
-	Tags         []string                                              `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                              `json:"taskIds"`
@@ -11721,14 +10856,8 @@ type PostAPINotebookNotesBatch503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
-// GetAPINotebookNotesDailyAreaDateParamsArea defines parameters for GetAPINotebookNotesDailyAreaDate.
-type GetAPINotebookNotesDailyAreaDateParamsArea string
-
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody0 defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody0 GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0
-
-// GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area defines parameters for GetAPINotebookNotesDailyAreaDate.
-type GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area string
 
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type string
@@ -11736,15 +10865,17 @@ type GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Type string
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0 defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0 struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                                    `json:"archived,omitempty"`
-	Area         GetAPINotebookNotesDailyAreaDate200JSONResponseBody0Area `json:"area"`
-	BodyMarkdown string                                                   `json:"bodyMarkdown"`
-	CreatedAt    string                                                   `json:"createdAt"`
-	Date         nullable.Nullable[string]                                `json:"date"`
-	Deleted      bool                                                     `json:"deleted"`
-	ID           string                                                   `json:"id"`
-	Pinned       bool                                                     `json:"pinned"`
-	Tags         []string                                                 `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                                 `json:"taskIds"`
@@ -11757,9 +10888,6 @@ type GetAPINotebookNotesDailyAreaDate200JSONResponseBody_0 struct {
 
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody1 defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody1 GetAPINotebookNotesDailyAreaDate200JSONResponseBody_1
-
-// GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area defines parameters for GetAPINotebookNotesDailyAreaDate.
-type GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area string
 
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody1BodyMarkdown defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody1BodyMarkdown string
@@ -11781,7 +10909,8 @@ type GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Version float32
 
 // GetAPINotebookNotesDailyAreaDate200JSONResponseBody_1 defines parameters for GetAPINotebookNotesDailyAreaDate.
 type GetAPINotebookNotesDailyAreaDate200JSONResponseBody_1 struct {
-	Area         GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Area         `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                                                           `json:"area"`
 	BodyMarkdown GetAPINotebookNotesDailyAreaDate200JSONResponseBody1BodyMarkdown `json:"bodyMarkdown"`
 	Date         string                                                           `json:"date"`
 	Exists       GetAPINotebookNotesDailyAreaDate200JSONResponseBody1Exists       `json:"exists"`
@@ -11855,27 +10984,23 @@ type PutAPINotebookNotesDailyAreaDateParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PutAPINotebookNotesDailyAreaDateParamsArea defines parameters for PutAPINotebookNotesDailyAreaDate.
-type PutAPINotebookNotesDailyAreaDateParamsArea string
-
-// PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea defines parameters for PutAPINotebookNotesDailyAreaDate.
-type PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea string
-
 // PutAPINotebookNotesDailyAreaDate200JSONResponseBodyType defines parameters for PutAPINotebookNotesDailyAreaDate.
 type PutAPINotebookNotesDailyAreaDate200JSONResponseBodyType string
 
 // PutAPINotebookNotesDailyAreaDate200JSONResponseBody defines parameters for PutAPINotebookNotesDailyAreaDate.
 type PutAPINotebookNotesDailyAreaDate200JSONResponseBody struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                                   `json:"archived,omitempty"`
-	Area         PutAPINotebookNotesDailyAreaDate200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                                  `json:"bodyMarkdown"`
-	CreatedAt    string                                                  `json:"createdAt"`
-	Date         nullable.Nullable[string]                               `json:"date"`
-	Deleted      bool                                                    `json:"deleted"`
-	ID           string                                                  `json:"id"`
-	Pinned       bool                                                    `json:"pinned"`
-	Tags         []string                                                `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                                `json:"taskIds"`
@@ -11965,14 +11090,8 @@ type PostAPINotebookNotesDailyAreaDateOpenJSONBody struct {
 	ID string `json:"id"`
 }
 
-// PostAPINotebookNotesDailyAreaDateOpenParamsArea defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
-type PostAPINotebookNotesDailyAreaDateOpenParamsArea string
-
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0 defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0 PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0
-
-// PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
-type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area string
 
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type string
@@ -11980,15 +11099,17 @@ type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Type string
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0 defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0 struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                                         `json:"archived,omitempty"`
-	Area         PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody0Area `json:"area"`
-	BodyMarkdown string                                                        `json:"bodyMarkdown"`
-	CreatedAt    string                                                        `json:"createdAt"`
-	Date         nullable.Nullable[string]                                     `json:"date"`
-	Deleted      bool                                                          `json:"deleted"`
-	ID           string                                                        `json:"id"`
-	Pinned       bool                                                          `json:"pinned"`
-	Tags         []string                                                      `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                                      `json:"taskIds"`
@@ -12001,9 +11122,6 @@ type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_0 struct {
 
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1 defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1 PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_1
-
-// PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
-type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area string
 
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1BodyMarkdown defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1BodyMarkdown string
@@ -12025,7 +11143,8 @@ type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Version float32
 
 // PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_1 defines parameters for PostAPINotebookNotesDailyAreaDateOpen.
 type PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody_1 struct {
-	Area         PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Area         `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                                                                `json:"area"`
 	BodyMarkdown PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1BodyMarkdown `json:"bodyMarkdown"`
 	Date         string                                                                `json:"date"`
 	Exists       PostAPINotebookNotesDailyAreaDateOpen200JSONResponseBody1Exists       `json:"exists"`
@@ -12091,24 +11210,23 @@ type DeleteAPINotebookNotesIDParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// DeleteAPINotebookNotesID200JSONResponseBodyArea defines parameters for DeleteAPINotebookNotesID.
-type DeleteAPINotebookNotesID200JSONResponseBodyArea string
-
 // DeleteAPINotebookNotesID200JSONResponseBodyType defines parameters for DeleteAPINotebookNotesID.
 type DeleteAPINotebookNotesID200JSONResponseBodyType string
 
 // DeleteAPINotebookNotesID200JSONResponseBody defines parameters for DeleteAPINotebookNotesID.
 type DeleteAPINotebookNotesID200JSONResponseBody struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                           `json:"archived,omitempty"`
-	Area         DeleteAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                          `json:"bodyMarkdown"`
-	CreatedAt    string                                          `json:"createdAt"`
-	Date         nullable.Nullable[string]                       `json:"date"`
-	Deleted      bool                                            `json:"deleted"`
-	ID           string                                          `json:"id"`
-	Pinned       bool                                            `json:"pinned"`
-	Tags         []string                                        `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                        `json:"taskIds"`
@@ -12185,24 +11303,23 @@ type DeleteAPINotebookNotesID503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
-// GetAPINotebookNotesID200JSONResponseBodyArea defines parameters for GetAPINotebookNotesID.
-type GetAPINotebookNotesID200JSONResponseBodyArea string
-
 // GetAPINotebookNotesID200JSONResponseBodyType defines parameters for GetAPINotebookNotesID.
 type GetAPINotebookNotesID200JSONResponseBodyType string
 
 // GetAPINotebookNotesID200JSONResponseBody defines parameters for GetAPINotebookNotesID.
 type GetAPINotebookNotesID200JSONResponseBody struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                        `json:"archived,omitempty"`
-	Area         GetAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                       `json:"bodyMarkdown"`
-	CreatedAt    string                                       `json:"createdAt"`
-	Date         nullable.Nullable[string]                    `json:"date"`
-	Deleted      bool                                         `json:"deleted"`
-	ID           string                                       `json:"id"`
-	Pinned       bool                                         `json:"pinned"`
-	Tags         []string                                     `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                     `json:"taskIds"`
@@ -12258,8 +11375,10 @@ type GetAPINotebookNotesID503JSONResponseBody struct {
 // PutAPINotebookNotesIDJSONBody defines parameters for PutAPINotebookNotesID.
 type PutAPINotebookNotesIDJSONBody struct {
 	// Archived Page notes only; archiving a daily note is a 400
-	Archived *bool                              `json:"archived,omitempty"`
-	Area     *PutAPINotebookNotesIDJSONBodyArea `json:"area,omitempty"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area *string `json:"area,omitempty"`
 
 	// BodyMarkdown Up to 100 KB (UTF-8); larger → 413
 	BodyMarkdown *string   `json:"bodyMarkdown,omitempty"`
@@ -12275,27 +11394,23 @@ type PutAPINotebookNotesIDParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PutAPINotebookNotesIDJSONBodyArea defines parameters for PutAPINotebookNotesID.
-type PutAPINotebookNotesIDJSONBodyArea string
-
-// PutAPINotebookNotesID200JSONResponseBodyArea defines parameters for PutAPINotebookNotesID.
-type PutAPINotebookNotesID200JSONResponseBodyArea string
-
 // PutAPINotebookNotesID200JSONResponseBodyType defines parameters for PutAPINotebookNotesID.
 type PutAPINotebookNotesID200JSONResponseBodyType string
 
 // PutAPINotebookNotesID200JSONResponseBody defines parameters for PutAPINotebookNotesID.
 type PutAPINotebookNotesID200JSONResponseBody struct {
 	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
-	Archived     *bool                                        `json:"archived,omitempty"`
-	Area         PutAPINotebookNotesID200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                       `json:"bodyMarkdown"`
-	CreatedAt    string                                       `json:"createdAt"`
-	Date         nullable.Nullable[string]                    `json:"date"`
-	Deleted      bool                                         `json:"deleted"`
-	ID           string                                       `json:"id"`
-	Pinned       bool                                         `json:"pinned"`
-	Tags         []string                                     `json:"tags"`
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
 
 	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
 	TaskIds   []string                                     `json:"taskIds"`
@@ -12381,16 +11496,11 @@ type PutAPINotebookNotesID503JSONResponseBody struct {
 
 // PostAPINotebookSearchJSONBody defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearchJSONBody struct {
-	Area  *PostAPINotebookSearchJSONBodyArea `json:"area,omitempty"`
-	Limit *int                               `json:"limit,omitempty"`
-	Q     string                             `json:"q"`
+	// Area An area id from the user's area list, such as work or personal
+	Area  *string `json:"area,omitempty"`
+	Limit *int    `json:"limit,omitempty"`
+	Q     string  `json:"q"`
 }
-
-// PostAPINotebookSearchJSONBodyArea defines parameters for PostAPINotebookSearch.
-type PostAPINotebookSearchJSONBodyArea string
-
-// PostAPINotebookSearch200JSONResponseBodyNotesArea defines parameters for PostAPINotebookSearch.
-type PostAPINotebookSearch200JSONResponseBodyNotesArea string
 
 // PostAPINotebookSearch200JSONResponseBody_Notes_Matches defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearch200JSONResponseBody_Notes_Matches struct {
@@ -12406,7 +11516,8 @@ type PostAPINotebookSearch200JSONResponseBodyNotesType string
 
 // PostAPINotebookSearch200JSONResponseBody_Notes defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearch200JSONResponseBody_Notes struct {
-	Area PostAPINotebookSearch200JSONResponseBodyNotesArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Date A daily note's day (yyyy-mm-dd); absent for pages and tasks
 	Date    *string                                                  `json:"date,omitempty"`
@@ -12423,9 +11534,6 @@ type PostAPINotebookSearch200JSONResponseBody_Notes struct {
 	Version *int `json:"version,omitempty"`
 }
 
-// PostAPINotebookSearch200JSONResponseBodyTasksArea defines parameters for PostAPINotebookSearch.
-type PostAPINotebookSearch200JSONResponseBodyTasksArea string
-
 // PostAPINotebookSearch200JSONResponseBody_Tasks_Matches defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearch200JSONResponseBody_Tasks_Matches struct {
 	End   int `json:"end"`
@@ -12440,7 +11548,8 @@ type PostAPINotebookSearch200JSONResponseBodyTasksType string
 
 // PostAPINotebookSearch200JSONResponseBody_Tasks defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearch200JSONResponseBody_Tasks struct {
-	Area PostAPINotebookSearch200JSONResponseBodyTasksArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Date A daily note's day (yyyy-mm-dd); absent for pages and tasks
 	Date    *string                                                  `json:"date,omitempty"`
@@ -12571,7 +11680,8 @@ type GetAPINotebookSyncChanges503JSONResponseBody struct {
 
 // GetAPINotebookTasksParams defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasksParams struct {
-	Area     *GetAPINotebookTasksParamsArea     `form:"area,omitempty" json:"area,omitempty"`
+	// Area An area id from the user's area list, such as work or personal
+	Area     *string                            `form:"area,omitempty" json:"area,omitempty"`
 	Status   *GetAPINotebookTasksParamsStatus   `form:"status,omitempty" json:"status,omitempty"`
 	Priority *GetAPINotebookTasksParamsPriority `form:"priority,omitempty" json:"priority,omitempty"`
 
@@ -12613,9 +11723,6 @@ type GetAPINotebookTasksParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
-// GetAPINotebookTasksParamsArea defines parameters for GetAPINotebookTasks.
-type GetAPINotebookTasksParamsArea string
-
 // GetAPINotebookTasksParamsStatus defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasksParamsStatus string
 
@@ -12631,9 +11738,6 @@ type GetAPINotebookTasksParamsUndated string
 // GetAPINotebookTasksParamsOpen defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasksParamsOpen string
 
-// GetAPINotebookTasks200JSONResponseBodyItemsArea defines parameters for GetAPINotebookTasks.
-type GetAPINotebookTasks200JSONResponseBodyItemsArea string
-
 // GetAPINotebookTasks200JSONResponseBodyItemsPriority defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasks200JSONResponseBodyItemsPriority string
 
@@ -12642,14 +11746,15 @@ type GetAPINotebookTasks200JSONResponseBodyItemsStatus string
 
 // GetAPINotebookTasks200JSONResponseBody_Items defines parameters for GetAPINotebookTasks.
 type GetAPINotebookTasks200JSONResponseBody_Items struct {
-	Area        GetAPINotebookTasks200JSONResponseBodyItemsArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                       `json:"completedAt"`
-	CreatedAt   string                                          `json:"createdAt"`
-	Deleted     bool                                            `json:"deleted"`
-	Description string                                          `json:"description"`
-	DueDate     nullable.Nullable[string]                       `json:"dueDate"`
-	ID          string                                          `json:"id"`
-	NoteID      nullable.Nullable[string]                       `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                           `json:"parentId"`
@@ -12707,7 +11812,8 @@ type GetAPINotebookTasks503JSONResponseBody struct {
 
 // PostAPINotebookTasksJSONBody defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasksJSONBody struct {
-	Area PostAPINotebookTasksJSONBodyArea `json:"area"`
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
 
 	// Description Up to 100 KB (UTF-8); larger → 413
 	Description *string                               `json:"description,omitempty"`
@@ -12724,17 +11830,11 @@ type PostAPINotebookTasksJSONBody struct {
 	Title     string                              `json:"title"`
 }
 
-// PostAPINotebookTasksJSONBodyArea defines parameters for PostAPINotebookTasks.
-type PostAPINotebookTasksJSONBodyArea string
-
 // PostAPINotebookTasksJSONBodyPriority defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasksJSONBodyPriority string
 
 // PostAPINotebookTasksJSONBodyStatus defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasksJSONBodyStatus string
-
-// PostAPINotebookTasks201JSONResponseBodyArea defines parameters for PostAPINotebookTasks.
-type PostAPINotebookTasks201JSONResponseBodyArea string
 
 // PostAPINotebookTasks201JSONResponseBodyPriority defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasks201JSONResponseBodyPriority string
@@ -12744,14 +11844,15 @@ type PostAPINotebookTasks201JSONResponseBodyStatus string
 
 // PostAPINotebookTasks201JSONResponseBody defines parameters for PostAPINotebookTasks.
 type PostAPINotebookTasks201JSONResponseBody struct {
-	Area        PostAPINotebookTasks201JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                   `json:"completedAt"`
-	CreatedAt   string                                      `json:"createdAt"`
-	Deleted     bool                                        `json:"deleted"`
-	Description string                                      `json:"description"`
-	DueDate     nullable.Nullable[string]                   `json:"dueDate"`
-	ID          string                                      `json:"id"`
-	NoteID      nullable.Nullable[string]                   `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                       `json:"parentId"`
@@ -12825,9 +11926,6 @@ type PostAPINotebookTasksBatchJSONBody struct {
 	Ids []string `json:"ids"`
 }
 
-// PostAPINotebookTasksBatch200JSONResponseBodyItemsArea defines parameters for PostAPINotebookTasksBatch.
-type PostAPINotebookTasksBatch200JSONResponseBodyItemsArea string
-
 // PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority defines parameters for PostAPINotebookTasksBatch.
 type PostAPINotebookTasksBatch200JSONResponseBodyItemsPriority string
 
@@ -12836,14 +11934,15 @@ type PostAPINotebookTasksBatch200JSONResponseBodyItemsStatus string
 
 // PostAPINotebookTasksBatch200JSONResponseBody_Items defines parameters for PostAPINotebookTasksBatch.
 type PostAPINotebookTasksBatch200JSONResponseBody_Items struct {
-	Area        PostAPINotebookTasksBatch200JSONResponseBodyItemsArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                             `json:"completedAt"`
-	CreatedAt   string                                                `json:"createdAt"`
-	Deleted     bool                                                  `json:"deleted"`
-	Description string                                                `json:"description"`
-	DueDate     nullable.Nullable[string]                             `json:"dueDate"`
-	ID          string                                                `json:"id"`
-	NoteID      nullable.Nullable[string]                             `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                                 `json:"parentId"`
@@ -12910,9 +12009,6 @@ type DeleteAPINotebookTasksIDParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// DeleteAPINotebookTasksID200JSONResponseBodyArea defines parameters for DeleteAPINotebookTasksID.
-type DeleteAPINotebookTasksID200JSONResponseBodyArea string
-
 // DeleteAPINotebookTasksID200JSONResponseBodyPriority defines parameters for DeleteAPINotebookTasksID.
 type DeleteAPINotebookTasksID200JSONResponseBodyPriority string
 
@@ -12921,14 +12017,15 @@ type DeleteAPINotebookTasksID200JSONResponseBodyStatus string
 
 // DeleteAPINotebookTasksID200JSONResponseBody defines parameters for DeleteAPINotebookTasksID.
 type DeleteAPINotebookTasksID200JSONResponseBody struct {
-	Area        DeleteAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                       `json:"completedAt"`
-	CreatedAt   string                                          `json:"createdAt"`
-	Deleted     bool                                            `json:"deleted"`
-	Description string                                          `json:"description"`
-	DueDate     nullable.Nullable[string]                       `json:"dueDate"`
-	ID          string                                          `json:"id"`
-	NoteID      nullable.Nullable[string]                       `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                           `json:"parentId"`
@@ -13009,9 +12106,6 @@ type DeleteAPINotebookTasksID503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
-// GetAPINotebookTasksID200JSONResponseBodyArea defines parameters for GetAPINotebookTasksID.
-type GetAPINotebookTasksID200JSONResponseBodyArea string
-
 // GetAPINotebookTasksID200JSONResponseBodyPriority defines parameters for GetAPINotebookTasksID.
 type GetAPINotebookTasksID200JSONResponseBodyPriority string
 
@@ -13020,14 +12114,15 @@ type GetAPINotebookTasksID200JSONResponseBodyStatus string
 
 // GetAPINotebookTasksID200JSONResponseBody defines parameters for GetAPINotebookTasksID.
 type GetAPINotebookTasksID200JSONResponseBody struct {
-	Area        GetAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                    `json:"completedAt"`
-	CreatedAt   string                                       `json:"createdAt"`
-	Deleted     bool                                         `json:"deleted"`
-	Description string                                       `json:"description"`
-	DueDate     nullable.Nullable[string]                    `json:"dueDate"`
-	ID          string                                       `json:"id"`
-	NoteID      nullable.Nullable[string]                    `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                        `json:"parentId"`
@@ -13086,7 +12181,8 @@ type GetAPINotebookTasksID503JSONResponseBody struct {
 
 // PutAPINotebookTasksIDJSONBody defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksIDJSONBody struct {
-	Area *PutAPINotebookTasksIDJSONBodyArea `json:"area,omitempty"`
+	// Area An area id from the user's area list, such as work or personal
+	Area *string `json:"area,omitempty"`
 
 	// Description Up to 100 KB (UTF-8); larger → 413
 	Description *string                                `json:"description,omitempty"`
@@ -13107,17 +12203,11 @@ type PutAPINotebookTasksIDParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PutAPINotebookTasksIDJSONBodyArea defines parameters for PutAPINotebookTasksID.
-type PutAPINotebookTasksIDJSONBodyArea string
-
 // PutAPINotebookTasksIDJSONBodyPriority defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksIDJSONBodyPriority string
 
 // PutAPINotebookTasksIDJSONBodyStatus defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksIDJSONBodyStatus string
-
-// PutAPINotebookTasksID200JSONResponseBodyArea defines parameters for PutAPINotebookTasksID.
-type PutAPINotebookTasksID200JSONResponseBodyArea string
 
 // PutAPINotebookTasksID200JSONResponseBodyPriority defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksID200JSONResponseBodyPriority string
@@ -13127,14 +12217,15 @@ type PutAPINotebookTasksID200JSONResponseBodyStatus string
 
 // PutAPINotebookTasksID200JSONResponseBody defines parameters for PutAPINotebookTasksID.
 type PutAPINotebookTasksID200JSONResponseBody struct {
-	Area        PutAPINotebookTasksID200JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                    `json:"completedAt"`
-	CreatedAt   string                                       `json:"createdAt"`
-	Deleted     bool                                         `json:"deleted"`
-	Description string                                       `json:"description"`
-	DueDate     nullable.Nullable[string]                    `json:"dueDate"`
-	ID          string                                       `json:"id"`
-	NoteID      nullable.Nullable[string]                    `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                        `json:"parentId"`
@@ -13233,9 +12324,6 @@ type PostAPINotebookTasksIDCompleteParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PostAPINotebookTasksIDComplete200JSONResponseBodyArea defines parameters for PostAPINotebookTasksIDComplete.
-type PostAPINotebookTasksIDComplete200JSONResponseBodyArea string
-
 // PostAPINotebookTasksIDComplete200JSONResponseBodyPriority defines parameters for PostAPINotebookTasksIDComplete.
 type PostAPINotebookTasksIDComplete200JSONResponseBodyPriority string
 
@@ -13244,14 +12332,15 @@ type PostAPINotebookTasksIDComplete200JSONResponseBodyStatus string
 
 // PostAPINotebookTasksIDComplete200JSONResponseBody defines parameters for PostAPINotebookTasksIDComplete.
 type PostAPINotebookTasksIDComplete200JSONResponseBody struct {
-	Area        PostAPINotebookTasksIDComplete200JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                             `json:"completedAt"`
-	CreatedAt   string                                                `json:"createdAt"`
-	Deleted     bool                                                  `json:"deleted"`
-	Description string                                                `json:"description"`
-	DueDate     nullable.Nullable[string]                             `json:"dueDate"`
-	ID          string                                                `json:"id"`
-	NoteID      nullable.Nullable[string]                             `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                                 `json:"parentId"`
@@ -13343,9 +12432,6 @@ type PostAPINotebookTasksIDReopenParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PostAPINotebookTasksIDReopen200JSONResponseBodyArea defines parameters for PostAPINotebookTasksIDReopen.
-type PostAPINotebookTasksIDReopen200JSONResponseBodyArea string
-
 // PostAPINotebookTasksIDReopen200JSONResponseBodyPriority defines parameters for PostAPINotebookTasksIDReopen.
 type PostAPINotebookTasksIDReopen200JSONResponseBodyPriority string
 
@@ -13354,14 +12440,15 @@ type PostAPINotebookTasksIDReopen200JSONResponseBodyStatus string
 
 // PostAPINotebookTasksIDReopen200JSONResponseBody defines parameters for PostAPINotebookTasksIDReopen.
 type PostAPINotebookTasksIDReopen200JSONResponseBody struct {
-	Area        PostAPINotebookTasksIDReopen200JSONResponseBodyArea `json:"area"`
-	CompletedAt nullable.Nullable[string]                           `json:"completedAt"`
-	CreatedAt   string                                              `json:"createdAt"`
-	Deleted     bool                                                `json:"deleted"`
-	Description string                                              `json:"description"`
-	DueDate     nullable.Nullable[string]                           `json:"dueDate"`
-	ID          string                                              `json:"id"`
-	NoteID      nullable.Nullable[string]                           `json:"noteId"`
+	// Area An area id from the user's area list, such as work or personal
+	Area        string                    `json:"area"`
+	CompletedAt nullable.Nullable[string] `json:"completedAt"`
+	CreatedAt   string                    `json:"createdAt"`
+	Deleted     bool                      `json:"deleted"`
+	Description string                    `json:"description"`
+	DueDate     nullable.Nullable[string] `json:"dueDate"`
+	ID          string                    `json:"id"`
+	NoteID      nullable.Nullable[string] `json:"noteId"`
 
 	// ParentID The task this is a subtask of, set from indentation in its home note
 	ParentID  nullable.Nullable[string]                               `json:"parentId"`
@@ -13453,16 +12540,11 @@ type DeleteAPINotebookTemplatesDailyAreaParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// DeleteAPINotebookTemplatesDailyAreaParamsArea defines parameters for DeleteAPINotebookTemplatesDailyArea.
-type DeleteAPINotebookTemplatesDailyAreaParamsArea string
-
-// DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea defines parameters for DeleteAPINotebookTemplatesDailyArea.
-type DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea string
-
 // DeleteAPINotebookTemplatesDailyArea200JSONResponseBody defines parameters for DeleteAPINotebookTemplatesDailyArea.
 type DeleteAPINotebookTemplatesDailyArea200JSONResponseBody struct {
-	Area         DeleteAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                                     `json:"bodyMarkdown"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string `json:"area"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 
 	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
 	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
@@ -13534,16 +12616,11 @@ type DeleteAPINotebookTemplatesDailyArea503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
-// GetAPINotebookTemplatesDailyAreaParamsArea defines parameters for GetAPINotebookTemplatesDailyArea.
-type GetAPINotebookTemplatesDailyAreaParamsArea string
-
-// GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea defines parameters for GetAPINotebookTemplatesDailyArea.
-type GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea string
-
 // GetAPINotebookTemplatesDailyArea200JSONResponseBody defines parameters for GetAPINotebookTemplatesDailyArea.
 type GetAPINotebookTemplatesDailyArea200JSONResponseBody struct {
-	Area         GetAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                                  `json:"bodyMarkdown"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string `json:"area"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 
 	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
 	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
@@ -13607,16 +12684,11 @@ type PutAPINotebookTemplatesDailyAreaParams struct {
 	IfMatch *string `json:"if-match,omitempty"`
 }
 
-// PutAPINotebookTemplatesDailyAreaParamsArea defines parameters for PutAPINotebookTemplatesDailyArea.
-type PutAPINotebookTemplatesDailyAreaParamsArea string
-
-// PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea defines parameters for PutAPINotebookTemplatesDailyArea.
-type PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea string
-
 // PutAPINotebookTemplatesDailyArea200JSONResponseBody defines parameters for PutAPINotebookTemplatesDailyArea.
 type PutAPINotebookTemplatesDailyArea200JSONResponseBody struct {
-	Area         PutAPINotebookTemplatesDailyArea200JSONResponseBodyArea `json:"area"`
-	BodyMarkdown string                                                  `json:"bodyMarkdown"`
+	// Area An area id from the user's area list, such as work or personal
+	Area         string `json:"area"`
+	BodyMarkdown string `json:"bodyMarkdown"`
 
 	// CarryOverSection Heading text, unfilled, whose section new days carry open tasks into; null means the first heading
 	CarryOverSection nullable.Nullable[string] `json:"carryOverSection"`
@@ -14145,6 +13217,9 @@ type PostAPIAdminUsersIDRestoreJSONRequestBody PostAPIAdminUsersIDRestoreJSONBod
 
 // PostAPIContactJSONRequestBody defines body for PostAPIContact for application/json ContentType.
 type PostAPIContactJSONRequestBody PostAPIContactJSONBody
+
+// PutAPINotebookAreasJSONRequestBody defines body for PutAPINotebookAreas for application/json ContentType.
+type PutAPINotebookAreasJSONRequestBody PutAPINotebookAreasJSONBody
 
 // PostAPINotebookImagesUploadURLJSONRequestBody defines body for PostAPINotebookImagesUploadURL for application/json ContentType.
 type PostAPINotebookImagesUploadURLJSONRequestBody PostAPINotebookImagesUploadURLJSONBody

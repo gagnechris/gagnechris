@@ -1,8 +1,7 @@
 import {
-  areaForNewItem,
   createUlid,
   taskLineDraft,
-  type NotebookAreaFilter,
+  type NotebookArea,
   type TaskLineDraft,
 } from '@gagnechris/shared';
 import { useCallback, useState } from 'react';
@@ -15,7 +14,7 @@ type Options = {
 };
 
 export function useQuickAddTask(
-  areaFilter: NotebookAreaFilter,
+  area: NotebookArea,
   { hintAfterCreate }: Options = {},
 ) {
   const { mutateAsync, isPending } = useCreateTaskMutation();
@@ -33,11 +32,7 @@ export function useQuickAddTask(
       }
       setHint(null);
       try {
-        await mutateAsync(
-          taskRequestFromDraft(createUlid(), draft, {
-            area: areaForNewItem(areaFilter),
-          }),
-        );
+        await mutateAsync(taskRequestFromDraft(createUlid(), draft, { area }));
       } catch {
         setError(`Could not add “${draft.title}”. Please try again.`);
         return false;
@@ -45,7 +40,7 @@ export function useQuickAddTask(
       setHint(hintAfterCreate?.(draft) ?? null);
       return true;
     },
-    [areaFilter, hintAfterCreate, mutateAsync],
+    [area, hintAfterCreate, mutateAsync],
   );
 
   const clearMessages = useCallback(() => {

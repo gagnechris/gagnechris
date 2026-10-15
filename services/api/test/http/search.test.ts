@@ -271,8 +271,8 @@ describe('POST /api/notebook/search', () => {
     [{ q: '   ' }, { q: 'too_small' }],
     [{ q: 'x'.repeat(NOTEBOOK_SEARCH_MAX_LENGTH + 1) }, { q: 'too_big' }],
     [
-      { q: 5, area: 'home', limit: 1.5 },
-      { q: 'invalid_type', area: 'invalid_value', limit: 'invalid_type' },
+      { q: 5, area: 'Home', limit: 1.5 },
+      { q: 'invalid_type', area: 'invalid_format', limit: 'invalid_type' },
     ],
     [{ q: 'x', limit: 0 }, { limit: 'too_small' }],
   ])('rejects %j', async (body, fields) => {

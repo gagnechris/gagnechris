@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
@@ -14,21 +14,33 @@ import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout, { type NotebookOutletContext } from './NotebookLayout';
 import {
   NOTEBOOK_AREA_STORAGE_KEY,
-  writeNotebookAreaFilter,
-  type NotebookAreaFilter,
+  writeStoredNotebookArea,
 } from './notebookAreaPreference';
 
-const { taskQueries } = vi.hoisted(() => ({
+const { taskQueries, areaList } = vi.hoisted(() => ({
   taskQueries: [] as Record<string, unknown>[],
+  areaList: {
+    areas: [] as { id: string; name: string }[],
+    version: 0,
+    updatedAt: null,
+  },
 }));
+
+const DEFAULT_AREAS = [
+  { id: 'work', name: 'Work' },
+  { id: 'personal', name: 'Personal' },
+];
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () => ({
     GET: async (
-      _path: string,
-      init: { params: { query: Record<string, unknown> } },
+      path: string,
+      init?: { params: { query: Record<string, unknown> } },
     ) => {
-      taskQueries.push(init.params.query);
+      if (path === '/api/notebook/areas') {
+        return { data: areaList, error: undefined, response: { status: 200 } };
+      }
+      taskQueries.push(init?.params.query ?? {});
       return {
         data: {
           items: [{ id: 't1' }, { id: 't2' }, { id: 't3' }],
@@ -41,12 +53,6 @@ vi.mock('../workspace/api/client', () => ({
   }),
 }));
 
-const AREA_LABELS: Record<NotebookAreaFilter, string> = {
-  work: 'Work',
-  personal: 'Personal',
-  all: 'All areas',
-};
-
 function sectionFromPath(pathname: string): string {
   if (pathname.startsWith('/tasks')) return 'Tasks';
   if (pathname.startsWith('/notes')) return 'Notes';
@@ -56,11 +62,11 @@ function sectionFromPath(pathname: string): string {
 
 /** Echoes the outlet context so tests can assert what the layout provides. */
 const NotebookOutletProbe = () => {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
+  const { areaName } = useOutletContext<NotebookOutletContext>();
   const { id } = useParams<{ id?: string }>();
   const { pathname, search } = useLocation();
   const section = sectionFromPath(pathname);
-  const areaLabel = AREA_LABELS[areaFilter];
+  const areaLabel = areaName;
 
   return (
     <section className="workspace-panel">
@@ -97,18 +103,22 @@ describe('NotebookLayout', () => {
   beforeEach(() => {
     localStorage.clear();
     taskQueries.length = 0;
+    areaList.areas = DEFAULT_AREAS;
   });
 
   afterEach(() => {
     localStorage.clear();
   });
 
-  test('shows the area switcher and Today / Notes / All tasks in the Notebook nav', async () => {
+  test('shows the area switcher with only the user’s areas and Today / Notes / All tasks in the Notebook nav', async () => {
     renderNotebook();
 
+    const switcher = screen.getByRole('radiogroup', { name: 'Notebook area' });
     expect(
-      screen.getByRole('radiogroup', { name: 'Notebook area' }),
-    ).toBeInTheDocument();
+      within(switcher)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['Work', 'Personal']);
     expect(screen.getByRole('radio', { name: 'Work' })).toHaveAttribute(
       'aria-checked',
       'true',
@@ -117,10 +127,9 @@ describe('NotebookLayout', () => {
       'aria-checked',
       'false',
     );
-    expect(screen.getByRole('radio', { name: 'All' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
+    expect(
+      screen.queryByRole('radio', { name: /^All/ }),
+    ).not.toBeInTheDocument();
 
     const nav = screen.getByRole('navigation', { name: 'Notebook' });
     const today = await within(nav).findByRole('link', {
@@ -196,15 +205,74 @@ describe('NotebookLayout', () => {
     expect(screen.getByText(/Personal · tasks UI/i)).toBeInTheDocument();
   });
 
-  test('reads stored All filter on first mount', () => {
-    writeNotebookAreaFilter('all');
+  test('a stored All falls back to the first area', async () => {
+    writeStoredNotebookArea('all');
     renderNotebook('/notes');
 
-    expect(screen.getByRole('radio', { name: 'All' })).toHaveAttribute(
+    expect(await screen.findByRole('radio', { name: 'Work' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
-    expect(screen.getByText(/All areas · notes UI/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/notes?area=work',
+      ),
+    );
+    await waitFor(() =>
+      expect(localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY)).toBe('work'),
+    );
+  });
+
+  test('shows a third area from the list, in its order, and switches to it', async () => {
+    areaList.areas = [
+      { id: 'work', name: 'Work' },
+      { id: 'family', name: 'Family' },
+      { id: 'personal', name: 'Home' },
+    ];
+    const user = userEvent.setup();
+    renderNotebook('/today?area=family');
+
+    const switcher = await screen.findByRole('radiogroup', {
+      name: 'Notebook area',
+    });
+    expect(
+      within(switcher)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['Work', 'Family', 'Home']);
+    expect(screen.getByRole('radio', { name: 'Family' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByText(/Family · today UI/i)).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/today?area=family',
+    );
+
+    await user.click(screen.getByRole('radio', { name: 'Home' }));
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/today?area=personal',
+    );
+    expect(screen.getByText(/Home · today UI/i)).toBeInTheDocument();
+  });
+
+  test('an area that was removed falls back to the first one', async () => {
+    areaList.areas = [{ id: 'personal', name: 'Personal' }];
+    renderNotebook('/tasks?area=work');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/tasks?area=personal',
+      ),
+    );
+  });
+
+  test('Settings links to Areas', () => {
+    renderNotebook();
+    expect(screen.getByRole('link', { name: 'Areas' })).toHaveAttribute(
+      'href',
+      '/settings/areas?area=work',
+    );
   });
 
   test('notes/:id still shows Notes section chrome', () => {
@@ -217,7 +285,7 @@ describe('NotebookLayout', () => {
   });
 
   test('the area in the URL wins over the stored one and becomes the stored one', () => {
-    writeNotebookAreaFilter('work');
+    writeStoredNotebookArea('work');
     renderNotebook('/notes?area=personal');
 
     expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
@@ -228,11 +296,11 @@ describe('NotebookLayout', () => {
   });
 
   test('a link without an area gets the stored one, keeping other params', async () => {
-    writeNotebookAreaFilter('all');
+    writeStoredNotebookArea('personal');
     renderNotebook('/tasks?show=today');
 
     expect(await screen.findByTestId('location')).toHaveTextContent(
-      '/tasks?show=today&area=all',
+      '/tasks?show=today&area=personal',
     );
   });
 

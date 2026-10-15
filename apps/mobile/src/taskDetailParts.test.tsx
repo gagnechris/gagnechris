@@ -1,5 +1,5 @@
 import { emptyTaskDraft, type TaskDraft } from '@gagnechris/app-core';
-import { formatTaskDay } from '@gagnechris/shared';
+import { DEFAULT_NOTEBOOK_AREAS, formatTaskDay } from '@gagnechris/shared';
 import { ActionSheetIOS } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -52,6 +52,7 @@ describe('TaskFields', () => {
       setField={vi.fn()}
       onPickShowsOn={vi.fn()}
       onPickDeadline={vi.fn()}
+      areas={DEFAULT_NOTEBOOK_AREAS}
       {...props}
     />
   );

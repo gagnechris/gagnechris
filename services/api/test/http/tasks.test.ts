@@ -788,8 +788,11 @@ describe('tasks (DynamoDB Local)', () => {
       body: badBody({ title: 'too_small' }),
     });
     expect(
+      await post({ id: TASK_1, area: 'Garden', title: 'x' }),
+    ).toMatchObject({ status: 400, body: badBody({ area: 'invalid_format' }) });
+    expect(
       await post({ id: TASK_1, area: 'garden', title: 'x' }),
-    ).toMatchObject({ status: 400, body: badBody({ area: 'invalid_value' }) });
+    ).toMatchObject({ status: 400, body: { fields: { area: 'not_found' } } });
     expect(
       await post({ id: TASK_1, area: 'work', title: 'x', priority: 'urgent' }),
     ).toMatchObject({

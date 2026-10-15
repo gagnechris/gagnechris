@@ -1,0 +1,80 @@
+import { expect, test } from '../fixtures';
+
+test.use({ timezoneId: 'America/New_York' });
+
+const FRIDAY_MORNING = new Date('2026-10-02T09:00:00-04:00');
+
+test('an area added in Settings gets its own daily note and tasks, keeps them when renamed, and stops at four', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  await seed.blankDailyTemplates();
+  await page.clock.setFixedTime(FRIDAY_MORNING);
+  await signIn();
+  await page.goto(`${apps.notebook}/settings/areas`);
+  const newName = page.getByRole('textbox', { name: 'New area' });
+  const add = page.getByRole('button', { name: 'Add area' });
+  await newName.fill('Family');
+  await add.click();
+  await expect(page.getByRole('textbox', { name: 'Area 3' })).toHaveValue(
+    'Family',
+  );
+
+  const radios = page
+    .getByRole('radiogroup', { name: 'Notebook area' })
+    .getByRole('radio');
+  await expect(radios).toHaveText(['Work', 'Personal', 'Family']);
+
+  await page.goto(`${apps.notebook}/today?area=family`);
+  await expect(page.getByText('Family notebook · Today')).toBeVisible();
+  const editor = page.getByRole('textbox', { name: 'Note body' });
+  await editor.click();
+  await page.keyboard.type('School pickup');
+  const familyDaily = async () =>
+    (
+      await seed.api.GET('/api/notebook/notes/daily/{area}/{date}', {
+        params: { path: { area: 'family', date: '2026-10-02' } },
+      })
+    ).data;
+  await expect
+    .poll(async () => (await familyDaily())?.bodyMarkdown)
+    .toBe('School pickup');
+
+  await page.goto(`${apps.notebook}/tasks?area=family`);
+  await expect(page.getByText('New tasks go to Family')).toBeVisible();
+  const quickAdd = page.getByRole('combobox', { name: 'Quick add task' });
+  await quickAdd.fill(`${prefix} book dentist`);
+  await quickAdd.press('Enter');
+  await expect(quickAdd).toHaveValue('');
+  const filter = page.getByRole('combobox', { name: 'Filter by area' });
+  await filter.selectOption('family');
+  const open = page.getByRole('list', { name: 'Open tasks' });
+  await expect(open.getByText(`${prefix} book dentist`)).toBeVisible();
+  await expect(open.getByText('Family')).toBeVisible();
+
+  await page.goto(`${apps.notebook}/settings/areas`);
+  const third = page.getByRole('textbox', { name: 'Area 3' });
+  await third.fill('Kids');
+  await third.press('Enter');
+  await expect(radios).toHaveText(['Work', 'Personal', 'Kids']);
+  await page.goto(`${apps.notebook}/tasks`);
+  await filter.selectOption('family');
+  await expect(open.getByText(`${prefix} book dentist`)).toBeVisible();
+  await expect(open.getByText('Kids')).toBeVisible();
+  expect((await familyDaily())?.bodyMarkdown).toBe('School pickup');
+
+  await page.goto(`${apps.notebook}/settings/areas`);
+  await newName.fill('Side');
+  await add.click();
+  await expect(page.getByRole('textbox', { name: 'Area 4' })).toHaveValue(
+    'Side',
+  );
+  await expect(newName).toBeDisabled();
+  await expect(add).toBeDisabled();
+  await expect(
+    page.getByText('You can have up to 4 areas. Remove one to add another.'),
+  ).toBeVisible();
+});

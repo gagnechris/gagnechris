@@ -492,7 +492,7 @@ describe('notes over HTTP (DynamoDB Local)', () => {
       pinned: false,
       version: 0,
       templateMarkdown: fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
-        area: 'work',
+        areaName: 'Work',
         date: '2026-10-02',
       }),
     });

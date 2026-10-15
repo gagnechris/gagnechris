@@ -66,6 +66,7 @@ function Editor({ onEmbeddedIds }: { onEmbeddedIds: (ids: unknown) => void }) {
   return (
     <TodayEditor
       area="work"
+      areaName="Work"
       date="2026-10-02"
       today="2026-10-02"
       onUnsavedChange={() => {}}

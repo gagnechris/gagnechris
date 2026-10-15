@@ -14,7 +14,8 @@ import {
   dailyTemplateHeadings,
   fillDailyTemplate,
   formatCalendarDay,
-  NOTEBOOK_AREA_LABELS,
+  notebookAreaName,
+  resolveNotebookArea,
 } from '@gagnechris/shared';
 import { Field, Select } from '../kit/Field';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
@@ -25,13 +26,6 @@ import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
-
-const AREAS: NotebookArea[] = ['work', 'personal'];
-
-const AREA_OPTIONS = AREAS.map((value) => ({
-  value,
-  label: NOTEBOOK_AREA_LABELS[value],
-}));
 
 type TemplateDraft = { bodyMarkdown: string; carryOverSection: string | null };
 
@@ -47,7 +41,13 @@ const carryOverSection = (draft: TemplateDraft) =>
     ? draft.carryOverSection
     : null;
 
-function TemplateEditor({ area }: { area: NotebookArea }) {
+function TemplateEditor({
+  area,
+  areaName: label,
+}: {
+  area: NotebookArea;
+  areaName: string;
+}) {
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const tomorrow = addDays(useLocalToday(), 1);
   const editor = useWorkspaceDocEditor({
@@ -113,7 +113,6 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
     );
   }
 
-  const label = NOTEBOOK_AREA_LABELS[area];
   const error =
     editor.saveError ??
     (reset.error
@@ -203,7 +202,10 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
           </p>
           <div className="notebook-card__preview">
             <LazyMarkdownPreview
-              markdown={fillDailyTemplate(text, { area, date: tomorrow })}
+              markdown={fillDailyTemplate(text, {
+                areaName: label,
+                date: tomorrow,
+              })}
             />
           </div>
         </section>
@@ -235,15 +237,12 @@ function TemplateEditor({ area }: { area: NotebookArea }) {
 }
 
 export default function NotebookTemplatesPage() {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
+  const { area: current, areas } = useOutletContext<NotebookOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const fromUrl = searchParams.get('template');
-  const area: NotebookArea =
-    fromUrl === 'work' || fromUrl === 'personal'
-      ? fromUrl
-      : areaFilter === 'all'
-        ? 'work'
-        : areaFilter;
+  const area = resolveNotebookArea(
+    searchParams.get('template') ?? current,
+    areas,
+  );
 
   return (
     <section className="workspace-panel workspace-panel--editor">
@@ -259,7 +258,7 @@ export default function NotebookTemplatesPage() {
       </p>
       <SegmentedRadio
         label="Template"
-        options={AREA_OPTIONS}
+        options={areas.map((a) => ({ value: a.id, label: a.name }))}
         value={area}
         onChange={(next) =>
           setSearchParams(
@@ -271,7 +270,11 @@ export default function NotebookTemplatesPage() {
           )
         }
       />
-      <TemplateEditor key={area} area={area} />
+      <TemplateEditor
+        key={area}
+        area={area}
+        areaName={notebookAreaName(areas, area)}
+      />
     </section>
   );
 }

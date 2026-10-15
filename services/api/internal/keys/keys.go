@@ -142,6 +142,10 @@ func NoteTemplatesPk(userID string) string { return "USER#" + userID + "#NOTE_TE
 
 func NoteTemplateSk(templateID string) string { return "TEMPLATE#" + templateID }
 
+func NotebookAreasPk(userID string) string { return "USER#" + userID + "#NOTEBOOK_AREAS" }
+
+func NotebookAreasSk() string { return SKMeta }
+
 func RateContactIPPk(ip string) string { return "RATE#contact#ip#" + ip }
 
 func RateResumeIPPk(ip string) string { return "RATE#resume#ip#" + ip }

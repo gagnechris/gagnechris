@@ -1,12 +1,6 @@
 import * as z from 'zod';
 import { formatCalendarDay, weekdayName } from './calendar.js';
-import { NOTEBOOK_AREA_LABELS } from './notebook-area.js';
-import {
-  UlidSchema,
-  VersionSchema,
-  utf8ByteLength,
-  type NotebookArea,
-} from './schemas.js';
+import { UlidSchema, VersionSchema, utf8ByteLength } from './schemas.js';
 
 export const NOTE_TEMPLATE_MAX_BYTES = 10_000;
 export const NOTE_TEMPLATE_NAME_MAX_LENGTH = 100;
@@ -83,17 +77,17 @@ export function compareNoteTemplates(
 }
 
 /**
- * `{{weekday}}` and `{{date}}` for `date`, and `{{area}}` when the note has
- * one; other `{{…}}` stay.
+ * `{{weekday}}` and `{{date}}` for `date`, and `{{area}}` (the area's name)
+ * when the note has one; other `{{…}}` stay.
  */
 export function fillNoteTemplate(
   markdown: string,
-  { date, area }: { date: string; area?: NotebookArea },
+  { date, areaName }: { date: string; areaName?: string },
 ): string {
   const values: Record<string, string> = {
     weekday: weekdayName(date, 'long'),
     date: formatCalendarDay(date, { weekday: 'long', month: 'long' }),
-    ...(area ? { area: NOTEBOOK_AREA_LABELS[area] } : {}),
+    ...(areaName ? { area: areaName } : {}),
   };
   return markdown.replace(
     /\{\{(weekday|date|area)\}\}/g,

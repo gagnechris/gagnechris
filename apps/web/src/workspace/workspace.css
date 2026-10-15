@@ -189,6 +189,21 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Up to four user-named areas: wrap to a second row, then ellipsize. */
+.notebook-area-switch {
+  flex-wrap: wrap;
+}
+
+.notebook-area-switch .workspace-segmented__option {
+  flex: 1 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .workspace-segmented__option[aria-checked='true'] {
   background: white;
   color: var(--neutral-900);
@@ -1230,6 +1245,56 @@
 }
 
 .note-templates__empty {
+  margin: 0;
+}
+
+.notebook-areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 40rem;
+}
+
+.notebook-areas__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notebook-areas__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.notebook-areas__row .kit-field {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
+/* Level with the input under the field's label, whether or not a hint shows. */
+.notebook-areas__actions {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  margin-top: calc(1lh + var(--space-2));
+}
+
+.notebook-areas__new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.notebook-areas__new .kit-field {
+  flex: 1 1 14rem;
   margin: 0;
 }
 

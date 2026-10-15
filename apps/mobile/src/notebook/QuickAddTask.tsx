@@ -1,5 +1,5 @@
 import { useQuickAddTask } from '@gagnechris/app-core';
-import type { NotebookAreaFilter, TaskLineDraft } from '@gagnechris/shared';
+import type { NotebookArea, TaskLineDraft } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -13,7 +13,7 @@ export const QuickAddTask = ({
   placeholder,
   hintAfterCreate,
 }: {
-  area: NotebookAreaFilter;
+  area: NotebookArea;
   today: string;
   label: string;
   placeholder: string;

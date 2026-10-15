@@ -12,7 +12,7 @@ describe('fillNoteTemplate', () => {
   test('fills the day, and the area when the note has one', () => {
     const markdown = '{{weekday}} · {{date}} · {{area}} · {{other}}';
     expect(
-      fillNoteTemplate(markdown, { date: '2026-10-02', area: 'work' }),
+      fillNoteTemplate(markdown, { date: '2026-10-02', areaName: 'Work' }),
     ).toBe('Friday · Friday, October 2 · Work · {{other}}');
     expect(fillNoteTemplate(markdown, { date: '2026-10-02' })).toBe(
       'Friday · Friday, October 2 · {{area}} · {{other}}',

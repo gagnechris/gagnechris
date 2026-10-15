@@ -147,6 +147,16 @@ async function dailyNote() {
   return { ...n, date };
 }
 
+const AREAS = '/api/notebook/areas';
+const AREA_LIST = [
+  { id: 'work', name: 'Work' },
+  { id: 'personal', name: 'Personal' },
+];
+async function areas() {
+  const a = await ok('GET', AREAS);
+  return ok('PUT', AREAS, { body: { version: a.version, areas: AREA_LIST } });
+}
+
 const TEMPLATE = '/api/notebook/templates/daily/work';
 async function dailyTemplate() {
   const t = await ok('GET', TEMPLATE);
@@ -367,6 +377,12 @@ const PROBES: Record<string, () => Promise<Target>> = {
       body: { id: n.id, version: n.version, title: 'Updated' },
     };
   },
+
+  'GET /api/notebook/areas': onSingleton(areas, AREAS, () => undefined),
+  'PUT /api/notebook/areas': onSingleton(areas, AREAS, (version) => ({
+    version,
+    areas: AREA_LIST,
+  })),
 
   'GET /api/notebook/templates/daily/{area}': onSingleton(
     dailyTemplate,

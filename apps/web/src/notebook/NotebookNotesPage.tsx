@@ -6,7 +6,6 @@ import {
   useLoadAllPages,
   useNotesQuery,
   useTasksQuery,
-  type NotebookArea,
 } from '@gagnechris/app-core';
 import {
   noteDay,
@@ -18,7 +17,6 @@ import {
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { areaForNewItem, areaQueryParam } from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
@@ -33,18 +31,12 @@ const TYPE_OPTIONS = [
   { value: 'archived', label: 'Archived' },
 ] as const;
 
-const AREA_LABEL: Record<NotebookArea, string> = {
-  work: 'Work',
-  personal: 'Personal',
-};
-
 export default function NotebookNotesPage() {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
+  const { area, areaName } = useOutletContext<NotebookOutletContext>();
   const navigate = useNavigate();
   const today = useLocalToday();
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
-  const area = areaQueryParam(areaFilter);
 
   // Sections need every note: list pages are grouped by partition, not date.
   const notesQuery = useNotesQuery({
@@ -100,7 +92,7 @@ export default function NotebookNotesPage() {
     try {
       const note = await createMutation.mutateAsync({
         id: createUlid(),
-        area: areaForNewItem(areaFilter),
+        area,
         type: 'page',
         title: 'Untitled',
         bodyMarkdown: '',
@@ -121,10 +113,7 @@ export default function NotebookNotesPage() {
         <div>
           <h1>Notes</h1>
           <p className="workspace-panel__lede">
-            Daily notes and standing notes
-            {areaFilter === 'all'
-              ? ' · all areas'
-              : ` · ${AREA_LABEL[areaFilter]}`}
+            Daily notes and standing notes · {areaName}
           </p>
         </div>
         <div className="workspace-panel__actions">
@@ -141,11 +130,7 @@ export default function NotebookNotesPage() {
           <NewNoteMenu
             today={today}
             creating={createMutation.isPending}
-            onDay={(date) =>
-              void navigate(
-                `/today?date=${date}&area=${areaForNewItem(areaFilter)}`,
-              )
-            }
+            onDay={(date) => void navigate(`/today?date=${date}&area=${area}`)}
             onStanding={() => void createStandingNote()}
           />
         </div>
@@ -215,7 +200,6 @@ export default function NotebookNotesPage() {
                           {firstLine ? ' · ' : ''}
                           {[
                             noteDayLabel(noteDay(note), today),
-                            areaFilter === 'all' ? AREA_LABEL[note.area] : '',
                             open > 0 ? `${open} open` : '',
                           ]
                             .filter(Boolean)

@@ -13,6 +13,7 @@ import {
   formatTaskDay,
   groupUpcomingTasks,
   noteChipLabel,
+  notebookAreaHeading,
   snoozeBaseDay,
   type SourceNote,
   taskDue,
@@ -22,18 +23,13 @@ import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
-import {
-  areaQueryParam,
-  NOTEBOOK_AREA_HEADINGS,
-} from './notebookAreaPreference';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useLocalToday } from './useLocalToday';
 import { TaskParentLabel } from '../kit/tasks/TaskParentLabel';
 
 export default function NotebookUpcomingPage() {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
-  const area = areaQueryParam(areaFilter);
+  const { area, areaName } = useOutletContext<NotebookOutletContext>();
   const today = useLocalToday();
 
   const scheduled = useTasksQuery({
@@ -88,7 +84,7 @@ export default function NotebookUpcomingPage() {
         : null,
     [today],
   );
-  const quickAddTask = useQuickAddTask(areaFilter, { hintAfterCreate });
+  const quickAddTask = useQuickAddTask(area, { hintAfterCreate });
   const submit = async () => {
     if (await quickAddTask.submit(quickAdd, today)) setQuickAdd('');
   };
@@ -109,7 +105,7 @@ export default function NotebookUpcomingPage() {
         <div className="workspace-panel__header">
           <div>
             <p className="notebook-today__kicker">
-              {NOTEBOOK_AREA_HEADINGS[areaFilter]}
+              {notebookAreaHeading(areaName)}
             </p>
             <h1>Upcoming</h1>
             <p className="workspace-panel__lede">

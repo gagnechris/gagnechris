@@ -1,3 +1,4 @@
+import { DEFAULT_NOTEBOOK_AREAS } from '@gagnechris/shared';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
@@ -108,7 +109,11 @@ const renderPalette = () =>
           <Route
             path="/notes"
             element={
-              <NotebookSearchPalette onClose={() => {}} areaFilter="work" />
+              <NotebookSearchPalette
+                onClose={() => {}}
+                area="work"
+                areas={DEFAULT_NOTEBOOK_AREAS}
+              />
             }
           />
           <Route path="/tasks/:id" element={<p>Task page</p>} />
@@ -237,7 +242,7 @@ describe('NotebookSearchPalette', () => {
     const all = within(scope).getByRole('radio', { name: 'All areas' });
     expect(all).toHaveAttribute('aria-checked', 'true');
     expect(all).toHaveFocus();
-    await screen.findAllByText('work');
+    await screen.findAllByText('Work');
     expect(server.searches[server.searches.length - 1]?.area).toBeUndefined();
   });
 

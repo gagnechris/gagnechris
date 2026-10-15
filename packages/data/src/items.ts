@@ -16,6 +16,7 @@ import {
   type Home,
   type Note,
   type NoteTemplate,
+  type NotebookAreas,
   type Post,
   type Project,
   type Resume,
@@ -40,6 +41,8 @@ import {
   noteTemplateSk,
   noteTemplatesPk,
   notebookAreaGsi1Pk,
+  notebookAreasPk,
+  notebookAreasSk,
   postMetaSk,
   postPk,
   postPublishedSk,
@@ -726,6 +729,40 @@ export function buildDailyTemplateItem(
   };
 }
 
+export const NotebookAreasItemSchema = z.object({
+  pk: z.string().min(1),
+  sk: z.string().min(1),
+  entityType: z.literal('notebookAreas'),
+  userId: z.string().min(1),
+  areas: z
+    .array(z.object({ id: NotebookAreaSchema, name: z.string().min(1) }))
+    .min(1),
+  version: z.number().int().positive(),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+});
+
+export type NotebookAreasItem = z.infer<typeof NotebookAreasItemSchema>;
+
+export function buildNotebookAreasItem(
+  userId: string,
+  list: Pick<NotebookAreas, 'areas' | 'version'> & {
+    createdAt: string;
+    updatedAt: string;
+  },
+): NotebookAreasItem {
+  return {
+    pk: notebookAreasPk(userId),
+    sk: notebookAreasSk(),
+    entityType: 'notebookAreas',
+    userId,
+    areas: list.areas.map(({ id, name }) => ({ id, name })),
+    version: list.version,
+    createdAt: list.createdAt,
+    updatedAt: list.updatedAt,
+  };
+}
+
 export const NoteTemplateItemSchema = z.object({
   pk: z.string().min(1),
   sk: z.string().min(1),
@@ -820,4 +857,5 @@ export const ITEM_SCHEMAS: Record<
   dailyNoteClaim: DailyNoteClaimItemSchema,
   dailyTemplate: DailyTemplateItemSchema,
   noteTemplate: NoteTemplateItemSchema,
+  notebookAreas: NotebookAreasItemSchema,
 };

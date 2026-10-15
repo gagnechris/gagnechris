@@ -105,9 +105,9 @@ describe('Notebook tab screens', () => {
     const [options, choose] = vi.mocked(
       ActionSheetIOS.showActionSheetWithOptions,
     ).mock.calls[0]!;
-    expect(options.options).toEqual(['Work', 'Personal', 'All', 'Cancel']);
-    await act(async () => choose(2));
-    expect(byLabel(renderer, 'Area: All')).toBeDefined();
+    expect(options.options).toEqual(['Work', 'Personal', 'Cancel']);
+    await act(async () => choose(1));
+    expect(byLabel(renderer, 'Area: Personal')).toBeDefined();
   });
 
   it('empty states match each artboard', async () => {

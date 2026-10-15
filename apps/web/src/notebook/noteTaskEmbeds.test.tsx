@@ -30,6 +30,7 @@ import {
   createTestQueryClient,
   PAST_AUTOSAVE_MS,
   QueryClientTestProvider,
+  workOutletContext,
 } from '../test-utils';
 import {
   EMBED_DELETE_GRACE_MS,
@@ -357,7 +358,7 @@ describe('writing [ ] text in a daily note', () => {
       [
         {
           path: '/',
-          element: <Outlet context={{ areaFilter: 'work' }} />,
+          element: <Outlet context={workOutletContext} />,
           children: [{ path: 'today', element: <NotebookTodayPage /> }],
         },
       ],
@@ -527,7 +528,7 @@ describe('task syntax on a [ ] line in a note', () => {
       [
         {
           path: '/',
-          element: <Outlet context={{ areaFilter: 'work' }} />,
+          element: <Outlet context={workOutletContext} />,
           children: [{ path: 'today', element: <NotebookTodayPage /> }],
         },
       ],

@@ -4,6 +4,7 @@ import {
   taskPayloadFromDraft,
   taskResource,
   useDeleteTaskMutation,
+  useNotebookAreas,
   useVersionedDocEditor,
   type TaskDraft,
 } from '@gagnechris/app-core';
@@ -37,6 +38,7 @@ const TaskScreen = ({ id, onReload }: DetailScreenProps) => {
   const [preview, setPreview] = useState(false);
   const [flushes, setFlushes] = useState(0);
   const deleteMutation = useDeleteTaskMutation();
+  const areas = useNotebookAreas();
 
   const editor = useVersionedDocEditor({
     resource: taskResource,
@@ -146,6 +148,7 @@ const TaskScreen = ({ id, onReload }: DetailScreenProps) => {
             setField={setField}
             onPickShowsOn={() => pickShowsOn('Show this task on')}
             onPickDeadline={pickDeadline}
+            areas={areas}
           />
           <TaskDescription
             description={draft.description}

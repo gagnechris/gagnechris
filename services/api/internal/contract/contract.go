@@ -140,6 +140,19 @@ type Notebook struct {
 	NoteTemplateNameMaxLength   int               `json:"noteTemplateNameMaxLength"`
 	NoteTemplateMaxCount        int               `json:"noteTemplateMaxCount"`
 	NoteTemplateLimitMessage    string            `json:"noteTemplateLimitMessage"`
+	AreaIDPattern               string            `json:"areaIdPattern"`
+	AreaIDMaxLength             int               `json:"areaIdMaxLength"`
+	AreaNameMaxLength           int               `json:"areaNameMaxLength"`
+	AreasMax                    int               `json:"areasMax"`
+	DefaultAreas                []AreaEntry       `json:"defaultAreas"`
+	AreaDuplicateIDMessage      string            `json:"areaDuplicateIdMessage"`
+	AreaDuplicateNameMessage    string            `json:"areaDuplicateNameMessage"`
+}
+
+// AreaEntry is NotebookAreaEntrySchema.
+type AreaEntry struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type Sync struct {

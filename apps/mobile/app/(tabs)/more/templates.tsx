@@ -8,7 +8,7 @@ import {
 import {
   DAILY_TEMPLATE_TASK_MESSAGE,
   dailyTemplateHasTasks,
-  NOTEBOOK_AREA_LABELS,
+  resolveNotebookArea,
   saveLabel,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -31,7 +31,6 @@ import { color, font } from '../../../src/theme';
 import { nativeConfirm } from '../../../src/ui/confirm';
 import { SegmentedControl } from '../../../src/ui/SegmentedControl';
 
-const AREAS: readonly NotebookArea[] = ['work', 'personal'];
 const TOOLBAR_ID = 'template-keyboard-toolbar';
 
 type TemplateAction = Extract<
@@ -47,7 +46,13 @@ const BUTTONS: readonly ToolbarButton<TemplateAction | 'reset'>[] = [
   { action: 'reset', label: 'Reset to default', text: 'Reset' },
 ];
 
-const TemplateEditor = ({ area }: { area: NotebookArea }) => {
+const TemplateEditor = ({
+  area,
+  label,
+}: {
+  area: NotebookArea;
+  label: string;
+}) => {
   const online = useIsOnline();
   const editor = useVersionedDocEditor({
     resource: dailyTemplateResource,
@@ -101,7 +106,6 @@ const TemplateEditor = ({ area }: { area: NotebookArea }) => {
     return <Text style={styles.status}>Loading template…</Text>;
   }
 
-  const label = NOTEBOOK_AREA_LABELS[area];
   const error =
     invalidText !== null
       ? DAILY_TEMPLATE_TASK_MESSAGE
@@ -153,15 +157,11 @@ const TemplateEditor = ({ area }: { area: NotebookArea }) => {
 };
 
 const DailyTemplatesScreen = () => {
-  const { area: areaFilter } = useArea();
+  const { area: current, areas } = useArea();
   const { template } = useLocalSearchParams<{ template?: string }>();
-  const [area, setArea] = useState<NotebookArea>(
-    template === 'work' || template === 'personal'
-      ? template
-      : areaFilter === 'all'
-        ? 'work'
-        : areaFilter,
-  );
+  const [picked, setPicked] = useState<NotebookArea | null>(null);
+  const area = resolveNotebookArea(picked ?? template ?? current, areas);
+  const labels = Object.fromEntries(areas.map((a) => [a.id, a.name]));
   return (
     <ScrollView
       style={styles.scroll}
@@ -171,13 +171,13 @@ const DailyTemplatesScreen = () => {
     >
       <SegmentedControl
         label="Template"
-        options={AREAS}
-        labels={NOTEBOOK_AREA_LABELS}
+        options={areas.map((a) => a.id)}
+        labels={labels}
         value={area}
-        onChange={setArea}
+        onChange={setPicked}
       />
       <View style={styles.editor}>
-        <TemplateEditor key={area} area={area} />
+        <TemplateEditor key={area} area={area} label={labels[area] ?? area} />
       </View>
     </ScrollView>
   );

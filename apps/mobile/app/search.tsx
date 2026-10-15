@@ -4,9 +4,8 @@ import {
   type LiveTaskHit,
 } from '@gagnechris/app-core';
 import {
-  areaQueryParam,
   highlightParts,
-  NOTEBOOK_AREA_LABELS,
+  notebookAreaName,
   searchHitDetail,
   wordMatches,
   type NotebookSearchHit,
@@ -76,7 +75,7 @@ const Highlighted = ({
 const SearchScreen = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { area, store } = useArea();
+  const { area, areas, store } = useArea();
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<Scope>('area');
   const [recent, setRecent] = useState<string[]>([]);
@@ -91,7 +90,7 @@ const SearchScreen = () => {
     };
   }, [store]);
 
-  const searchArea = scope === 'area' ? areaQueryParam(area) : undefined;
+  const searchArea = scope === 'area' ? area : undefined;
   const search = useDebouncedNotebookSearch(q, {
     area: searchArea,
     limit: 50,
@@ -129,7 +128,7 @@ const SearchScreen = () => {
     task?: LiveTaskHit['live'],
   ) => {
     const check = task ? task.status === 'done' : undefined;
-    const tags = showArea ? ` · ${NOTEBOOK_AREA_LABELS[hit.area]}` : '';
+    const tags = showArea ? ` · ${notebookAreaName(areas, hit.area)}` : '';
     const detail = searchHitDetail(hit);
     return (
       <View key={hit.id} style={[styles.hit, index > 0 && styles.divider]}>
@@ -213,15 +212,13 @@ const SearchScreen = () => {
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
       >
-        {area !== 'all' ? (
-          <SegmentedControl
-            label="Search scope"
-            options={SCOPES}
-            labels={SCOPE_LABELS}
-            value={scope}
-            onChange={setScope}
-          />
-        ) : null}
+        <SegmentedControl
+          label="Search scope"
+          options={SCOPES}
+          labels={SCOPE_LABELS}
+          value={scope}
+          onChange={setScope}
+        />
         {toggleError ? (
           <Text style={styles.error} accessibilityRole="alert">
             {toggleError}

@@ -539,7 +539,7 @@ describe('Today tasks', () => {
     expect(server.writes.filter((w) => w.method === 'POST')).toEqual([]);
   });
 
-  test('Add to today’s note is absent on another day and in All areas', async () => {
+  test('Add to today’s note is absent on another day', async () => {
     vi.setSystemTime(new Date(2026, 9, 2, 9, 0, 0));
     addTask(task(8, { title: 'Reply to recruiter', startDate: '2026-09-30' }));
     const user = userEvent.setup();
@@ -554,15 +554,6 @@ describe('Today tasks', () => {
 
     await user.click(screen.getByRole('button', { name: 'Previous' }));
     await screen.findByRole('heading', { level: 1, name: /October 1/ });
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', { name: /to today’s note/ }),
-      ).toBeNull(),
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Jump to today' }));
-    await screen.findByRole('heading', { level: 1, name: /October 2/ });
-    await user.click(screen.getByRole('radio', { name: 'All' }));
     await waitFor(() =>
       expect(
         screen.queryByRole('button', { name: /to today’s note/ }),

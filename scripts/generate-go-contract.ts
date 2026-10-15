@@ -19,6 +19,7 @@ import {
   buildDailyNoteClaimItem,
   buildDailyTemplateItem,
   buildNoteTemplateItem,
+  buildNotebookAreasItem,
   buildHomeMetaItem,
   buildNoteMetaItem,
   buildProjectMetaItem,
@@ -35,6 +36,8 @@ import {
   dailyTemplateSk,
   noteTemplateSk,
   noteTemplatesPk,
+  notebookAreasPk,
+  notebookAreasSk,
   homePk,
   metaToHome,
   metaToNote,
@@ -123,6 +126,14 @@ import {
   DAILY_TEMPLATE_SECTION_MESSAGE,
   DAILY_TEMPLATE_TASK_MESSAGE,
   DEFAULT_DAILY_TEMPLATES,
+  DEFAULT_NOTEBOOK_AREAS,
+  NOTEBOOK_AREA_DUPLICATE_ID_MESSAGE,
+  NOTEBOOK_AREA_DUPLICATE_NAME_MESSAGE,
+  NOTEBOOK_AREA_ID_MAX_LENGTH,
+  NOTEBOOK_AREA_ID_PATTERN,
+  NOTEBOOK_AREA_NAME_MAX_LENGTH,
+  NOTEBOOK_AREAS_MAX,
+  NotebookAreasSchema,
   NOTE_TEMPLATE_LIMIT_MESSAGE,
   NOTE_TEMPLATE_MAX_BYTES,
   NOTE_TEMPLATE_MAX_COUNT,
@@ -273,6 +284,8 @@ const KEYS: Record<string, string> = {
   'dailyTemplateSk()': dailyTemplateSk(),
   'noteTemplatesPk({userId})': noteTemplatesPk('{userId}'),
   'noteTemplateSk({templateId})': noteTemplateSk('{templateId}'),
+  'notebookAreasPk({userId})': notebookAreasPk('{userId}'),
+  'notebookAreasSk()': notebookAreasSk(),
   'rateContactIpPk({ip})': rateContactIpPk('{ip}'),
   'rateResumeIpPk({ip})': rateResumeIpPk('{ip}'),
   'rateNotebookImageUserPk({userId})': rateNotebookImageUserPk('{userId}'),
@@ -364,6 +377,17 @@ const noteTemplate = {
   updatedAt: '2026-10-02T09:30:00.000Z',
 };
 
+const notebookAreas = {
+  areas: [
+    { id: 'work', name: 'Work' },
+    { id: 'family', name: 'Family' },
+    { id: 'personal', name: 'Home' },
+  ],
+  version: 4,
+  createdAt: TS,
+  updatedAt: '2026-10-02T09:30:00.000Z',
+};
+
 const SAMPLES: Record<string, Record<string, unknown>> = {
   home: buildHomeMetaItem({ ...DEFAULT_HOME, updatedAt: TS, version: 1 }),
   resume: buildResumeMetaItem({ ...DEFAULT_RESUME, updatedAt: TS, version: 1 }),
@@ -407,6 +431,7 @@ const SAMPLES: Record<string, Record<string, unknown>> = {
     updatedAt: TS,
   }),
   noteTemplate: buildNoteTemplateItem(USER, noteTemplate),
+  notebookAreas: buildNotebookAreasItem(USER, notebookAreas),
   project: buildProjectMetaItem(project),
   projectPublished: buildProjectPublishedItem(project),
   postTagged: taggedPost,
@@ -480,6 +505,14 @@ const API_SAMPLES: Record<string, [z.ZodType, unknown]> = {
   ],
   note: [NoteSchema, apiNote],
   noteTemplate: [NoteTemplateSchema, noteTemplate],
+  notebookAreas: [
+    NotebookAreasSchema,
+    {
+      areas: notebookAreas.areas,
+      version: notebookAreas.version,
+      updatedAt: notebookAreas.updatedAt,
+    },
+  ],
   task: [TaskSchema, apiTask],
   syncNote: [
     SyncChangeSchema,
@@ -601,17 +634,17 @@ const TEXT_CASES = {
   ].map((input) => ({ input, want: normalizeTags(input) })),
   fillDailyTemplate: (
     [
-      ['work', '2026-10-06'],
-      ['personal', '2024-02-29'],
-      ['work', '2027-01-01'],
+      ['Work', '2026-10-06'],
+      ['Personal', '2024-02-29'],
+      ['Family & $1 {{date}}', '2027-01-01'],
     ] as const
-  ).map(([area, date]) => ({
-    input: { markdown: TEMPLATE_WITH_TOKENS, area, date },
-    want: fillDailyTemplate(TEMPLATE_WITH_TOKENS, { area, date }),
+  ).map(([areaName, date]) => ({
+    input: { markdown: TEMPLATE_WITH_TOKENS, areaName, date },
+    want: fillDailyTemplate(TEMPLATE_WITH_TOKENS, { areaName, date }),
   })),
   dailyTemplateHeadings: [
-    DEFAULT_DAILY_TEMPLATES.work,
-    DEFAULT_DAILY_TEMPLATES.personal,
+    DEFAULT_DAILY_TEMPLATES.work!,
+    DEFAULT_DAILY_TEMPLATES.personal!,
     '',
     'no headings\n- [ ] list',
     '# One\r\n##\tTwo  \n#Three\n    #### Code\n   ### Four\n####### Seven\n## One\n##\n## \u00a0\n## Closed ##\n## # #\n## C#',
@@ -619,11 +652,11 @@ const TEXT_CASES = {
   ].map((input) => ({ input, want: dailyTemplateHeadings(input) })),
   carryIntoDailyTemplate: (
     [
-      [DEFAULT_DAILY_TEMPLATES.work, null],
-      [DEFAULT_DAILY_TEMPLATES.work, 'Meetings'],
-      [DEFAULT_DAILY_TEMPLATES.work, 'Tomorrow'],
-      [DEFAULT_DAILY_TEMPLATES.work, 'Gone'],
-      [DEFAULT_DAILY_TEMPLATES.personal, null],
+      [DEFAULT_DAILY_TEMPLATES.work!, null],
+      [DEFAULT_DAILY_TEMPLATES.work!, 'Meetings'],
+      [DEFAULT_DAILY_TEMPLATES.work!, 'Tomorrow'],
+      [DEFAULT_DAILY_TEMPLATES.work!, 'Gone'],
+      [DEFAULT_DAILY_TEMPLATES.personal!, null],
       ['', null],
       ['Just text\n', 'Just text'],
       ['## Only\n', null],
@@ -780,6 +813,13 @@ const contract = {
     noteTemplateNameMaxLength: NOTE_TEMPLATE_NAME_MAX_LENGTH,
     noteTemplateMaxCount: NOTE_TEMPLATE_MAX_COUNT,
     noteTemplateLimitMessage: NOTE_TEMPLATE_LIMIT_MESSAGE,
+    areaIdPattern: NOTEBOOK_AREA_ID_PATTERN,
+    areaIdMaxLength: NOTEBOOK_AREA_ID_MAX_LENGTH,
+    areaNameMaxLength: NOTEBOOK_AREA_NAME_MAX_LENGTH,
+    areasMax: NOTEBOOK_AREAS_MAX,
+    defaultAreas: DEFAULT_NOTEBOOK_AREAS,
+    areaDuplicateIdMessage: NOTEBOOK_AREA_DUPLICATE_ID_MESSAGE,
+    areaDuplicateNameMessage: NOTEBOOK_AREA_DUPLICATE_NAME_MESSAGE,
   },
   sync: {
     changeTypes: SYNC_CHANGE_TYPES,

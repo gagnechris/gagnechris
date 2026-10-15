@@ -25,6 +25,8 @@ export type UpsertDailyNoteRequest =
   components['schemas']['UpsertDailyNoteRequest'];
 export type EmptyDailyNote = components['schemas']['EmptyDailyNote'];
 export type DailyTemplate = components['schemas']['DailyTemplate'];
+export type NotebookAreas = components['schemas']['NotebookAreas'];
+export type NotebookAreaEntry = components['schemas']['NotebookAreaEntry'];
 export type NoteTemplate = components['schemas']['NoteTemplate'];
 export type CreateNoteTemplateRequest =
   components['schemas']['CreateNoteTemplateRequest'];
@@ -583,6 +585,21 @@ export const resetDailyTemplate = async (
     body: { version },
   });
   return unwrap(result, 'Could not reset the template');
+};
+
+export const fetchNotebookAreas = async (
+  client: ApiClient,
+): Promise<NotebookAreas> => {
+  const result = await client.GET('/api/notebook/areas');
+  return unwrap(result, 'Could not load your areas');
+};
+
+export const updateNotebookAreas = async (
+  client: ApiClient,
+  body: { version: number; areas: NotebookAreaEntry[] },
+): Promise<NotebookAreas> => {
+  const result = await client.PUT('/api/notebook/areas', { body });
+  return unwrap(result, 'Could not save your areas');
 };
 
 export const fetchNoteTemplates = async (

@@ -11,6 +11,7 @@ import {
 import {
   emptyNoteDraft,
   formatCalendarDay,
+  notebookAreaHeading,
   noteDraftFromNote,
   notePayloadFromDraft,
   taskEmbedToken,
@@ -21,10 +22,6 @@ import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import { NoteDetailsToggle, NoteMenu } from './NoteMenu';
 import { useInsertNoteTemplate } from './noteTemplateMenu';
-import {
-  NOTEBOOK_AREA_HEADINGS,
-  NOTEBOOK_AREA_LABELS,
-} from './notebookAreaPreference';
 
 function dayHeading(date: string, today: string): string {
   return formatCalendarDay(date, {
@@ -34,20 +31,19 @@ function dayHeading(date: string, today: string): string {
   });
 }
 
-export function DayTitle({
-  area,
+function DayTitle({
+  areaName,
   date,
   today,
 }: {
-  area: NotebookArea | null;
+  areaName: string;
   date: string;
   today: string;
 }) {
-  const areaLabel = NOTEBOOK_AREA_HEADINGS[area ?? 'all'];
   return (
     <div className="notebook-today__title">
       <p className="notebook-today__kicker">
-        {areaLabel}
+        {notebookAreaHeading(areaName)}
         {date === today ? ' · Today' : ''}
       </p>
       <h1>{dayHeading(date, today)}</h1>
@@ -57,6 +53,7 @@ export function DayTitle({
 
 export function TodayEditor({
   area,
+  areaName,
   date,
   today,
   onUnsavedChange,
@@ -68,6 +65,7 @@ export function TodayEditor({
   onDeleted,
 }: {
   area: NotebookArea;
+  areaName: string;
   date: string;
   today: string;
   onUnsavedChange: (unsaved: boolean) => void;
@@ -124,7 +122,7 @@ export function TodayEditor({
   });
 
   const editorRef = useRef<MarkdownEditorHandle>(null);
-  const insertTemplate = useInsertNoteTemplate(editorRef, { date, area });
+  const insertTemplate = useInsertNoteTemplate(editorRef, { date, areaName });
 
   const unsaved = dirty || saveState === 'saving';
   useEffect(() => {
@@ -152,7 +150,7 @@ export function TodayEditor({
     return (
       <>
         <div className="workspace-action-bar notebook-today__header">
-          <DayTitle area={area} date={date} today={today} />
+          <DayTitle areaName={areaName} date={date} today={today} />
         </div>
         {loadError ? (
           <p className="workspace-panel__error" role="alert">
@@ -168,7 +166,7 @@ export function TodayEditor({
   return (
     <>
       <div className="workspace-action-bar notebook-today__header">
-        <DayTitle area={area} date={date} today={today} />
+        <DayTitle areaName={areaName} date={date} today={today} />
         <div className="workspace-action-bar__status">
           <SaveIndicator
             quiet
@@ -195,8 +193,8 @@ export function TodayEditor({
       {isTemplateStartedDaily(entity) && !dirty && saveState !== 'saving' ? (
         <div className="notebook-today__template" role="note">
           <span>
-            Started from your <strong>{NOTEBOOK_AREA_LABELS[area]}</strong>{' '}
-            template. It’s saved as soon as you type.
+            Started from your <strong>{areaName}</strong> template. It’s saved
+            as soon as you type.
           </span>
           <span className="notebook-today__template-actions">
             <button
@@ -217,7 +215,7 @@ export function TodayEditor({
       ) : null}
       <NotebookMarkdownBody
         editorRef={editorRef}
-        templates={{ date, area }}
+        templates={{ date, areaName }}
         note={entity}
         ensureNoteSaved={save}
         value={draft.bodyMarkdown}

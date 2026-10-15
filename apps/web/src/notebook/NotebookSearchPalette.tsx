@@ -5,19 +5,21 @@ import {
 } from '@gagnechris/app-core';
 import {
   highlightParts,
+  notebookAreaName,
   searchHitDetail,
   wordMatches,
+  type NotebookArea,
+  type NotebookAreaEntry,
   type TextRange,
 } from '@gagnechris/shared';
 import SearchPalette, { type SearchHit } from '../workspace/ui/SearchPalette';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
-import { areaQueryParam } from './notebookAreaPreference';
-import type { NotebookAreaFilter } from './notebookAreaPreference';
 import { noteHref } from './noteHref';
 
 type Props = {
   onClose: () => void;
-  areaFilter: NotebookAreaFilter;
+  area: NotebookArea;
+  areas: readonly NotebookAreaEntry[];
 };
 
 type Scope = 'area' | 'all';
@@ -40,10 +42,14 @@ function highlight(text: string, matches: TextRange[]) {
   );
 }
 
-export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
+export default function NotebookSearchPalette({
+  onClose,
+  area: current,
+  areas,
+}: Props) {
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<Scope>('area');
-  const area = scope === 'area' ? areaQueryParam(areaFilter) : undefined;
+  const area = scope === 'area' ? current : undefined;
 
   const search = useDebouncedNotebookSearch(q, { area, limit: 12 });
   const { query } = search;
@@ -54,7 +60,9 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
   const title = (text: string, hitArea: string) => (
     <>
       <span>{highlight(text, wordMatches(text, query))}</span>
-      {showArea ? <span className="kit-badge">{hitArea}</span> : null}
+      {showArea ? (
+        <span className="kit-badge">{notebookAreaName(areas, hitArea)}</span>
+      ) : null}
     </>
   );
   for (const h of search.notes) {
@@ -99,15 +107,13 @@ export default function NotebookSearchPalette({ onClose, areaFilter }: Props) {
       onClose={onClose}
       error={search.isError ? 'Search failed.' : (toggleError ?? null)}
       toolbar={
-        areaFilter === 'all' ? null : (
-          <SegmentedRadio
-            label="Search scope"
-            options={SCOPE_OPTIONS}
-            value={scope}
-            onChange={setScope}
-            className="workspace-search__scope"
-          />
-        )
+        <SegmentedRadio
+          label="Search scope"
+          options={SCOPE_OPTIONS}
+          value={scope}
+          onChange={setScope}
+          className="workspace-search__scope"
+        />
       }
       status={
         <>

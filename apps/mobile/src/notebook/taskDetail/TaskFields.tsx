@@ -1,8 +1,9 @@
 import type { TaskDraft } from '@gagnechris/app-core';
 import {
   formatTaskDay,
-  NOTEBOOK_AREA_LABELS,
+  notebookAreaName,
   type NotebookArea,
+  type NotebookAreaEntry,
   type TaskPriority,
   type TaskStatus,
 } from '@gagnechris/shared';
@@ -27,7 +28,6 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
   done: 'Done',
   dropped: 'Dropped',
 };
-const AREAS = ['work', 'personal'] as const;
 
 const showsOnText = (draft: TaskDraft, today: string) =>
   draft.someday
@@ -44,6 +44,7 @@ type Props = {
   setField: (change: Partial<TaskDraft>) => void;
   onPickShowsOn: () => void;
   onPickDeadline: () => void;
+  areas: readonly NotebookAreaEntry[];
 };
 
 /** The checkbox and title, then the Shows on … Status rows. */
@@ -55,6 +56,7 @@ export const TaskFields = ({
   setField,
   onPickShowsOn,
   onPickDeadline,
+  areas,
 }: Props) => {
   const done = draft.status === 'done';
   return (
@@ -115,12 +117,12 @@ export const TaskFields = ({
         <Row
           divider
           title="Area"
-          detail={NOTEBOOK_AREA_LABELS[draft.area]}
+          detail={notebookAreaName(areas, draft.area)}
           onPress={() =>
             showChoice<NotebookArea>({
               title: 'Area',
-              options: AREAS,
-              labels: NOTEBOOK_AREA_LABELS,
+              options: areas.map((a) => a.id),
+              labels: Object.fromEntries(areas.map((a) => [a.id, a.name])),
               onChoose: (area) => setField({ area }),
             })
           }

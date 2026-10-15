@@ -32,8 +32,11 @@ type storedTemplate struct {
 }
 
 func defaultTemplate(area string) DailyTemplate {
-	return DailyTemplate{Area: area, BodyMarkdown: contract.Data.Notebook.DailyTemplates[area], IsDefault: true}
+	return DailyTemplate{Area: area, BodyMarkdown: builtInTemplate(area), IsDefault: true}
 }
+
+// builtInTemplate is the default area's template; any other area's is blank.
+func builtInTemplate(area string) string { return contract.Data.Notebook.DailyTemplates[area] }
 
 // templatesRepo keeps one row per user and area; no row is the built-in
 // template at version 0. A reset writes a row marked default rather than
@@ -55,7 +58,7 @@ func parseTemplate(item data.Item) (storedTemplate, error) {
 	r.Literal("entityType", "dailyTemplate")
 	r.Str("userId", 1)
 	t := storedTemplate{DailyTemplate: DailyTemplate{
-		Area:             r.Enum("area", Areas...),
+		Area:             readArea(r, "area"),
 		IsDefault:        r.Bool("isDefault"),
 		BodyMarkdown:     r.Str("bodyMarkdown", 0),
 		CarryOverSection: r.OptOnlyStr("carryOverSection", 1),
@@ -66,7 +69,7 @@ func parseTemplate(item data.Item) (storedTemplate, error) {
 	updated := r.Str("updatedAt", 1)
 	t.UpdatedAt = &updated
 	if t.IsDefault {
-		t.BodyMarkdown = contract.Data.Notebook.DailyTemplates[t.Area]
+		t.BodyMarkdown = builtInTemplate(t.Area)
 		t.CarryOverSection = nil
 	}
 	return t, r.Err("daily template")
@@ -166,7 +169,7 @@ func (r *templatesRepo) write(ctx context.Context, userID, area string, edit tem
 	}
 	saved := DailyTemplate{Area: area, BodyMarkdown: bodyMarkdown, CarryOverSection: section, IsDefault: reset, Version: base + 1, UpdatedAt: &now}
 	if reset {
-		saved.BodyMarkdown = contract.Data.Notebook.DailyTemplates[area]
+		saved.BodyMarkdown = builtInTemplate(area)
 	}
 	return saved, nil
 }

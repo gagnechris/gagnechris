@@ -231,6 +231,8 @@ func (r *notesRepo) delete(ctx context.Context, userID, id string, expected api.
 type listNotesQuery struct {
 	area, from, to, noteType, taskID, cursor string
 	limit                                    int
+	// areas are walked when area is unset: the user's list, in order.
+	areas []string
 }
 
 type skRange struct{ from, to string }
@@ -303,7 +305,7 @@ func (r *notesRepo) list(ctx context.Context, userID string, q listNotesQuery, o
 	if q.area != "" {
 		return fetch(q.area, q.cursor, q.limit, store.PageByteBudget)
 	}
-	return store.WalkPartitions(Areas, q.cursor, q.limit, fetch)
+	return store.WalkPartitions(q.areas, q.cursor, q.limit, fetch)
 }
 
 // emptyDaily is the day before its note exists.

@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	Areas          = []string{"work", "personal"}
 	NoteTypes      = []string{"daily", "page"}
 	TaskStatuses   = []string{"todo", "in_progress", "done", "dropped"}
 	TaskPriorities = []string{"low", "med", "high"}
@@ -92,7 +91,7 @@ func ParseNote(item data.Item) (Note, error) {
 	n := Note{
 		ID:     r.Str("id", 1),
 		UserID: r.Str("userId", 1),
-		Area:   r.Enum("area", Areas...),
+		Area:   readArea(r, "area"),
 		Type:   r.Enum("type", NoteTypes...),
 	}
 	var present bool
@@ -123,7 +122,7 @@ func ParseTask(item data.Item) (Task, error) {
 	t := Task{
 		ID:          r.Str("id", 1),
 		UserID:      r.Str("userId", 1),
-		Area:        r.Enum("area", Areas...),
+		Area:        readArea(r, "area"),
 		Title:       r.Str("title", 1),
 		Description: r.Str("description", 0),
 		Priority:    r.Enum("priority", TaskPriorities...),

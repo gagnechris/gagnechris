@@ -315,12 +315,19 @@ describe('daily templates over HTTP (DynamoDB Local)', () => {
   });
 
   it('rejects an unknown area and a malformed If-Match', async () => {
-    const area = await call('GET', '/api/notebook/templates/daily/garden');
+    const area = await call('GET', '/api/notebook/templates/daily/All');
     expect(area.status).toBe(400);
     expect(area.body).toEqual({
       error: 'bad_request',
       message: 'Invalid path parameters',
-      fields: { area: 'invalid_value' },
+      fields: { area: 'invalid_format' },
+    });
+    const notMine = await call('PUT', '/api/notebook/templates/daily/garden', {
+      body: { version: 0, bodyMarkdown: 'x' },
+    });
+    expect(notMine).toMatchObject({
+      status: 400,
+      body: { fields: { area: 'not_found' } },
     });
 
     const header = await call('PUT', WORK, {

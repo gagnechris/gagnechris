@@ -609,7 +609,18 @@ export const CalendarDateSchema = z
 
 export type CalendarDate = z.infer<typeof CalendarDateSchema>;
 
-export const NotebookAreaSchema = z.enum(['work', 'personal']);
+export const NOTEBOOK_AREA_ID_PATTERN = '^[a-z0-9]+(?:-[a-z0-9]+)*$';
+export const NOTEBOOK_AREA_ID_MAX_LENGTH = 24;
+
+/** An area id: a slug from the user's area list, fixed once the area is created. */
+export const NotebookAreaSchema = z
+  .string()
+  .max(NOTEBOOK_AREA_ID_MAX_LENGTH)
+  .regex(
+    new RegExp(NOTEBOOK_AREA_ID_PATTERN),
+    'Must be lowercase letters, digits and single hyphens',
+  )
+  .describe("An area id from the user's area list, such as work or personal");
 
 export type NotebookArea = z.infer<typeof NotebookAreaSchema>;
 
@@ -807,7 +818,7 @@ export type UpdateNoteRequest = z.infer<typeof UpdateNoteRequestSchema>;
 export const NOTEBOOK_PAGE_SIZE = 50;
 
 export const ListNotesQuerySchema = z.object({
-  area: NotebookAreaSchema.optional().describe('Filter by Work or Personal'),
+  area: NotebookAreaSchema.optional().describe('Filter by one area'),
   from: CalendarDateSchema.optional().describe(
     'Inclusive start date (yyyy-mm-dd) for calendar ranges',
   ),

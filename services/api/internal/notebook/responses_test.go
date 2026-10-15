@@ -32,6 +32,10 @@ func TestResponsesMatchGeneratedTypes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	areas, err := parseAreas(samplerows.Item("notebookAreas"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, n := range []Note{daily, page} {
 		apitypestest.Conforms[apitypes.Note](t, n)
@@ -51,6 +55,8 @@ func TestResponsesMatchGeneratedTypes(t *testing.T) {
 	apitypestest.Conforms[apitypes.DailyTemplate](t, stored.DailyTemplate)
 	apitypestest.Conforms[apitypes.DailyTemplate](t, defaultTemplate("work"))
 	apitypestest.Conforms[apitypes.NoteTemplate](t, noteTemplate.NoteTemplate)
+	apitypestest.Conforms[apitypes.NotebookAreas](t, areas.Areas)
+	apitypestest.Conforms[apitypes.NotebookAreas](t, defaultAreas())
 	apitypestest.Conforms[apitypes.NoteTemplateListResponse](t, itemsResponse[NoteTemplate]{Items: []NoteTemplate{noteTemplate.NoteTemplate}})
 
 	live := func(typ string, id string, version int, updatedAt string, entity any) Change {

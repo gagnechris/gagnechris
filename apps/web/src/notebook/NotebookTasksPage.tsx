@@ -9,6 +9,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   matchesTaskShowOn,
+  notebookAreaName,
   snoozeBaseDay,
   sortTasksForList,
   taskDue,
@@ -16,12 +17,9 @@ import {
   taskShowOnQuery,
   type TaskPriority,
   type TaskShowOnFilter,
+  type NotebookAreaEntry,
   type TaskStatus,
 } from '@gagnechris/shared';
-import {
-  areaQueryParam,
-  NOTEBOOK_AREA_HEADINGS,
-} from './notebookAreaPreference';
 import {
   TASK_PRIORITY_OPTIONS,
   TASK_STATUS_OPTIONS,
@@ -55,9 +53,15 @@ const CHIP_SHOW_ON: Record<TaskChip, TaskShowOnFilter> = {
 };
 
 export default function NotebookTasksPage() {
-  const { areaFilter } = useOutletContext<NotebookOutletContext>();
-  const area = areaQueryParam(areaFilter);
+  const {
+    area: current,
+    areaName,
+    areas,
+  } = useOutletContext<NotebookOutletContext>();
   const today = useLocalToday();
+  // Every area unless one is picked here; quick-add files into the switch's.
+  const [listArea, setListArea] = useState('');
+  const area = areas.some((a) => a.id === listArea) ? listArea : undefined;
 
   const [quickAdd, setQuickAdd] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
@@ -93,7 +97,7 @@ export default function NotebookTasksPage() {
     { ...listQuery, status: 'done' },
     { enabled: showCompleted && !status },
   );
-  const quickAddTask = useQuickAddTask(areaFilter);
+  const quickAddTask = useQuickAddTask(current);
   const { toggle: toggleTask, error: toggleError } = useTaskToggle();
   const { patch, error: patchError } = useTaskPatch();
   const actionError = quickAddTask.error ?? toggleError ?? patchError;
@@ -151,7 +155,7 @@ export default function NotebookTasksPage() {
           <div>
             <h1>Tasks</h1>
             <p className="workspace-panel__lede">
-              {NOTEBOOK_AREA_HEADINGS[areaFilter]}
+              New tasks go to {areaName}
               {' · '}
               quick-add supports <code>@tomorrow</code>, <code>@mon</code>,{' '}
               <code>@oct 12</code>, <code>@someday</code>, <code>due:fri</code>{' '}
@@ -205,6 +209,22 @@ export default function NotebookTasksPage() {
           }}
         />
         <div className="workspace-toolbar notebook-tasks__filters">
+          <label className="kit-field">
+            <span className="kit-field__label">Area</span>
+            <select
+              className="kit-input"
+              value={area ?? ''}
+              onChange={(e) => setListArea(e.target.value)}
+              aria-label="Filter by area"
+            >
+              <option value="">All areas</option>
+              {areas.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="kit-field">
             <span className="kit-field__label">Status</span>
             <select
@@ -281,6 +301,7 @@ export default function NotebookTasksPage() {
                 key={task.id}
                 task={task}
                 today={today}
+                areas={areas}
                 onToggle={() => toggleComplete(task)}
                 actions={
                   task.status === 'dropped' ? null : (
@@ -317,6 +338,7 @@ export default function NotebookTasksPage() {
                   key={task.id}
                   task={task}
                   today={today}
+                  areas={areas}
                   onToggle={() => toggleComplete(task)}
                 />
               ))}
@@ -352,11 +374,13 @@ export default function NotebookTasksPage() {
 function TaskListRow({
   task,
   today,
+  areas,
   onToggle,
   actions,
 }: {
   task: Task;
   today: string;
+  areas: readonly NotebookAreaEntry[];
   onToggle: () => void;
   actions?: ReactNode;
 }) {
@@ -369,7 +393,7 @@ function TaskListRow({
       variant="list"
       meta={
         <>
-          {task.area}
+          {notebookAreaName(areas, task.area)}
           {task.someday
             ? ' · someday'
             : task.startDate

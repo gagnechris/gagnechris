@@ -8,7 +8,7 @@ import (
 )
 
 func TestTextHelpersMatchTypeScript(t *testing.T) {
-	type template struct{ Markdown, Area, Date string }
+	type template struct{ Markdown, AreaName, Date string }
 	type carry struct {
 		Markdown string
 		Tasks    []CarriedInTask
@@ -23,7 +23,7 @@ func TestTextHelpersMatchTypeScript(t *testing.T) {
 		"normalizeTags":    func(in json.RawMessage) any { return NormalizeTags(textcases.Decode[[]string](t, in)) },
 		"fillDailyTemplate": func(in json.RawMessage) any {
 			c := textcases.Decode[template](t, in)
-			return FillDailyTemplate(c.Markdown, c.Area, c.Date)
+			return FillDailyTemplate(c.Markdown, c.AreaName, c.Date)
 		},
 		"dailyTemplateHasTasks": func(in json.RawMessage) any {
 			return DailyTemplateHasTasks(textcases.Decode[string](t, in))

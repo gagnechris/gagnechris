@@ -1,6 +1,5 @@
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -406,7 +405,7 @@ describe('NotebookTodayPage', () => {
     ).toContainElement(tasksButton());
   });
 
-  test('no Sidebar or Tasks button in the page header, with an area or All', async () => {
+  test('no Sidebar or Tasks button in the page header', async () => {
     renderToday();
     await screen.findByRole('textbox', { name: 'Note body' });
     const headers = () =>
@@ -422,13 +421,18 @@ describe('NotebookTodayPage', () => {
     expect(headers()).not.toContain('Tasks');
     expect(headers()).not.toContain('Sidebar');
     expect(headers().join(' ')).not.toMatch(/Tasks|Sidebar/);
-    cleanup();
+    expect(tasksButton().closest('.workspace-action-bar')).toBeNull();
+  });
 
+  test('a stored All opens the first area’s note, writable', async () => {
     localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, 'all');
     renderToday();
-    await screen.findByText(/All shows both areas/);
-    expect(headers().join(' ')).not.toMatch(/Tasks|Sidebar/);
-    expect(tasksButton().closest('.workspace-action-bar')).toBeNull();
+    expect(
+      await screen.findByRole('textbox', { name: 'Note body' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^Work notebook/)).toBeInTheDocument();
+    expect(screen.queryByText(/All shows both areas/)).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'All' })).toBeNull();
   });
 
   test('⌥⌘\\ toggles the panel with focus in the editor', async () => {

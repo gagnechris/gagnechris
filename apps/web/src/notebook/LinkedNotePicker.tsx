@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { useNotebookSearchQuery, useNotesByIds } from '@gagnechris/app-core';
 import { noteTitle } from '@gagnechris/shared';
 import { useDebouncedValue } from '../kit/useDebouncedValue';
-import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import { useNotebookAreaName } from './useNotebookAreaName';
 
 type Props = {
   value: string;
@@ -15,6 +15,7 @@ const NONE: Option = { id: '', label: 'None' };
 
 /** Finds notes through search, so the task page never loads the whole notebook. */
 export function LinkedNotePicker({ value, onChange }: Props) {
+  const areaName = useNotebookAreaName();
   const id = useId();
   const [query, setQuery] = useState<string | null>(null);
   const [active, setActive] = useState(0);
@@ -41,7 +42,7 @@ export function LinkedNotePicker({ value, onChange }: Props) {
         ...(search.data?.notes ?? []).map((hit) => ({
           id: hit.id,
           label: hit.title || hit.date || 'Untitled',
-          detail: NOTEBOOK_AREA_LABELS[hit.area],
+          detail: areaName(hit.area),
         })),
       ]
     : [];

@@ -18,7 +18,6 @@ import {
   findTaskEmbeds,
   parseTaskEmbedLine,
   removeTaskEmbedLines,
-  type NotebookArea,
 } from '@gagnechris/shared';
 import { EditorAccessoryBar } from '../kit/markdown/EditorAccessoryBar';
 // Static: only lazy routes render this body, so CodeMirror loads with the
@@ -53,7 +52,7 @@ type Props = {
   label?: string;
   placeholder?: string;
   /** Turns on `/` templates, filled for this day and area. */
-  templates?: { date: string; area?: NotebookArea };
+  templates?: { date: string; areaName?: string };
 };
 
 /** Room under the caret for the accessory bar and the docked date chips. */
@@ -147,7 +146,7 @@ export function NotebookMarkdownBody({
   });
   const withTasks = note !== undefined;
   const templateDate = templates?.date;
-  const templateArea = templates?.area;
+  const templateArea = templates?.areaName;
   const templateMenu = useNoteTemplateMenu({
     enabled: templates !== undefined,
     fill: useCallback(
@@ -155,7 +154,7 @@ export function NotebookMarkdownBody({
         templateDate
           ? fillNoteTemplate(markdown, {
               date: templateDate,
-              area: templateArea,
+              areaName: templateArea,
             })
           : markdown,
       [templateDate, templateArea],

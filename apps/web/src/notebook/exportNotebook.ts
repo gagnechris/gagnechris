@@ -189,7 +189,7 @@ Generated for personal backup / migration.
 - \`notes/daily/\` and \`notes/pages/\` — one Markdown file per note (YAML frontmatter); embedded tasks are written as \`- [ ] Title\`, \`- [x] Title\` when done and \`- [ ] ~~Title~~ (dropped)\` when dropped
 - \`images/\` — the images pasted into notes, which the notes link to
 - \`tasks.json\` — all non-deleted tasks
-- \`templates/work.md\` and \`templates/personal.md\` — the daily note templates, with \`{{weekday}}\`, \`{{date}}\` and \`{{area}}\` unfilled
+- \`templates/<area>.md\` — each area's daily note template, with \`{{weekday}}\`, \`{{date}}\` and \`{{area}}\` unfilled
 - \`templates/notes/\` — the note templates, one file each, named after the template and unfilled
 
 This is a **human export**, not a DynamoDB restore. Infra PITR / AWS Backup remains the path for table recovery (see \`infra/RUNBOOK.md\`).

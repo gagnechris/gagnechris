@@ -51,7 +51,8 @@
       "task",
       "dailyNoteClaim",
       "dailyTemplate",
-      "noteTemplate"
+      "noteTemplate",
+      "notebookAreas"
     ],
     "countFloorEntityTypes": [
       "post",
@@ -63,7 +64,8 @@
       "note",
       "task",
       "dailyTemplate",
-      "noteTemplate"
+      "noteTemplate",
+      "notebookAreas"
     ],
     "sourceCountAttributes": [
       "pk",
@@ -119,6 +121,8 @@
     "dailyTemplateSk()": "META",
     "noteTemplatesPk({userId})": "USER#{userId}#NOTE_TEMPLATES",
     "noteTemplateSk({templateId})": "TEMPLATE#{templateId}",
+    "notebookAreasPk({userId})": "USER#{userId}#NOTEBOOK_AREAS",
+    "notebookAreasSk()": "META",
     "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
     "rateResumeIpPk({ip})": "RATE#resume#ip#{ip}",
     "rateNotebookImageUserPk({userId})": "RATE#notebook-image#user#{userId}",
@@ -361,7 +365,23 @@
     "noteTemplateMaxBytes": 10000,
     "noteTemplateNameMaxLength": 100,
     "noteTemplateMaxCount": 100,
-    "noteTemplateLimitMessage": "You can keep up to 100 templates. Delete one to add another."
+    "noteTemplateLimitMessage": "You can keep up to 100 templates. Delete one to add another.",
+    "areaIdPattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "areaIdMaxLength": 24,
+    "areaNameMaxLength": 30,
+    "areasMax": 4,
+    "defaultAreas": [
+      {
+        "id": "work",
+        "name": "Work"
+      },
+      {
+        "id": "personal",
+        "name": "Personal"
+      }
+    ],
+    "areaDuplicateIdMessage": "Two areas have the same id",
+    "areaDuplicateNameMessage": "Two areas have the same name"
   },
   "sync": {
     "changeTypes": [
@@ -1276,10 +1296,9 @@
         },
         "area": {
           "type": "string",
-          "enum": [
-            "work",
-            "personal"
-          ]
+          "maxLength": 24,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "An area id from the user's area list, such as work or personal"
         },
         "type": {
           "type": "string",
@@ -1418,10 +1437,9 @@
         },
         "area": {
           "type": "string",
-          "enum": [
-            "work",
-            "personal"
-          ]
+          "maxLength": 24,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "An area id from the user's area list, such as work or personal"
         },
         "title": {
           "type": "string",
@@ -1550,10 +1568,9 @@
         },
         "area": {
           "type": "string",
-          "enum": [
-            "work",
-            "personal"
-          ]
+          "maxLength": 24,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "An area id from the user's area list, such as work or personal"
         },
         "date": {
           "type": "string",
@@ -1596,10 +1613,9 @@
         },
         "area": {
           "type": "string",
-          "enum": [
-            "work",
-            "personal"
-          ]
+          "maxLength": 24,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "An area id from the user's area list, such as work or personal"
         },
         "isDefault": {
           "type": "boolean"
@@ -1691,6 +1707,74 @@
         "userId",
         "name",
         "bodyMarkdown",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "notebookAreas": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "pk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entityType": {
+          "type": "string",
+          "const": "notebookAreas"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "areas": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 24,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "description": "An area id from the user's area list, such as work or personal"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ]
+          }
+        },
+        "version": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "createdAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "pk",
+        "sk",
+        "entityType",
+        "userId",
+        "areas",
         "version",
         "createdAt",
         "updatedAt"
@@ -2405,6 +2489,29 @@
       "createdAt": "2026-10-01T12:00:00.000Z",
       "updatedAt": "2026-10-02T09:30:00.000Z"
     },
+    "notebookAreas": {
+      "pk": "USER#user-sub-1#NOTEBOOK_AREAS",
+      "sk": "META",
+      "entityType": "notebookAreas",
+      "userId": "user-sub-1",
+      "areas": [
+        {
+          "id": "work",
+          "name": "Work"
+        },
+        {
+          "id": "family",
+          "name": "Family"
+        },
+        {
+          "id": "personal",
+          "name": "Home"
+        }
+      ],
+      "version": 4,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-02T09:30:00.000Z"
+    },
     "project": {
       "pk": "PROJECT#01PROJECT",
       "sk": "META",
@@ -2688,7 +2795,7 @@
       {
         "input": {
           "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
-          "area": "work",
+          "areaName": "Work",
           "date": "2026-10-06"
         },
         "want": "# Tuesday Tuesday, October 6 (Work) {{other}} Tuesday, October 6"
@@ -2696,7 +2803,7 @@
       {
         "input": {
           "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
-          "area": "personal",
+          "areaName": "Personal",
           "date": "2024-02-29"
         },
         "want": "# Thursday Thursday, February 29 (Personal) {{other}} Thursday, February 29"
@@ -2704,10 +2811,10 @@
       {
         "input": {
           "markdown": "# {{weekday}} {{date}} ({{area}}) {{other}} {{date}}",
-          "area": "work",
+          "areaName": "Family & $1 {{date}}",
           "date": "2027-01-01"
         },
-        "want": "# Friday Friday, January 1 (Work) {{other}} Friday, January 1"
+        "want": "# Friday Friday, January 1 (Family & $1 {{date}}) {{other}} Friday, January 1"
       }
     ],
     "dailyTemplateHeadings": [
@@ -3811,6 +3918,24 @@
       "bodyMarkdown": "## {{date}}\n\n[ ] Send feedback",
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-02T09:30:00.000Z"
+    },
+    "notebookAreas": {
+      "areas": [
+        {
+          "id": "work",
+          "name": "Work"
+        },
+        {
+          "id": "family",
+          "name": "Family"
+        },
+        {
+          "id": "personal",
+          "name": "Home"
+        }
+      ],
+      "version": 4,
       "updatedAt": "2026-10-02T09:30:00.000Z"
     },
     "task": {

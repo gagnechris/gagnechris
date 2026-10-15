@@ -195,7 +195,7 @@ test('120 old done tasks don’t hide the 3 open ones on Today and Tasks', async
   }
 });
 
-test('All shows both areas, and the choice is kept for the next visit', async ({
+test('the area switch has only my areas, and the task list spans them until filtered', async ({
   page,
   apps,
   signIn,
@@ -206,21 +206,20 @@ test('All shows both areas, and the choice is kept for the next visit', async ({
   await seed.task({ title: `${prefix} home thing`, area: 'personal' });
   await signIn();
   await page.goto(`${apps.notebook}/tasks`);
+  const radios = page
+    .getByRole('radiogroup', { name: 'Notebook area' })
+    .getByRole('radio');
+  await expect(radios).toHaveText(['Work', 'Personal']);
+
   const open = page.getByRole('list', { name: 'Open tasks' });
   await expect(open.getByText(`${prefix} work thing`)).toBeVisible();
-  await expect(open.getByText(`${prefix} home thing`)).toHaveCount(0);
-
-  const all = page
-    .getByRole('radiogroup', { name: 'Notebook area' })
-    .getByRole('radio', { name: 'All' });
-  await all.click();
-  await expect(all).toHaveAttribute('aria-checked', 'true');
-  await expect(open.getByText(`${prefix} work thing`)).toBeVisible();
   await expect(open.getByText(`${prefix} home thing`)).toBeVisible();
 
-  await page.goto(`${apps.notebook}/tasks`);
-  await expect(all).toHaveAttribute('aria-checked', 'true');
+  await page
+    .getByRole('combobox', { name: 'Filter by area' })
+    .selectOption('personal');
   await expect(open.getByText(`${prefix} home thing`)).toBeVisible();
+  await expect(open.getByText(`${prefix} work thing`)).toHaveCount(0);
 });
 
 test('⌘K finds a page, a task and a daily note; Enter opens each where it lives; Esc gives focus back', async ({

@@ -1,8 +1,10 @@
+import { useNotebookAreas } from '@gagnechris/app-core';
 import {
-  DEFAULT_NOTEBOOK_AREA_FILTER,
-  isNotebookAreaFilter,
   NOTEBOOK_AREA_STORAGE_KEY,
-  type NotebookAreaFilter,
+  notebookAreaName,
+  resolveNotebookArea,
+  type NotebookArea,
+  type NotebookAreaEntry,
 } from '@gagnechris/shared';
 import {
   createContext,
@@ -19,26 +21,25 @@ export type KeyValueStore = {
   setItem(key: string, value: string): Promise<void>;
 };
 
+/** The stored area id, or null; it is checked against the user's areas when read. */
 export async function readStoredArea(
   store: KeyValueStore,
-): Promise<NotebookAreaFilter> {
+): Promise<string | null> {
   try {
-    const raw = await store.getItem(NOTEBOOK_AREA_STORAGE_KEY);
-    if (isNotebookAreaFilter(raw)) return raw;
+    return await store.getItem(NOTEBOOK_AREA_STORAGE_KEY);
   } catch {
-    // Unreadable storage: fall back to the default area.
+    return null;
   }
-  return DEFAULT_NOTEBOOK_AREA_FILTER;
 }
 
-type AreaState = {
-  area: NotebookAreaFilter;
-  setArea: (area: NotebookAreaFilter) => void;
+type StoredAreaState = {
+  stored: string | null;
+  setArea: (area: NotebookArea) => void;
   /** The device store the area lives in, for other per-device settings. */
   store: KeyValueStore;
 };
 
-const AreaContext = createContext<AreaState | null>(null);
+const AreaContext = createContext<StoredAreaState | null>(null);
 
 /** Renders nothing until the stored area is read, so screens never flash the default. */
 export const AreaProvider = ({
@@ -48,12 +49,12 @@ export const AreaProvider = ({
   store: KeyValueStore;
   children: ReactNode;
 }) => {
-  const [area, setAreaState] = useState<NotebookAreaFilter | null>(null);
+  const [stored, setStored] = useState<{ value: string | null } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void readStoredArea(store).then((stored) => {
-      if (!cancelled) setAreaState((current) => current ?? stored);
+    void readStoredArea(store).then((value) => {
+      if (!cancelled) setStored((current) => current ?? { value });
     });
     return () => {
       cancelled = true;
@@ -61,8 +62,8 @@ export const AreaProvider = ({
   }, [store]);
 
   const setArea = useCallback(
-    (next: NotebookAreaFilter) => {
-      setAreaState(next);
+    (next: NotebookArea) => {
+      setStored({ value: next });
       store.setItem(NOTEBOOK_AREA_STORAGE_KEY, next).catch(() => {
         // Not persisted; the choice still holds for this run.
       });
@@ -71,15 +72,32 @@ export const AreaProvider = ({
   );
 
   const value = useMemo(
-    () => (area ? { area, setArea, store } : null),
-    [area, setArea, store],
+    () => (stored ? { stored: stored.value, setArea, store } : null),
+    [stored, setArea, store],
   );
   if (!value) return null;
   return <AreaContext.Provider value={value}>{children}</AreaContext.Provider>;
 };
 
+type AreaState = {
+  /** The switch's area: the stored one while it is still listed, else the first. */
+  area: NotebookArea;
+  areaName: string;
+  areas: readonly NotebookAreaEntry[];
+  setArea: (area: NotebookArea) => void;
+  store: KeyValueStore;
+};
+
 export function useArea(): AreaState {
   const value = useContext(AreaContext);
   if (!value) throw new Error('useArea needs an AreaProvider');
-  return value;
+  const areas = useNotebookAreas();
+  const area = resolveNotebookArea(value.stored, areas);
+  return {
+    area,
+    areaName: notebookAreaName(areas, area),
+    areas,
+    setArea: value.setArea,
+    store: value.store,
+  };
 }

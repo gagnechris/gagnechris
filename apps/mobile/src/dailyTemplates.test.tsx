@@ -75,6 +75,19 @@ describe('daily templates on iOS', () => {
     expect(server.state.writes).toBe(0);
   });
 
+  it('lists a template for each of my areas, named as the area', async () => {
+    server.state.areas = [
+      { id: 'work', name: 'Work' },
+      { id: 'personal', name: 'Personal' },
+      { id: 'family', name: 'Family' },
+    ];
+    const renderer = await launch(<DailyTemplatesScreen />);
+    await act(async () => byLabel(renderer, 'Family').props.onPress());
+    await settle(10);
+    expect(input(renderer, 'Family template').props.value).toBe('');
+    expect(allText(renderer)).toContain('New Family notes start like this.');
+  });
+
   it('saves checklists and never saves task lines', async () => {
     const renderer = await launch(<DailyTemplatesScreen />);
     const editor = () => input(renderer, 'Work template');

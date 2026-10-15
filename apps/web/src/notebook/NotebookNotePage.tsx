@@ -19,7 +19,7 @@ import {
   notePayloadFromDraft,
   type NoteDraft,
 } from '@gagnechris/shared';
-import { NOTEBOOK_AREA_LABELS } from './notebookAreaPreference';
+import { useNotebookAreaName } from './useNotebookAreaName';
 import { noteHref } from './noteHref';
 
 type StandingNoteDraft = NoteDraft & { archived: boolean };
@@ -37,6 +37,7 @@ const toPayload = (draft: StandingNoteDraft, note: Note) => ({
 });
 
 export default function NotebookNotePage() {
+  const areaName = useNotebookAreaName();
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const deleteMutation = useDeleteNoteMutation();
@@ -82,7 +83,7 @@ export default function NotebookNotePage() {
 
   const insertTemplate = useInsertNoteTemplate(editorRef, {
     date: today,
-    area: entity?.area,
+    areaName: entity ? areaName(entity.area) : undefined,
   });
 
   if (loadError) {
@@ -145,7 +146,7 @@ export default function NotebookNotePage() {
         {entity.title || 'Untitled note'}
       </h1>
       <p className="workspace-panel__lede">
-        {NOTEBOOK_AREA_LABELS[entity.area]} standing note
+        {areaName(entity.area)} standing note
         {draft.archived ? ' · Archived' : ''}
       </p>
 
@@ -180,7 +181,7 @@ export default function NotebookNotePage() {
 
       <NotebookMarkdownBody
         editorRef={editorRef}
-        templates={{ date: today, area: entity.area }}
+        templates={{ date: today, areaName: areaName(entity.area) }}
         note={entity}
         value={draft.bodyMarkdown}
         onChange={(bodyMarkdown) =>

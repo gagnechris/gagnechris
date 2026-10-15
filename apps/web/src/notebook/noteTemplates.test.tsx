@@ -19,7 +19,7 @@ import {
 } from 'vitest';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom';
 import type { Note, NoteTemplate, Task } from '@gagnechris/app-core';
-import { QueryClientTestProvider } from '../test-utils';
+import { QueryClientTestProvider, workOutletContext } from '../test-utils';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
@@ -270,7 +270,7 @@ function renderToday() {
     [
       {
         path: '/',
-        element: <Outlet context={{ areaFilter: 'work' }} />,
+        element: <Outlet context={workOutletContext} />,
         children: [{ path: 'today', element: <NotebookTodayPage /> }],
       },
     ],

@@ -260,7 +260,7 @@ export const setCachedNote = (queryClient: QueryClient, note: Note): void => {
     })) {
       if (!(data instanceof Set)) continue;
       const [area, from, to] = key.slice(-3) as [string, string, string];
-      if (area !== 'all' && area !== note.area) continue;
+      if (area !== '*' && area !== note.area) continue;
       if (note.date < from || note.date > to) continue;
       const next = new Set(data);
       if (note.deleted) next.delete(note.date);

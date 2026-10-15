@@ -60,6 +60,8 @@ func TestKeysMatchTheTypeScriptBuilders(t *testing.T) {
 		"dailyTemplateSk()":                              DailyTemplateSk(),
 		"noteTemplatesPk({userId})":                      NoteTemplatesPk("{userId}"),
 		"noteTemplateSk({templateId})":                   NoteTemplateSk("{templateId}"),
+		"notebookAreasPk({userId})":                      NotebookAreasPk("{userId}"),
+		"notebookAreasSk()":                              NotebookAreasSk(),
 		"rateContactIpPk({ip})":                          RateContactIPPk("{ip}"),
 		"rateResumeIpPk({ip})":                           RateResumeIPPk("{ip}"),
 		"rateNotebookImageUserPk({userId})":              RateNotebookImageUserPk("{userId}"),

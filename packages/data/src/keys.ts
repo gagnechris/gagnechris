@@ -267,6 +267,14 @@ export function dailyTemplateSk(): string {
   return SK_META;
 }
 
+export function notebookAreasPk(userId: string): string {
+  return `USER#${userId}#NOTEBOOK_AREAS`;
+}
+
+export function notebookAreasSk(): string {
+  return SK_META;
+}
+
 /** One partition per user, so a Query lists every template. */
 export function noteTemplatesPk(userId: string): string {
   return `USER#${userId}#NOTE_TEMPLATES`;
@@ -451,6 +459,10 @@ export const keys = {
     noteTemplate: (userId: string, id: string) => ({
       pk: noteTemplatesPk(userId),
       sk: noteTemplateSk(id),
+    }),
+    areas: (userId: string) => ({
+      pk: notebookAreasPk(userId),
+      sk: notebookAreasSk(),
     }),
   },
 } as const;

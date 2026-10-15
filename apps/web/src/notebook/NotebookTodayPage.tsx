@@ -8,11 +8,7 @@ import {
   type CSSProperties,
 } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
-import {
-  useDailyNoteDatesQuery,
-  type NotebookArea,
-  type Task,
-} from '@gagnechris/app-core';
+import { useDailyNoteDatesQuery, type Task } from '@gagnechris/app-core';
 import { addDays, isCalendarDay, snoozeBaseDay } from '@gagnechris/shared';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { monthBounds } from '../kit/calendarDates';
@@ -25,13 +21,8 @@ import {
 import { TodaySheet } from '../kit/tasks/TodaySheet';
 import ShellIcon from '../workspace/ui/ShellIcon';
 import { useOpenWorkspaceSearch } from '../workspace/workspaceSearch';
-import {
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_LABELS,
-  type NotebookAreaFilter,
-} from './notebookAreaPreference';
 import { TaskSyntaxCheatSheet } from '../kit/tasks/TaskSyntaxCheatSheet';
-import { DayTitle, TodayEditor } from './TodayEditor';
+import { TodayEditor } from './TodayEditor';
 import { useLocalToday } from './useLocalToday';
 import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
@@ -57,7 +48,7 @@ function resolveDate(param: string | null, today: string): string {
 }
 
 export default function NotebookTodayPage() {
-  const { areaFilter, setAreaFilter } =
+  const { area, areaName, areas, setArea } =
     useOutletContext<NotebookOutletContext>();
   const openSearch = useOpenWorkspaceSearch();
   const stripRef = useRef<HTMLButtonElement>(null);
@@ -197,36 +188,24 @@ export default function NotebookTodayPage() {
     [calendarMonth, date],
   );
 
-  const writingArea: NotebookArea | null =
-    areaFilter === 'all' ? null : areaFilter;
+  const datesQuery = useDailyNoteDatesQuery(area, from, to, true);
 
-  const datesQuery = useDailyNoteDatesQuery(
-    writingArea ?? undefined,
-    from,
-    to,
-    writingArea !== null,
-  );
-
-  const noteKey = writingArea ? `${writingArea}:${date}` : null;
+  const noteKey = `${area}:${date}`;
   const [embedded, setEmbedded] = useState<{
     key: string;
     ids: ReadonlySet<string> | null;
   } | null>(null);
   const onEmbeddedIds = useCallback(
     (ids: ReadonlySet<string> | null) => {
-      if (noteKey) setEmbedded({ key: noteKey, ids });
+      setEmbedded({ key: noteKey, ids });
     },
     [noteKey],
   );
-  // With no note on the page (All), nothing is embedded.
-  const embeddedIds: ReadonlySet<string> | null = noteKey
-    ? embedded?.key === noteKey
-      ? embedded.ids
-      : null
-    : NO_IDS;
+  const embeddedIds: ReadonlySet<string> | null =
+    embedded?.key === noteKey ? embedded.ids : null;
 
   const { buckets, stillOpenRows, loading, loadError } = useTodayTasks({
-    area: writingArea ?? undefined,
+    area,
     day: date,
     embeddedIds,
   });
@@ -236,7 +215,6 @@ export default function NotebookTodayPage() {
     onDrop,
     error: actionError,
   } = useTodayActions(buckets);
-  const readOnly = writingArea === null;
   const comingUpCount = buckets.comingUp.reduce(
     (n, d) => n + d.tasks.length,
     0,
@@ -370,14 +348,12 @@ export default function NotebookTodayPage() {
                 <select
                   className="kit-input notebook-today__area"
                   aria-label="Notebook area"
-                  value={areaFilter}
-                  onChange={(e) =>
-                    setAreaFilter(e.target.value as NotebookAreaFilter)
-                  }
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
                 >
-                  {NOTEBOOK_AREA_FILTERS.map((area) => (
-                    <option key={area} value={area}>
-                      {NOTEBOOK_AREA_LABELS[area]}
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
                     </option>
                   ))}
                 </select>
@@ -428,32 +404,21 @@ export default function NotebookTodayPage() {
                 />
               </svg>
             </button>
-            {writingArea ? (
-              <TodayEditor
-                // A new key after a delete: a fresh editor on the day's placeholder.
-                key={`${writingArea}:${date}:${editorGeneration}`}
-                area={writingArea}
-                date={date}
-                today={today}
-                onUnsavedChange={onUnsavedChange}
-                onEmbeddedIds={onEmbeddedIds}
-                appendEmbedRef={appendEmbedRef}
-                onNoteReady={setNoteReady}
-                highlightTaskId={highlightTaskId}
-                onHighlighted={clearHighlight}
-                onDeleted={() => setEditorGeneration((n) => n + 1)}
-              />
-            ) : (
-              <>
-                <div className="workspace-action-bar notebook-today__header">
-                  <DayTitle area={null} date={date} today={today} />
-                </div>
-                <p className="workspace-panel__lede">
-                  Choose Work or Personal in the area switcher to write a daily
-                  note or act on tasks. All shows both areas, read-only.
-                </p>
-              </>
-            )}
+            <TodayEditor
+              // A new key after a delete: a fresh editor on the day's placeholder.
+              key={`${area}:${date}:${editorGeneration}`}
+              area={area}
+              areaName={areaName}
+              date={date}
+              today={today}
+              onUnsavedChange={onUnsavedChange}
+              onEmbeddedIds={onEmbeddedIds}
+              appendEmbedRef={appendEmbedRef}
+              onNoteReady={setNoteReady}
+              highlightTaskId={highlightTaskId}
+              onHighlighted={clearHighlight}
+              onDeleted={() => setEditorGeneration((n) => n + 1)}
+            />
           </div>
           <aside
             id={SIDE_ID}
@@ -489,7 +454,6 @@ export default function NotebookTodayPage() {
             <StillOpenPanel
               rows={stillOpenRows}
               snoozeFrom={snoozeBaseDay(date, today)}
-              readOnly={readOnly}
               loading={loading.stillOpen}
               error={tasksError}
               onToggle={onToggle}
@@ -500,7 +464,6 @@ export default function NotebookTodayPage() {
             <ComingUpPanel
               days={buckets.comingUp}
               day={date}
-              readOnly={readOnly}
               loading={loading.comingUp}
               onToggle={onToggle}
               taskTo={taskTo}
@@ -533,7 +496,6 @@ export default function NotebookTodayPage() {
             comingUp={buckets.comingUp}
             day={date}
             snoozeFrom={snoozeBaseDay(date, today)}
-            readOnly={readOnly}
             loading={tasksLoading}
             error={tasksError}
             onClose={closeSheet}
@@ -549,8 +511,6 @@ export default function NotebookTodayPage() {
     </TaskParentsProvider>
   );
 }
-
-const NO_IDS: ReadonlySet<string> = new Set();
 
 const SIDE_ID = 'notebook-today-side';
 const SIDE_MIN = 224;

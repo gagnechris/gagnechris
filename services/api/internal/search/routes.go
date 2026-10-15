@@ -58,7 +58,7 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 		return nil, err
 	}
 	q, _ := v.String("q", true, true, api.MinLen(1), api.MaxLen(contract.Data.Notebook.SearchMaxLength))
-	area, _ := v.Enum("area", false, notebook.Areas...)
+	area, _ := v.String("area", false, false, notebook.AreaRule)
 	limit, hasLimit := v.Int("limit", false, api.Positive, api.MaxInt(contract.Data.Notebook.SearchLimitMax))
 	if err := v.Err(); err != nil {
 		return nil, err
@@ -69,9 +69,11 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 
 	rd := notebook.Reader{Table: h.table, OnCorrupt: store.LogCorrupt(r.Log, r.Metrics)}
 	userID := r.UserID()
-	areas := notebook.Areas
-	if area != "" {
-		areas = []string{area}
+	areas := []string{area}
+	if area == "" {
+		if areas, err = rd.AreaIDs(ctx, userID); err != nil {
+			return nil, err
+		}
 	}
 	var noteSources []source[notebook.Note]
 	for _, a := range areas {

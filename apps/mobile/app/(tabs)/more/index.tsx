@@ -1,4 +1,3 @@
-import { NOTEBOOK_AREA_LABELS } from '@gagnechris/shared';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { useArea } from '../../../src/area';
@@ -16,7 +15,7 @@ import { YourApps } from '../../../src/ui/YourApps';
 
 const MoreScreen = () => {
   const { user, signOut } = useSession();
-  const { area } = useArea();
+  const { areaName, areas } = useArea();
   const pickArea = useAreaPicker();
   const router = useRouter();
   if (!user) return null;
@@ -36,15 +35,15 @@ const MoreScreen = () => {
       <Section title="Notebook">
         <Row
           title="Default area"
-          detail={NOTEBOOK_AREA_LABELS[area]}
-          accessibilityHint="Chooses Work, Personal or All"
+          detail={areaName}
+          accessibilityHint={`Chooses ${areas.map((a) => a.name).join(', ')}`}
           onPress={pickArea}
           trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
         />
         <Row
           title="Daily templates"
           divider
-          accessibilityHint="Edits what new Work and Personal daily notes start with"
+          accessibilityHint="Edits what each area's new daily notes start with"
           onPress={() => router.push('/more/templates')}
           trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
         />

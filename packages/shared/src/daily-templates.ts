@@ -1,7 +1,6 @@
 import * as z from 'zod';
 import { formatCalendarDay, weekdayName } from './calendar.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
-import { NOTEBOOK_AREA_LABELS } from './notebook-area.js';
 import {
   NotebookAreaSchema,
   VersionSchema,
@@ -17,22 +16,29 @@ import {
 
 export const DAILY_TEMPLATE_MAX_BYTES = 10_000;
 
-export const DEFAULT_DAILY_TEMPLATES: Record<NotebookArea, string> = {
+/** The built-in templates of the default areas; any other area's is blank. */
+export const DEFAULT_DAILY_TEMPLATES: Readonly<Record<string, string>> = {
   work: '## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n',
   personal: '## Plans\n- \n\n## Errands\n- [ ] \n\n## Notes\n',
 };
 
 export const DAILY_TEMPLATE_DATE_TOKEN = '{{date}}';
 
-/** `{{weekday}}`, `{{date}}` and `{{area}}` for the note's own day; other `{{…}}` stay. */
+export function defaultDailyTemplateMarkdown(area: NotebookArea): string {
+  return Object.prototype.hasOwnProperty.call(DEFAULT_DAILY_TEMPLATES, area)
+    ? DEFAULT_DAILY_TEMPLATES[area]!
+    : '';
+}
+
+/** `{{weekday}}`, `{{date}}` and `{{area}}` (the area's name) for the note's own day; other `{{…}}` stay. */
 export function fillDailyTemplate(
   markdown: string,
-  { area, date }: { area: NotebookArea; date: string },
+  { areaName, date }: { areaName: string; date: string },
 ): string {
   const values: Record<string, string> = {
     weekday: weekdayName(date, 'long'),
     date: formatCalendarDay(date, { weekday: 'long', month: 'long' }),
-    area: NOTEBOOK_AREA_LABELS[area],
+    area: areaName,
   };
   return markdown.replace(
     /\{\{(weekday|date|area)\}\}/g,
@@ -180,7 +186,7 @@ export type UpdateDailyTemplateRequest = z.infer<
 export function defaultDailyTemplate(area: NotebookArea): DailyTemplate {
   return {
     area,
-    bodyMarkdown: DEFAULT_DAILY_TEMPLATES[area],
+    bodyMarkdown: defaultDailyTemplateMarkdown(area),
     carryOverSection: null,
     isDefault: true,
     version: 0,

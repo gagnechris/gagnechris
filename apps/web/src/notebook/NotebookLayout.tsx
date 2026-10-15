@@ -1,37 +1,40 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation, useSearchParams } from 'react-router-dom';
-import { useTasksQuery } from '@gagnechris/app-core';
+import {
+  useNotebookAreasQuery,
+  useTasksQuery,
+  type NotebookArea,
+  type NotebookAreaEntry,
+} from '@gagnechris/app-core';
+import {
+  DEFAULT_NOTEBOOK_AREAS,
+  notebookAreaName,
+  resolveNotebookArea,
+} from '@gagnechris/shared';
 import { WorkspaceFrame } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
 import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import {
-  areaQueryParam,
-  isNotebookAreaFilter,
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_LABELS,
-  readNotebookAreaFilter,
-  writeNotebookAreaFilter,
-  type NotebookAreaFilter,
+  readStoredNotebookArea,
+  writeStoredNotebookArea,
 } from './notebookAreaPreference';
 import NotebookSearchPalette from './NotebookSearchPalette';
 import SidebarStandingNotes from './SidebarStandingNotes';
 import { useLocalToday } from './useLocalToday';
 
 export type NotebookOutletContext = {
-  areaFilter: NotebookAreaFilter;
-  setAreaFilter: (next: NotebookAreaFilter) => void;
+  area: NotebookArea;
+  areaName: string;
+  /** The user's areas, in switch order. */
+  areas: readonly NotebookAreaEntry[];
+  setArea: (next: NotebookArea) => void;
 };
 
-const AREA_OPTIONS = NOTEBOOK_AREA_FILTERS.map((value) => ({
-  value,
-  label: NOTEBOOK_AREA_LABELS[value],
-}));
-
 /** Same query as Today's Still open, so the two share one cache entry. */
-function useTodayOpenCount(areaFilter: NotebookAreaFilter): string | undefined {
+function useTodayOpenCount(area: NotebookArea): string | undefined {
   const day = useLocalToday();
   const showing = useTasksQuery({
-    area: areaQueryParam(areaFilter),
+    area,
     open: true,
     startOnOrBefore: day,
     today: day,
@@ -49,29 +52,38 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const fromUrl = searchParams.get('area');
   const { pathname } = useLocation();
-  const areaFilter: NotebookAreaFilter = isNotebookAreaFilter(fromUrl)
-    ? fromUrl
-    : readNotebookAreaFilter();
-  const todayCount = useTodayOpenCount(areaFilter);
+  const areasQuery = useNotebookAreasQuery();
+  // Until the list loads, the default areas stand in for it, which is what
+  // a user who never changed them has; any other area waits for the list.
+  const loaded = areasQuery.data !== undefined || areasQuery.isError;
+  const areas = areasQuery.data?.areas ?? DEFAULT_NOTEBOOK_AREAS;
+  const wanted = fromUrl ?? readStoredNotebookArea();
+  const waiting =
+    !loaded && wanted !== null && !areas.some((a) => a.id === wanted);
+  const area = resolveNotebookArea(wanted, areas);
+  const todayCount = useTodayOpenCount(area);
 
   useEffect(() => {
-    if (fromUrl === areaFilter) {
-      writeNotebookAreaFilter(areaFilter);
+    if (waiting) return;
+    if (fromUrl === area) {
+      writeStoredNotebookArea(area);
       return;
     }
     // `/` is mid-redirect to Today; replacing its URL here would undo that.
     if (pathname === '/') return;
     setSearchParams(
       (params) => {
-        params.set('area', areaFilter);
+        params.set('area', area);
         return params;
       },
       { replace: true },
     );
-  }, [areaFilter, fromUrl, pathname, setSearchParams]);
+  }, [area, fromUrl, pathname, setSearchParams, waiting]);
 
-  const setAreaFilter = (next: NotebookAreaFilter) => {
-    writeNotebookAreaFilter(next);
+  if (waiting) return null;
+
+  const setArea = (next: NotebookArea) => {
+    writeStoredNotebookArea(next);
     setSearchParams(
       (params) => {
         params.set('area', next);
@@ -80,11 +92,13 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
       { replace: true },
     );
   };
-  const withArea = (path: string) => `${path}?area=${areaFilter}`;
+  const withArea = (path: string) => `${path}?area=${area}`;
 
   const outletContext: NotebookOutletContext = {
-    areaFilter,
-    setAreaFilter,
+    area,
+    areaName: notebookAreaName(areas, area),
+    areas,
+    setArea,
   };
 
   return (
@@ -94,10 +108,11 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
       collapsible
       sidebarTop={
         <SegmentedRadio
+          className="notebook-area-switch"
           label="Notebook area"
-          options={AREA_OPTIONS}
-          value={areaFilter}
-          onChange={setAreaFilter}
+          options={areas.map((a) => ({ value: a.id, label: a.name }))}
+          value={area}
+          onChange={setArea}
         />
       }
       sections={[
@@ -134,12 +149,17 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
               label: 'Note templates',
               icon: 'templates',
             },
+            {
+              to: withArea('/settings/areas'),
+              label: 'Areas',
+              icon: 'areas',
+            },
           ],
         },
       ]}
-      sidebarBottom={<SidebarStandingNotes areaFilter={areaFilter} />}
+      sidebarBottom={<SidebarStandingNotes area={area} />}
       renderSearch={(close) => (
-        <NotebookSearchPalette onClose={close} areaFilter={areaFilter} />
+        <NotebookSearchPalette onClose={close} area={area} areas={areas} />
       )}
     >
       <Outlet context={outletContext} />

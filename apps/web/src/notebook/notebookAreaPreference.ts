@@ -1,35 +1,20 @@
-import {
-  DEFAULT_NOTEBOOK_AREA_FILTER,
-  isNotebookAreaFilter,
-  NOTEBOOK_AREA_STORAGE_KEY,
-  type NotebookAreaFilter,
-} from '@gagnechris/shared';
+import { NOTEBOOK_AREA_STORAGE_KEY } from '@gagnechris/shared';
 
-export {
-  areaForNewItem,
-  areaQueryParam,
-  DEFAULT_NOTEBOOK_AREA_FILTER,
-  isNotebookAreaFilter,
-  NOTEBOOK_AREA_FILTERS,
-  NOTEBOOK_AREA_HEADINGS,
-  NOTEBOOK_AREA_LABELS,
-  NOTEBOOK_AREA_STORAGE_KEY,
-  type NotebookAreaFilter,
-} from '@gagnechris/shared';
+export { NOTEBOOK_AREA_STORAGE_KEY } from '@gagnechris/shared';
 
-export function readNotebookAreaFilter(): NotebookAreaFilter {
+/** The last area chosen on this device, which may no longer be one of the user's. */
+export function readStoredNotebookArea(): string | null {
   try {
-    const raw = localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY);
-    if (isNotebookAreaFilter(raw)) return raw;
+    return localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY);
   } catch {
     // private mode / blocked storage
+    return null;
   }
-  return DEFAULT_NOTEBOOK_AREA_FILTER;
 }
 
-export function writeNotebookAreaFilter(filter: NotebookAreaFilter): void {
+export function writeStoredNotebookArea(area: string): void {
   try {
-    localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, filter);
+    localStorage.setItem(NOTEBOOK_AREA_STORAGE_KEY, area);
   } catch {
     // private mode / blocked storage
   }

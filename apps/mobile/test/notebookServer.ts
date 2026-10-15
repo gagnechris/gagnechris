@@ -146,6 +146,11 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     dailyTemplates: {} as Partial<
       Record<Note['area'], { bodyMarkdown: string; version: number }>
     >,
+    /** The user's areas, as `GET /api/notebook/areas` answers them. */
+    areas: [
+      { id: 'work', name: 'Work' },
+      { id: 'personal', name: 'Personal' },
+    ] as { id: string; name: string }[],
   };
   let clock = Date.parse('2026-10-02T12:00:00.000Z');
   const now = () => new Date((clock += 1_000)).toISOString();
@@ -263,7 +268,7 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
     const params = url.searchParams;
     const note = url.pathname.match(/^\/api\/notebook\/notes\/([^/]+)$/);
     const template = url.pathname.match(
-      /^\/api\/notebook\/templates\/daily\/(work|personal)$/,
+      /^\/api\/notebook\/templates\/daily\/([a-z0-9-]+)$/,
     );
     if (template) {
       const area = template[1] as Note['area'];
@@ -289,12 +294,15 @@ export const notebookServer = (notes: Note[], tasks: Task[] = []) => {
       });
     }
     const daily = url.pathname.match(
-      /^\/api\/notebook\/notes\/daily\/(work|personal)\/([\d-]+)(\/open)?$/,
+      /^\/api\/notebook\/notes\/daily\/([a-z0-9-]+)\/([\d-]+)(\/open)?$/,
     );
     const task = url.pathname.match(
       /^\/api\/notebook\/tasks\/([^/]+)(\/complete|\/reopen)?$/,
     );
 
+    if (route === 'GET /api/notebook/areas') {
+      return json(200, { areas: state.areas, version: 0, updatedAt: null });
+    }
     if (route === 'GET /api/notebook/sync/changes') {
       const minimum = state.minClientVersion;
       if (

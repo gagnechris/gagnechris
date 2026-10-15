@@ -10,11 +10,7 @@ import { EditorView, keymap } from '@codemirror/view';
 import { useCallback, useId, useMemo, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useNoteTemplatesQuery, type NoteTemplate } from '@gagnechris/app-core';
-import {
-  fillNoteTemplate,
-  filterNoteTemplates,
-  type NotebookArea,
-} from '@gagnechris/shared';
+import { fillNoteTemplate, filterNoteTemplates } from '@gagnechris/shared';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { NoteTemplateOptions } from './NoteTemplatePicker';
@@ -199,20 +195,20 @@ const NONE: readonly NoteTemplate[] = [];
 /** Fills and inserts a template chosen outside the editor, then focuses it. */
 export function useInsertNoteTemplate(
   editorRef: RefObject<MarkdownEditorHandle | null>,
-  fillFor: { date: string; area?: NotebookArea },
+  fillFor: { date: string; areaName?: string },
 ) {
-  const { date, area } = fillFor;
+  const { date, areaName } = fillFor;
   return useCallback(
     (template: NoteTemplate) => {
       const view = editorRef.current?.view();
       if (!view) return;
       insertNoteTemplate(
         view,
-        fillNoteTemplate(template.bodyMarkdown, { date, area }),
+        fillNoteTemplate(template.bodyMarkdown, { date, areaName }),
       );
       view.focus();
     },
-    [editorRef, date, area],
+    [editorRef, date, areaName],
   );
 }
 

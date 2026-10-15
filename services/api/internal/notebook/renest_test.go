@@ -26,7 +26,7 @@ func TestUpdateTaskReturnsTheCommittedTaskWhenRenestHitsADeletedTask(t *testing.
 	clock := func() time.Time { return testNow }
 	f := &datatest.Fake{}
 	table := fakeTable(f)
-	h := handlers{notes: newNotesRepo(table, clock), tasks: newTasksRepo(table, clock), table: table, now: clock}
+	h := handlers{notes: newNotesRepo(table, clock), tasks: newTasksRepo(table, clock), areas: &areasRepo{table: table, now: clock}, table: table, now: clock}
 	at := testNow.Format("2006-01-02T15:04:05.000Z")
 	home := noteID
 	stored := Task{
@@ -43,6 +43,9 @@ func TestUpdateTaskReturnsTheCommittedTaskWhenRenestHitsADeletedTask(t *testing.
 
 	taskReads := []data.Item{h.tasks.base.storedItem(stored, nil, nil), h.tasks.base.storedItem(tombstone, nil, nil)}
 	f.GetItemFn = func(in *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
+		if attrS(in.Key["pk"]) == keys.NotebookAreasPk("u1") {
+			return &dynamodb.GetItemOutput{}, nil
+		}
 		if attrS(in.Key["pk"]) == keys.NotePk("u1", noteID) {
 			return &dynamodb.GetItemOutput{Item: h.notes.base.storedItem(note, nil, nil)}, nil
 		}

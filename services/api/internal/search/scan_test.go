@@ -43,6 +43,11 @@ func (f *fakeIndex) add(item data.Item) {
 	})
 }
 
+// GetItem finds no area list, so search walks the default areas.
+func (f *fakeIndex) GetItem(context.Context, *dynamodb.GetItemInput, ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
+	return &dynamodb.GetItemOutput{}, nil
+}
+
 func (f *fakeIndex) Query(_ context.Context, in *dynamodb.QueryInput, _ ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

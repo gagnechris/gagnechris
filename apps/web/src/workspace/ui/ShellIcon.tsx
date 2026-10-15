@@ -106,6 +106,14 @@ const PATHS = {
       <path d="M8 8h8M8 12h8M8 16h5" />
     </>
   ),
+  areas: (
+    <>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+      <path d="M17.25 14v6.5M14 17.25h6.5" />
+    </>
+  ),
   more: (
     <>
       <circle cx="5" cy="12" r="1.6" />
