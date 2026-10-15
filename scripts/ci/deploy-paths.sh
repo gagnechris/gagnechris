@@ -51,6 +51,28 @@ WEB_PATTERNS=(
   '.github/actions/setup/*'
 )
 
+# components runs deploy-components.sh: the Storybook build of every story,
+# which imports packages and apps/web modules, synced to its own host.
+COMPONENTS_PATTERNS=(
+  'apps/storybook/*'
+  'apps/web/*'
+  'packages/app-core/*'
+  'packages/public-ui/*'
+  'packages/shared/*'
+  'packages/tokens/*'
+  'packages/ui/*'
+  'infra/lib/stacks/components-stack.ts'
+  'infra/lib/config/ssm-params.json'
+  'package.json'
+  'package-lock.json'
+  'tsconfig.base.json'
+  '.nvmrc'
+  'scripts/deploy-components.sh'
+  'scripts/ssm-param-name.sh'
+  '.github/workflows/cdk.yml'
+  '.github/actions/setup/*'
+)
+
 changed="$(git diff --name-only "${BASE}" "${HEAD}")"
 
 # Usage: matches <ignore-glob> <pattern>...  ('' ignores nothing)
@@ -74,3 +96,4 @@ matches() {
 # Markdown (e.g. infra/RUNBOOK.md) never affects synth, so it doesn't redeploy CDK.
 if matches '*.md' "${CDK_PATTERNS[@]}"; then echo 'cdk=true'; else echo 'cdk=false'; fi
 if matches '' "${WEB_PATTERNS[@]}"; then echo 'web=true'; else echo 'web=false'; fi
+if matches '*.md' "${COMPONENTS_PATTERNS[@]}"; then echo 'components=true'; else echo 'components=false'; fi

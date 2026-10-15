@@ -33,6 +33,7 @@ export const AUTH_DOMAIN = `auth.${APEX_DOMAIN}` as const;
 
 export const ADMIN_HOST = `admin.${APEX_DOMAIN}` as const;
 export const NOTEBOOK_HOST = `notebook.${APEX_DOMAIN}` as const;
+export const COMPONENTS_HOST = `components.${APEX_DOMAIN}` as const;
 
 /** Only the dev Cognito client trusts these; prod clients and prod CORS never do. */
 export const DEV_ORIGIN = 'http://localhost:5173' as const;

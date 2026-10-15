@@ -81,6 +81,9 @@ npm run storybook        # the component catalog on http://localhost:6006
 npm run storybook:build  # static catalog → apps/storybook/storybook-static (CI)
 ```
 
+The catalog from `main` is live at <https://components.gagnechris.com> (not
+indexed); `infra/RUNBOOK.md` covers its host and deploy.
+
 `apps/storybook` catalogs the shared UI (`packages/ui`), the Admin, Notebook and
 workspace components in `apps/web` and the public page bodies in
 `packages/public-ui`. Stories live in `apps/storybook/src/<area>/` and import

@@ -38,7 +38,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - Dev → prod API: `npm run dev:prod-api` (prints PRODUCTION banner)
 - Local CMS stack: `npm run local:dev` (DynamoDB Local + the Go API, built once at start + publisher static + the three Vite apps; fake auth)
 - Preview: `npm run preview` (public production build locally; `WEB_APP=admin` or `notebook` for the others)
-- Storybook: `npm run storybook` (the component catalog on :6006: `packages/ui`, the Admin, Notebook and workspace components from `apps/web`, the `packages/public-ui` page bodies, each with sample data and its iOS counterpart on the docs page); `npm run storybook:build` writes the static catalog to `apps/storybook/storybook-static` (CI runs it in **Lint, test, and build**)
+- Storybook: `npm run storybook` (the component catalog on :6006: `packages/ui`, the Admin, Notebook and workspace components from `apps/web`, the `packages/public-ui` page bodies, each with sample data and its iOS counterpart on the docs page); `npm run storybook:build` writes the static catalog to `apps/storybook/storybook-static` (CI runs it in **Lint, test, and build**). Published at `https://components.gagnechris.com` (noindex) by `scripts/deploy-components.sh`, which CI runs on merge to `main` when `scripts/ci/deploy-paths.sh` reports `components=true`
 - Test: `npm test` (Vitest via `--workspaces --if-present`; mobile is separate — `npm test --prefix apps/mobile`); `npm run go:test` (`go test` on `services/api/`); `npm run test:integration -w @gagnechris/api-tests` (DynamoDB Local: the black-box HTTP suite in `services/api/test/http` against the Go API, which the setup builds unless `GO_API_BIN` is set, plus the ops tool tests; see `docs/development.md`)
 - Token drift: `npm run tokens:check` (regenerates `packages/tokens/src/variables.css`, fails on diff)
 - Publish surface drift: `npm run publish-surface:check` (regenerates the CloudFront Option B page list, KVS keys and slug cap, local publish-relevance routes and the publisher-owned S3 key list from publisher targets; fails on diff)
@@ -64,7 +64,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 
 ## Hosting & Integrations
 
-- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com` and `notebook.gagnechris.com`, one distribution each. Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
+- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com`, `notebook.gagnechris.com` and the Storybook catalog at `components.gagnechris.com` (`Components-prod`), one distribution each. Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4, only in the production public build (`GA_MEASUREMENT_ID`, set by `scripts/deploy-web.sh`); local, preview and e2e builds load no GA
 - **Node**: requires Node.js 22.22.2+ (see `.nvmrc`)

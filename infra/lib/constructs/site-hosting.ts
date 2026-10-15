@@ -160,12 +160,14 @@ export function csp(sources: {
   readonly script?: readonly string[];
   readonly img?: readonly string[];
   readonly connect?: readonly string[];
+  /** `'none'` unless a host frames its own pages. */
+  readonly frameAncestors?: string;
 }): string {
   return [
     "default-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "frame-ancestors 'none'",
+    `frame-ancestors ${sources.frameAncestors ?? "'none'"}`,
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
