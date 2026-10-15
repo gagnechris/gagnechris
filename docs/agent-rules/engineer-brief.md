@@ -4,7 +4,7 @@ The brief a coordinating session gives each agent it asks to implement a ticket.
 
 ## Before you start
 
-- Read [`CLAUDE.md`](../../CLAUDE.md) and the other rules in this folder, especially [definition-of-done](./definition-of-done.md), [git-workflow](./git-workflow.md) and [comments-and-docs](./comments-and-docs.md). Then read the docs your change touches: [architecture](../architecture.md), [data-model](../data-model.md), [development](../development.md), [adding-an-entity](../adding-an-entity.md), [mobile](../mobile.md) and `infra/RUNBOOK.md`.
+- Read [`CLAUDE.md`](../../CLAUDE.md) and the other rules in this folder, especially [definition-of-done](./definition-of-done.md), [git-workflow](./git-workflow.md), [comments-and-docs](./comments-and-docs.md) and, for any UI change, [shared-components](./shared-components.md). Then read the docs your change touches: [architecture](../architecture.md), [data-model](../data-model.md), [development](../development.md), [adding-an-entity](../adding-an-entity.md), [mobile](../mobile.md) and `infra/RUNBOOK.md`.
 - Read your ticket and its comments in Linear. The acceptance criteria are the contract. Never reword a criterion to match what you built.
 - Check that nobody else is already on it: look for a remote branch or open PR for the ticket. If you find one, stop and report.
 

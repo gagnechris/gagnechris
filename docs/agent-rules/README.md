@@ -9,4 +9,5 @@ The standing rules for the AI agents that build this repo. [`CLAUDE.md`](../../C
 | [git-workflow.md](./git-workflow.md)             | One ticket → one branch → one PR, worktrees, required checks                                                               |
 | [aws-changes.md](./aws-changes.md)               | AWS only through CDK and CI; break-glass access                                                                            |
 | [comments-and-docs.md](./comments-and-docs.md)   | Sparse comments; docs describe what exists now                                                                             |
+| [shared-components.md](./shared-components.md)   | Web UI from `packages/ui`; a missing component goes there first, with a story and an inventory update                      |
 | [aws-agent-toolkit.md](./aws-agent-toolkit.md)   | General AWS guidance for agents that use AWS tooling                                                                       |

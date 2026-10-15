@@ -104,9 +104,11 @@ iOS renders the public site natively with its own components in
 
 ## One-off elements
 
-Plain `button`, `input`, `select` and `textarea` elements in app code, and the
-component each should use. Paths are under `apps/web/src`. The Bears games
-(`games/bears/`) keep their own controls and are excluded.
+ESLint bans plain `button`, `input`, `select` and `textarea` elements in
+`apps/web/src` and `packages/public-ui`. Each one listed here carries an
+`eslint-disable-next-line no-restricted-syntax` comment with its reason. Paths
+are under `apps/web/src`. The Bears games (`games/bears/`) keep their own
+controls and are excluded.
 
 "Styled as" means the element borrows a component's CSS class without using the
 component.
@@ -139,7 +141,8 @@ None: Admin screens use the `@gagnechris/ui` components.
 ### Demos
 
 `demos/posts/index.tsx` and `demos/notebook/index.tsx` each have one view or tab
-button (`.posts-demo__view`, `.notebook-demo__tab`). Target: Tabs.
+button (`.posts-demo__view`, `.notebook-demo__tab`). They stay: each copies the
+look of the app it demonstrates.
 
 ## Duplicate styles
 

@@ -121,6 +121,25 @@ const fixtures = [
     expect: '@gagnechris/app-core',
     rule: 'no-restricted-imports',
   },
+  ...[
+    'apps/web/src/notebook',
+    'apps/web/src/admin',
+    'apps/web/src/pages',
+    'packages/public-ui/src',
+  ].map((dir) => ({
+    dir,
+    ext: 'tsx',
+    source: `export const X = () => <button type="button">x</button>;\n`,
+    expect: '@gagnechris/ui',
+    rule: 'no-restricted-syntax',
+  })),
+  {
+    dir: 'apps/web/src/workspace',
+    ext: 'tsx',
+    source: `export const X = () => <input aria-label="x" />;\n`,
+    expect: '@gagnechris/ui',
+    rule: 'no-restricted-syntax',
+  },
 ];
 
 let failed = false;
@@ -128,7 +147,7 @@ const created = [];
 
 try {
   for (const fixture of fixtures) {
-    const fileName = `_platform-neutral-lint-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.ts`;
+    const fileName = `_platform-neutral-lint-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.${fixture.ext ?? 'ts'}`;
     const filePath = join(repoRoot, fixture.dir, fileName);
     writeFileSync(filePath, fixture.source);
     created.push(filePath);

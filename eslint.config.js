@@ -654,6 +654,28 @@ export default tseslint.config(
     },
   },
   ...webAppZones,
+  // Features build from packages/ui; a control it lacks is added there first.
+  {
+    files: ['apps/web/src/**/*.tsx', 'packages/public-ui/**/*.tsx'],
+    ignores: [
+      'apps/web/src/games/bears/**',
+      'apps/web/src/**/*.test.tsx',
+      'apps/web/src/__tests__/**',
+      'apps/web/src/test-utils.tsx',
+      'packages/public-ui/**/*.test.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXOpeningElement[name.name=/^(button|input|select|textarea)$/]',
+          message:
+            'Use a @gagnechris/ui component (see docs/design/components.md); add a missing one to packages/ui with a story first.',
+        },
+      ],
+    },
+  },
   // The catalog renders components with sample data and never signs in or calls the API.
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

@@ -238,6 +238,7 @@ export function WorkspaceFrame({
   };
 
   const searchButton = (
+    // eslint-disable-next-line no-restricted-syntax -- a nav item styled with the shell nav
     <button
       type="button"
       className="workspace-search-button"
@@ -411,6 +412,7 @@ export function WorkspaceFrame({
                 })}
               </div>
             ))}
+            {/* eslint-disable-next-line no-restricted-syntax -- a nav item styled with the shell nav */}
             <button
               type="button"
               className="workspace-nav__item workspace-nav__more"

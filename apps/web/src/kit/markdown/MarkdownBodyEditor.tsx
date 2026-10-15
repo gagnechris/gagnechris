@@ -87,6 +87,7 @@ export function MarkdownBodyEditor({
                 </>,
               )}
             </label>
+            {/* eslint-disable-next-line no-restricted-syntax -- the hidden native file picker behind the Insert image label */}
             <input
               ref={fileRef}
               id={fileId}

@@ -131,7 +131,7 @@ npm run build         # tsc -b + all three Vite targets → apps/web/dist, dist-
 npm run storybook:build # the static Storybook catalog; a story that fails to build fails CI
 npm run check:web-shells # after build: GA on the public shell only when GA_MEASUREMENT_ID is set, no inline script and only the allowed entry assets there, entry JS within budget and without zod, self-hosted fonts named for their content; demos only in lazy chunks; app shells load bundled scripts only (CI)
 npm run check:rn-bundles            # every package and subpath mobile imports bundles without Node-only or banned imports, and both lockfiles agree on their runtime deps (CI)
-npm run check:platform-neutral-lint # the ESLint bans in platform-neutral packages still fire (CI)
+npm run check:platform-neutral-lint # the platform-neutral and plain-control ESLint bans still fire (CI)
 npm run check:tsconfig-coverage     # each workspace's typecheck covers every .ts file in it (CI)
 npm run check:case-collisions       # no tracked paths or module stems that differ only by case (CI)
 npm run e2e:local     # publish lifecycle smoke (Playwright api project, own stack)
