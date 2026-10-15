@@ -283,9 +283,9 @@ describe('AdminPostsPage', () => {
       await screen.findByRole('button', { name: 'Actions for Hello' }),
     );
     expect(
-      screen.queryByRole('button', { name: 'Unpublish' }),
+      screen.queryByRole('menuitem', { name: 'Unpublish' }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Publish' }));
     expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/publish', {
       params: { path: { id: '01POST' } },
       body: { version: 1 },
@@ -293,9 +293,9 @@ describe('AdminPostsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Actions for Live' }));
     expect(
-      screen.queryByRole('button', { name: 'Publish' }),
+      screen.queryByRole('menuitem', { name: 'Publish' }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Unpublish' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Unpublish' }));
     expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/unpublish', {
       params: { path: { id: '01LIVE' } },
       body: { version: 3 },
@@ -319,7 +319,7 @@ describe('AdminPostsPage', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Actions for Hello' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Publish' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Publish' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 });

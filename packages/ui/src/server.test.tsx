@@ -8,6 +8,7 @@ import {
   Checkbox,
   Chip,
   ChipSelect,
+  ChipsInput,
   Combobox,
   ConfirmDialog,
   DateInput,
@@ -126,6 +127,17 @@ describe('components render without a browser', () => {
       'ChipSelect',
       <ChipSelect label="Area" value={null} onChange={noop} options={[]} />,
       'Add area',
+    ],
+    [
+      'ChipsInput',
+      <ChipsInput
+        label="Tags"
+        listLabel="Post tags"
+        placeholder="Add tag"
+        value={['react']}
+        onChange={noop}
+      />,
+      'Remove react',
     ],
     [
       'Tabs',

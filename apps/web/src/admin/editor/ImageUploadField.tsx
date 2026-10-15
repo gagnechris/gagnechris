@@ -1,35 +1,19 @@
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
-import { Button, TextInput } from '@gagnechris/ui';
+import { Button, FileInput, TextInput } from '@gagnechris/ui';
 
 type Props = {
-  /** Also names the image, its file input ("Upload …") and its URL input. */
+  /** Also names the image, its upload button and its URL input. */
   label: string;
   value: string;
   onChange: (path: string) => void;
   /** Resolves to the uploaded image's path; a rejection is shown under the field. */
   onUpload: (file: File) => Promise<string>;
-  /** `dropzone` takes drops and a typed URL; `thumbnail` is a small image and buttons. */
+  /** `dropzone` also takes a typed URL; `thumbnail` is a small image beside the drop zone. */
   layout: 'dropzone' | 'thumbnail';
   requiredError?: string;
   hint?: ReactNode;
 };
-
-const uploadIcon = (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-  </svg>
-);
 
 export function ImageUploadField({
   label,
@@ -40,41 +24,22 @@ export function ImageUploadField({
   requiredError,
   hint,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const inputId = useId();
   const requiredErrorId = useId();
-  const [uploading, setUploading] = useState(false);
-  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const upload = async (file: File | undefined) => {
-    if (!file) return;
-    setUploading(true);
+    if (!file?.type.startsWith('image/')) return;
+    setUploading(file.name);
     setError(null);
     try {
       onChange(await onUpload(file));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image upload failed');
     } finally {
-      setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
+      setUploading(null);
     }
   };
-
-  const fileInput = (
-    <input
-      ref={inputRef}
-      id={inputId}
-      className="kit-visually-hidden"
-      type="file"
-      accept={MEDIA_CONTENT_TYPES.join(',')}
-      aria-label={`Upload ${label.toLowerCase()}`}
-      aria-invalid={requiredError ? true : undefined}
-      aria-describedby={requiredError ? requiredErrorId : undefined}
-      disabled={uploading}
-      onChange={(e) => void upload(e.target.files?.[0])}
-    />
-  );
 
   const image = value ? (
     <img
@@ -88,6 +53,19 @@ export function ImageUploadField({
     />
   ) : null;
 
+  const drop = (
+    <FileInput
+      className="admin-image-drop"
+      accept={MEDIA_CONTENT_TYPES.join(',')}
+      aria-label={label}
+      aria-describedby={requiredError ? requiredErrorId : undefined}
+      buttonLabel={value ? 'Replace image' : 'Upload image'}
+      hint={layout === 'dropzone' ? 'Or drop an image here' : undefined}
+      uploading={uploading ? { name: uploading } : undefined}
+      onFiles={(files) => void upload(files[0])}
+    />
+  );
+
   return (
     <div
       className={`kit-field ${layout === 'dropzone' ? 'admin-cover' : 'admin-project-preview'}`}
@@ -95,32 +73,8 @@ export function ImageUploadField({
       <span>{label}</span>
       {layout === 'dropzone' ? (
         <>
-          <label
-            htmlFor={inputId}
-            className="admin-cover__drop"
-            data-dragging={dragging || undefined}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              const file = e.dataTransfer.files[0];
-              if (file?.type.startsWith('image/')) void upload(file);
-            }}
-          >
-            {image ?? uploadIcon}
-            <span>
-              {uploading
-                ? 'Uploading…'
-                : value
-                  ? 'Drop or click to replace'
-                  : 'Drop an image or click to upload'}
-            </span>
-          </label>
-          {fileInput}
+          {image}
+          {drop}
           <div className="admin-cover__url">
             <TextInput
               value={value}
@@ -140,21 +94,12 @@ export function ImageUploadField({
           {image ?? (
             <span className="admin-project-preview__empty" aria-hidden="true" />
           )}
-          <div className="workspace-actions">
-            <label htmlFor={inputId} className="kit-btn">
-              {uploading
-                ? 'Uploading…'
-                : value
-                  ? 'Replace image'
-                  : 'Upload image'}
-            </label>
-            {fileInput}
-            {value ? (
-              <Button variant="danger" onClick={() => onChange('')}>
-                Remove image
-              </Button>
-            ) : null}
-          </div>
+          {drop}
+          {value ? (
+            <Button variant="danger" onClick={() => onChange('')}>
+              Remove image
+            </Button>
+          ) : null}
         </div>
       )}
       {error ? (

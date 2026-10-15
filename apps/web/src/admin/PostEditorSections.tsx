@@ -1,4 +1,4 @@
-import { useEffect, useId, type FormEvent, type RefObject } from 'react';
+import { useId, type FormEvent, type RefObject } from 'react';
 import type { components } from '@gagnechris/api-client';
 import { parsePostTags, type PostDraftFields } from '@gagnechris/app-core';
 import {
@@ -6,9 +6,14 @@ import {
   PROJECT_STAGE_LABELS,
   sortProjectsByOrder,
 } from '@gagnechris/shared';
-import { Field, TextArea, TextInput } from '@gagnechris/ui';
+import {
+  Checkbox,
+  ChipsInput,
+  Field,
+  TextArea,
+  TextInput,
+} from '@gagnechris/ui';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
-import { ChipsInput } from './editor/ChipsInput';
 import { ImageUploadField } from './editor/ImageUploadField';
 import type { SetDraftField } from './editor/useDraftFields';
 import { publicImageSrc } from './publicUrl';
@@ -38,8 +43,6 @@ export function PostEditorDetails({
   projects,
   projectsError,
 }: DetailsProps) {
-  const slugId = useId();
-  const slugHintId = useId();
   return (
     <aside className="admin-details-panel" aria-label="Post details">
       <h2 className="admin-details-panel__title">Details</h2>
@@ -50,34 +53,25 @@ export function PostEditorDetails({
           onSave();
         }}
       >
-        <div className="kit-field">
-          <label htmlFor={slugId}>Slug</label>
-          <div className="admin-prefixed">
-            <span className="admin-prefixed__prefix" aria-hidden="true">
-              /
-            </span>
-            <input
-              id={slugId}
-              className="admin-prefixed__input"
-              value={draft.slug}
-              maxLength={MAX_SLUG_LENGTH}
-              aria-describedby={slugManual ? undefined : slugHintId}
-              onChange={(e) => {
-                setSlugManual(true);
-                setField('slug', e.target.value);
-              }}
-            />
-          </div>
-          {!slugManual && (
-            <span id={slugHintId} className="kit-hint">
-              Follows the title until you edit it.
-            </span>
-          )}
-        </div>
+        <Field
+          label="Slug"
+          hint={slugManual ? undefined : 'Follows the title until you edit it.'}
+        >
+          <TextInput
+            prefix="/"
+            className="admin-slug-input"
+            value={draft.slug}
+            maxLength={MAX_SLUG_LENGTH}
+            onChange={(e) => {
+              setSlugManual(true);
+              setField('slug', e.target.value);
+            }}
+          />
+        </Field>
         <ChipsInput
           label="Tags"
           listLabel="Post tags"
-          removeLabel={(tag) => `Remove tag ${tag}`}
+          itemLabel={(tag) => `tag ${tag}`}
           placeholder="Add tag"
           value={parsePostTags(draft.tagsText)}
           onChange={(tags) => setField('tagsText', tags.join(', '))}
@@ -161,14 +155,11 @@ function PostProjectsField({
       <ul className="admin-post-projects__list">
         {sortProjectsByOrder(projects).map((project) => (
           <li key={project.id}>
-            <label className="kit-check">
-              <input
-                type="checkbox"
-                checked={selected.includes(project.id)}
-                onChange={(e) => toggle(project.id, e.target.checked)}
-              />
-              {`${project.name} · ${PROJECT_STAGE_LABELS[project.stage]}`}
-            </label>
+            <Checkbox
+              label={`${project.name} · ${PROJECT_STAGE_LABELS[project.stage]}`}
+              checked={selected.includes(project.id)}
+              onChange={(e) => toggle(project.id, e.target.checked)}
+            />
           </li>
         ))}
       </ul>
@@ -220,16 +211,9 @@ type TitleProps = {
 };
 
 export function PostEditorTitle({ title, titleRef, onChange }: TitleProps) {
-  useEffect(() => {
-    const el = titleRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [title, titleRef]);
-
   return (
     <h1 className="admin-editor-title">
-      <textarea
+      <TextArea
         ref={titleRef}
         className="admin-title-input"
         rows={1}

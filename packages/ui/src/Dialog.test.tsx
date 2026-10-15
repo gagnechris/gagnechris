@@ -93,6 +93,31 @@ describe.each(['dialog', 'drawer'] as const)('%s', (kind) => {
     expect(document.querySelector('.bottom-sheet')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Send invite' })).toBeVisible();
   });
+
+  test.each([false, true])(
+    'a label names it in place of the title (sheet: %s)',
+    (phone) => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: phone,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+      const Surface = kind === 'dialog' ? Dialog : Drawer;
+      render(
+        <Surface
+          title="Edit access"
+          label="Edit access for Sam"
+          onClose={vi.fn()}
+        >
+          <p>Body</p>
+        </Surface>,
+      );
+      expect(
+        screen.getByRole('dialog', { name: 'Edit access for Sam' }),
+      ).toHaveTextContent('Edit access');
+    },
+  );
 });
 
 describe('Scrim', () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type FormEvent } from 'react';
-import { Button, Field, TextArea, TextInput } from '@gagnechris/ui';
+import { Button, Checkbox, Field, TextArea, TextInput } from '@gagnechris/ui';
 import { Repeater } from '../workspace/ui/Repeater';
 import { ResumeRoleList } from './ResumeRoleList';
 import type { SetDraftField } from './editor/useDraftFields';
@@ -242,9 +242,9 @@ function ResumeRoleEditor({
 
   return (
     <section className="admin-form-section" aria-label="Edit role">
-      <button type="button" className="admin-subscreen-back" onClick={onBack}>
+      <Button variant="link" className="admin-subscreen-back" onClick={onBack}>
         ← All roles
-      </button>
+      </Button>
       <h2 ref={headingRef} className="admin-subscreen-title" tabIndex={-1}>
         {roleTitle(item)}
       </h2>
@@ -296,20 +296,17 @@ function ResumeRoleEditor({
               : 'Dates for this role are not saved until this is fixed.'}
           </p>
         ) : null}
-        <label className="kit-check">
-          <input
-            type="checkbox"
-            checked={item.present}
-            disabled={!item.start}
-            onChange={(e) =>
-              update({
-                present: e.target.checked,
-                ...(e.target.checked ? { end: '' } : {}),
-              })
-            }
-          />
-          Present (current role)
-        </label>
+        <Checkbox
+          label="Present (current role)"
+          checked={item.present}
+          disabled={!item.start}
+          onChange={(e) =>
+            update({
+              present: e.target.checked,
+              ...(e.target.checked ? { end: '' } : {}),
+            })
+          }
+        />
         <Field label="Note (optional)" hint="For example: contract, concurrent">
           <TextInput
             value={item.note}

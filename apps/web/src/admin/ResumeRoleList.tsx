@@ -3,7 +3,7 @@ import {
   formatResumeShortMonth,
   RESUME_MONTH_PATTERN,
 } from '@gagnechris/shared';
-import { Button } from '@gagnechris/ui';
+import { Button, DragHandle, List, ListRow } from '@gagnechris/ui';
 import {
   experienceRangeError,
   roleTitle,
@@ -28,20 +28,25 @@ const roleDatesLabel = (role: ExperienceDraft) => {
 };
 
 export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
-  const rowRefs = useRef(new Map<string, HTMLLIElement>());
+  const list = useRef<HTMLUListElement>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
   const move = (from: number, to: number) => {
-    if (to < 0 || to >= roles.length || to === from) return;
+    if (to < 0 || to >= roles.length || to === from) return false;
     onReorder(from, to);
-    setAnnouncement(
-      `${roleTitle(roles[from]!)} moved to position ${to + 1} of ${roles.length}`,
-    );
+    return true;
   };
-  const moveRef = useRef(move);
+  const dragTo = (from: number, to: number) => {
+    if (move(from, to)) {
+      setAnnouncement(
+        `${roleTitle(roles[from]!)} moved to position ${to + 1} of ${roles.length}`,
+      );
+    }
+  };
+  const dragToRef = useRef(dragTo);
   useEffect(() => {
-    moveRef.current = move;
+    dragToRef.current = dragTo;
   });
 
   // Window listeners, not pointer capture: reordering moves the row's DOM
@@ -50,11 +55,12 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
     if (!draggingId) return;
     const onMove = (e: PointerEvent) => {
       const from = roles.findIndex((role) => role.id === draggingId);
-      const to = roles.findIndex((role) => {
-        const rect = rowRefs.current.get(role.id)?.getBoundingClientRect();
-        return rect ? e.clientY >= rect.top && e.clientY < rect.bottom : false;
+      const rows = [...(list.current?.children ?? [])];
+      const to = rows.findIndex((row) => {
+        const rect = row.getBoundingClientRect();
+        return e.clientY >= rect.top && e.clientY < rect.bottom;
       });
-      if (from >= 0 && to >= 0) moveRef.current(from, to);
+      if (from >= 0 && to >= 0) dragToRef.current(from, to);
     };
     const stop = () => setDraggingId(null);
     window.addEventListener('pointermove', onMove);
@@ -69,88 +75,46 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
 
   return (
     <>
-      <ul className="admin-row-list" aria-label="Roles">
+      <List ref={list} className="admin-row-list" aria-label="Roles">
         {roles.map((role, index) => {
           const dates = roleDatesLabel(role);
           const sub = [role.company.trim(), dates].filter(Boolean).join(' · ');
           return (
-            <li
+            <ListRow
               key={role.id}
-              ref={(el) => {
-                if (el) rowRefs.current.set(role.id, el);
-                else rowRefs.current.delete(role.id);
-              }}
-              data-dragging={draggingId === role.id || undefined}
-            >
-              <button
-                type="button"
-                className="admin-row-handle"
-                aria-label={`Reorder ${roleTitle(role)}`}
-                aria-describedby="resume-role-reorder-hint"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  setDraggingId(role.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'ArrowUp') {
+              className={
+                draggingId === role.id ? 'admin-row--dragging' : undefined
+              }
+              leading={
+                <DragHandle
+                  item={roleTitle(role)}
+                  position={index + 1}
+                  count={roles.length}
+                  aria-describedby="resume-role-reorder-hint"
+                  onMove={(by) => move(index, index + by)}
+                  onPointerDown={(e) => {
                     e.preventDefault();
-                    move(index, index - 1);
-                  } else if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    move(index, index + 1);
-                  }
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  {[5, 12, 19].flatMap((y) =>
-                    [9, 15].map((x) => (
-                      <circle key={`${x}-${y}`} cx={x} cy={y} r="1.6" />
-                    )),
-                  )}
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="admin-row"
-                onClick={() => onOpen(role.id)}
-              >
-                <span className="admin-row__text">
-                  <span className="admin-row__title">{roleTitle(role)}</span>
-                  {sub ? <span className="admin-row__sub">{sub}</span> : null}
-                </span>
-                {experienceRangeError(role) ? (
+                    setDraggingId(role.id);
+                  }}
+                />
+              }
+              title={roleTitle(role)}
+              meta={sub || undefined}
+              onClick={() => onOpen(role.id)}
+              trailing={
+                experienceRangeError(role) ? (
                   <span className="kit-badge kit-badge--unpublished">
                     Check dates
                   </span>
-                ) : null}
-                <svg
-                  className="admin-row__chevron"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="m9 6 6 6-6 6" />
-                </svg>
-              </button>
-            </li>
+                ) : undefined
+              }
+            />
           );
         })}
-      </ul>
+      </List>
       <p id="resume-role-reorder-hint" className="kit-hint">
-        Open a role to edit it. Drag the handle, or focus it and press the up
-        and down arrows, to reorder.
+        Open a role to edit it. Drag the handle, or focus it and press Space,
+        then the up and down arrows, to reorder.
       </p>
       <span className="kit-visually-hidden" aria-live="polite">
         {announcement}

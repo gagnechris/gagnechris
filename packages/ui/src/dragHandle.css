@@ -15,6 +15,7 @@
 }
 
 .ui-drag-handle:hover {
+  background: transparent;
   color: var(--neutral-600);
 }
 
@@ -23,7 +24,7 @@
   outline-offset: 2px;
 }
 
-.ui-drag-handle--grabbed {
+.ui-drag-handle.ui-drag-handle--grabbed {
   background: var(--primary-50);
   color: var(--primary-700);
   cursor: grabbing;

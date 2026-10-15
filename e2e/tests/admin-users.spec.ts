@@ -19,7 +19,7 @@ test('a Full Admin invites someone, changes their access, removes and restores t
   const dialog = page.getByRole('dialog', { name: 'Invite user' });
   await expect(
     dialog.getByRole('radio', { name: /Notebook only/ }),
-  ).toHaveAttribute('aria-checked', 'true');
+  ).toBeChecked();
   await dialog.getByLabel('Name').fill('Friend Example');
   await dialog.getByLabel('Email').fill(email);
   await dialog.getByRole('button', { name: 'Send invite' }).click();
