@@ -13,7 +13,7 @@ describe('renderPostsIndexBodyHtml', () => {
     );
   });
 
-  it('groups posts under year headings, each entry one link with title, short date and excerpt', () => {
+  it('groups posts under year headings, each entry linked by its title, with short date and excerpt', () => {
     const html = renderPostsIndexBodyHtml([
       {
         id: '01A',
@@ -35,12 +35,14 @@ describe('renderPostsIndexBodyHtml', () => {
         '<p class="posts-index__intro">Ideas, lessons and experiments from software engineering, leadership and AI.</p>' +
         '<a class="posts-index__rss" href="/rss.xml">Subscribe via RSS</a></header>' +
         '<div class="posts-index__years"><section class="posts-year" aria-labelledby="posts-2026"><h2 class="posts-year__label" id="posts-2026">2026</h2>' +
-        '<ul class="posts-year__list"><li class="post-preview" data-id="01B"><a class="post-preview__link" href="/posts/second">' +
-        '<h3 class="post-preview__title">Second</h3><time class="post-preview__date" dateTime="2026-02-01">Feb 1</time></a></li></ul></section>' +
+        '<ul class="posts-year__list"><li class="ui-card--editorial post-preview" data-id="01B"><div class="ui-card__body">' +
+        '<h3 class="ui-card__title"><a class="ui-card__link" href="/posts/second">Second</a></h3>' +
+        '<p class="ui-card__meta"><time class="post-preview__date" dateTime="2026-02-01">Feb 1</time></p></div></li></ul></section>' +
         '<section class="posts-year" aria-labelledby="posts-2025"><h2 class="posts-year__label" id="posts-2025">2025</h2>' +
-        '<ul class="posts-year__list"><li class="post-preview" data-id="01A"><a class="post-preview__link" href="/posts/first">' +
-        '<h3 class="post-preview__title">First &amp; &quot;best&quot; isn&#x27;t</h3><time class="post-preview__date" dateTime="2025-12-31">Dec 31</time>' +
-        '<p class="post-preview__excerpt">An &lt;excerpt&gt;</p></a></li></ul></section></div></main>',
+        '<ul class="posts-year__list"><li class="ui-card--editorial post-preview" data-id="01A"><div class="ui-card__body">' +
+        '<h3 class="ui-card__title"><a class="ui-card__link" href="/posts/first">First &amp; &quot;best&quot; isn&#x27;t</a></h3>' +
+        '<p class="ui-card__meta"><time class="post-preview__date" dateTime="2025-12-31">Dec 31</time></p>' +
+        '<p class="post-preview__excerpt">An &lt;excerpt&gt;</p></div></li></ul></section></div></main>',
     );
   });
 

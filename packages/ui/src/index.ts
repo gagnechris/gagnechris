@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+// The publisher and Node scripts that render these compile without the DOM lib.
+
 export { BottomSheet } from './BottomSheet.js';
 export { Button } from './Button.js';
 export { Card } from './Card.js';

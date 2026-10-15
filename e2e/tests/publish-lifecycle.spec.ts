@@ -168,12 +168,13 @@ test('a project and an idea: listing, Build log, slug rename, unpublish', async 
   expect(page).toContain('class="site-header"');
   const index = await html(request, '/projects');
   expect(index).toContain(
-    `<a class="project-card__link" href="/projects/${slug}">`,
+    `<h2 class="ui-card__title"><a class="ui-card__link" href="/projects/${slug}">${name}</a></h2>`,
   );
-  expect(index).toContain(`<h2 class="project-card__name">${name}</h2>`);
-  expect(index).toContain(`<h2 class="project-card__name">${ideaName}</h2>`);
+  expect(index).toContain(`<h2 class="ui-card__title">${ideaName}</h2>`);
   const home = await html(request, '/');
-  expect(home).toContain(`<h3 class="project-card__name">${name}</h3>`);
+  expect(home).toContain(
+    `<h3 class="ui-card__title"><a class="ui-card__link" href="/projects/${slug}">${name}</a></h3>`,
+  );
   expect(home, 'an idea is listed on Home').not.toContain(ideaName);
   await expectHtml404(request, `/projects/${slug}-idea`);
   const sitemap = await html(request, '/sitemap.xml');

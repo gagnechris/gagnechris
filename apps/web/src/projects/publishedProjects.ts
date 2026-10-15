@@ -45,12 +45,18 @@ export const projectCardsFromList = (list: Element): ProjectCardView[] =>
     const slug = item.getAttribute('data-slug') ?? '';
     const stage = stageFromElement(item.querySelector('.project-stage'));
     if (!slug || !stage) return [];
-    const link = item.querySelector(':scope > a.project-card__link');
+    // Both markups: a cold load can land between a web deploy and the
+    // republish that follows it.
+    const link = item.querySelector(
+      '.ui-card__link, :scope > a.project-card__link',
+    );
     return [
       {
         id: item.getAttribute('data-id') || slug,
         slug,
-        name: item.querySelector('.project-card__name')?.textContent ?? '',
+        name:
+          item.querySelector('.ui-card__title, .project-card__name')
+            ?.textContent ?? '',
         pitch: item.querySelector('.project-card__pitch')?.textContent ?? '',
         ...stage,
         stack: [...item.querySelectorAll('.project-card__stack > span')].map(

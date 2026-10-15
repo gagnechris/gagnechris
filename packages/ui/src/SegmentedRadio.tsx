@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useRef, type KeyboardEvent } from 'react';
 
 type Option<T extends string> = { value: T; label: string; count?: number };

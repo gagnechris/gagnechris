@@ -144,9 +144,8 @@ describe('projects publish targets', () => {
     expect(page).toContain('https://gagnechris.com/projects/notebook');
     const index = site.objects.get('projects/index.html') ?? '';
     expect(index).toContain(
-      '<a class="project-card__link" href="/projects/notebook">',
+      '<h2 class="ui-card__title"><a class="ui-card__link" href="/projects/notebook">Notebook</a></h2>',
     );
-    expect(index).toContain('<h2 class="project-card__name">Notebook</h2>');
     expect(sitemap()).toContain(
       '<loc>https://gagnechris.com/projects/notebook</loc>',
     );
@@ -170,9 +169,9 @@ describe('projects publish targets', () => {
     expect(site.objects.has('projects/someday/index.html')).toBe(false);
     const index = site.objects.get('projects/index.html') ?? '';
     expect(index).toContain(
-      '<div class="project-card__link"><div class="project-preview project-preview--idea"',
+      '<div class="ui-card__preview"><div class="project-preview project-preview--idea"',
     );
-    expect(index).toContain('<h2 class="project-card__name">Someday</h2>');
+    expect(index).toContain('<h2 class="ui-card__title">Someday</h2>');
     expect(index).not.toContain('href="/projects/someday"');
     expect(sitemap()).not.toContain('/projects/someday');
   });
@@ -197,7 +196,7 @@ describe('projects publish targets', () => {
       false,
     );
     expect(site.objects.get('projects/index.html')).toContain(
-      '<a class="project-card__link" href="/dont-feed-the-bears">',
+      '<a class="ui-card__link" href="/dont-feed-the-bears">',
     );
     expect(sitemap()).not.toContain('/projects/dont-feed-the-bears');
   });
@@ -259,19 +258,23 @@ describe('projects publish targets', () => {
     await rebuild({ projects: [posts], corruptSlugs: [] });
     const home = () => site.objects.get('index.html') ?? '';
     expect(home()).toContain('id="home-projects">What I’m building</h2>');
-    expect(home()).toContain('<h3 class="project-card__name">Posts</h3>');
+    expect(home()).toContain(
+      '<a class="ui-card__link" href="/projects/posts">Posts</a></h3>',
+    );
     // Recent posts survive a project-only rebuild.
     expect(home()).toContain('href="/posts/hello"');
 
     site.invalidations.length = 0;
     await rebuild({ projects: [posts, notebook], corruptSlugs: [] });
-    expect(home()).toContain('<h3 class="project-card__name">Notebook</h3>');
+    expect(home()).toContain(
+      '<a class="ui-card__link" href="/projects/notebook">Notebook</a></h3>',
+    );
     expect(site.invalidations.flat()).toEqual(
       expect.arrayContaining(['/', '/index.html', '/projects*']),
     );
 
     await rebuild({ projects: [notebook], corruptSlugs: [] });
-    expect(home()).not.toContain('>Posts</h3>');
+    expect(home()).not.toContain('>Posts</a></h3>');
 
     await rebuild({ projects: [], corruptSlugs: [] });
     expect(home()).not.toContain('home-projects');
@@ -294,7 +297,7 @@ describe('projects publish targets', () => {
       ],
       corruptSlugs: [],
     });
-    expect(site.objects.get('projects/index.html')).toContain('>C</h2>');
+    expect(site.objects.get('projects/index.html')).toContain('>C</a></h2>');
     expect(site.invalidations.flat()).toContain('/projects*');
     expect(site.invalidations.flat()).not.toContain('/');
   });
@@ -326,7 +329,7 @@ describe('projects publish targets', () => {
       site.objects.delete('index.html');
       await rebuild(shown, scope);
       expect(site.objects.get('index.html')).toContain(
-        '<h3 class="project-card__name">Notebook</h3>',
+        '<a class="ui-card__link" href="/projects/notebook">Notebook</a></h3>',
       );
     }
   });

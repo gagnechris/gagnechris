@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import type { ComponentProps } from 'react';
 import { cx, type ControlSize } from './cx.js';
 import { inputClasses } from './Field.js';

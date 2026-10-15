@@ -69,7 +69,7 @@ test.describe('/projects', () => {
       .toContain(`data-slug="${slugs.idea}"`);
   });
 
-  test('each entry is one link with a focus ring; the unlinked idea is skipped', async ({
+  test('each entry is one link with a focus ring around the card; the unlinked idea is skipped', async ({
     page,
     browserName,
   }) => {
@@ -95,8 +95,9 @@ test.describe('/projects', () => {
       await focusJustBefore(card(page, slugs[key]));
       await page.keyboard.press(tab);
       await expect(link).toBeFocused();
+      // The name is the link; its ring is drawn around the whole card.
       const ring = await link.evaluate((el) => {
-        const style = getComputedStyle(el);
+        const style = getComputedStyle(el, '::after');
         return {
           style: style.outlineStyle,
           width: parseFloat(style.outlineWidth),
@@ -146,16 +147,14 @@ test.describe('/projects', () => {
       ),
     ).toBe(0);
     for (const slug of Object.values(slugs)) {
-      const link = await card(page, slug)
-        .locator('.project-card__link')
-        .boundingBox();
+      const entry = await card(page, slug).boundingBox();
       const preview = await card(page, slug)
         .locator('.project-preview')
         .boundingBox();
       const text = await card(page, slug)
-        .locator('.project-card__text')
+        .locator('.ui-card__body')
         .boundingBox();
-      expect(preview!.width, slug).toBeCloseTo(link!.width, 0);
+      expect(preview!.width, slug).toBeCloseTo(entry!.width, 0);
       expect(preview!.y + preview!.height, slug).toBeLessThanOrEqual(text!.y);
     }
   });

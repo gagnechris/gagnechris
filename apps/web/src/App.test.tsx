@@ -124,9 +124,9 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Recent posts' }),
     ).toBeInTheDocument();
-    const titles = [...document.querySelectorAll('.home-post__title a')].map(
-      (a) => [a.textContent, a.getAttribute('href')],
-    );
+    const titles = [
+      ...document.querySelectorAll('.home-post .ui-card__title a'),
+    ].map((a) => [a.textContent, a.getAttribute('href')]);
     expect(titles).toEqual([
       ['Post 4', '/posts/post-4'],
       ['Post 3', '/posts/post-3'],
@@ -149,8 +149,8 @@ describe('App', () => {
       name: 'What I’m building',
     });
     expect(
-      [...section.querySelectorAll('.project-card__link')].map((a) => [
-        a.querySelector('.project-card__name')?.textContent,
+      [...section.querySelectorAll('.project-card .ui-card__link')].map((a) => [
+        a.textContent,
         a.getAttribute('href'),
       ]),
     ).toEqual([

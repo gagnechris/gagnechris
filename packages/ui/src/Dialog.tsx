@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useId, useRef, type ReactNode, type RefObject } from 'react';
 import { BottomSheet } from './BottomSheet.js';
 import { Button } from './Button.js';

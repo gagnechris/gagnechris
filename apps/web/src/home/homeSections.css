@@ -47,28 +47,23 @@
   list-style: none;
 }
 
-.home-post {
+/* Each post is the editorial Card; the section head draws the rule above them. */
+.home-section .home-posts > .home-post {
   padding: 27px 0 25px;
-  border-bottom: 1px solid var(--neutral-200);
+  border-top: 0;
 }
 
-.home-post__title {
-  margin: 0;
+.home-posts .home-post .ui-card__title {
   font-size: 1.875rem;
   line-height: 1.25;
 }
 
-.home-post__title a {
-  font-weight: inherit;
-  color: var(--color-ink);
-  text-decoration: none;
+.home-posts .home-post .ui-card__title a {
+  text-underline-offset: 4px;
 }
 
-.home-post__title a:hover {
+.home-posts .home-post .ui-card__title a:hover {
   color: var(--color-link);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
 }
 
 .home-post__excerpt {
@@ -107,11 +102,11 @@
     display: none;
   }
 
-  .home-post {
+  .home-section .home-posts > .home-post {
     padding: 16px 0 15px;
   }
 
-  .home-post__title {
+  .home-posts .home-post .ui-card__title {
     font-size: 1.5rem;
   }
 

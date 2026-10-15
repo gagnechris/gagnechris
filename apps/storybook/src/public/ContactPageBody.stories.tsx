@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ContactPageBody, PublicLink } from '@gagnechris/public-ui';
+import { Button, Field, TextArea, TextInput } from '@gagnechris/ui';
 import '@web/public.css';
 import '@web/pages/Contact.css';
 import { catalog } from '../catalog';
@@ -25,7 +26,7 @@ const FIELDS: readonly {
 ];
 
 // The app's form (apps/web/src/pages/Contact.tsx) posts through the API client,
-// so this is static markup with the same classes and attributes.
+// so this is static markup with the same components.
 const MockContactForm = ({
   values = {},
   errors = {},
@@ -42,30 +43,20 @@ const MockContactForm = ({
       onSubmit={(event: FormEvent) => event.preventDefault()}
     >
       {FIELDS.map(({ name, label, placeholder, type }) => {
-        const error = errors[name];
         const props = {
-          id: name,
           name,
           defaultValue: values[name] ?? '',
           placeholder,
           'aria-required': true,
-          'aria-invalid': error ? true : undefined,
-          'aria-describedby': error ? `contact-${name}-error` : undefined,
         } as const;
         return (
-          <div className="contact-field" key={name}>
-            <label htmlFor={name}>{label}</label>
+          <Field key={name} label={label} error={errors[name]} tone="editorial">
             {type ? (
-              <input {...props} type={type} />
+              <TextInput {...props} type={type} />
             ) : (
-              <textarea {...props} rows={4} />
+              <TextArea {...props} rows={4} autoGrow={false} />
             )}
-            {error ? (
-              <p className="contact-field__error" id={`contact-${name}-error`}>
-                {error}
-              </p>
-            ) : null}
-          </div>
+          </Field>
         );
       })}
       <p className="contact-form__status" role="alert">
@@ -73,9 +64,14 @@ const MockContactForm = ({
           <span className="contact-form__message">{status}</span>
         ) : null}
       </p>
-      <button type="submit" className="contact-form__submit">
+      <Button
+        type="submit"
+        variant="primary"
+        tone="editorial"
+        className="contact-form__submit"
+      >
         Send message
-      </button>
+      </Button>
     </form>
   </div>
 );

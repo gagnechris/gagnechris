@@ -1,3 +1,4 @@
+/** @jsxRuntime automatic */
 import { useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
 import { assignRef, cx } from './cx.js';
 import { Glyph } from './Glyph.js';
