@@ -129,34 +129,6 @@ a.today-row__chip:hover {
   gap: var(--space-1);
 }
 
-.today-row__icon-btn {
-  display: inline-grid;
-  place-items: center;
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--neutral-600);
-  cursor: pointer;
-}
-
-.today-row__icon-btn--more {
-  min-width: 1.25rem;
-}
-
-.today-row__icon-btn:hover:not(:disabled),
-.today-row__icon-btn:focus-visible {
-  border-color: var(--neutral-300);
-  color: var(--neutral-800);
-}
-
-.today-row__icon-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .today-snooze {
   position: relative;
   display: inline-flex;
@@ -180,9 +152,9 @@ a.today-row__chip:hover {
 }
 
 @media (max-width: 767px) {
-  .task-row__actions .today-row__icon-btn {
-    min-width: 44px;
-    min-height: 44px;
+  .task-row__actions .ui-icon-btn--sm {
+    width: 44px;
+    height: 44px;
   }
 }
 
@@ -264,28 +236,15 @@ a.today-row__chip:hover {
   color: var(--neutral-600);
 }
 
-.today-row__add,
+.today-row__add {
+  flex: none;
+}
+
 .today-row__day {
   flex: none;
   font-size: 0.6875rem;
   font-weight: 700;
   color: var(--primary-800);
-}
-
-.today-row__add {
-  min-height: 30px;
-  padding: 0 11px;
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-full);
-  background: white;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.today-row__add:hover,
-.today-row__add:focus-visible {
-  border-color: var(--primary-300);
-  background: var(--primary-50);
 }
 
 .today-row__day {
@@ -337,61 +296,26 @@ a.today-row__chip:hover {
   background: var(--neutral-300);
 }
 
-.today-sheet__head {
+.today-sheet__tabs {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
+  flex-direction: column;
+  min-height: 0;
+}
+
+.today-sheet__tabs > .ui-tabs__bar {
   padding: 0 var(--space-2) 0 var(--space-4);
 }
 
-.today-sheet__tabs {
+.today-sheet__tabs .ui-tabs__tab {
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--neutral-100);
-}
-
-.today-sheet__tab {
-  min-height: 44px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--neutral-700);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.today-sheet__tab[aria-selected='true'] {
-  background: white;
-  color: var(--neutral-900);
-  font-weight: 600;
-  box-shadow: var(--shadow-sm);
-}
-
-.today-sheet__close,
-.today-sheet__more {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--neutral-600);
-  cursor: pointer;
 }
 
-.today-sheet__close:hover,
-.today-sheet__more:hover {
-  background: var(--neutral-100);
-  color: var(--neutral-800);
+.today-sheet__tabs > .ui-tabs__panel {
+  min-height: 8rem;
+  padding: 0 0 var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .today-sheet__hint {
@@ -400,18 +324,11 @@ a.today-row__chip:hover {
   color: var(--neutral-600);
 }
 
-.today-sheet__panel > .workspace-panel__error {
+.today-sheet .workspace-panel__error {
   margin: 0 var(--space-4) var(--space-3);
 }
 
-.today-sheet__body {
-  min-height: 8rem;
-  padding-bottom: var(--space-6);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.today-sheet__body > .kit-hint {
+.today-sheet__tabs > .ui-tabs__panel > .kit-hint {
   margin: 0;
   padding: 0 var(--space-4);
 }
@@ -460,20 +377,18 @@ a.today-row__chip:hover {
   display: none;
 }
 
-.today-sheet__action {
-  display: flex;
+/* Swipe tiles behind the row, not boxed buttons. */
+.today-sheet__action,
+.today-sheet__action:hover:not(:disabled) {
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 2px;
   width: 84px;
+  padding: 0;
   border: 0;
+  border-radius: 0;
   background: var(--neutral-700);
   color: white;
-  font: inherit;
   font-size: var(--text-caption);
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .today-sheet__action-sub {
@@ -481,7 +396,8 @@ a.today-row__chip:hover {
   font-weight: 400;
 }
 
-.today-sheet__action--drop {
+.today-sheet__action--drop,
+.today-sheet__action--drop:hover:not(:disabled) {
   background: var(--color-alert);
 }
 
@@ -512,48 +428,20 @@ a.today-row__chip:hover {
   color: var(--primary-700);
 }
 
+/* A 44px target around the 26px chip. */
 .today-sheet__pill {
+  position: relative;
   flex: none;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid var(--neutral-200);
-  border-radius: var(--radius-full);
-  background: white;
-  color: var(--primary-700);
-  font: inherit;
-  font-size: var(--text-caption);
-  font-weight: 600;
-  cursor: pointer;
+}
+
+.today-sheet__pill::after {
+  content: '';
+  position: absolute;
+  inset: -9px 0;
 }
 
 .today-sheet__row-main:has(.today-sheet__pill:last-child) {
   padding-right: var(--space-3);
-}
-
-/* A 22px box with the full 44px as its tap target. */
-.today-sheet input[type='checkbox'] {
-  flex: none;
-  appearance: none;
-  width: 44px;
-  height: 44px;
-  margin: 0;
-  border: 11px solid transparent;
-  border-radius: 18px;
-  background: white padding-box;
-  box-shadow: inset 0 0 0 1.5px var(--neutral-400);
-  cursor: pointer;
-}
-
-.today-sheet input[type='checkbox']:checked {
-  background: var(--primary-600)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 12 5 5 9-10' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
-    center / 13px no-repeat padding-box;
-  box-shadow: none;
-}
-
-.today-sheet input[type='checkbox']:focus-visible {
-  outline: 2px solid var(--primary-600);
-  outline-offset: -9px;
 }
 
 .today-sheet button:focus-visible,

@@ -10,6 +10,7 @@ import {
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useDailyNoteDatesQuery, type Task } from '@gagnechris/app-core';
 import { addDays, isCalendarDay, snoozeBaseDay } from '@gagnechris/shared';
+import { Button, IconButton, Select } from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { monthBounds } from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
@@ -281,33 +282,29 @@ export default function NotebookTodayPage() {
         >
           <div className="notebook-today__main notebook-column" ref={editorRef}>
             <div className="notebook-today__day-nav">
-              <button
-                type="button"
-                className="kit-btn"
-                aria-label="Previous"
+              <IconButton
+                variant="outline"
+                label="Previous"
                 title="Previous day"
                 onClick={() => setDate(addDays(date, -1))}
               >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="kit-btn"
+                <ShellIcon name="chevronLeft" />
+              </IconButton>
+              <Button
                 aria-label="Jump to today"
                 disabled={date === today}
                 onClick={() => setDate(today)}
               >
                 Today
-              </button>
-              <button
-                type="button"
-                className="kit-btn"
-                aria-label="Next"
+              </Button>
+              <IconButton
+                variant="outline"
+                label="Next"
                 title="Next day"
                 onClick={() => setDate(addDays(date, 1))}
               >
-                ›
-              </button>
+                <ShellIcon name="chevronRight" />
+              </IconButton>
               <details ref={calendarRef} className="notebook-today__calendar">
                 <summary>
                   <svg
@@ -345,8 +342,8 @@ export default function NotebookTodayPage() {
                 />
               </details>
               <span className="notebook-today__phone-tools">
-                <select
-                  className="kit-input notebook-today__area"
+                <Select
+                  className="notebook-today__area"
                   aria-label="Notebook area"
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
@@ -356,16 +353,16 @@ export default function NotebookTodayPage() {
                       {a.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {openSearch ? (
-                  <button
-                    type="button"
-                    className="kit-btn notebook-today__search"
-                    aria-label="Search"
+                  <IconButton
+                    variant="outline"
+                    label="Search"
+                    className="notebook-today__search"
                     onClick={openSearch}
                   >
                     <ShellIcon name="search" />
-                  </button>
+                  </IconButton>
                 ) : null}
               </span>
             </div>

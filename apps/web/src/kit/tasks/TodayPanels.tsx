@@ -12,6 +12,7 @@ import {
   type TaskDue,
   type TaskSchedule,
 } from '@gagnechris/shared';
+import { Chip, IconButton } from '@gagnechris/ui';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
 import { TaskRowActions } from './TaskRowActions';
@@ -135,14 +136,14 @@ export function StillOpenPanel(props: StillOpenProps) {
                     {source.label}
                   </span>
                 </span>
-                <button
-                  type="button"
+                <Chip
+                  tone="selected"
                   className="today-row__add"
                   aria-label={`Add ${task.title} to the note`}
                   onClick={() => props.onAddToNote(task.id)}
                 >
                   + Note
-                </button>
+                </Chip>
               </div>
             </li>
           ))}
@@ -349,10 +350,9 @@ function AddToNoteButton({
   onAdd: (id: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      className="today-row__icon-btn"
-      aria-label={`Add ${task.title} to today’s note`}
+    <IconButton
+      size="sm"
+      label={`Add ${task.title} to today’s note`}
       title="Add to today’s note"
       onClick={() => onAdd(task.id)}
     >
@@ -366,7 +366,7 @@ function AddToNoteButton({
           strokeLinejoin="round"
         />
       </svg>
-    </button>
+    </IconButton>
   );
 }
 

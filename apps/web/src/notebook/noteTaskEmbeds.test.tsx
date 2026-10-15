@@ -1321,16 +1321,21 @@ describe('task details under the row', () => {
     const user = userEvent.setup();
     const chevron = await chevronIn(noteA());
     await user.click(chevron);
-    const status = within(panelIn(noteA())!).getByRole('combobox', {
-      name: 'Status',
+    const status = within(panelIn(noteA())!).getByRole('button', {
+      name: 'Status: To do',
     });
 
-    await user.selectOptions(status, 'In progress');
+    await user.click(status);
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'In progress' }),
+    );
     await waitFor(() =>
       expect(api.tasks.get(TASK_ID)?.status).toBe('in_progress'),
     );
+    expect(status).toHaveAccessibleName('Status: In progress');
 
-    await user.selectOptions(status, 'Dropped');
+    await user.click(status);
+    await user.click(screen.getByRole('menuitemradio', { name: 'Dropped' }));
     await waitFor(() => expect(api.tasks.get(TASK_ID)?.status).toBe('dropped'));
     const row = chevron.closest('.task-embed')!;
     await waitFor(() => expect(row).toHaveTextContent('Dropped'));
@@ -1349,9 +1354,9 @@ describe('task details under the row', () => {
       version: 2,
     });
 
-    await user.selectOptions(
-      within(panel).getByRole('combobox', { name: 'Priority' }),
-      'Low priority',
+    await user.click(within(panel).getByRole('button', { name: /^Priority:/ }));
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'Low priority' }),
     );
 
     await waitFor(() => expect(api.tasks.get(TASK_ID)?.priority).toBe('low'));
@@ -1372,9 +1377,9 @@ describe('task details under the row', () => {
       version: 2,
     });
 
-    await user.selectOptions(
-      within(panel).getByRole('combobox', { name: 'Priority' }),
-      'Low priority',
+    await user.click(within(panel).getByRole('button', { name: /^Priority:/ }));
+    await user.click(
+      screen.getByRole('menuitemradio', { name: 'Low priority' }),
     );
 
     expect(
@@ -1404,7 +1409,12 @@ describe('task details under the row', () => {
     await user.click(within(panel).getByRole('button', { name: 'Add tags' }));
     await user.keyboard('{Escape}');
     expect(panelIn(noteA())).not.toBeNull();
-    await user.click(within(panel).getByRole('combobox', { name: 'Status' }));
+    const status = within(panel).getByRole('button', { name: /^Status:/ });
+    await user.click(status);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(status).toHaveFocus();
+    expect(panelIn(noteA())).not.toBeNull();
     await user.keyboard('{Escape}');
     expect(panelIn(noteA())).toBeNull();
     expect(title).toHaveFocus();

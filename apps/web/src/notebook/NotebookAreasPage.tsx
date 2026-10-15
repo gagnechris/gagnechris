@@ -10,8 +10,9 @@ import {
   NOTEBOOK_AREAS_MAX,
   notebookAreaIdFromName,
 } from '@gagnechris/shared';
-import { Field, TextInput } from '@gagnechris/ui';
+import { Button, Field, IconButton, TextInput } from '@gagnechris/ui';
 import { appConfirm } from '../workspace/confirmDialog';
+import ShellIcon from '../workspace/ui/ShellIcon';
 
 const sameName = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -73,33 +74,30 @@ function AreaRow({
         />
       </Field>
       <div className="notebook-areas__actions">
-        <button
-          type="button"
-          className="kit-btn"
-          aria-label={`Move ${area.name} up`}
+        <IconButton
+          variant="outline"
+          label={`Move ${area.name} up`}
           disabled={busy || index === 0}
           onClick={() => onMove(index - 1)}
         >
-          ↑
-        </button>
-        <button
-          type="button"
-          className="kit-btn"
-          aria-label={`Move ${area.name} down`}
+          <ShellIcon name="arrowUp" />
+        </IconButton>
+        <IconButton
+          variant="outline"
+          label={`Move ${area.name} down`}
           disabled={busy || index === count - 1}
           onClick={() => onMove(index + 1)}
         >
-          ↓
-        </button>
-        <button
-          type="button"
-          className="kit-btn"
-          aria-label={`Remove ${area.name}`}
+          <ShellIcon name="arrowDown" />
+        </IconButton>
+        <IconButton
+          variant="danger"
+          label={`Remove ${area.name}`}
           disabled={busy || count === 1}
           onClick={onRemove}
         >
-          Remove
-        </button>
+          <ShellIcon name="close" />
+        </IconButton>
       </div>
     </li>
   );
@@ -150,13 +148,13 @@ function NewAreaForm({
         />
       </Field>
       <div className="notebook-areas__actions">
-        <button
+        <Button
           type="submit"
-          className="kit-btn kit-btn--primary"
+          variant="primary"
           disabled={full || busy || !trimmed || taken}
         >
           Add area
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -115,7 +115,7 @@ test('Insert template… in the ⋯ menu inserts into a page and makes its tasks
   await page.goto(`${apps.notebook}/notes/${note.id}`);
 
   await page.getByRole('button', { name: 'Note options' }).click();
-  await page.getByRole('button', { name: 'Insert template…' }).click();
+  await page.getByRole('menuitem', { name: 'Insert template…' }).click();
   await page.getByRole('combobox', { name: 'Filter templates' }).fill(name);
   await page.getByRole('option', { name: new RegExp(name) }).click();
 

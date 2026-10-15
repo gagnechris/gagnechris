@@ -18,7 +18,7 @@ import {
   type Task,
   type TaskSchedule,
 } from '@gagnechris/shared';
-import { useModalDialog, useTabs } from '@gagnechris/ui';
+import { Button, Chip, IconButton, Tabs, useModalDialog } from '@gagnechris/ui';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
@@ -29,7 +29,10 @@ type SheetTask = Pick<Task, 'id' | 'title' | 'status' | 'priority'> & {
   parentId?: string | null;
 };
 export type TodaySheetTab = 'open' | 'coming';
-const TABS: readonly TodaySheetTab[] = ['open', 'coming'];
+const TAB_LABELS: Record<TodaySheetTab, string> = {
+  open: 'Still open',
+  coming: 'Coming up',
+};
 
 type Props<T extends SheetTask> = {
   stillOpen: StillOpenRow[];
@@ -80,15 +83,6 @@ export function TodaySheet<T extends SheetTask>({
   const [revealed, setRevealed] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
   const dragFrom = useRef<number | null>(null);
-  const tabs = useTabs<TodaySheetTab>({
-    keys: TABS,
-    selected: tab,
-    onSelect: (next) => {
-      setTab(next);
-      setRevealed(null);
-    },
-    label: 'Task lists',
-  });
   const { dialogProps } = useModalDialog<HTMLElement>({
     label: 'Today’s tasks',
     onClose,
@@ -127,22 +121,16 @@ export function TodaySheet<T extends SheetTask>({
     },
   };
 
-  const tabButton = (key: TodaySheetTab, label: string, count: number) => (
-    <button {...tabs.tabProps(key)} className="today-sheet__tab">
-      {label} · {loading ? '…' : count}
-    </button>
-  );
-
   const addPill = (task: SheetTask) =>
     onAddToNote ? (
-      <button
-        type="button"
+      <Chip
+        tone="selected"
         className="today-sheet__pill"
         aria-label={`Add ${task.title} to today’s note`}
         onClick={() => onAddToNote(task.id)}
       >
         + Note
-      </button>
+      </Chip>
     ) : null;
 
   const body = loading ? (
@@ -205,6 +193,15 @@ export function TodaySheet<T extends SheetTask>({
     </ul>
   );
 
+  const hint =
+    tab === 'open'
+      ? readOnly
+        ? 'From earlier notes and scheduled for today.'
+        : 'From earlier notes and scheduled for today. Swipe left or tap ⋯ to snooze or drop.'
+      : onAddToNote
+        ? 'Add one to today’s note to write context under it.'
+        : `Starting in ${comingUpWindow(horizonDays)}.`;
+
   return createPortal(
     <div className="today-sheet">
       <div className="today-sheet__scrim" onClick={onClose} />
@@ -216,51 +213,56 @@ export function TodaySheet<T extends SheetTask>({
         <div className="today-sheet__grab" {...grab}>
           <span className="today-sheet__handle" aria-hidden="true" />
         </div>
-        <div className="today-sheet__head">
-          <div {...tabs.listProps} className="today-sheet__tabs">
-            {tabButton('open', 'Still open', stillOpen.length)}
-            {tabButton('coming', 'Coming up', comingCount)}
-          </div>
-          <button
-            type="button"
-            className="today-sheet__close"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-              <path
-                d="M4 4l8 8M12 4l-8 8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </div>
-        <p className="today-sheet__hint">
-          {tab === 'open'
-            ? readOnly
-              ? 'From earlier notes and scheduled for today.'
-              : 'From earlier notes and scheduled for today. Swipe left or tap ⋯ to snooze or drop.'
-            : onAddToNote
-              ? 'Add one to today’s note to write context under it.'
-              : `Starting in ${comingUpWindow(horizonDays)}.`}
-        </p>
-        {error ? (
-          <p className="workspace-panel__error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {TABS.map((key) => (
-          <div
-            key={key}
-            {...tabs.panelProps(key)}
-            className="today-sheet__body"
-          >
-            {key === tab ? body : null}
-          </div>
-        ))}
+        <Tabs
+          className="today-sheet__tabs"
+          label="Task lists"
+          selected={tab}
+          onSelect={(next) => {
+            setTab(next);
+            setRevealed(null);
+          }}
+          items={(['open', 'coming'] as const).map((key) => ({
+            key,
+            label: `${TAB_LABELS[key]} · ${
+              loading ? '…' : key === 'open' ? stillOpen.length : comingCount
+            }`,
+            panel:
+              key === tab ? (
+                <>
+                  <p className="today-sheet__hint">{hint}</p>
+                  {error ? (
+                    <p className="workspace-panel__error" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                  {body}
+                </>
+              ) : null,
+          }))}
+          end={
+            <IconButton
+              size="lg"
+              label="Close"
+              className="today-sheet__close"
+              onClick={onClose}
+            >
+              <svg
+                viewBox="0 0 16 16"
+                width="16"
+                height="16"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4 4l8 8M12 4l-8 8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </IconButton>
+          }
+        />
         {footer}
       </section>
     </div>,
@@ -345,23 +347,21 @@ function StillOpenSheetRow({
           className="today-sheet__actions"
           hidden={!revealed}
         >
-          <button
-            type="button"
+          <Button
             className="today-sheet__action"
             aria-label={`Snooze ${task.title} to ${mondayLabel}`}
             onClick={onSnooze}
           >
             Snooze
             <span className="today-sheet__action-sub">{mondayLabel}</span>
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             className="today-sheet__action today-sheet__action--drop"
             aria-label={`Drop ${task.title}`}
             onClick={onDrop}
           >
             Drop
-          </button>
+          </Button>
         </div>
       )}
       <div className="today-sheet__row-main" {...swipe}>
@@ -389,10 +389,9 @@ function StillOpenSheetRow({
         </span>
         {addPill}
         {readOnly ? null : (
-          <button
-            type="button"
-            className="today-sheet__more"
-            aria-label={`More actions for ${task.title}`}
+          <IconButton
+            size="lg"
+            label={`More actions for ${task.title}`}
             aria-expanded={revealed}
             onClick={() => {
               focusActions.current = !revealed;
@@ -404,7 +403,7 @@ function StillOpenSheetRow({
               <circle cx="12" cy="12" r="1.8" fill="currentColor" />
               <circle cx="19" cy="12" r="1.8" fill="currentColor" />
             </svg>
-          </button>
+          </IconButton>
         )}
       </div>
     </li>

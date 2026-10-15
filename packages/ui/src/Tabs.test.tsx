@@ -58,4 +58,19 @@ describe('Tabs', () => {
     expect(screen.getAllByRole('tab')[0]).not.toHaveAttribute('aria-controls');
     expect(screen.queryByRole('tabpanel')).toBeNull();
   });
+
+  test('end controls sit in the tab row, outside the tablist', () => {
+    render(
+      <Tabs
+        label="Lists"
+        selected="a"
+        onSelect={() => {}}
+        items={[{ key: 'a', label: 'A', panel: 'A list' }]}
+        end={<button type="button">Close</button>}
+      />,
+    );
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(screen.getByRole('tablist')).not.toContainElement(close);
+    expect(close.parentElement).toHaveClass('ui-tabs__bar');
+  });
 });

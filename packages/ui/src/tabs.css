@@ -6,6 +6,19 @@
   scrollbar-width: none;
 }
 
+.ui-tabs__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.ui-tabs__bar > .ui-tabs__list {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
 .ui-tabs__tab {
   display: inline-flex;
   flex: none;

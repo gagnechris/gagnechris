@@ -4,6 +4,7 @@ import {
   taskDateMenuIds,
   type TaskDateMenuItem,
 } from '@gagnechris/shared';
+import { Button, DateInput } from '@gagnechris/ui';
 import './taskSyntax.css';
 
 type Picker = {
@@ -97,10 +98,8 @@ export function TaskDateMenu({
           <div className="task-syntax__picker">
             <label>
               <span>Pick a date</span>
-              <input
+              <DateInput
                 ref={pickerRef}
-                type="date"
-                className="kit-input"
                 value={picker.value}
                 onChange={(e) => picker.onChange(e.target.value)}
                 onKeyDown={(e) => {
@@ -115,14 +114,9 @@ export function TaskDateMenu({
                 }}
               />
             </label>
-            <button
-              type="button"
-              className="kit-btn"
-              disabled={!picker.value}
-              onClick={picker.onSet}
-            >
+            <Button disabled={!picker.value} onClick={picker.onSet}>
               Set date
-            </button>
+            </Button>
           </div>
         ) : null}
         <p className="task-syntax__hint" id={ids.hint}>

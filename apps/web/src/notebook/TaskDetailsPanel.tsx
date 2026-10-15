@@ -16,22 +16,23 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@gagnechris/shared';
+import { Chip, ChipSelect, TextInput } from '@gagnechris/ui';
 import { TaskDateButton } from '../kit/tasks/TaskDateButton';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useLocalToday } from './useLocalToday';
 
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  done: 'Done',
-  dropped: 'Dropped',
-};
+const STATUS_OPTIONS: readonly { value: TaskStatus; label: string }[] = [
+  { value: 'todo', label: 'To do' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'done', label: 'Done' },
+  { value: 'dropped', label: 'Dropped' },
+];
 
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  high: 'High priority',
-  med: 'Medium priority',
-  low: 'Low priority',
-};
+const PRIORITY_OPTIONS: readonly { value: TaskPriority; label: string }[] = [
+  { value: 'high', label: 'High priority' },
+  { value: 'med', label: 'Medium priority' },
+  { value: 'low', label: 'Low priority' },
+];
 
 const staleCurrent = (err: unknown): Task | null => {
   if (!(err instanceof ApiError)) return null;
@@ -55,14 +56,12 @@ function TagsChip({
   const [editing, setEditing] = useState<string | null>(null);
   if (editing === null) {
     return (
-      <button
-        type="button"
-        className="task-details__chip"
+      <Chip
         aria-label={tags.length ? `Tags: ${tags.join(', ')}` : 'Add tags'}
         onClick={() => setEditing(tags.join(', '))}
       >
         {tags.length ? tags.map((t) => `#${t}`).join(' ') : 'Add tags'}
-      </button>
+      </Chip>
     );
   }
   const commit = () => {
@@ -71,8 +70,9 @@ function TagsChip({
     if (next.join(',') !== tags.join(',')) onChange(next);
   };
   return (
-    <input
-      className="task-details__chip task-details__tags-input"
+    <TextInput
+      size="sm"
+      className="task-details__tags-input"
       aria-label="Tags (comma-separated)"
       value={editing}
       autoFocus
@@ -164,65 +164,53 @@ export function TaskDetailsPanel({
         placeholder: 'Add details…',
       })}
       <div className="task-details__chips">
-        <select
-          className="task-details__chip"
-          aria-label="Status"
+        <ChipSelect
+          label="Status"
+          options={STATUS_OPTIONS}
           value={task.status}
-          onChange={(e) => setStatus(e.target.value as TaskStatus)}
-        >
-          {Object.entries(STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={setStatus}
+        />
         <TaskDateButton
           kind="start"
           baseDay={today}
           clearLabel="No start date"
           hint="Shows up on Today from that date."
-          className="task-details__chip"
-          ariaLabel={`Start: ${start ?? 'none'}`}
           onChoose={(schedule) =>
             patch({ startDate: schedule.startDate, someday: schedule.someday })
           }
-        >
-          {start ? `Start ${start}` : 'Start'}
-        </TaskDateButton>
+          trigger={(props) => (
+            <Chip {...props} aria-label={`Start: ${start ?? 'none'}`}>
+              {start ? `Start ${start}` : 'Start'}
+            </Chip>
+          )}
+        />
         <TaskDateButton
           kind="due"
           baseDay={today}
           clearLabel="No deadline"
           hint="A deadline; it does not change when the task shows."
-          className="task-details__chip"
-          ariaLabel={`Due: ${task.dueDate ? formatTaskDay(task.dueDate) : 'none'}`}
           onChoose={(schedule) => patch({ dueDate: schedule.startDate })}
-        >
-          {task.dueDate ? `Due ${formatTaskDay(task.dueDate)}` : 'Due'}
-        </TaskDateButton>
-        <select
-          className="task-details__chip"
-          aria-label="Priority"
+          trigger={(props) => (
+            <Chip
+              {...props}
+              aria-label={`Due: ${task.dueDate ? formatTaskDay(task.dueDate) : 'none'}`}
+            >
+              {task.dueDate ? `Due ${formatTaskDay(task.dueDate)}` : 'Due'}
+            </Chip>
+          )}
+        />
+        <ChipSelect
+          label="Priority"
+          options={PRIORITY_OPTIONS}
           value={task.priority}
-          onChange={(e) => patch({ priority: e.target.value as TaskPriority })}
-        >
-          {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(priority) => patch({ priority })}
+        />
         <TagsChip tags={task.tags} onChange={(tags) => patch({ tags })} />
         {moveMenu ? (
           <span className="task-details__move">
-            <button
-              type="button"
-              className="task-details__chip"
-              aria-expanded={moving}
-              onClick={() => setMoving((v) => !v)}
-            >
+            <Chip aria-expanded={moving} onClick={() => setMoving((v) => !v)}>
               Move to…
-            </button>
+            </Chip>
             {moving ? moveMenu(() => setMoving(false)) : null}
           </span>
         ) : null}

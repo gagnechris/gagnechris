@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorView } from '@codemirror/view';
+import { Button, IconButton, Toolbar } from '@gagnechris/ui';
 import {
   hideKeyboard,
   makeTaskLine,
@@ -60,76 +61,70 @@ export function EditorAccessoryBar({ getView, tasks }: Props) {
 
   return createPortal(
     <div
-      role="toolbar"
-      aria-label="Formatting"
       className="editor-accessory"
       onMouseDown={(e) => e.preventDefault()}
       onPointerDown={(e) => e.preventDefault()}
     >
-      {tasks ? (
-        <>
-          <button
-            type="button"
-            className="editor-accessory__btn editor-accessory__btn--task"
-            aria-label="Insert task"
-            onClick={run(makeTaskLine)}
-          >
-            {icon(
-              <>
-                <rect x="3" y="3" width="18" height="18" rx="3" />
-                <path d="m8 12 3 3 5-6" />
-              </>,
-            )}
-            Task
-          </button>
-          <button
-            type="button"
-            className="editor-accessory__btn"
-            aria-label="Show on date"
-            onClick={run(startTaskDate)}
-          >
-            {icon(
-              <>
-                <rect x="3" y="4" width="18" height="17" rx="2" />
-                <path d="M16 2v4M8 2v4M3 10h18" />
-              </>,
-            )}
-          </button>
-          <button
-            type="button"
-            className="editor-accessory__btn editor-accessory__btn--text"
-            aria-label="Priority"
-            onClick={run(startPriority)}
-          >
-            !
-          </button>
-        </>
-      ) : null}
-      <button
-        type="button"
-        className="editor-accessory__btn editor-accessory__btn--text"
-        aria-label="Heading"
-        onClick={run((view) => toggleLinePrefix(view, '## '))}
-      >
-        H
-      </button>
-      <button
-        type="button"
-        className="editor-accessory__btn"
-        aria-label="Bulleted list"
-        onClick={run((view) => toggleLinePrefix(view, '- '))}
-      >
-        {icon(<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />)}
-      </button>
-      <span className="editor-accessory__spacer" />
-      <button
-        type="button"
-        className="editor-accessory__btn"
-        aria-label="Hide keyboard"
-        onClick={run(hideKeyboard)}
-      >
-        {icon(<path d="m6 9 6 6 6-6" />)}
-      </button>
+      <Toolbar label="Formatting" className="editor-accessory__bar">
+        {tasks ? (
+          <>
+            <Button
+              variant="ghost"
+              size="lg"
+              className="editor-accessory__task"
+              aria-label="Insert task"
+              onClick={run(makeTaskLine)}
+            >
+              {icon(
+                <>
+                  <rect x="3" y="3" width="18" height="18" rx="3" />
+                  <path d="m8 12 3 3 5-6" />
+                </>,
+              )}
+              Task
+            </Button>
+            <IconButton
+              size="lg"
+              label="Show on date"
+              onClick={run(startTaskDate)}
+            >
+              {icon(
+                <>
+                  <rect x="3" y="4" width="18" height="17" rx="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </>,
+              )}
+            </IconButton>
+            <IconButton
+              size="lg"
+              label="Priority"
+              className="editor-accessory__text"
+              onClick={run(startPriority)}
+            >
+              !
+            </IconButton>
+          </>
+        ) : null}
+        <IconButton
+          size="lg"
+          label="Heading"
+          className="editor-accessory__text"
+          onClick={run((view) => toggleLinePrefix(view, '## '))}
+        >
+          H
+        </IconButton>
+        <IconButton
+          size="lg"
+          label="Bulleted list"
+          onClick={run((view) => toggleLinePrefix(view, '- '))}
+        >
+          {icon(<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />)}
+        </IconButton>
+        <span className="editor-accessory__spacer" />
+        <IconButton size="lg" label="Hide keyboard" onClick={run(hideKeyboard)}>
+          {icon(<path d="m6 9 6 6 6-6" />)}
+        </IconButton>
+      </Toolbar>
     </div>,
     document.body,
   );

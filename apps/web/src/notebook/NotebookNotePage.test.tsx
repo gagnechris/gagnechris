@@ -215,7 +215,7 @@ describe('NotebookNotePage', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Note options' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Delete note' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete note' }));
     expect(confirm).toHaveBeenCalledWith(
       'Delete this note? It will disappear from your list.',
       'Delete',
@@ -236,7 +236,7 @@ describe('NotebookNotePage', () => {
     });
 
     await user.click(options);
-    await user.click(screen.getByRole('button', { name: 'Archive note' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Archive note' }));
     expect(
       screen.getByText('Personal standing note · Archived'),
     ).toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('NotebookNotePage', () => {
     expect(api.note?.archived).toBe(true);
 
     await user.click(options);
-    await user.click(screen.getByRole('button', { name: 'Unarchive note' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Unarchive note' }));
     await waitFor(() => expect(api.note?.archived).toBe(false), {
       timeout: 4000,
     });

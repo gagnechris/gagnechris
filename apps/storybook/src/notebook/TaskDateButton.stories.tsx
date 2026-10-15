@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
+import { Button } from '@gagnechris/ui';
 import { TaskDateButton } from '@web/kit/tasks/TaskDateButton';
 import { catalog } from '../catalog';
 
@@ -8,7 +9,7 @@ const meta = {
   component: TaskDateButton,
   parameters: catalog(
     'native date picker in `apps/mobile/src/notebook/`',
-    'A button that opens the task date menu (a select-only combobox: the button keeps focus and owns the arrow keys). Click it to open the menu.',
+    'A trigger the caller renders (here a `Button`) that opens the task date menu (a select-only combobox: the button keeps focus and owns the arrow keys). Click it to open the menu.',
   ),
   decorators: [
     (Story) => (
@@ -28,9 +29,11 @@ const meta = {
     baseDay: '2026-10-15',
     onChoose: fn(),
     hint: 'Shows up on Today from that date.',
-    className: 'kit-btn',
-    ariaLabel: 'Show this task on another day',
-    children: 'Show on…',
+    trigger: (props) => (
+      <Button {...props} aria-label="Show this task on another day">
+        Show on…
+      </Button>
+    ),
   },
 } satisfies Meta<typeof TaskDateButton>;
 
@@ -43,8 +46,11 @@ export const DeadlineWithClear: Story = {
   args: {
     kind: 'due',
     clearLabel: 'No deadline',
-    ariaLabel: 'Set a deadline',
-    children: 'Deadline…',
+    trigger: (props) => (
+      <Button {...props} aria-label="Set a deadline">
+        Deadline…
+      </Button>
+    ),
   },
 };
 

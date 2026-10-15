@@ -117,7 +117,7 @@ test('New opens a day or a standing note; standing notes stay in the sidebar unt
     project.title,
   );
   await page.getByRole('button', { name: 'Note options' }).click();
-  await page.getByRole('button', { name: 'Archive note' }).click();
+  await page.getByRole('menuitem', { name: 'Archive note' }).click();
   await expect(page.getByText('Work standing note · Archived')).toBeVisible();
   await expect.poll(sidebarTitles).toEqual([pinned.title, `${prefix} Ideas`]);
 
@@ -135,7 +135,7 @@ test('New opens a day or a standing note; standing notes stay in the sidebar unt
 
   await list.getByRole('link', { name: new RegExp(project.title) }).click();
   await page.getByRole('button', { name: 'Note options' }).click();
-  await page.getByRole('button', { name: 'Unarchive note' }).click();
+  await page.getByRole('menuitem', { name: 'Unarchive note' }).click();
   await expect
     .poll(sidebarTitles)
     .toEqual([pinned.title, project.title, `${prefix} Ideas`]);

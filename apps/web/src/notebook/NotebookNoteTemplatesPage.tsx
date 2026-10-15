@@ -13,7 +13,7 @@ import {
   DAILY_TEMPLATE_DATE_TOKEN,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
 } from '@gagnechris/shared';
-import { Field, TextInput } from '@gagnechris/ui';
+import { Button, Field, List, ListRow, TextInput } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { createUlid } from '../lib/ulid';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -94,17 +94,10 @@ function TemplateEditor({
         <h2>{entity.name}</h2>
         <div className="notebook-templates__actions">
           <SaveIndicator quiet saveState={saveState} dirty={dirty} />
-          <button type="button" className="kit-btn" onClick={insertDate}>
-            Insert date
-          </button>
-          <button
-            type="button"
-            className="kit-btn"
-            disabled={busy}
-            onClick={() => void runDelete()}
-          >
+          <Button onClick={insertDate}>Insert date</Button>
+          <Button disabled={busy} onClick={() => void runDelete()}>
             Delete
-          </button>
+          </Button>
         </div>
       </div>
       {editor.saveError ? (
@@ -172,13 +165,13 @@ function NewTemplateForm({ onCreated }: { onCreated: (id: string) => void }) {
           onChange={(e) => setName(e.target.value)}
         />
       </Field>
-      <button
+      <Button
         type="submit"
-        className="kit-btn kit-btn--primary"
+        variant="primary"
         disabled={!name.trim() || create.isPending}
       >
         Create
-      </button>
+      </Button>
       {create.error ? (
         <p className="workspace-panel__error" role="alert">
           {errorMessage(create.error, 'Could not create the template.')}
@@ -201,20 +194,16 @@ function TemplateList({
     return <p className="kit-hint">No templates yet.</p>;
   }
   return (
-    <ul className="note-templates__list" aria-label="Templates">
+    <List aria-label="Templates">
       {[...templates].sort(compareNoteTemplates).map((template) => (
-        <li key={template.id}>
-          <button
-            type="button"
-            className="note-templates__item"
-            aria-current={template.id === selected ? 'true' : undefined}
-            onClick={() => onSelect(template.id)}
-          >
-            {template.name}
-          </button>
-        </li>
+        <ListRow
+          key={template.id}
+          title={template.name}
+          current={template.id === selected}
+          onClick={() => onSelect(template.id)}
+        />
       ))}
-    </ul>
+    </List>
   );
 }
 

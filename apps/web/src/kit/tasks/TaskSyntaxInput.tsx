@@ -21,12 +21,13 @@ import {
   tokenInsertion,
   tomorrowOf,
 } from '@gagnechris/shared';
+import { TextInput } from '@gagnechris/ui';
 import { TaskDateMenu } from './TaskDateMenu';
 import './taskSyntax.css';
 
 type Props = Omit<
   InputHTMLAttributes<HTMLInputElement>,
-  'value' | 'onChange' | 'role' | 'type'
+  'value' | 'onChange' | 'role' | 'type' | 'size'
 > & {
   value: string;
   onChange: (value: string) => void;
@@ -142,12 +143,12 @@ export function TaskSyntaxInput({
         setCaret(null);
       }}
     >
-      <input
+      <TextInput
         {...inputProps}
         ref={inputRef}
         type="text"
         role="combobox"
-        className={className ?? 'kit-input'}
+        className={className}
         value={value}
         autoComplete="off"
         aria-autocomplete="list"

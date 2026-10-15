@@ -1,6 +1,12 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useModalDialog } from '@gagnechris/ui';
+import {
+  Button,
+  Checkbox,
+  Scrim,
+  TextInput,
+  useModalDialog,
+} from '@gagnechris/ui';
 
 export type SearchHit = {
   key: string;
@@ -59,17 +65,15 @@ export default function SearchPalette({
 
   return (
     <div className="workspace-search" {...dialogProps}>
-      <button
-        type="button"
+      <Scrim
         className="workspace-search__backdrop"
-        aria-label="Close search"
+        label="Close search"
         onClick={onClose}
       />
       <div className="workspace-search__panel">
         <div className="workspace-search__toolbar">
-          <input
+          <TextInput
             ref={inputRef}
-            className="kit-input"
             type="search"
             role="combobox"
             aria-label={label}
@@ -104,13 +108,13 @@ export default function SearchPalette({
             }}
           />
           {toolbar}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             className="workspace-search__cancel"
             onClick={onClose}
           >
             Cancel
-          </button>
+          </Button>
         </div>
 
         <div className="workspace-search__status" aria-live="polite">
@@ -169,15 +173,21 @@ export default function SearchPalette({
                         <span className="workspace-search__hit-title">
                           {hit.check ? (
                             // Pointer target only: the combobox owns the keys.
-                            <input
-                              type="checkbox"
-                              className="workspace-search__check"
-                              tabIndex={-1}
+                            <span
                               aria-hidden="true"
-                              checked={hit.check.checked}
+                              className="workspace-search__check"
                               onClick={(e) => e.stopPropagation()}
-                              onChange={hit.check.onToggle}
-                            />
+                            >
+                              <Checkbox
+                                shape="round"
+                                label={hit.check.label}
+                                aria-label={hit.check.label}
+                                hideLabel
+                                tabIndex={-1}
+                                checked={hit.check.checked}
+                                onChange={hit.check.onToggle}
+                              />
+                            </span>
                           ) : null}
                           {hit.title}
                           {hit.check ? (

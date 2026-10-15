@@ -1,5 +1,17 @@
 import type { TaskSchedule } from '@gagnechris/shared';
+import { Button, IconButton } from '@gagnechris/ui';
 import { TaskDateButton } from './TaskDateButton';
+
+const chevron = (
+  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+    <path
+      d="M4 6l4 4 4-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+  </svg>
+);
 
 type Props = {
   title: string;
@@ -18,6 +30,7 @@ export function SnoozeMenu({
   disabled,
   label,
 }: Props) {
+  const name = `Snooze ${title} to another day`;
   return (
     <TaskDateButton
       kind="start"
@@ -25,22 +38,24 @@ export function SnoozeMenu({
       onChoose={onChoose}
       hint="Hides it until that day. It comes back to Still open then."
       disabled={disabled}
-      className={
-        label ? 'kit-btn' : 'today-row__icon-btn today-row__icon-btn--more'
-      }
-      ariaLabel={`Snooze ${title} to another day`}
-      title="Snooze to another day"
       up={Boolean(label)}
-    >
-      {label}
-      <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-        <path
-          d="M4 6l4 4 4-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-        />
-      </svg>
-    </TaskDateButton>
+      trigger={(props) =>
+        label ? (
+          <Button {...props} aria-label={name} title="Snooze to another day">
+            {label}
+            {chevron}
+          </Button>
+        ) : (
+          <IconButton
+            {...props}
+            size="sm"
+            label={name}
+            title="Snooze to another day"
+          >
+            {chevron}
+          </IconButton>
+        )
+      }
+    />
   );
 }

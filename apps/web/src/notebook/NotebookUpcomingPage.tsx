@@ -19,6 +19,7 @@ import {
   taskDue,
   type TaskLineDraft,
 } from '@gagnechris/shared';
+import { Button } from '@gagnechris/ui';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
@@ -133,13 +134,13 @@ export default function NotebookUpcomingPage() {
             aria-label="Schedule a task"
             disabled={quickAddTask.pending}
           />
-          <button
+          <Button
             type="submit"
-            className="kit-btn kit-btn--primary"
+            variant="primary"
             disabled={quickAddTask.pending || !quickAdd.trim()}
           >
             Add
-          </button>
+          </Button>
         </form>
         {quickAddTask.hint ? (
           <p className="kit-hint" role="status">
@@ -212,14 +213,13 @@ export default function NotebookUpcomingPage() {
                           </Link>
                         ) : null}
                       </span>
-                      <button
-                        type="button"
-                        className="kit-btn notebook-upcoming__today"
+                      <Button
+                        className="notebook-upcoming__today"
                         aria-label={`Do “${task.title}” today`}
                         onClick={() => doToday(task)}
                       >
                         Do today
-                      </button>
+                      </Button>
                       <span className="task-row__actions">
                         <TaskRowActions
                           title={task.title}

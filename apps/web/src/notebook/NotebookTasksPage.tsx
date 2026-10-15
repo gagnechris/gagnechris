@@ -29,7 +29,7 @@ import { TaskRow } from '../kit/tasks/TaskRow';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
-import { SegmentedRadio } from '@gagnechris/ui';
+import { Button, Field, SegmentedRadio, Select } from '@gagnechris/ui';
 import { useLocalToday } from './useLocalToday';
 
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -182,13 +182,13 @@ export default function NotebookTasksPage() {
             aria-label="Quick add task"
             disabled={quickAddTask.pending}
           />
-          <button
+          <Button
             type="submit"
-            className="kit-btn kit-btn--primary"
+            variant="primary"
             disabled={quickAddTask.pending || !quickAdd.trim()}
           >
             Add
-          </button>
+          </Button>
         </form>
         {quickAddTask.hint ? (
           <p className="kit-hint">{quickAddTask.hint}</p>
@@ -209,10 +209,8 @@ export default function NotebookTasksPage() {
           }}
         />
         <div className="workspace-toolbar notebook-tasks__filters">
-          <label className="kit-field">
-            <span className="kit-field__label">Area</span>
-            <select
-              className="kit-input"
+          <Field label="Area">
+            <Select
               value={area ?? ''}
               onChange={(e) => setListArea(e.target.value)}
               aria-label="Filter by area"
@@ -223,12 +221,10 @@ export default function NotebookTasksPage() {
                   {a.name}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="kit-field">
-            <span className="kit-field__label">Status</span>
-            <select
-              className="kit-input"
+            </Select>
+          </Field>
+          <Field label="Status">
+            <Select
               value={status}
               onChange={(e) => setStatus(e.target.value as TaskStatus | '')}
               aria-label="Filter by status"
@@ -239,12 +235,10 @@ export default function NotebookTasksPage() {
                   {o.label}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="kit-field">
-            <span className="kit-field__label">Priority</span>
-            <select
-              className="kit-input"
+            </Select>
+          </Field>
+          <Field label="Priority">
+            <Select
               value={priority}
               onChange={(e) => setPriority(e.target.value as TaskPriority | '')}
               aria-label="Filter by priority"
@@ -255,12 +249,10 @@ export default function NotebookTasksPage() {
                   {o.label}
                 </option>
               ))}
-            </select>
-          </label>
-          <label className="kit-field">
-            <span className="kit-field__label">Show on</span>
-            <select
-              className="kit-input"
+            </Select>
+          </Field>
+          <Field label="Show on">
+            <Select
               value={showOn}
               onChange={(e) => setShowOn(e.target.value as TaskShowOnFilter)}
               aria-label="Filter by show-on date"
@@ -272,8 +264,8 @@ export default function NotebookTasksPage() {
               <option value="later">After today</option>
               <option value="none">No date</option>
               <option value="someday">Someday</option>
-            </select>
-          </label>
+            </Select>
+          </Field>
         </div>
 
         {tasksQuery.isError ? (
@@ -344,27 +336,23 @@ export default function NotebookTasksPage() {
               ))}
             </ul>
             {!status && completedQuery.hasNextPage ? (
-              <button
-                type="button"
-                className="kit-btn"
+              <Button
                 disabled={completedQuery.isFetchingNextPage}
                 onClick={() => void completedQuery.fetchNextPage()}
               >
                 Load more completed
-              </button>
+              </Button>
             ) : null}
           </details>
         ) : null}
 
         {tasksQuery.hasNextPage ? (
-          <button
-            type="button"
-            className="kit-btn"
+          <Button
             disabled={tasksQuery.isFetchingNextPage}
             onClick={() => void tasksQuery.fetchNextPage()}
           >
             Load more
-          </button>
+          </Button>
         ) : null}
       </section>
     </TaskParentsProvider>

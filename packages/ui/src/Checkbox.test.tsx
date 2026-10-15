@@ -42,6 +42,22 @@ describe('Checkbox', () => {
     );
   });
 
+  test('a hidden label with an aria-label renders no label text', () => {
+    const { container } = render(
+      <Checkbox
+        shape="round"
+        hideLabel
+        label="Pay rent"
+        aria-label="Complete Pay rent"
+        onChange={() => {}}
+      />,
+    );
+    expect(
+      screen.getByRole('checkbox', { name: 'Complete Pay rent' }),
+    ).toBeInTheDocument();
+    expect(container).toHaveTextContent(/^$/);
+  });
+
   test('disabled cannot be toggled', async () => {
     const user = userEvent.setup();
     render(<Checkbox label="Locked" disabled />);

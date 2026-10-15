@@ -4,7 +4,7 @@ import { Glyph } from './Glyph.js';
 
 type Props = Omit<ComponentProps<'input'>, 'type' | 'children'> & {
   label: ReactNode;
-  /** Keeps the label for screen readers only, as in a task row. */
+  /** Keeps the label for screen readers only, as in a task row. With an `aria-label`, no label text renders at all. */
   hideLabel?: boolean;
   /** `round` is for tasks; `square` for settings and fields. */
   shape?: 'square' | 'round';
@@ -52,10 +52,14 @@ export const Checkbox = ({
         <Glyph name="check" size={14} className="ui-check__mark" />
         <Glyph name="dash" size={14} className="ui-check__dash" />
       </span>
-      <span className={hideLabel ? 'ui-visually-hidden' : 'ui-check__label'}>
-        {label}
-        {dropped ? <span className="ui-visually-hidden">, dropped</span> : null}
-      </span>
+      {hideLabel && rest['aria-label'] ? null : (
+        <span className={hideLabel ? 'ui-visually-hidden' : 'ui-check__label'}>
+          {label}
+          {dropped ? (
+            <span className="ui-visually-hidden">, dropped</span>
+          ) : null}
+        </span>
+      )}
     </label>
   );
 };

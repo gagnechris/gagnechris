@@ -91,4 +91,18 @@ describe('Button', () => {
     await user.keyboard(' ');
     expect(onClick).toHaveBeenCalledTimes(2);
   });
+
+  test('forwards a ref to the button', () => {
+    let el: HTMLButtonElement | null = null;
+    render(
+      <Button
+        ref={(node) => {
+          el = node;
+        }}
+      >
+        Save
+      </Button>,
+    );
+    expect(el).toBe(screen.getByRole('button', { name: 'Save' }));
+  });
 });

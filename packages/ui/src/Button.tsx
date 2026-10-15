@@ -2,6 +2,7 @@ import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
   ReactNode,
+  Ref,
 } from 'react';
 import { cx, type ControlSize, type Tone } from './cx.js';
 
@@ -20,6 +21,7 @@ type ButtonAsButton = ButtonHTMLAttributes<HTMLButtonElement> &
     href?: undefined;
     /** Shows a spinner and sets `aria-busy`; the button stays focusable. */
     loading?: boolean;
+    ref?: Ref<HTMLButtonElement>;
   };
 
 type ButtonAsLink = AnchorHTMLAttributes<HTMLAnchorElement> &

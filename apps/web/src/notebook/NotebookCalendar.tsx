@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { addDays, formatCalendarDay, WEEKDAY_LONG } from '@gagnechris/shared';
+import { IconButton } from '@gagnechris/ui';
 import {
   monthBounds,
   monthGrid,
   monthLabel,
   startOfMonth,
 } from '../kit/calendarDates';
+import ShellIcon from '../workspace/ui/ShellIcon';
 import { useLocalToday } from './useLocalToday';
 
 type Props = {
@@ -122,25 +124,19 @@ export function NotebookCalendar({
   return (
     <div className="notebook-calendar">
       <div className="notebook-calendar__toolbar">
-        <button
-          type="button"
-          className="kit-btn"
+        <IconButton
+          variant="outline"
+          label="Previous month"
           onClick={previousMonth}
-          aria-label="Previous month"
         >
-          ←
-        </button>
+          <ShellIcon name="arrowLeft" />
+        </IconButton>
         <span className="notebook-calendar__label" aria-live="polite">
           {monthLabel(month)}
         </span>
-        <button
-          type="button"
-          className="kit-btn"
-          onClick={nextMonth}
-          aria-label="Next month"
-        >
-          →
-        </button>
+        <IconButton variant="outline" label="Next month" onClick={nextMonth}>
+          <ShellIcon name="arrowRight" />
+        </IconButton>
       </div>
       <div
         className="notebook-calendar__grid"

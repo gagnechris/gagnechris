@@ -5,7 +5,7 @@ import {
   useDeleteNoteMutation,
   type Note,
 } from '@gagnechris/app-core';
-import { Field, TextInput } from '@gagnechris/ui';
+import { Checkbox, Field, TextInput } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
@@ -168,16 +168,14 @@ export default function NotebookNotePage() {
         />
       </Field>
 
-      <label className="kit-check">
-        <input
-          type="checkbox"
-          checked={draft.pinned}
-          onChange={(e) =>
-            updateDraft((prev) => ({ ...prev, pinned: e.target.checked }))
-          }
-        />
-        Pinned
-      </label>
+      <Checkbox
+        className="notebook-check"
+        label="Pinned"
+        checked={draft.pinned}
+        onChange={(e) =>
+          updateDraft((prev) => ({ ...prev, pinned: e.target.checked }))
+        }
+      />
 
       <NotebookMarkdownBody
         editorRef={editorRef}

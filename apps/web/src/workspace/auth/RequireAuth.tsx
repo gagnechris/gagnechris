@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Button } from '@gagnechris/ui';
 import { getAuthUser, redirectToSignIn, type AuthUser } from './session';
 
 type RequireAuthProps = {
@@ -43,9 +44,9 @@ export default function RequireAuth({ children }: RequireAuthProps) {
       <div className="workspace-shell workspace-shell--centered">
         <h1>Could not verify sign-in</h1>
         <p>{error}</p>
-        <button type="button" onClick={() => void redirectToSignIn()}>
+        <Button variant="primary" onClick={() => void redirectToSignIn()}>
           Sign in
-        </button>
+        </Button>
       </div>
     );
   }

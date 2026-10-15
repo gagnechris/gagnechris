@@ -17,23 +17,23 @@ more sit in `apps/web/src/workspace/ui`. iOS primitives live in
 | Component        | Web                                                                                                              | Used by         | iOS counterpart                                                   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- | --------------- | ----------------------------------------------------------------- |
 | Button           | `@gagnechris/ui` `Button` (`default`, `primary`, `danger`, `ghost`, `link`; `sm`, `md`, `lg`; `loading`; `href`) | Admin, Notebook | `ui/Button.tsx` (`primary`, `secondary`)                          |
-| IconButton       | `@gagnechris/ui` `IconButton` (`ghost`, `outline`, `danger`; `sm`, `md`, `lg`; `pressed`, `count`)               | none yet        | none (screens use `Pressable` + `Icon`)                           |
+| IconButton       | `@gagnechris/ui` `IconButton` (`ghost`, `outline`, `danger`; `sm`, `md`, `lg`; `pressed`, `count`)               | Admin, Notebook | none (screens use `Pressable` + `Icon`)                           |
 | Field            | `@gagnechris/ui` `Field` (label, hint, `error`)                                                                  | Admin, Notebook | none; screens use `TextInput` directly                            |
 | Text inputs      | `@gagnechris/ui` `TextInput` (`prefix`), `TextArea` (grows to 12 lines), `Select`, `DateInput`, `SearchInput`    | Admin, Notebook | `ui/SearchField.tsx` for search                                   |
 | FileInput        | `@gagnechris/ui` `FileInput` (drop zone, upload progress)                                                        | none yet        | none                                                              |
-| Combobox         | `@gagnechris/ui` `Combobox`                                                                                      | none yet        | none                                                              |
-| Checkbox         | `@gagnechris/ui` `Checkbox` (`square` with a mixed state; `round` for tasks, with `dropped`)                     | none yet        | check inside `ui/TaskRow.tsx`                                     |
+| Combobox         | `@gagnechris/ui` `Combobox`                                                                                      | Notebook        | none                                                              |
+| Checkbox         | `@gagnechris/ui` `Checkbox` (`square` with a mixed state; `round` for tasks, with `dropped`)                     | Notebook        | check inside `ui/TaskRow.tsx`                                     |
 | RadioCardGroup   | `@gagnechris/ui` `RadioCardGroup`                                                                                | none yet        | none                                                              |
-| Chip             | `@gagnechris/ui` `Chip` (`neutral`, `selected`, `warning`, `danger`), `ChipSelect`                               | none yet        | `ui/AreaChip.tsx`                                                 |
-| Tabs             | `@gagnechris/ui` `Tabs`                                                                                          | none yet        | `ui/SpaceTabs.tsx`                                                |
-| Menu             | `@gagnechris/ui` `Menu`, `MenuItem`, `MenuRadioGroup`, `MenuGroup`, `MenuSeparator`                              | none yet        | `ActionSheetIOS` (`ui/AreaChip.tsx`, `notebook/taskActionSheets`) |
+| Chip             | `@gagnechris/ui` `Chip` (`neutral`, `selected`, `warning`, `danger`), `ChipSelect`                               | Notebook        | `ui/AreaChip.tsx`                                                 |
+| Tabs             | `@gagnechris/ui` `Tabs` (`end` slot)                                                                             | Notebook        | `ui/SpaceTabs.tsx`                                                |
+| Menu             | `@gagnechris/ui` `Menu`, `MenuItem`, `MenuRadioGroup`, `MenuGroup`, `MenuSeparator`                              | Notebook        | `ActionSheetIOS` (`ui/AreaChip.tsx`, `notebook/taskActionSheets`) |
 | Dialog, Drawer   | `@gagnechris/ui` `Dialog` (`sm`, `md`, `lg`), `Drawer`; both open as a BottomSheet under 768px                   | none yet        | modal screens in `apps/mobile/app/`                               |
-| Scrim            | `@gagnechris/ui` `Scrim`                                                                                         | none yet        | n/a                                                               |
+| Scrim            | `@gagnechris/ui` `Scrim`                                                                                         | Admin, Notebook | n/a                                                               |
 | StatusBadge      | `@gagnechris/ui` `StatusBadge` (`draft`, `published`, `unpublished`, `deleted`)                                  | Admin           | none                                                              |
 | BottomSheet      | `@gagnechris/ui` `BottomSheet`                                                                                   | Admin           | none                                                              |
 | Card             | `@gagnechris/ui` `Card` (`boxed`, `flat`; `compact`, `selected`, interactive with `href` or `onClick`)           | none yet        | `Card` in `site/ui.tsx`, `ui/AccountCard.tsx`                     |
-| ListRow          | `@gagnechris/ui` `List`, `ListRow`                                                                               | none yet        | `ui/Row.tsx`                                                      |
-| Toolbar          | `@gagnechris/ui` `Toolbar`, `ToolbarSeparator`                                                                   | none yet        | keyboard toolbar in `ui/LiveMarkdownInput.tsx`                    |
+| ListRow          | `@gagnechris/ui` `List`, `ListRow`                                                                               | Notebook        | `ui/Row.tsx`                                                      |
+| Toolbar          | `@gagnechris/ui` `Toolbar`, `ToolbarSeparator`                                                                   | Admin, Notebook | keyboard toolbar in `ui/LiveMarkdownInput.tsx`                    |
 | DragHandle       | `@gagnechris/ui` `DragHandle`                                                                                    | none yet        | `ui/DragGrip.tsx`                                                 |
 | EmptyState       | `@gagnechris/ui` `EmptyState`                                                                                    | none yet        | `ui/EmptyState.tsx`                                               |
 | Chips input      | `admin/editor/ChipsInput.tsx` (`.kit-chips`)                                                                     | Admin           | none                                                              |
@@ -107,48 +107,19 @@ component each should use. Paths are under `apps/web/src`. The Bears games
 "Styled as" means the element borrows a component's CSS class without using the
 component.
 
-### Notebook
+### Notebook and workspace shell
 
-| File                                     | Elements                          | Styled as                                          | Target                                                    |
-| ---------------------------------------- | --------------------------------- | -------------------------------------------------- | --------------------------------------------------------- |
-| `notebook/NotebookTodayPage.tsx`         | 5 buttons, 1 select               | `.kit-btn`, `.kit-input`, `.notebook-today__strip` | IconButton (prev, next, today, search), Select, PanelEdge |
-| `notebook/NotebookTasksPage.tsx`         | 3 buttons, 4 selects              | `.kit-btn`, `.kit-input`                           | Button, Select                                            |
-| `notebook/NotebookNotesPage.tsx`         | 4 buttons, 2 inputs               | `.kit-btn`, `.kit-input`, `.note-menu__item`       | Button, SearchInput, DateInput, MenuItem                  |
-| `notebook/NotebookNoteTemplatesPage.tsx` | 4 buttons                         | `.kit-btn`, `.note-templates__item`                | Button, list row                                          |
-| `notebook/NotebookTemplatesPage.tsx`     | 2 buttons                         | `.kit-btn`                                         | Button                                                    |
-| `notebook/NotebookAreasPage.tsx`         | 4 buttons                         | `.kit-btn`                                         | IconButton (move up, move down, remove), Button           |
-| `notebook/NotebookTaskPage.tsx`          | 3 buttons, 1 checkbox             | `.kit-btn`                                         | Button, Checkbox                                          |
-| `notebook/NotebookUpcomingPage.tsx`      | 2 buttons                         | `.kit-btn`                                         | Button                                                    |
-| `notebook/NotebookCalendar.tsx`          | 2 buttons                         | `.kit-btn`                                         | IconButton                                                |
-| `notebook/NotebookNotePage.tsx`          | 1 checkbox                        | none                                               | Checkbox                                                  |
-| `notebook/NoteMenu.tsx`                  | 5 buttons, 2 radios               | `.kit-btn`, `.note-menu__item`                     | Menu, MenuItem, MenuRadioGroup                            |
-| `notebook/TaskMoveMenu.tsx`              | 4 buttons, 1 date input           | `.task-move-menu__item`, `.kit-input`, `.kit-btn`  | Menu, MenuItem, DateInput                                 |
-| `notebook/TaskDetailsPanel.tsx`          | 2 buttons, 1 input, 2 selects     | `.task-details__chip`                              | Chip, ChipSelect                                          |
-| `notebook/TodayEditor.tsx`               | 1 button                          | `.notebook-today__template-action`                 | Button (link variant)                                     |
-| `notebook/LinkedNotePicker.tsx`          | 1 combobox input                  | `.kit-input`                                       | Combobox                                                  |
-| `notebook/NoteTemplatePicker.tsx`        | 1 combobox input                  | `.kit-input`                                       | Combobox                                                  |
-| `kit/tasks/TaskEmbedRow.tsx`             | 7 buttons, 1 checkbox, 1 textarea | `.kit-btn`, `.task-embed__*`                       | IconButton, Checkbox, Button                              |
-| `kit/tasks/TodaySheet.tsx`               | 6 buttons                         | `.today-sheet__*`                                  | Tabs, IconButton, Chip                                    |
-| `kit/tasks/TodayPanels.tsx`              | 2 buttons                         | `.today-row__add`, `.today-row__icon-btn`          | IconButton                                                |
-| `kit/tasks/TaskRowActions.tsx`           | 2 buttons                         | `.today-row__icon-btn`                             | IconButton                                                |
-| `kit/tasks/TaskRow.tsx`                  | 1 checkbox                        | `.task-check`                                      | Checkbox                                                  |
-| `kit/tasks/TaskDateButton.tsx`           | 1 combobox button                 | caller's class                                     | Chip                                                      |
-| `kit/tasks/TaskDateMenu.tsx`             | 1 button, 1 date input            | `.kit-btn`, `.kit-input`                           | Button, DateInput                                         |
-| `kit/tasks/TaskSyntaxInput.tsx`          | 1 combobox input                  | `.kit-input`                                       | Combobox                                                  |
-| `kit/markdown/EditorAccessoryBar.tsx`    | 6 buttons                         | `.editor-accessory__btn`                           | Toolbar, IconButton                                       |
-| `kit/markdown/MarkdownBodyEditor.tsx`    | 2 buttons, 1 file input           | `.markdown-toolbar__btn`                           | Toolbar, IconButton, FileInput                            |
+Notebook code (`notebook/`, `workspace/`, `kit/`) uses the components above.
+These plain elements remain, each with no component that fits:
 
-### Workspace shell (Admin and Notebook)
-
-| File                                 | Elements                              | Styled as                                                                    | Target                                    |
-| ------------------------------------ | ------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- |
-| `workspace/WorkspaceShell.tsx`       | 5 buttons                             | `.workspace-icon-button`, `.workspace-search-button`, `.workspace-nav__item` | IconButton, nav item, Scrim               |
-| `workspace/ui/SearchPalette.tsx`     | 2 buttons, 1 search input, 1 checkbox | `.kit-input`, `.workspace-search__*`                                         | Dialog, Combobox, Checkbox, Scrim         |
-| `workspace/ui/EditorActionBar.tsx`   | 1 button                              | `.workspace-actions__toggle`                                                 | Menu trigger (IconButton)                 |
-| `workspace/ui/PanelEdge.tsx`         | 1 button                              | `.workspace-edge-button`                                                     | stays (feature control)                   |
-| `packages/ui/src/SegmentedRadio.tsx` | 1 button per option                   | `.workspace-segmented__option`                                               | stays (is the SegmentedControl primitive) |
-| `workspace/auth/RequireAuth.tsx`     | 1 button                              | none                                                                         | Button                                    |
-| `workspace/auth/NoAccessScreen.tsx`  | 2 buttons                             | none                                                                         | Button                                    |
+| File                                  | Element                      | Why it stays                                                                                                   |
+| ------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `workspace/WorkspaceShell.tsx`        | search button, More nav item | Nav items styled with the sidebar's `NavLink`s (`.workspace-nav__item`, `.workspace-search-button`)            |
+| `workspace/ui/PanelEdge.tsx`          | 1 button                     | The panel edge control itself                                                                                  |
+| `notebook/NotebookTodayPage.tsx`      | task strip button            | The phone strip that opens the Today sheet (`.notebook-today__strip`)                                          |
+| `kit/tasks/TaskEmbedRow.tsx`          | title textarea, move handle  | The inline title editor sizes to its text inside CodeMirror; the handle's ⌥↑/⌥↓ moves re-create the row widget |
+| `kit/markdown/MarkdownBodyEditor.tsx` | file input                   | The native file picker behind the Insert image label                                                           |
+| `kit/markdown/livePreview.ts`         | checkbox (CodeMirror widget) | Drawn by the editor, outside React                                                                             |
 
 ### Admin
 
@@ -188,19 +159,14 @@ The same control is styled several ways:
   `.contact-form__submit`, `.resume-load-error__retry`. Admin settings
   (`admin/settings/users.css`) has its own full button set with `small`, `tall`
   and link variants that `.kit-btn` lacks.
-- **Icon buttons:** `.workspace-icon-button`, `.users-icon-btn`,
-  `.today-row__icon-btn`, `.markdown-toolbar__btn`, `.editor-accessory__btn`,
-  `.reading-bar__button`, `.task-embed__chevron`, `.today-sheet__close`.
-- **Menus:** `.note-menu`, `.task-move-menu`, `.kit-row-actions`,
-  `.workspace-actions`, `.workspace-more`, `.site-menu`.
-- **Chips and pills:** `.kit-chip`, `.task-details__chip`, `.today-row__chip`,
-  `.today-sheet__pill`, `.task-embed__pill`, `.notebook-upcoming__chip`,
-  `.users-chip`.
-- **Checkboxes:** `.task-check`, `.task-embed__check`,
-  `.workspace-search__check`, and unstyled checkboxes in `NotebookTaskPage`,
-  `NotebookNotePage`, `PostEditorSections` and `ResumeEditorForm`.
-- **Scrims:** `.users-scrim`, `.workspace-search__backdrop`,
-  `.workspace-more__backdrop`.
+- **Icon buttons:** `.users-icon-btn`, `.reading-bar__button`.
+- **Menus:** `.kit-row-actions`, `.workspace-actions`, `.workspace-more`,
+  `.site-menu`.
+- **Chips and pills:** `.kit-chip`, `.today-row__chip`, `.task-embed__pill`,
+  `.notebook-upcoming__chip`, `.users-chip`.
+- **Checkboxes:** unstyled checkboxes in `PostEditorSections` and
+  `ResumeEditorForm`.
+- **Scrims:** `.users-scrim`.
 - **Cards:** `.admin-form-card`, `.admin-project-card`, `.notebook-card`,
   `.no-access__card`, `.users-level-card`, `.project-card`.
 - **Button sizes and variants on iOS:** `primary` and `secondary`, while web
@@ -306,6 +272,8 @@ is `--neutral-100`. Empty and loading rows use hint text; errors use
   (`--neutral-100` fill, `--neutral-500` dash); done and dropped tasks strike
   through their label in `--neutral-500`.
 - A native input sits underneath; the whole label is the hit area.
+- `hideLabel` keeps the label for screen readers only; with an `aria-label`
+  as well (a task row named "Complete …"), no label text renders.
 
 ### RadioCard group
 
@@ -332,7 +300,8 @@ For switching views of one thing; filters stay SegmentedRadio. A
 `--neutral-200` baseline; each tab is 14/600 with 10px/12px padding,
 `--neutral-500`, hover `--neutral-800`; the selected tab is `--primary-800`
 with a 2px `--primary-600` underline. Optional count pill (`--neutral-100`,
-12/600). `role="tablist"`, arrows move, Home and End jump.
+12/600). `role="tablist"`, arrows move, Home and End jump. An `end` slot puts
+controls such as a close button in the tab row, outside the tablist.
 
 ### Menu, MenuItem, MenuRadioGroup
 
