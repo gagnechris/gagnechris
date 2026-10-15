@@ -1,0 +1,46 @@
+.kit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--neutral-300);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--neutral-800);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.kit-btn:hover:not(:disabled) {
+  background: var(--neutral-100);
+}
+
+.kit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.kit-btn--primary {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  color: white;
+}
+
+.kit-btn--primary:hover:not(:disabled) {
+  background: var(--primary-700);
+}
+
+.kit-btn--danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+/* Phones: a finger needs a 44px target. */
+@media (max-width: 767px) {
+  .kit-btn {
+    min-height: 44px;
+  }
+}

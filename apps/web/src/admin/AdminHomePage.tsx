@@ -9,7 +9,7 @@ import {
   type Home,
   type HomeDraftFields,
 } from '@gagnechris/app-core';
-import { Field, TextArea, TextInput } from '../kit/Field';
+import { Field, TextArea, TextInput } from '@gagnechris/ui';
 import { publicUrl } from './publicUrl';
 import { EditorFrame } from './editor/EditorFrame';
 import { useAdminEntityEditor } from './editor/useAdminEntityEditor';

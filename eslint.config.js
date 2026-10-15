@@ -49,6 +49,8 @@ const siblingPackageRelativePatterns = [
       '../tokens/**',
       '../public-ui',
       '../public-ui/**',
+      '../ui',
+      '../ui/**',
       '../../shared/**',
       '../../data/**',
       '../../ops/**',
@@ -56,6 +58,7 @@ const siblingPackageRelativePatterns = [
       '../../app-core/**',
       '../../tokens/**',
       '../../public-ui/**',
+      '../../ui/**',
     ],
     message:
       'Import workspace packages by name (e.g. @gagnechris/shared), not via relative sibling paths.',
@@ -565,6 +568,60 @@ export default tseslint.config(
             {
               group: ['@gagnechris/web', '@gagnechris/web/*'],
               message: 'public-ui must not import the web app.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // Every web app and the publisher can render these: no app code, no API.
+  {
+    files: ['packages/ui/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@gagnechris/app-core',
+              message:
+                'UI components are presentational: pass data in as props.',
+            },
+            {
+              name: '@gagnechris/api-client',
+              message: 'UI components never call the API.',
+            },
+            {
+              name: '@tanstack/react-query',
+              message:
+                'UI components are presentational: pass data in as props.',
+            },
+            {
+              name: 'react-router',
+              message: 'Take links and handlers as props.',
+            },
+            {
+              name: 'react-router-dom',
+              message: 'Take links and handlers as props.',
+            },
+            {
+              name: 'aws-amplify',
+              message: 'UI components never sign anyone in.',
+            },
+          ],
+          patterns: [
+            ...crossWorkspaceRelativePatterns,
+            ...siblingPackageRelativePatterns,
+            {
+              group: ['@gagnechris/web', '@gagnechris/web/*'],
+              message: 'ui must not import the web app.',
             },
           ],
         },

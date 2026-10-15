@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
-import { BottomSheet } from './BottomSheet';
+import { BottomSheet } from './BottomSheet.js';
 
 describe('BottomSheet', () => {
   test('Close, Done and Escape close it; a field marked autofocus takes focus', async () => {

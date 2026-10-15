@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { homeResource, resumeResource } from '@gagnechris/app-core';
-import { StatusBadge } from '../kit/StatusBadge';
+import { StatusBadge } from '@gagnechris/ui';
 
 type PageState = {
   status: 'draft' | 'published' | 'deleted';

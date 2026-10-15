@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
-import { Button } from '../../kit/Button';
+import { Button } from '@gagnechris/ui';
 import {
   EditorActionBar,
   type EditorActionBarProps,

@@ -6,6 +6,7 @@ import {
   type RouteObject,
 } from 'react-router-dom';
 import '../index.css';
+import '@gagnechris/ui/styles.css';
 import { ConfirmDialogHost } from './ui/ConfirmDialogHost';
 import { setAuthClientId } from './auth/config';
 

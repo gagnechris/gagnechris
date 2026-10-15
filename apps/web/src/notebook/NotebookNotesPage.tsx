@@ -16,7 +16,7 @@ import {
   noteTitle,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
+import { SegmentedRadio } from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
-import { Field, TextArea, TextInput } from './Field';
+import { Field, TextArea, TextInput } from './Field.js';
 
 describe('Field', () => {
   test('renders label, input, and hint', async () => {

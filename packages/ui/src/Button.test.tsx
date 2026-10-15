@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
-import { Button } from './Button';
+import { Button } from './Button.js';
 
 describe('Button', () => {
   test('renders a button and fires onClick', async () => {

@@ -13,7 +13,7 @@ import {
   DAILY_TEMPLATE_DATE_TOKEN,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
 } from '@gagnechris/shared';
-import { Field, TextInput } from '../kit/Field';
+import { Field, TextInput } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { createUlid } from '../lib/ulid';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';

@@ -27,7 +27,7 @@ import {
   type AuthUser,
 } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
-import { useModalDialog } from '../kit/useModalDialog';
+import { useModalDialog } from '@gagnechris/ui';
 import { visibleNavSections } from './navSections';
 import { PanelCollapseButton, PanelExpandEdge } from './ui/PanelEdge';
 import { ResizeHandle } from './ui/ResizeHandle';

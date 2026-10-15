@@ -61,7 +61,7 @@ describe('public bundle boundary', () => {
   it.each([
     '/repo/apps/web/src/pages/PostPage.tsx',
     '/repo/apps/web/src/lib/ulid.ts',
-    '/repo/apps/web/src/kit/Button.tsx',
+    '/repo/packages/ui/src/Button.tsx',
     '/repo/apps/web/src/kit/demo/DemoFrame.tsx',
     '/repo/packages/shared/src/render.ts',
     '/repo/packages/shared/src/projects.ts',

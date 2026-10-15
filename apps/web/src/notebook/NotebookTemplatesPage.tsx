@@ -17,11 +17,10 @@ import {
   notebookAreaName,
   resolveNotebookArea,
 } from '@gagnechris/shared';
-import { Field, Select } from '../kit/Field';
+import { Field, SegmentedRadio, Select } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
-import SegmentedRadio from '../workspace/ui/SegmentedRadio';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import type { NotebookOutletContext } from './NotebookLayout';

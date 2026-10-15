@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode, RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { useModalDialog } from '../../kit/useModalDialog';
+import { useModalDialog } from '@gagnechris/ui';
 
 type Props = {
   kind: 'drawer' | 'dialog';

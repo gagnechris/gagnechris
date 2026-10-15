@@ -10,28 +10,30 @@ Tokens (`packages/tokens`) are shared by every app. Web CSS reads them as
 
 ## Primitives
 
-Small, app-agnostic building blocks. Web primitives live in `apps/web/src/kit`
-and `apps/web/src/workspace/ui`; iOS primitives in `apps/mobile/src/ui`.
+Small, app-agnostic building blocks. Shared web primitives live in
+`packages/ui` (`@gagnechris/ui`, styles in `@gagnechris/ui/styles.css`); a few
+more sit in `apps/web/src/workspace/ui`. iOS primitives live in
+`apps/mobile/src/ui`.
 
-| Component        | Web                                                                                                                | Used by         | iOS counterpart                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------ | --------------- | ---------------------------------------- |
-| Button           | `kit/Button.tsx` (`default`, `primary`, `danger`; renders a link when given `href`)                                | Admin, Notebook | `ui/Button.tsx` (`primary`, `secondary`) |
-| Field            | `kit/Field.tsx` (`Field`, `Input`, `Textarea`, `Select`, styled by `.kit-input`)                                   | Admin, Notebook | none; screens use `TextInput` directly   |
-| StatusBadge      | `kit/StatusBadge.tsx` (`draft`, `published`, `unpublished`, `deleted`)                                             | Admin           | none                                     |
-| BottomSheet      | `kit/BottomSheet.tsx`                                                                                              | Admin           | none                                     |
-| Chips input      | `admin/editor/ChipsInput.tsx` (`.kit-chips`)                                                                       | Admin           | none                                     |
-| Confirm dialog   | `workspace/ui/ConfirmDialogHost.tsx`                                                                               | Admin, Notebook | `ui/confirm.ts` (native alert)           |
-| SegmentedRadio   | `workspace/ui/SegmentedRadio.tsx`                                                                                  | Admin, Notebook | `ui/SegmentedControl.tsx`                |
-| Search palette   | `workspace/ui/SearchPalette.tsx`                                                                                   | Admin, Notebook | `ui/SearchField.tsx` (field only)        |
-| Icon             | `workspace/ui/ShellIcon.tsx` (shell icons only; other icons are inline SVG)                                        | Admin, Notebook | `ui/Icon.tsx`                            |
-| Panel edge       | `workspace/ui/PanelEdge.tsx`                                                                                       | Notebook        | web only                                 |
-| Resize handle    | `workspace/ui/ResizeHandle.tsx`                                                                                    | Notebook        | web only                                 |
-| Save indicator   | `workspace/ui/SaveIndicator.tsx`                                                                                   | Notebook        | none                                     |
-| Editor actions   | `workspace/ui/EditorActionBar.tsx`                                                                                 | Admin           | screen header buttons                    |
-| Repeater         | `workspace/ui/Repeater.tsx`                                                                                        | Admin           | none                                     |
-| Row actions menu | `.kit-row-actions` CSS only, used in `admin/PostRowActions.tsx`                                                    | Admin           | `ui/SwipeRow.tsx`                        |
-| Table, list      | `.kit-table`, `.kit-list` CSS only                                                                                 | Admin           | `ui/Row.tsx`, `ui/Section.tsx`           |
-| Hooks            | `kit/useModalDialog.ts`, `kit/useDismiss.ts`, `kit/useTabs.ts`, `kit/useMediaQuery.ts`, `kit/useDebouncedValue.ts` | Admin, Notebook | n/a                                      |
+| Component        | Web                                                                                                            | Used by         | iOS counterpart                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------- |
+| Button           | `@gagnechris/ui` `Button` (`default`, `primary`, `danger`; renders a link when given `href`)                   | Admin, Notebook | `ui/Button.tsx` (`primary`, `secondary`) |
+| Field            | `@gagnechris/ui` `Field`, `TextInput`, `TextArea`, `Select` (`.kit-input`)                                     | Admin, Notebook | none; screens use `TextInput` directly   |
+| StatusBadge      | `@gagnechris/ui` `StatusBadge` (`draft`, `published`, `unpublished`, `deleted`)                                | Admin           | none                                     |
+| BottomSheet      | `@gagnechris/ui` `BottomSheet`                                                                                 | Admin           | none                                     |
+| Chips input      | `admin/editor/ChipsInput.tsx` (`.kit-chips`)                                                                   | Admin           | none                                     |
+| Confirm dialog   | `@gagnechris/ui` `ConfirmDialog`, mounted by `workspace/ui/ConfirmDialogHost.tsx`                              | Admin, Notebook | `ui/confirm.ts` (native alert)           |
+| SegmentedRadio   | `@gagnechris/ui` `SegmentedRadio`                                                                              | Admin, Notebook | `ui/SegmentedControl.tsx`                |
+| Search palette   | `workspace/ui/SearchPalette.tsx`                                                                               | Admin, Notebook | `ui/SearchField.tsx` (field only)        |
+| Icon             | `workspace/ui/ShellIcon.tsx` (shell icons only; other icons are inline SVG)                                    | Admin, Notebook | `ui/Icon.tsx`                            |
+| Panel edge       | `workspace/ui/PanelEdge.tsx`                                                                                   | Notebook        | web only                                 |
+| Resize handle    | `workspace/ui/ResizeHandle.tsx`                                                                                | Notebook        | web only                                 |
+| Save indicator   | `workspace/ui/SaveIndicator.tsx`                                                                               | Notebook        | none                                     |
+| Editor actions   | `workspace/ui/EditorActionBar.tsx`                                                                             | Admin           | screen header buttons                    |
+| Repeater         | `workspace/ui/Repeater.tsx`                                                                                    | Admin           | none                                     |
+| Row actions menu | `.kit-row-actions` CSS only, used in `admin/PostRowActions.tsx`                                                | Admin           | `ui/SwipeRow.tsx`                        |
+| Table, list      | `.kit-table`, `.kit-list` CSS only                                                                             | Admin           | `ui/Row.tsx`, `ui/Section.tsx`           |
+| Hooks            | `@gagnechris/ui` `useModalDialog`, `useDismiss`, `useTabs`; `kit/useMediaQuery.ts`, `kit/useDebouncedValue.ts` | Admin, Notebook | n/a                                      |
 
 iOS primitives with no web component: `ui/Screen.tsx`, `ui/EmptyState.tsx`,
 `ui/AreaChip.tsx`, `ui/SpaceTabs.tsx`, `ui/DragGrip.tsx`, `ui/DragScroll.tsx`,
@@ -121,15 +123,15 @@ component.
 
 ### Workspace shell (Admin and Notebook)
 
-| File                                | Elements                              | Styled as                                                                    | Target                                    |
-| ----------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- |
-| `workspace/WorkspaceShell.tsx`      | 5 buttons                             | `.workspace-icon-button`, `.workspace-search-button`, `.workspace-nav__item` | IconButton, nav item, Scrim               |
-| `workspace/ui/SearchPalette.tsx`    | 2 buttons, 1 search input, 1 checkbox | `.kit-input`, `.workspace-search__*`                                         | Dialog, Combobox, Checkbox, Scrim         |
-| `workspace/ui/EditorActionBar.tsx`  | 1 button                              | `.workspace-actions__toggle`                                                 | Menu trigger (IconButton)                 |
-| `workspace/ui/PanelEdge.tsx`        | 1 button                              | `.workspace-edge-button`                                                     | stays (feature control)                   |
-| `workspace/ui/SegmentedRadio.tsx`   | 1 button per option                   | `.workspace-segmented__option`                                               | stays (is the SegmentedControl primitive) |
-| `workspace/auth/RequireAuth.tsx`    | 1 button                              | none                                                                         | Button                                    |
-| `workspace/auth/NoAccessScreen.tsx` | 2 buttons                             | none                                                                         | Button                                    |
+| File                                 | Elements                              | Styled as                                                                    | Target                                    |
+| ------------------------------------ | ------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------- |
+| `workspace/WorkspaceShell.tsx`       | 5 buttons                             | `.workspace-icon-button`, `.workspace-search-button`, `.workspace-nav__item` | IconButton, nav item, Scrim               |
+| `workspace/ui/SearchPalette.tsx`     | 2 buttons, 1 search input, 1 checkbox | `.kit-input`, `.workspace-search__*`                                         | Dialog, Combobox, Checkbox, Scrim         |
+| `workspace/ui/EditorActionBar.tsx`   | 1 button                              | `.workspace-actions__toggle`                                                 | Menu trigger (IconButton)                 |
+| `workspace/ui/PanelEdge.tsx`         | 1 button                              | `.workspace-edge-button`                                                     | stays (feature control)                   |
+| `packages/ui/src/SegmentedRadio.tsx` | 1 button per option                   | `.workspace-segmented__option`                                               | stays (is the SegmentedControl primitive) |
+| `workspace/auth/RequireAuth.tsx`     | 1 button                              | none                                                                         | Button                                    |
+| `workspace/auth/NoAccessScreen.tsx`  | 2 buttons                             | none                                                                         | Button                                    |
 
 ### Admin
 

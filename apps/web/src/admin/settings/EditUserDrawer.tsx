@@ -4,7 +4,7 @@ import {
   displayName,
   type ManagedUser,
 } from '@gagnechris/shared';
-import { BottomSheet } from '../../kit/BottomSheet';
+import { BottomSheet } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
 import ShellIcon from '../../workspace/ui/ShellIcon';
 import { AccessLevelRadios } from './AccessLevelRadios';

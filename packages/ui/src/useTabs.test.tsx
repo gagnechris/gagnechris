@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { userEvent } from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, test } from 'vitest';
-import { useTabs } from './useTabs';
+import { useTabs } from './useTabs.js';
 
 const KEYS = ['one', 'two', 'three'] as const;
 

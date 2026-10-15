@@ -3,7 +3,7 @@ import {
   formatResumeShortMonth,
   RESUME_MONTH_PATTERN,
 } from '@gagnechris/shared';
-import { Button } from '../kit/Button';
+import { Button } from '@gagnechris/ui';
 import {
   experienceRangeError,
   roleTitle,

@@ -4,7 +4,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@gagnechris/shared';
-import { Button } from '../../../kit/Button';
+import { Button } from '@gagnechris/ui';
 import { DemoFrame } from '../../../kit/demo/DemoFrame';
 import { useDemoReducer } from '../../../kit/demo/useDemoReducer';
 import { TaskRow } from '../../../kit/tasks/TaskRow';

@@ -17,21 +17,27 @@ const cssFiles = (dir: string): string[] =>
     return entry.name.endsWith('.css') ? [full] : [];
   });
 
-const sheets = cssFiles(src)
-  .map((file) => ({
-    rel: path.relative(src, file).split(path.sep).join('/'),
+const uiSrc = path.resolve(src, '../../../packages/ui/src');
+
+const read = (root: string, prefix: string) =>
+  cssFiles(root).map((file) => ({
+    rel: prefix + path.relative(root, file).split(path.sep).join('/'),
     css: fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''),
-  }))
-  .filter(({ rel }) => !BEARS.test(rel));
+  }));
+
+const sheets = [...read(src, ''), ...read(uiSrc, '@gagnechris/ui/')].filter(
+  ({ rel }) => !BEARS.test(rel),
+);
 
 describe('web stylesheets use the design tokens', () => {
-  it('covers the public, kit and workspace styles', () => {
+  it('covers the public, kit, workspace and ui styles', () => {
     expect(sheets.map((s) => s.rel)).toEqual(
       expect.arrayContaining([
         'public.css',
         'pages/PostPage.css',
         'kit/kit.css',
         'workspace/workspace.css',
+        '@gagnechris/ui/button.css',
       ]),
     );
   });

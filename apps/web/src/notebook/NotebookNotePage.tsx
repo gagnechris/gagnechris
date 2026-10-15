@@ -5,7 +5,7 @@ import {
   useDeleteNoteMutation,
   type Note,
 } from '@gagnechris/app-core';
-import { Field, TextInput } from '../kit/Field';
+import { Field, TextInput } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';

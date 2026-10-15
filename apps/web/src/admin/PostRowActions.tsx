@@ -4,7 +4,7 @@ import {
   postResource,
   type PostSummary,
 } from '@gagnechris/app-core';
-import { useDismiss } from '../kit/useDismiss';
+import { useDismiss } from '@gagnechris/ui';
 
 type Props = {
   post: PostSummary;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Button } from '../Button';
+import { Button } from '@gagnechris/ui';
+import '@gagnechris/ui/styles.css';
 import '../kit.css';
 import './DemoFrame.css';
 

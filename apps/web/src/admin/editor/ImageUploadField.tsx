@@ -1,7 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
-import { Button } from '../../kit/Button';
-import { TextInput } from '../../kit/Field';
+import { Button, TextInput } from '@gagnechris/ui';
 
 type Props = {
   /** Also names the image, its file input ("Upload …") and its URL input. */

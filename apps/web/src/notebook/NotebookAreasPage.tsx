@@ -10,7 +10,7 @@ import {
   NOTEBOOK_AREAS_MAX,
   notebookAreaIdFromName,
 } from '@gagnechris/shared';
-import { Field, TextInput } from '../kit/Field';
+import { Field, TextInput } from '@gagnechris/ui';
 import { appConfirm } from '../workspace/confirmDialog';
 
 const sameName = (a: string, b: string) =>

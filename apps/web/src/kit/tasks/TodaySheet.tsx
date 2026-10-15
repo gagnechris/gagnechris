@@ -18,8 +18,7 @@ import {
   type Task,
   type TaskSchedule,
 } from '@gagnechris/shared';
-import { useModalDialog } from '../useModalDialog';
-import { useTabs } from '../useTabs';
+import { useModalDialog, useTabs } from '@gagnechris/ui';
 import type { StillOpenRow } from './TodayPanels';
 import { TaskDuePill } from './TaskDuePill';
 import { TaskCheckbox } from './TaskRow';
