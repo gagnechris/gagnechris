@@ -191,7 +191,9 @@ The same control is styled several ways:
 
 ## Missing primitives
 
-These need a design before they are built:
+Each has a spec below. They are drawn, with every variant and state, on the
+[Component library specs](https://claude.ai/artifact/HxZthqfahxDTYwK8gNECtf)
+design canvas.
 
 | Primitive                                    | Replaces                                                                           | iOS counterpart                                                   |
 | -------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -209,4 +211,212 @@ These need a design before they are built:
 | RadioCard group                              | `AccessLevelRadios`                                                                | none                                                              |
 | Toolbar                                      | `EditorAccessoryBar`, markdown toolbar                                             | keyboard toolbar                                                  |
 | EmptyState                                   | per-page empty messages                                                            | `ui/EmptyState.tsx`                                               |
+| ListRow                                      | `.kit-list__item`, `.admin-row`, `.note-templates__item`, Admin table rows         | `ui/Row.tsx`                                                      |
+| DragHandle                                   | `.admin-row-handle`                                                                | `ui/DragGrip.tsx`                                                 |
 | Public variants of Button, IconButton, Field | contact form, reading bar, resume retry                                            | n/a                                                               |
+
+## One look across Admin and Notebook
+
+Where the apps style the same control differently, this is the look the library
+uses:
+
+- **Button:** `.kit-btn` wins. Admin settings' `.users-btn` sizes map to `sm`
+  (`--small`), `md` and `lg` (`--tall`), and its link button to the `link`
+  variant. A disabled button is 55% opacity in every variant, including primary.
+- **Icon buttons:** one IconButton, ghost by default, 8px corners.
+- **Focus:** a 2px `--primary-600` outline with a 2px offset on keyboard focus
+  only, for every control. Inputs add a 3px `--primary-100` ring and a
+  `--primary-600` border instead.
+- **Checkboxes:** square for settings and fields; round only for tasks.
+- **Chips:** 26px pills in four tones (neutral, selected, warning, danger).
+- **Menus and scrims:** one Menu surface and one Scrim colour.
+- **Cards:** one boxed Card with 8px corners and `--shadow-sm`.
+- **iOS:** Button variants `primary` and `secondary` map to web `primary` and
+  `default`.
+
+The public site keeps its editorial look through `tone="editorial"` (below).
+
+## Specs
+
+Values are tokens from `packages/tokens`. Every control is at least 44px tall
+under 768px, and text inputs use 16px text there.
+
+### Button
+
+- Variants: `default` (white, `--neutral-300` border, `--neutral-800` text,
+  hover `--neutral-100`), `primary` (`--primary-600`, hover `--primary-700`,
+  white text), `danger` (`--color-danger` text, `--color-danger-border`, hover
+  `--color-danger-bg`), `ghost` (no border, `--neutral-700`, hover
+  `--neutral-100`), `link` (`--color-link`, underlined, no box).
+- Sizes: `sm` 32px with 13px text and 12px padding; `md` 36px with 14px text
+  and 16px padding (default); `lg` 44px with 16px text and 20px padding.
+- Shape: `--radius-md`, 1px border, 600 weight, 8px gap for an icon.
+- States: hover as above, focus ring, disabled at 55% opacity with a
+  not-allowed cursor, `loading` (a 14px spinner before the label,
+  `aria-busy`, width kept, still focusable).
+- Renders an `a` when given `href`.
+
+### IconButton
+
+- Variants: `ghost` (default: transparent, `--neutral-600` icon, hover
+  `--neutral-100` and `--neutral-900`), `outline` (white with a
+  `--neutral-300` border), `danger` (`--color-danger` icon, hover
+  `--color-danger-bg`).
+- Sizes: `sm` 28px with a 16px icon (task rows), `md` 36px with an 18px icon,
+  `lg` 44px with a 20px icon (phone toolbars, the shell).
+- `aria-label` is required and also shows as the tooltip. `pressed` sets
+  `aria-pressed` with a `--primary-50` fill and `--primary-700` icon. An
+  optional `count` shows as a `--primary-600` pill at the top right and is
+  added to the accessible name.
+- Icons come from ShellIcon (2px stroke, `currentColor`).
+
+### TextInput, DateInput, SearchInput, TextArea, Select, FileInput
+
+- One control box: 36px tall (`sm` 32, `lg` 44), `--radius-md`, 1px
+  `--neutral-300` border, white fill, 14px text, 12px side padding.
+- States: hover `--neutral-400` border; focus `--primary-600` border with a
+  3px `--primary-100` ring; disabled `--neutral-100` fill and `--neutral-500`
+  text; error `--color-error` border. Placeholder `--color-placeholder`.
+- Field wraps it: label 14/600 `--neutral-600`, 6px gap, hint 13px
+  `--neutral-500`. An error message (13/500 `--color-error`) replaces the hint
+  and the control gets `aria-invalid` and `aria-describedby`.
+- TextInput takes a `prefix` (for example `/posts/`) shown in `--neutral-500`
+  behind a `--neutral-200` divider.
+- DateInput is a native date input with a calendar icon at the end.
+- SearchInput has a search icon at the start and a clear button once there is
+  text; Escape clears, then closes its container. It has no error state.
+- TextArea grows with its text up to 12 lines, then scrolls.
+- Select is the native select with a chevron; only the box is styled.
+- FileInput is a dashed `--neutral-400` drop zone with a `sm` Button and a hint;
+  drag-over turns it `--primary-600` dashed on `--primary-50`; uploading shows
+  the file name and a progress bar.
+
+### Combobox
+
+A TextInput with a listbox popup in the Menu surface. The input keeps focus,
+arrows move the active option (`aria-activedescendant`), Enter picks, Escape
+closes. Options are 14px with optional 12px meta on the right; the active one
+is `--neutral-100`. Empty and loading rows use hint text; errors use
+`--color-error`.
+
+### Checkbox
+
+- Shapes: `square` (18px, 4px corners) for settings and fields; `round` (20px
+  circle) for tasks.
+- 1.5px `--neutral-400` border on white, hover `--neutral-600`; checked
+  `--primary-600` fill with a white check; focus ring; disabled at 55%.
+- Square has a mixed state (white dash). Round has a dropped state
+  (`--neutral-100` fill, `--neutral-500` dash); done and dropped tasks strike
+  through their label in `--neutral-500`.
+- A native input sits underneath; the whole label is the hit area.
+
+### RadioCard group
+
+Radios drawn as cards for choices that need a sentence each. Each card: 1px
+`--neutral-300` border, `--radius-md`, 14px/16px padding, a 20px radio, a
+14/600 title and a 13px `--neutral-600` description. Selected: `--primary-600`
+border doubled inset and a `--primary-50` fill. Disabled at 55%. One tab stop;
+arrows move the selection.
+
+### Chip and ChipSelect
+
+- 26px pill (`--radius-full`), 10px side padding, 13/500 text.
+- Tones: `neutral` (`--neutral-100`, `--neutral-700`), `selected`
+  (`--primary-50`, `--primary-300` border, `--primary-800`), `warning`
+  (`--color-warning-bg`, `--color-warning`), `danger` (`--color-danger-bg`,
+  `--color-danger-border`, `--color-danger`).
+- Optional leading dot or icon and a remove button labelled "Remove {value}".
+- ChipSelect is an outline chip (white, `--neutral-300` border) with a chevron
+  that opens a Menu; an empty one reads as an "Add …" action in `--neutral-500`.
+
+### Tabs
+
+For switching views of one thing; filters stay SegmentedRadio. A
+`--neutral-200` baseline; each tab is 14/600 with 10px/12px padding,
+`--neutral-500`, hover `--neutral-800`; the selected tab is `--primary-800`
+with a 2px `--primary-600` underline. Optional count pill (`--neutral-100`,
+12/600). `role="tablist"`, arrows move, Home and End jump.
+
+### Menu, MenuItem, MenuRadioGroup
+
+- Surface: white, 1px `--neutral-200`, `--radius-md`, `--shadow-lg`, 4px
+  padding, 240px default width.
+- Items: 34px, 6px corners, 14px text, optional 16px icon and a right-aligned
+  12px `--neutral-500` shortcut; active `--neutral-100`; `danger` items
+  `--color-danger`; disabled `--neutral-400`.
+- MenuRadioGroup marks the current item with a `--primary-600` check. Group
+  labels are 12/600 `--neutral-500`; separators are 1px `--neutral-200`.
+- Opened from a trigger with `aria-haspopup` and `aria-expanded`. Arrows move,
+  typing jumps, Enter picks, Escape and an outside click close and return
+  focus. Under 768px the same items open in a BottomSheet with 44px rows.
+
+### Dialog, Drawer, Scrim
+
+- Dialog: centred, 480px (`sm` 400, `lg` 640), `--radius-lg`, `--shadow-lg`,
+  24px padding, 18/600 title, an optional close IconButton, and a footer with
+  Cancel then the primary action at the right. Focus moves to the first field
+  and is trapped; Escape and the scrim close. ConfirmDialog is a Dialog with a
+  message and a danger action. Under 768px a Dialog opens as a BottomSheet.
+- Drawer: from the right edge, 400px, full height, a header with title and
+  close, a scrolling body and a footer with a `--neutral-200` top border. Under
+  768px it opens as a BottomSheet.
+- Scrim: `--neutral-900` at 40% behind every modal surface; it is a button
+  labelled Close.
+
+### Card
+
+1px `--neutral-200` border, `--radius-md`, white, `--shadow-sm`, 20px padding
+(16px `compact`). Variants: `interactive` (the whole card is one link or
+button; hover `--neutral-300` border and `--shadow-md`), `selected`
+(`--primary-600` border doubled inset), `flat` (no shadow, `--neutral-50`
+fill, for nested groups).
+
+### ListRow
+
+52px minimum, 8px/12px padding, `--neutral-200` divider. Slots: leading
+control (Checkbox, DragHandle or icon), title (15/600, a link to the item),
+meta (13px `--neutral-500`), trailing badges and actions. Hover `--neutral-50`;
+the current item `--primary-50` with `aria-current`. Trailing IconButtons show
+on hover and focus on desktop and always on touch screens.
+
+### Toolbar
+
+A row of IconButtons in a white box with a `--neutral-200` border and
+`--radius-md`, 4px padding, 2px gaps and optional 1px separators.
+`role="toolbar"` with one tab stop; arrows move. The phone editor accessory
+bar uses `lg` buttons above the keyboard.
+
+### DragHandle
+
+A six-dot grip, 24×32 (44px tall under 768px), `--neutral-400`, grab cursor,
+labelled "Reorder {item}". Space picks up, arrows move, Space drops, and each
+move is announced.
+
+### EmptyState
+
+A centred block for an empty list or page: a 32px ShellIcon in
+`--neutral-400`, an 18/600 `--neutral-800` title, a 14px `--neutral-500`
+sentence and an optional `md` Button. 48px vertical padding inside the list's
+area; no card around it.
+
+### Editorial variants (public site)
+
+`tone="editorial"` on Button, IconButton, TextInput and Field matches the
+current contact form, reading bar and resume retry, so the public pages look
+the same on the library:
+
+- Corners 10px, as a new `--radius-editorial` token.
+- Field: 14/600 `--neutral-700` labels, 6px gap; TextInput 48px, 16px text,
+  11px/14px padding, `--neutral-500` border, focus `--color-link` border and a
+  2px `--color-link` outline, error `--color-error` border doubled inset with a
+  14/500 message.
+- Button: 50px, 24px padding, 16/600; primary `--color-link`, hover
+  `--primary-800`; secondary white with a `--neutral-300` border; busy at 70%
+  with a spinner.
+- IconButton: 44px square, outline by default (`--neutral-300`), ghost for
+  dismiss buttons; disabled icons `--neutral-400`.
+- Card: the editorial card is an entry in a ruled list, not a box: a
+  `--color-ink` rule above the list, `--neutral-200` rules between entries, a
+  240px preview column, a 32px serif name that underlines on hover and Inter
+  meta. Specs for the public pages themselves are in
+  [public-redesign/README.md](./public-redesign/README.md).
