@@ -1,3 +1,4 @@
+import { Button } from '@gagnechris/ui';
 import {
   accessLevel,
   APP_GROUP,
@@ -47,17 +48,22 @@ export default function NoAccessScreen({
             if you need {title}.
           </p>
           {hasOther ? (
-            <a className="no-access__primary" href={`${appOrigin(other)}/`}>
+            <Button
+              variant="primary"
+              size="lg"
+              className="no-access__primary"
+              href={`${appOrigin(other)}/`}
+            >
               Go to {APP_TITLE[other]}
-            </a>
+            </Button>
           ) : null}
           <div className="no-access__row">
-            <button type="button" onClick={signOut}>
+            <Button size="lg" onClick={signOut}>
               Use a different account
-            </button>
-            <button type="button" onClick={signOut}>
+            </Button>
+            <Button size="lg" onClick={signOut}>
               Sign out
-            </button>
+            </Button>
           </div>
         </section>
         <a className="no-access__home" href={`${appOrigin('public')}/`}>

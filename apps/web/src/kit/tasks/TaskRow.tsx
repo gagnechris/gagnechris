@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Task } from '@gagnechris/shared';
+import { Checkbox } from '@gagnechris/ui';
 import { TaskParentLabel } from './TaskParentLabel';
 
 type RowTask = Pick<Task, 'title' | 'priority' | 'status'> & {
@@ -17,16 +18,18 @@ export function TaskCheckbox({
   disabled?: boolean;
 }) {
   const done = task.status === 'done';
+  const name = done ? `Reopen ${task.title}` : `Complete ${task.title}`;
   return (
-    <label className="task-check">
-      <input
-        type="checkbox"
-        checked={done}
-        disabled={disabled}
-        onChange={onToggle}
-        aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
-      />
-    </label>
+    <Checkbox
+      shape="round"
+      className="task-check"
+      label={name}
+      hideLabel
+      aria-label={name}
+      checked={done}
+      disabled={disabled}
+      onChange={onToggle}
+    />
   );
 }
 

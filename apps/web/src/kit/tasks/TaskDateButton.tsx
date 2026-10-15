@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import {
   activeTaskDateIndex,
@@ -23,6 +24,18 @@ import './todayPanels.css';
 
 const PICK_RANGE = { from: 0, to: 0, kind: 'start' } as const;
 
+export type TaskDateTriggerProps = {
+  ref: RefObject<HTMLButtonElement | null>;
+  role: 'combobox';
+  'aria-haspopup': 'listbox';
+  'aria-expanded': boolean;
+  'aria-controls': string;
+  'aria-activedescendant': string | undefined;
+  disabled: boolean | undefined;
+  onClick: () => void;
+  onKeyDown: (e: KeyboardEvent<HTMLElement>) => void;
+};
+
 type Props = {
   kind: TaskDateKind;
   /** Local day the options resolve from. */
@@ -33,10 +46,8 @@ type Props = {
   clearLabel?: string;
   hint: string;
   disabled?: boolean;
-  className: string;
-  ariaLabel: string;
-  title?: string;
-  children: ReactNode;
+  /** Renders the button that opens the menu, named by the caller; spread the props onto it. */
+  trigger: (props: TaskDateTriggerProps) => ReactNode;
   /** Opens the menu upward, for a bar at the bottom of the screen. */
   up?: boolean;
 };
@@ -49,10 +60,7 @@ export function TaskDateButton({
   clearLabel,
   hint,
   disabled,
-  className,
-  ariaLabel,
-  title,
-  children,
+  trigger,
   up,
 }: Props) {
   const baseId = useId();
@@ -97,7 +105,7 @@ export function TaskDateButton({
     onChoose(item.schedule);
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (!open) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
@@ -126,25 +134,20 @@ export function TaskDateButton({
         close();
       }}
     >
-      <button
-        ref={triggerRef}
-        type="button"
-        role="combobox"
-        className={className}
-        aria-label={ariaLabel}
-        title={title}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={ids.listbox}
-        aria-activedescendant={
-          open && !picking && activeItem ? ids.option(activeItem.id) : undefined
-        }
-        disabled={disabled}
-        onClick={() => (open ? close() : setOpen(true))}
-        onKeyDown={onKeyDown}
-      >
-        {children}
-      </button>
+      {trigger({
+        ref: triggerRef,
+        role: 'combobox',
+        'aria-haspopup': 'listbox',
+        'aria-expanded': open,
+        'aria-controls': ids.listbox,
+        'aria-activedescendant':
+          open && !picking && activeItem
+            ? ids.option(activeItem.id)
+            : undefined,
+        disabled,
+        onClick: () => (open ? close() : setOpen(true)),
+        onKeyDown,
+      })}
       <TaskDateMenu
         baseId={baseId}
         open={open}

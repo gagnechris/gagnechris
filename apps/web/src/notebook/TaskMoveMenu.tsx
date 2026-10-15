@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { taskDateMenuItems, tomorrowOf } from '@gagnechris/shared';
+import {
+  Button,
+  DateInput,
+  MenuGroup,
+  MenuItem,
+  MenuSeparator,
+} from '@gagnechris/ui';
 
 type Props = {
   sections: readonly string[];
@@ -62,7 +69,7 @@ export function TaskMoveMenu({
   return (
     <div
       ref={ref}
-      className="task-move-menu"
+      className="ui-menu task-move-menu"
       role="menu"
       aria-label={days ? 'Move to another day’s note' : 'Move to'}
       onKeyDown={onKeyDown}
@@ -75,16 +82,13 @@ export function TaskMoveMenu({
       {days ? (
         <>
           {dayItems.map((item) => (
-            <button
+            <MenuItem
               key={item.id}
-              type="button"
-              role="menuitem"
-              className="task-move-menu__item"
-              onClick={() => onDay(item.schedule!.startDate!)}
+              onSelect={() => onDay(item.schedule!.startDate!)}
             >
-              <span>{item.label}</span>
+              {item.label}{' '}
               <span className="task-move-menu__detail">{item.detail}</span>
-            </button>
+            </MenuItem>
           ))}
           <form
             className="task-move-menu__pick"
@@ -95,46 +99,31 @@ export function TaskMoveMenu({
           >
             <label>
               <span>Pick a date</span>
-              <input
-                type="date"
-                className="kit-input"
+              <DateInput
                 value={picked}
                 onChange={(e) => setPicked(e.target.value)}
               />
             </label>
-            <button
-              type="submit"
-              className="kit-btn"
-              disabled={!picked || picked === noteDate}
-            >
+            <Button type="submit" disabled={!picked || picked === noteDate}>
               Move
-            </button>
+            </Button>
           </form>
         </>
       ) : (
         <>
           {sections.length > 0 ? (
-            <p className="task-move-menu__heading">Sections</p>
+            <MenuGroup label="Sections">
+              {sections.map((title, i) => (
+                <MenuItem key={`${i}-${title}`} onSelect={() => onSection(i)}>
+                  {title}
+                </MenuItem>
+              ))}
+            </MenuGroup>
           ) : null}
-          {sections.map((title, i) => (
-            <button
-              key={`${i}-${title}`}
-              type="button"
-              role="menuitem"
-              className="task-move-menu__item"
-              onClick={() => onSection(i)}
-            >
-              {title}
-            </button>
-          ))}
-          <button
-            type="button"
-            role="menuitem"
-            className="task-move-menu__item task-move-menu__item--days"
-            onClick={() => setDays(true)}
-          >
+          {sections.length > 0 ? <MenuSeparator /> : null}
+          <MenuItem onSelect={() => setDays(true)}>
             Another day’s note…
-          </button>
+          </MenuItem>
         </>
       )}
     </div>

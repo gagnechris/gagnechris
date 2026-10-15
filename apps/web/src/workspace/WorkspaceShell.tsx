@@ -27,7 +27,7 @@ import {
   type AuthUser,
 } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
-import { useModalDialog } from '@gagnechris/ui';
+import { IconButton, Scrim, useModalDialog } from '@gagnechris/ui';
 import { visibleNavSections } from './navSections';
 import { PanelCollapseButton, PanelExpandEdge } from './ui/PanelEdge';
 import { ResizeHandle } from './ui/ResizeHandle';
@@ -282,30 +282,26 @@ export function WorkspaceFrame({
         </span>
       </span>
       {canAddPasskey() ? (
-        <button
-          type="button"
-          className="workspace-icon-button"
-          aria-label="Add a passkey"
-          title="Add a passkey"
+        <IconButton
+          label="Add a passkey"
+          className="workspace-account__action"
           onClick={openAddPasskey}
         >
           <ShellIcon name="passkey" />
-          <span className="workspace-icon-button__label">Add a passkey</span>
-        </button>
+          <span className="workspace-account__action-label">Add a passkey</span>
+        </IconButton>
       ) : null}
-      <button
-        type="button"
-        className="workspace-icon-button"
-        aria-label={`Sign out of ${title}`}
-        title={`Sign out of ${title}`}
+      <IconButton
+        label={`Sign out of ${title}`}
+        className="workspace-account__action"
         onClick={() => {
           clearPendingFlushes();
           void signOutUser();
         }}
       >
         <ShellIcon name="signOut" />
-        <span className="workspace-icon-button__label">Sign out</span>
-      </button>
+        <span className="workspace-account__action-label">Sign out</span>
+      </IconButton>
     </div>
   );
 
@@ -515,12 +511,7 @@ function MoreSheet({
   });
   return (
     <div className="workspace-more" {...dialogProps}>
-      <button
-        type="button"
-        className="workspace-more__backdrop"
-        aria-label="Close"
-        onClick={onClose}
-      />
+      <Scrim className="workspace-more__backdrop" onClick={onClose} />
       <div className="workspace-more__sheet" ref={sheet}>
         {children}
       </div>

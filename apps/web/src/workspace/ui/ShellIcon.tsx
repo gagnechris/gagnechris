@@ -114,6 +114,12 @@ const PATHS = {
       <path d="M17.25 14v6.5M14 17.25h6.5" />
     </>
   ),
+  chevronLeft: <path d="m15 6-6 6 6 6" />,
+  chevronRight: <path d="m9 6 6 6-6 6" />,
+  arrowUp: <path d="M12 19V5M5 12l7-7 7 7" />,
+  arrowDown: <path d="M12 5v14M19 12l-7 7-7-7" />,
+  arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
+  arrowRight: <path d="M5 12h14M12 5l7 7-7 7" />,
   more: (
     <>
       <circle cx="5" cy="12" r="1.6" />

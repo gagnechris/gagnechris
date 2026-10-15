@@ -8,7 +8,7 @@ import {
   useTaskToggle,
 } from '@gagnechris/app-core';
 import { snoozeBaseDay } from '@gagnechris/shared';
-import { Field, Select, TextInput } from '@gagnechris/ui';
+import { Button, Checkbox, Field, Select, TextInput } from '@gagnechris/ui';
 import { SnoozeMenu } from '../kit/tasks/SnoozeMenu';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -110,39 +110,31 @@ export default function NotebookTaskPage() {
         </div>
         <div className="workspace-toolbar">
           {phone ? null : (
-            <button
-              type="button"
-              className="kit-btn"
+            <Button
               disabled={busy || dirty || togglePending}
               onClick={() => void toggleDone()}
               title={dirty ? 'Save before completing' : undefined}
             >
               {entity.status === 'done' ? 'Reopen' : 'Complete'}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className="kit-btn"
-            disabled={busy}
-            onClick={() => void runDelete()}
-          >
+          <Button disabled={busy} onClick={() => void runDelete()}>
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Phones: Complete and Snooze within thumb reach, above the tab bar. */}
       {phone ? (
         <div className="notebook-task__bottom-bar">
-          <button
-            type="button"
-            className="kit-btn kit-btn--primary"
+          <Button
+            variant="primary"
             disabled={busy || dirty || togglePending}
             onClick={() => void toggleDone()}
             title={dirty ? 'Save before completing' : undefined}
           >
             {entity.status === 'done' ? 'Reopen' : 'Complete'}
-          </button>
+          </Button>
           <SnoozeMenu
             label="Snooze"
             title={entity.title}
@@ -230,20 +222,18 @@ export default function NotebookTaskPage() {
         />
       </Field>
 
-      <label className="kit-check">
-        <input
-          type="checkbox"
-          checked={draft.someday}
-          onChange={(e) =>
-            updateDraft((prev) => ({
-              ...prev,
-              someday: e.target.checked,
-              startDate: e.target.checked ? '' : prev.startDate,
-            }))
-          }
-        />
-        Someday (never shows on Today)
-      </label>
+      <Checkbox
+        className="notebook-check"
+        label="Someday (never shows on Today)"
+        checked={draft.someday}
+        onChange={(e) =>
+          updateDraft((prev) => ({
+            ...prev,
+            someday: e.target.checked,
+            startDate: e.target.checked ? '' : prev.startDate,
+          }))
+        }
+      />
 
       <Field label="Deadline" hint="Doesn’t change when the task shows.">
         <TextInput

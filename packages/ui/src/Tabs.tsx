@@ -15,6 +15,8 @@ type Props<K extends string> = {
   items: readonly TabItem<K>[];
   selected: K;
   onSelect: (key: K) => void;
+  /** Controls at the end of the tab row, such as a close button. */
+  end?: ReactNode;
   className?: string;
 };
 
@@ -27,6 +29,7 @@ export const Tabs = <K extends string>({
   items,
   selected,
   onSelect,
+  end,
   className,
 }: Props<K>) => {
   const tabs = useTabs({
@@ -36,27 +39,37 @@ export const Tabs = <K extends string>({
     label,
   });
   const hasPanels = items.some((item) => item.panel !== undefined);
+  const list = (
+    <div {...tabs.listProps} className="ui-tabs__list">
+      {items.map((item) => {
+        const { ref, ...props } = tabs.tabProps(item.key);
+        return (
+          <button
+            key={item.key}
+            {...props}
+            ref={ref}
+            aria-controls={hasPanels ? props['aria-controls'] : undefined}
+            className="ui-tabs__tab"
+          >
+            {item.label}
+            {item.count === undefined ? null : (
+              <span className="ui-tabs__count">{item.count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
   return (
     <div className={cx('ui-tabs', className)}>
-      <div {...tabs.listProps} className="ui-tabs__list">
-        {items.map((item) => {
-          const { ref, ...props } = tabs.tabProps(item.key);
-          return (
-            <button
-              key={item.key}
-              {...props}
-              ref={ref}
-              aria-controls={hasPanels ? props['aria-controls'] : undefined}
-              className="ui-tabs__tab"
-            >
-              {item.label}
-              {item.count === undefined ? null : (
-                <span className="ui-tabs__count">{item.count}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {end ? (
+        <div className="ui-tabs__bar">
+          {list}
+          {end}
+        </div>
+      ) : (
+        list
+      )}
       {hasPanels
         ? items.map((item) => (
             <div

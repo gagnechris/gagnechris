@@ -92,7 +92,7 @@ test('a standing note is created, edited and deleted', async ({
     .toEqual({ title: `${prefix} Plan`, body: 'First draft' });
 
   await page.getByRole('button', { name: 'Note options' }).click();
-  await page.getByRole('button', { name: 'Delete note' }).click();
+  await page.getByRole('menuitem', { name: 'Delete note' }).click();
   await page
     .getByRole('alertdialog')
     .getByRole('button', { name: 'Delete' })

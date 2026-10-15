@@ -17,7 +17,7 @@ import {
   notebookAreaName,
   resolveNotebookArea,
 } from '@gagnechris/shared';
-import { Field, SegmentedRadio, Select } from '@gagnechris/ui';
+import { Button, Field, SegmentedRadio, Select } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -128,17 +128,13 @@ function TemplateEditor({
           <h2>{label} template</h2>
           <div className="notebook-templates__actions">
             <SaveIndicator quiet saveState={saveState} dirty={dirty} />
-            <button type="button" className="kit-btn" onClick={insertDate}>
-              Insert date
-            </button>
-            <button
-              type="button"
-              className="kit-btn"
+            <Button onClick={insertDate}>Insert date</Button>
+            <Button
               disabled={unchanged || reset.isPending}
               onClick={() => void resetToDefault()}
             >
               Reset to default
-            </button>
+            </Button>
           </div>
         </div>
         {error ? (

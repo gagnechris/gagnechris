@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
-import { Button, StatusBadge } from '@gagnechris/ui';
+import { Button, IconButton, StatusBadge } from '@gagnechris/ui';
+import ShellIcon from './ShellIcon';
 import { SaveIndicator } from './SaveIndicator';
 
 export type EditorActionBarProps = VersionedEntityActionBarProps & {
@@ -59,17 +60,17 @@ export function EditorActionBar({
       </div>
       <div className="workspace-actions" ref={actions}>
         {/* Phones only: the secondary actions fold into this menu. */}
-        <button
+        <IconButton
           ref={toggle}
-          type="button"
+          label="More actions"
+          size="lg"
           className="workspace-actions__toggle"
-          aria-label="More actions"
           aria-expanded={menuOpen}
           aria-controls={menuId}
           onClick={() => setMenuOpen((open) => !open)}
         >
-          <span aria-hidden="true">…</span>
-        </button>
+          <ShellIcon name="more" />
+        </IconButton>
         <div
           id={menuId}
           className="workspace-actions__more"

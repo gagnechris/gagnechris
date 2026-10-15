@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
+import { Combobox } from '@gagnechris/ui';
 import { Link } from 'react-router-dom';
 import { useNoteTemplatesQuery, type NoteTemplate } from '@gagnechris/app-core';
 import { filterNoteTemplates, markdownPlainText } from '@gagnechris/shared';
@@ -58,12 +59,9 @@ export function NoteTemplatePicker({
 }: {
   onChoose: (template: NoteTemplate) => void;
 }) {
-  const baseId = useId();
   const query = useNoteTemplatesQuery();
   const [filter, setFilter] = useState('');
-  const [active, setActive] = useState(0);
   const items = filterNoteTemplates(query.data ?? [], filter);
-  const activeIndex = Math.min(active, items.length - 1);
 
   if (query.isPending) return <p className="kit-hint">Loading templates…</p>;
   if (query.error) {
@@ -84,49 +82,28 @@ export function NoteTemplatePicker({
 
   return (
     <div className="note-template-picker">
-      <p className="task-syntax__heading" id={`${baseId}-heading`}>
-        Insert template
-      </p>
-      <input
-        className="kit-input"
+      <p className="task-syntax__heading">Insert template</p>
+      <Combobox
         type="search"
         aria-label="Filter templates"
-        role="combobox"
-        aria-expanded="true"
-        aria-controls={`${baseId}-listbox`}
-        aria-activedescendant={
-          items[activeIndex] ? `${baseId}-${items[activeIndex].id}` : undefined
-        }
+        listLabel="Templates"
         placeholder="Filter templates"
         autoFocus
         value={filter}
-        onChange={(e) => {
-          setFilter(e.target.value);
-          setActive(0);
-        }}
+        onValueChange={setFilter}
+        options={items.map((template) => ({
+          id: template.id,
+          label: template.name,
+          meta: preview(template.bodyMarkdown),
+          template,
+        }))}
+        onPick={(option) => onChoose(option.template)}
+        // Escape closes the whole picker, not only its list.
         onKeyDown={(e) => {
-          if (items.length === 0) return;
-          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            e.preventDefault();
-            const step = e.key === 'ArrowDown' ? 1 : -1;
-            setActive((activeIndex + step + items.length) % items.length);
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            onChoose(items[activeIndex]!);
-          }
+          if (e.key === 'Escape') e.preventDefault();
         }}
+        emptyText="No templates match."
       />
-      {items.length === 0 ? (
-        <p className="kit-hint">No templates match.</p>
-      ) : (
-        <NoteTemplateOptions
-          baseId={baseId}
-          templates={items}
-          activeIndex={activeIndex}
-          onActivate={setActive}
-          onChoose={onChoose}
-        />
-      )}
     </div>
   );
 }

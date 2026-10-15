@@ -1,6 +1,7 @@
 import { useId, useMemo, useRef, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
 import type { EditorView } from '@codemirror/view';
+import { IconButton, Toolbar } from '@gagnechris/ui';
 // Static, not lazy: only lazy editor routes use this, and React throttles
 // Suspense reveals to 300 ms, so a fallback here would hold the editor back.
 import MarkdownEditor, { type MarkdownEditorHandle } from './MarkdownEditor';
@@ -72,7 +73,7 @@ export function MarkdownBodyEditor({
     <>
       <div className="markdown-workspace markdown-workspace--single">
         <div className="markdown-bar">
-          <div className="markdown-toolbar" role="toolbar" aria-label="Insert">
+          <Toolbar label="Insert" className="markdown-toolbar">
             <label
               htmlFor={fileId}
               className="markdown-toolbar__btn"
@@ -100,11 +101,8 @@ export function MarkdownBodyEditor({
                 if (files.length > 0) void uploadPicked(files);
               }}
             />
-            <button
-              type="button"
-              className="markdown-toolbar__btn"
-              aria-label="Insert link"
-              title="Insert link"
+            <IconButton
+              label="Insert link"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => run(insertLink)}
             >
@@ -114,18 +112,15 @@ export function MarkdownBodyEditor({
                   <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
                 </>,
               )}
-            </button>
-            <button
-              type="button"
-              className="markdown-toolbar__btn"
-              aria-label="Insert code block"
-              title="Insert code block"
+            </IconButton>
+            <IconButton
+              label="Insert code block"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => run(insertCodeBlock)}
             >
               {icon(<path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />)}
-            </button>
-          </div>
+            </IconButton>
+          </Toolbar>
           {previewPage ? (
             <a
               className="markdown-toggle markdown-preview-link"

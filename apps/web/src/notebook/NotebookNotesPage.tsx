@@ -16,7 +16,7 @@ import {
   noteTitle,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
-import { SegmentedRadio } from '@gagnechris/ui';
+import { Button, DateInput, SearchInput, SegmentedRadio } from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
@@ -117,16 +117,14 @@ export default function NotebookNotesPage() {
           </p>
         </div>
         <div className="workspace-panel__actions">
-          <button
-            type="button"
-            className="kit-btn"
+          <Button
             onClick={() => void exportZip()}
             disabled={exportBusy}
             aria-busy={exportBusy}
             title="Download every note and task as markdown and JSON"
           >
             {exportBusy ? 'Exporting…' : 'Export'}
-          </button>
+          </Button>
           <NewNoteMenu
             today={today}
             creating={createMutation.isPending}
@@ -147,12 +145,10 @@ export default function NotebookNotesPage() {
       ) : null}
 
       <div className="notebook-notes__filters">
-        <input
-          className="kit-input"
-          type="search"
+        <SearchInput
           placeholder="Search notes"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onValueChange={setQ}
           aria-label="Search notes"
         />
         <SegmentedRadio
@@ -254,10 +250,9 @@ function NewNoteMenu({
         }
       }}
     >
-      <button
+      <Button
         ref={triggerRef}
-        type="button"
-        className="kit-btn kit-btn--primary"
+        variant="primary"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => {
@@ -266,7 +261,7 @@ function NewNoteMenu({
         }}
       >
         New
-      </button>
+      </Button>
       {open ? (
         <div
           id={panelId}
@@ -283,21 +278,19 @@ function NewNoteMenu({
           >
             <label className="notebook-new-note__label">
               Note for a day
-              <input
-                className="kit-input"
-                type="date"
+              <DateInput
                 value={day}
                 required
                 onChange={(e) => setDay(e.target.value)}
               />
             </label>
-            <button type="submit" className="kit-btn" disabled={!day}>
+            <Button type="submit" disabled={!day}>
               Open day
-            </button>
+            </Button>
           </form>
-          <button
-            type="button"
-            className="note-menu__item"
+          <Button
+            variant="ghost"
+            className="notebook-new-note__standing"
             disabled={creating}
             onClick={() => {
               close(false);
@@ -305,7 +298,7 @@ function NewNoteMenu({
             }}
           >
             Standing note
-          </button>
+          </Button>
         </div>
       ) : null}
     </span>

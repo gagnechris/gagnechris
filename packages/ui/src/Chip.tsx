@@ -1,5 +1,5 @@
 /** @jsxRuntime automatic */
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { cx } from './cx.js';
 import { Glyph } from './Glyph.js';
 import { Menu, MenuRadioGroup } from './Menu.js';
@@ -15,9 +15,12 @@ type Props = Omit<HTMLAttributes<HTMLElement>, 'onClick'> & {
   onRemove?: () => void;
   /** The value the remove button names; defaults to the chip's text. */
   removeLabel?: string;
-  /** Makes the chip a toggle button (not with `onRemove`). */
+  /** Makes the chip a button (not with `onRemove`). */
   onClick?: () => void;
   pressed?: boolean;
+  /** Button chips only. */
+  disabled?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 };
 
 /** A 26px pill for a status, filter or tag. */
@@ -30,6 +33,8 @@ export const Chip = ({
   removeLabel,
   onClick,
   pressed,
+  disabled,
+  ref,
   className,
   ...rest
 }: Props) => {
@@ -49,9 +54,11 @@ export const Chip = ({
   if (onClick && !onRemove) {
     return (
       <button
+        ref={ref}
         type="button"
         className={cx(classes, 'ui-chip--button')}
         aria-pressed={pressed}
+        disabled={disabled}
         onClick={onClick}
         {...rest}
       >

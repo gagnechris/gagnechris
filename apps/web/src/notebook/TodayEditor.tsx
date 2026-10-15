@@ -16,6 +16,7 @@ import {
   notePayloadFromDraft,
   taskEmbedToken,
 } from '@gagnechris/shared';
+import { Button } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
@@ -197,13 +198,12 @@ export function TodayEditor({
             as soon as you type.
           </span>
           <span className="notebook-today__template-actions">
-            <button
-              type="button"
-              className="notebook-today__template-action"
+            <Button
+              variant="link"
               onClick={() => replaceFromEntity(startDailyNoteBlank(entity))}
             >
               Start blank
-            </button>
+            </Button>
             <Link
               className="notebook-today__template-action"
               to={`/settings/templates?template=${area}&area=${area}`}

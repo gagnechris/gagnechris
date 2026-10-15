@@ -13,6 +13,7 @@ import {
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
+import { Button, Checkbox, Chip, IconButton } from '@gagnechris/ui';
 import { TaskDuePill } from './TaskDuePill';
 
 export type TaskEmbedView =
@@ -300,13 +301,9 @@ export function TaskEmbedRow({
         <span className="task-embed__title">
           {view.title} · couldn’t save this task
         </span>
-        <button
-          type="button"
-          className="task-embed__retry"
-          onClick={view.onRetry}
-        >
+        <Button size="sm" onClick={view.onRetry}>
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
@@ -316,6 +313,7 @@ export function TaskEmbedRow({
   const dropped = task.status === 'dropped';
   const priority = PRIORITY_LABEL[task.priority];
   const open = details?.open ?? false;
+  const checkName = done ? `Reopen ${task.title}` : `Complete ${task.title}`;
 
   const focusTitle = () => {
     const field = blockRef.current?.querySelector('textarea');
@@ -374,13 +372,15 @@ export function TaskEmbedRow({
           </svg>
         </button>
       ) : null}
-      <input
-        type="checkbox"
+      <Checkbox
+        shape="round"
         className="task-embed__check"
+        label={checkName}
+        hideLabel
+        aria-label={checkName}
         checked={done}
         disabled={pending}
         onChange={onToggle}
-        aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
       />
       {onRename && !pending ? (
         <TaskEmbedTitle
@@ -449,13 +449,13 @@ export function TaskEmbedRow({
         </span>
       ) : null}
       {details ? (
-        <button
-          type="button"
+        <IconButton
+          size="sm"
           className="task-embed__chevron"
+          label={`Details for ${task.title}`}
+          title={open ? 'Collapse details (⌘.)' : 'Expand details (⌘.)'}
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
-          aria-label={`Details for ${task.title}`}
-          title={open ? 'Collapse details (⌘.)' : 'Expand details (⌘.)'}
           onClick={details.onToggle}
         >
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
@@ -468,7 +468,7 @@ export function TaskEmbedRow({
               strokeLinejoin="round"
             />
           </svg>
-        </button>
+        </IconButton>
       ) : null}
     </div>
   );
@@ -501,15 +501,15 @@ export function TaskEmbedRow({
           ? '1 subtask is still open.'
           : `${finish.open} subtasks are still open.`}
       </span>
-      <button type="button" className="kit-btn" onClick={finish.onCompleteAll}>
+      <Button size="sm" onClick={finish.onCompleteAll}>
         Complete all
-      </button>
-      <button type="button" className="kit-btn" onClick={finish.onJustParent}>
+      </Button>
+      <Button size="sm" onClick={finish.onJustParent}>
         Just the parent
-      </button>
-      <button type="button" className="kit-btn" onClick={finish.onUndo}>
+      </Button>
+      <Button size="sm" onClick={finish.onUndo}>
         Undo
-      </button>
+      </Button>
     </div>
   ) : null;
 
@@ -561,28 +561,27 @@ const RING = 2 * Math.PI * 6;
 function SubtaskProgress({ subtasks }: { subtasks: TaskEmbedSubtasks }) {
   const { done, total, folded, onToggleFold } = subtasks;
   return (
-    <button
-      type="button"
+    <Chip
       className="task-embed__progress"
       aria-expanded={!folded}
       aria-label={`${done} of ${total} subtasks done`}
       title={folded ? 'Show subtasks' : 'Hide subtasks'}
       onClick={onToggleFold}
+      icon={
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle className="task-embed__ring-track" cx="8" cy="8" r="6" />
+          <circle
+            className="task-embed__ring"
+            cx="8"
+            cy="8"
+            r="6"
+            strokeDasharray={`${(RING * done) / total} ${RING}`}
+            transform="rotate(-90 8 8)"
+          />
+        </svg>
+      }
     >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        <circle className="task-embed__ring-track" cx="8" cy="8" r="6" />
-        <circle
-          className="task-embed__ring"
-          cx="8"
-          cy="8"
-          r="6"
-          strokeDasharray={`${(RING * done) / total} ${RING}`}
-          transform="rotate(-90 8 8)"
-        />
-      </svg>
-      <span aria-hidden="true">
-        {done} of {total}
-      </span>
-    </button>
+      {done} of {total}
+    </Chip>
   );
 }

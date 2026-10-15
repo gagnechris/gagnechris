@@ -36,6 +36,24 @@ describe('Chip', () => {
     await user.click(chip);
     expect(onClick).toHaveBeenCalled();
   });
+
+  test('a button chip takes a ref and can be disabled', () => {
+    let el: HTMLButtonElement | null = null;
+    render(
+      <Chip
+        onClick={() => {}}
+        disabled
+        ref={(node) => {
+          el = node;
+        }}
+      >
+        Start
+      </Chip>,
+    );
+    const chip = screen.getByRole('button', { name: 'Start' });
+    expect(chip).toBeDisabled();
+    expect(el).toBe(chip);
+  });
 });
 
 const AreaChip = () => {

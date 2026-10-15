@@ -360,7 +360,7 @@ describe('templates in a daily note', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Note options' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Insert template…' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Insert template…' }));
     const filter = await screen.findByRole('combobox', {
       name: 'Filter templates',
     });

@@ -3,6 +3,7 @@ import {
   nextWeekday,
   type TaskSchedule,
 } from '@gagnechris/shared';
+import { IconButton } from '@gagnechris/ui';
 import { SnoozeMenu } from './SnoozeMenu';
 import './todayPanels.css';
 
@@ -21,10 +22,9 @@ export function TaskRowActions({ title, snoozeFrom, onSnooze, onDrop }: Props) {
   const mondayLabel = formatTaskDay(monday);
   return (
     <>
-      <button
-        type="button"
-        className="today-row__icon-btn"
-        aria-label={`Snooze ${title} to ${mondayLabel}`}
+      <IconButton
+        size="sm"
+        label={`Snooze ${title} to ${mondayLabel}`}
         title={`Snooze to ${mondayLabel}`}
         onClick={() => onSnooze({ startDate: monday, someday: false })}
       >
@@ -45,13 +45,12 @@ export function TaskRowActions({ title, snoozeFrom, onSnooze, onDrop }: Props) {
             strokeLinecap="round"
           />
         </svg>
-      </button>
+      </IconButton>
       <SnoozeMenu title={title} baseDay={snoozeFrom} onChoose={onSnooze} />
       {onDrop ? (
-        <button
-          type="button"
-          className="today-row__icon-btn"
-          aria-label={`Drop ${title}`}
+        <IconButton
+          size="sm"
+          label={`Drop ${title}`}
           title="Drop: close without doing it"
           onClick={onDrop}
         >
@@ -64,7 +63,7 @@ export function TaskRowActions({ title, snoozeFrom, onSnooze, onDrop }: Props) {
               strokeLinecap="round"
             />
           </svg>
-        </button>
+        </IconButton>
       ) : null}
     </>
   );

@@ -59,20 +59,29 @@ describe('NoteMenu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
     await user.click(trigger);
-    expect(screen.getByRole('radio', { name: 'Title only' })).toBeChecked();
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Title only' }),
+    ).toHaveAttribute('aria-checked', 'true');
     await user.click(
-      screen.getByRole('radio', { name: 'Title and first line' }),
+      screen.getByRole('menuitemradio', { name: 'Title and first line' }),
     );
     expect(JSON.parse(localStorage.getItem(TASK_PEEK_NOTES_KEY)!)).toEqual([
       NOTE,
     ]);
 
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
+
+    await user.click(trigger);
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Title and first line' }),
+    ).toHaveAttribute('aria-checked', 'true');
     await user.keyboard('{Escape}');
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect(trigger).toHaveFocus();
 
     await user.click(trigger);
-    await user.click(screen.getByRole('button', { name: 'Delete note' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Delete note' }));
     expect(onDelete).toHaveBeenCalledOnce();
   });
 
@@ -80,6 +89,6 @@ describe('NoteMenu', () => {
     const user = userEvent.setup();
     render(<NoteMenu noteId={NOTE} />);
     await user.click(screen.getByRole('button', { name: 'Note options' }));
-    expect(screen.queryByRole('button', { name: 'Delete note' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Delete note' })).toBeNull();
   });
 });

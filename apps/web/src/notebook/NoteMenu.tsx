@@ -1,6 +1,15 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { NoteTemplate } from '@gagnechris/app-core';
 import { taskEmbedIds } from '@gagnechris/shared';
+import {
+  Button,
+  IconButton,
+  Menu,
+  MenuItem,
+  MenuRadioGroup,
+  MenuSeparator,
+} from '@gagnechris/ui';
+import ShellIcon from '../workspace/ui/ShellIcon';
 import { NoteTemplatePicker } from './NoteTemplatePicker';
 import {
   setNotePeek,
@@ -15,15 +24,16 @@ export function NoteDetailsToggle({ markdown }: { markdown: string }) {
   if (ids.length === 0) return null;
   const anyOpen = ids.some((id) => open.has(id));
   return (
-    <button
-      type="button"
-      className="kit-btn"
-      onClick={() => setTaskDetailsOpen(ids, !anyOpen)}
-    >
+    <Button onClick={() => setTaskDetailsOpen(ids, !anyOpen)}>
       {anyOpen ? 'Collapse details' : 'Expand details'}
-    </button>
+    </Button>
   );
 }
+
+const TASK_ROWS = [
+  { value: 'title', label: 'Title only' },
+  { value: 'peek', label: 'Title and first line' },
+] as const;
 
 /** The note's ⋯ menu: how task rows show, Insert template…, Archive, and Delete. */
 export function NoteMenu({
@@ -44,15 +54,12 @@ export function NoteMenu({
   /** Without it there is no Insert template… item. */
   onInsertTemplate?: (template: NoteTemplate) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
-  const menuId = useId();
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const { peek } = useTaskDetailsStore();
   const peeking = peek.has(noteId);
 
-  const close = (refocus: boolean) => {
-    setOpen(false);
+  const stopPicking = (refocus: boolean) => {
     setPicking(false);
     if (refocus) triggerRef.current?.focus();
   };
@@ -61,97 +68,70 @@ export function NoteMenu({
     <span
       className="note-menu"
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          close(false);
+        if (
+          picking &&
+          !e.currentTarget.contains(e.relatedTarget as Node | null)
+        ) {
+          stopPicking(false);
         }
       }}
       onKeyDown={(e) => {
-        if (open && e.key === 'Escape') {
+        if (picking && e.key === 'Escape') {
           e.preventDefault();
-          close(true);
+          stopPicking(true);
         }
       }}
     >
-      <button
-        ref={triggerRef}
-        type="button"
-        className="kit-btn note-menu__trigger"
-        aria-label="Note options"
-        aria-expanded={open}
-        aria-controls={menuId}
-        onClick={() => {
-          setOpen((v) => !v);
-          setPicking(false);
-        }}
+      <Menu
+        label="Note options"
+        align="end"
+        trigger={({ ref, ...props }) => (
+          <IconButton
+            {...props}
+            ref={(el) => {
+              ref(el);
+              triggerRef.current = el;
+            }}
+            variant="outline"
+            label="Note options"
+          >
+            <ShellIcon name="more" />
+          </IconButton>
+        )}
       >
-        ⋯
-      </button>
-      {open && picking && onInsertTemplate ? (
-        <div id={menuId} className="note-menu__panel">
+        <MenuRadioGroup
+          label="Task rows"
+          options={TASK_ROWS}
+          value={peeking ? 'peek' : 'title'}
+          onChange={(value) => setNotePeek(noteId, value === 'peek')}
+        />
+        {onInsertTemplate || onArchivedChange || onDelete ? (
+          <MenuSeparator />
+        ) : null}
+        {onInsertTemplate ? (
+          <MenuItem onSelect={() => setPicking(true)}>
+            Insert template…
+          </MenuItem>
+        ) : null}
+        {onArchivedChange ? (
+          <MenuItem onSelect={() => onArchivedChange(!archived)}>
+            {archived ? 'Unarchive note' : 'Archive note'}
+          </MenuItem>
+        ) : null}
+        {onDelete ? (
+          <MenuItem danger disabled={deleteDisabled} onSelect={onDelete}>
+            Delete note
+          </MenuItem>
+        ) : null}
+      </Menu>
+      {picking && onInsertTemplate ? (
+        <div className="note-menu__panel">
           <NoteTemplatePicker
             onChoose={(template) => {
-              close(false);
+              stopPicking(false);
               onInsertTemplate(template);
             }}
           />
-        </div>
-      ) : open ? (
-        <div id={menuId} className="note-menu__panel">
-          <fieldset className="note-menu__group">
-            <legend>Task rows</legend>
-            <label className="kit-check">
-              <input
-                type="radio"
-                name={`${menuId}-peek`}
-                checked={!peeking}
-                onChange={() => setNotePeek(noteId, false)}
-              />
-              Title only
-            </label>
-            <label className="kit-check">
-              <input
-                type="radio"
-                name={`${menuId}-peek`}
-                checked={peeking}
-                onChange={() => setNotePeek(noteId, true)}
-              />
-              Title and first line
-            </label>
-          </fieldset>
-          {onInsertTemplate ? (
-            <button
-              type="button"
-              className="note-menu__item"
-              onClick={() => setPicking(true)}
-            >
-              Insert template…
-            </button>
-          ) : null}
-          {onArchivedChange ? (
-            <button
-              type="button"
-              className="note-menu__item"
-              onClick={() => {
-                close(true);
-                onArchivedChange(!archived);
-              }}
-            >
-              {archived ? 'Unarchive note' : 'Archive note'}
-            </button>
-          ) : null}
-          {onDelete ? (
-            <button
-              type="button"
-              className="note-menu__item note-menu__item--danger"
-              disabled={deleteDisabled}
-              onClick={() => {
-                close(true);
-                onDelete();
-              }}
-            >
-              Delete note
-            </button>
-          ) : null}
         </div>
       ) : null}
     </span>
