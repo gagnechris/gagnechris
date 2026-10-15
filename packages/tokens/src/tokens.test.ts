@@ -38,6 +38,7 @@ describe('tokens', () => {
     expect(map['--space-16']).toBe('4rem');
     expect(map['--text-xl']).toBe('1.333rem');
     expect(map['--radius-lg']).toBe('1rem');
+    expect(map['--radius-editorial']).toBe('0.625rem');
   });
 
   it('derives the px comments from the token values', () => {

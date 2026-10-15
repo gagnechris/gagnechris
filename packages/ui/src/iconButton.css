@@ -1,0 +1,117 @@
+.ui-icon-btn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--neutral-600);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-icon-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ui-icon-btn--sm {
+  width: 28px;
+  height: 28px;
+}
+
+.ui-icon-btn--sm svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-icon-btn--lg {
+  width: 44px;
+  height: 44px;
+}
+
+.ui-icon-btn--lg svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ui-icon-btn:hover:not(:disabled) {
+  background: var(--neutral-100);
+  color: var(--neutral-900);
+}
+
+.ui-icon-btn:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+}
+
+.ui-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ui-icon-btn--outline {
+  border-color: var(--neutral-300);
+  background: white;
+}
+
+.ui-icon-btn--danger {
+  color: var(--color-danger);
+}
+
+.ui-icon-btn--danger:hover:not(:disabled) {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.ui-icon-btn[aria-pressed='true'] {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.ui-icon-btn__count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--primary-600);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-icon-btn--editorial {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-editorial);
+}
+
+.ui-icon-btn--editorial.ui-icon-btn--outline {
+  border-color: var(--neutral-300);
+}
+
+.ui-icon-btn--editorial:disabled {
+  opacity: 1;
+  color: var(--neutral-400);
+}
+
+.ui-icon-btn--editorial:focus-visible {
+  outline-color: var(--color-link);
+}
+
+@media (max-width: 767px) {
+  .ui-icon-btn--md {
+    width: 44px;
+    height: 44px;
+  }
+}

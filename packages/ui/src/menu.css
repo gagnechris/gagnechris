@@ -1,0 +1,124 @@
+.ui-menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.ui-menu {
+  box-sizing: border-box;
+  padding: 4px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  text-align: left;
+}
+
+.ui-menu--popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 50;
+  width: 240px;
+  max-height: min(24rem, 70vh);
+  overflow-y: auto;
+}
+
+.ui-menu--start {
+  left: 0;
+}
+
+.ui-menu--end {
+  right: 0;
+}
+
+.ui-menu--sheet {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.ui-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--neutral-800);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-menu--sheet .ui-menu__item {
+  min-height: 44px;
+  font-size: var(--text-base);
+}
+
+.ui-menu__item:hover,
+.ui-menu__item:focus {
+  outline: none;
+  background: var(--neutral-100);
+}
+
+.ui-menu__item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--primary-600);
+}
+
+.ui-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.ui-menu__item[aria-disabled='true'] {
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: not-allowed;
+}
+
+.ui-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-menu__icon,
+.ui-menu__check {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+}
+
+.ui-menu__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ui-menu__check {
+  color: var(--primary-600);
+}
+
+.ui-menu__shortcut {
+  color: var(--neutral-500);
+  font-family: inherit;
+  font-size: var(--text-xs);
+}
+
+.ui-menu__group-label {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--neutral-500);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.ui-menu__separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--neutral-200);
+}

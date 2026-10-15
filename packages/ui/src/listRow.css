@@ -1,0 +1,87 @@
+.ui-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--neutral-200);
+}
+
+.ui-row:hover {
+  background: var(--neutral-50);
+}
+
+.ui-row--current,
+.ui-row--current:hover {
+  background: var(--primary-50);
+}
+
+.ui-row__leading,
+.ui-row__trailing,
+.ui-row__actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ui-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ui-row__title {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--neutral-900);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.ui-row__title,
+button.ui-row__title {
+  cursor: pointer;
+}
+
+a.ui-row__title:hover,
+button.ui-row__title:hover {
+  text-decoration: underline;
+}
+
+.ui-row__title:focus-visible {
+  outline: 2px solid var(--primary-600);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.ui-row__meta {
+  color: var(--neutral-500);
+  font-size: var(--text-caption);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-row__actions {
+    opacity: 0;
+  }
+
+  .ui-row:hover .ui-row__actions,
+  .ui-row:focus-within .ui-row__actions {
+    opacity: 1;
+  }
+}

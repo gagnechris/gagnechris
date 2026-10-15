@@ -35,4 +35,60 @@ describe('Button', () => {
     const link = screen.getByRole('link', { name: 'View live' });
     expect(link).not.toHaveAttribute('target');
   });
+
+  test('sizes, ghost, link and editorial tone map to classes', () => {
+    render(
+      <>
+        <Button size="sm" variant="ghost">
+          Small
+        </Button>
+        <Button size="lg" variant="link">
+          Large
+        </Button>
+        <Button tone="editorial" variant="primary">
+          Send
+        </Button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
+      'kit-btn--sm',
+      'kit-btn--ghost',
+    );
+    expect(screen.getByRole('button', { name: 'Large' })).toHaveClass(
+      'kit-btn--lg',
+      'kit-btn--link',
+    );
+    expect(screen.getByRole('button', { name: 'Send' })).toHaveClass(
+      'kit-btn--editorial',
+      'kit-btn--primary',
+    );
+  });
+
+  test('loading keeps the button focusable, sets aria-busy and swallows clicks', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Saving
+      </Button>,
+    );
+    const btn = screen.getByRole('button', { name: 'Saving' });
+    expect(btn).toHaveAttribute('aria-busy', 'true');
+    expect(btn).toBeEnabled();
+    await user.tab();
+    expect(btn).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await user.click(btn);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  test('Enter and Space activate it from the keyboard', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<Button onClick={onClick}>Save</Button>);
+    await user.tab();
+    await user.keyboard('{Enter}');
+    await user.keyboard(' ');
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
 });
