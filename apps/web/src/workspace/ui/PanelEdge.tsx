@@ -38,6 +38,7 @@ function EdgeButton({
   const countId = useId();
   const pointsLeft = open === (side === 'left');
   return (
+    // eslint-disable-next-line no-restricted-syntax -- the panel edge is a feature control, not a primitive
     <button
       ref={ref}
       type="button"

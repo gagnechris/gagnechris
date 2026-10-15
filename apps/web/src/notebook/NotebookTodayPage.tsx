@@ -366,6 +366,7 @@ export default function NotebookTodayPage() {
                 ) : null}
               </span>
             </div>
+            {/* eslint-disable-next-line no-restricted-syntax -- the Today strip is a whole-row disclosure, not a button primitive */}
             <button
               ref={stripRef}
               type="button"

@@ -279,6 +279,7 @@ function ViewButton({
   children: ReactNode;
 }) {
   return (
+    // eslint-disable-next-line no-restricted-syntax -- the demo copies the Posts view toggle on the public site
     <button
       type="button"
       className="posts-demo__view"

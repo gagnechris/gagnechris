@@ -235,6 +235,7 @@ function Contact() {
                 {/* Honeypot — nonsemantic name resists autofill. */}
                 <div className="hp-field" aria-hidden="true">
                   <label htmlFor="hp_field">Leave blank</label>
+                  {/* eslint-disable-next-line no-restricted-syntax -- the honeypot is never shown */}
                   <input
                     type="text"
                     id="hp_field"

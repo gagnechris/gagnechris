@@ -232,6 +232,7 @@ function PanelTabs({
     <div className="notebook-demo__panels">
       <div className="notebook-demo__tabs" {...tabs.listProps}>
         {TABS.map((id) => (
+          // eslint-disable-next-line no-restricted-syntax -- the demo copies the Notebook tab look on the public site
           <button
             key={id}
             {...tabs.tabProps(id)}

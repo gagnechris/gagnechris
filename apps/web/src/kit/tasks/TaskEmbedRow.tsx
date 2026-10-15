@@ -230,6 +230,7 @@ function TaskEmbedTitle({
   // The wrapper mirrors the text so the field is only as wide as its title.
   return (
     <span className="task-embed__title-wrap" data-value={value}>
+      {/* eslint-disable-next-line no-restricted-syntax -- an auto-width title editor inside a CodeMirror widget */}
       <textarea
         ref={fieldRef}
         rows={1}
@@ -350,6 +351,7 @@ export function TaskEmbedRow({
       }}
     >
       {moving ? (
+        // eslint-disable-next-line no-restricted-syntax -- moving a task re-creates the widget, so DragHandle state would not survive
         <button
           type="button"
           className="task-embed__handle"
