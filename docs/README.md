@@ -90,6 +90,7 @@ e2e/                   Playwright browser tests
 | [adr/0003-one-renderer-for-public-pages.md](./adr/0003-one-renderer-for-public-pages.md) | Public pages: one React renderer, SSR in the publisher, hydrated                                                               |
 | [adr/0004-ios-app.md](./adr/0004-ios-app.md)                                             | iOS stack, v1 offline policy, cache, tokens, auth callback, outbox rules                                                       |
 | [design/bears-2.0/](./design/bears-2.0/README.md)                                        | Don't Feed the Bears 2.0 artboards, tuning, prototype code                                                                     |
+| [design/components.md](./design/components.md)                                           | Component inventory: shared components, one-off elements and their targets, missing primitives                                 |
 | [design/public-redesign/](./design/public-redesign/README.md)                            | Public site redesign artboards (Editorial)                                                                                     |
 | [../infra/RUNBOOK.md](../infra/RUNBOOK.md)                                               | Production AWS operations                                                                                                      |
 
