@@ -197,6 +197,28 @@ const ONE_ON_ONE = template(
   '- Wins\n- Blockers\n',
 );
 
+const seedTask = (noteId: string | null) =>
+  api.tasks.set(TASK_ID, {
+    id: TASK_ID,
+    userId: 'u1',
+    area: 'work',
+    title: 'Hire a designer',
+    description: '',
+    priority: 'med',
+    status: 'todo',
+    dueDate: null,
+    startDate: null,
+    someday: false,
+    completedAt: null,
+    noteId,
+    parentId: null,
+    tags: [],
+    version: 1,
+    createdAt: TS,
+    updatedAt: TS,
+    deleted: false,
+  });
+
 async function editorView(container: HTMLElement): Promise<EditorView> {
   const content = await waitFor(() => {
     const el = container.querySelector('.cm-content');
@@ -383,26 +405,7 @@ describe('templates in a daily note', () => {
 
 describe('templates on a task page', () => {
   test('/ inserts a template into the description', async () => {
-    api.tasks.set(TASK_ID, {
-      id: TASK_ID,
-      userId: 'u1',
-      area: 'work',
-      title: 'Hire a designer',
-      description: '',
-      priority: 'med',
-      status: 'todo',
-      dueDate: null,
-      startDate: null,
-      someday: false,
-      completedAt: null,
-      noteId: null,
-      parentId: null,
-      tags: [],
-      version: 1,
-      createdAt: TS,
-      updatedAt: TS,
-      deleted: false,
-    });
+    seedTask(null);
     const router = createMemoryRouter(
       [{ path: 'tasks/:id', element: <NotebookTaskPage /> }],
       { initialEntries: [`/tasks/${TASK_ID}`] },
@@ -429,5 +432,60 @@ describe('templates on a task page', () => {
         }),
       { timeout: 5000 },
     );
+  });
+});
+
+describe('templates in a task’s details inside a note', () => {
+  test('/ inserts a template into the description and saves it to the task', async () => {
+    const DAILY_ID = '01JNOTEAAAAAAAAAAAAAAAAAAA';
+    seedTask(DAILY_ID);
+    api.daily = {
+      id: DAILY_ID,
+      userId: 'u1',
+      area: 'work',
+      type: 'daily',
+      date: TODAY,
+      title: '',
+      bodyMarkdown: `{{task:${TASK_ID}}}\n`,
+      tags: [],
+      pinned: false,
+      taskIds: [TASK_ID],
+      version: 1,
+      createdAt: TS,
+      updatedAt: TS,
+      deleted: false,
+    };
+    api.notes.set(DAILY_ID, api.daily);
+    renderToday();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Details for Hire a designer',
+      }),
+    );
+    const panel = await screen.findByRole('group', {
+      name: 'Details for Hire a designer',
+    });
+    const view = await editorView(panel);
+    act(() => view.focus());
+
+    typeInto(view, '/hm');
+    const listbox = await screen.findByRole('listbox', {
+      name: 'Insert template',
+    });
+    expect(optionNames(listbox)).toEqual(['HM Screen Interview']);
+    press(view, 'Enter');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    const description =
+      '## Screen · Friday\n\n[ ] Send feedback\n[ ] Book debrief\n\nNotes:\n';
+    expect(view.state.doc.toString()).toBe(description);
+    await waitFor(
+      () => expect(api.tasks.get(TASK_ID)?.description).toBe(description),
+      { timeout: 5000 },
+    );
+    expect(api.taskPuts.at(-1)).toEqual({ version: 1, description });
+    expect(api.tasks.size).toBe(1);
+    expect(api.daily.bodyMarkdown).toBe(`{{task:${TASK_ID}}}\n`);
   });
 });
