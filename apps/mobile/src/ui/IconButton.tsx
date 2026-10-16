@@ -23,6 +23,8 @@ type Props = {
   size?: IconButtonSize;
   /** Makes it a toggle that reads as selected when on. */
   pressed?: boolean;
+  /** Makes it a disclosure that reads as expanded or collapsed. */
+  expanded?: boolean;
   /** A badge at the top right, read after the label. */
   count?: number;
   disabled?: boolean;
@@ -39,6 +41,7 @@ export const IconButton = ({
   variant = 'ghost',
   size = 'md',
   pressed,
+  expanded,
   count,
   disabled,
   accessibilityHint,
@@ -51,7 +54,7 @@ export const IconButton = ({
       accessibilityRole="button"
       accessibilityLabel={showCount ? `${label}, ${count}` : label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled, selected: pressed }}
+      accessibilityState={{ disabled, selected: pressed, expanded }}
       disabled={disabled}
       onPress={onPress}
       onLongPress={onLongPress}

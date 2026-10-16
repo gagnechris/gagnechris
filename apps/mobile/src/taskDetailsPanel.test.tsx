@@ -75,12 +75,14 @@ describe('task details in a note', () => {
     );
     await loadTaskDetailsStore(asyncStorage);
     const renderer = await renderNote();
-    const chevron = () => byLabel(renderer, 'Details for Ship it');
-    expect(chevron().props.accessibilityState).toEqual({ expanded: false });
+    const show = byLabel(renderer, 'Show details for Ship it');
+    expect(show.props.accessibilityState).toMatchObject({ expanded: false });
     expect(queryLabel(renderer, 'Description of Ship it')).toBeUndefined();
 
-    await act(async () => chevron().props.onPress());
-    expect(chevron().props.accessibilityState).toEqual({ expanded: true });
+    await act(async () => show.props.onPress());
+    const hide = () => byLabel(renderer, 'Hide details for Ship it');
+    expect(hide().props.accessibilityState).toMatchObject({ expanded: true });
+    expect(queryLabel(renderer, 'Show details for Ship it')).toBeUndefined();
     expect(byLabel(renderer, 'Description of Ship it').props.value).toBe(
       'Check the logs',
     );
@@ -89,7 +91,7 @@ describe('task details in a note', () => {
       JSON.stringify([TASK]),
     );
 
-    await act(async () => chevron().props.onPress());
+    await act(async () => hide().props.onPress());
     expect(queryLabel(renderer, 'Description of Ship it')).toBeUndefined();
   });
 
@@ -98,7 +100,7 @@ describe('task details in a note', () => {
     await loadTaskDetailsStore(asyncStorage);
     const renderer = await renderNote();
     await act(async () =>
-      byLabel(renderer, 'Details for Ship it').props.onPress(),
+      byLabel(renderer, 'Show details for Ship it').props.onPress(),
     );
 
     act(() =>
@@ -121,7 +123,7 @@ describe('task details in a note', () => {
     await loadTaskDetailsStore(asyncStorage);
     const renderer = await renderNote();
     await act(async () =>
-      byLabel(renderer, 'Details for Ship it').props.onPress(),
+      byLabel(renderer, 'Show details for Ship it').props.onPress(),
     );
 
     await act(async () =>
@@ -150,7 +152,7 @@ describe('task details in a note', () => {
     await loadTaskDetailsStore(asyncStorage);
     const renderer = await renderNote();
     await act(async () =>
-      byLabel(renderer, 'Details for Ship it').props.onPress(),
+      byLabel(renderer, 'Show details for Ship it').props.onPress(),
     );
     await act(async () => byLabel(renderer, 'Status: To do').props.onPress());
     await pick('Done');
