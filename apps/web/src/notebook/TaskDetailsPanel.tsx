@@ -20,6 +20,7 @@ import { Chip, ChipSelect, TextInput } from '@gagnechris/ui';
 import { TaskDateButton } from '../kit/tasks/TaskDateButton';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useLocalToday } from './useLocalToday';
+import { useNotebookAreaName } from './useNotebookAreaName';
 
 const STATUS_OPTIONS: readonly { value: TaskStatus; label: string }[] = [
   { value: 'todo', label: 'To do' },
@@ -96,6 +97,7 @@ export type DescriptionEditorProps = {
   onChange: (value: string) => void;
   label: string;
   placeholder: string;
+  templates: { date: string; areaName: string };
 };
 
 /** A task's description and fields, under its row in a note. */
@@ -112,6 +114,7 @@ export function TaskDetailsPanel({
 }) {
   const [moving, setMoving] = useState(false);
   const today = useLocalToday();
+  const areaName = useNotebookAreaName();
   const description = useTaskDescriptionEditor(task);
   const { mutateAsync: patchTask } = usePatchTaskMutation();
   const { toggle, error: toggleError } = useTaskToggle();
@@ -162,6 +165,7 @@ export function TaskDetailsPanel({
         onChange: description.onChange,
         label: `Details for ${task.title}`,
         placeholder: 'Add details…',
+        templates: { date: today, areaName: areaName(task.area) },
       })}
       <div className="task-details__chips">
         <ChipSelect
