@@ -170,7 +170,8 @@ Where the apps style the same control differently, this is the look the library
 uses:
 
 - **Button:** `.kit-btn` wins, in `sm`, `md` and `lg` sizes with a `link`
-  variant. A disabled button is 55% opacity in every variant, including primary.
+  variant. A disabled button is 55% opacity in every variant, including primary,
+  and hovering it changes nothing.
 - **Icon buttons:** one IconButton, ghost by default, 8px corners.
 - **Focus:** a 2px `--primary-600` outline with a 2px offset on keyboard focus
   only, for every control. Inputs add a 3px `--primary-100` ring and a
@@ -282,7 +283,8 @@ arrows move the selection.
   (`--primary-50`, `--primary-300` border, `--primary-800`), `warning`
   (`--color-warning-bg`, `--color-warning`), `danger` (`--color-danger-bg`,
   `--color-danger-border`, `--color-danger`).
-- Optional leading dot or icon and a remove button labelled "Remove {value}".
+- Optional leading dot or icon and a remove button labelled "Remove {value}",
+  with a 44px hit area under 768px.
 - ChipSelect is an outline chip (white, `--neutral-300` border) with a chevron
   that opens a Menu; an empty one reads as an "Add …" action in `--neutral-500`.
 

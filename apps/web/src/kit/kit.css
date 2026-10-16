@@ -212,126 +212,10 @@ label.kit-btn:has(+ .kit-visually-hidden:focus-visible) {
   outline-offset: 2px;
 }
 
-.kit-chips {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--neutral-300);
-  border-radius: var(--radius-md);
-  background: white;
-}
-
-.kit-chips:focus-within {
-  border-color: var(--primary-500);
-}
-
-.kit-chips__list {
-  display: contents;
-  list-style: none;
-}
-
-.kit-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
-  border-radius: var(--radius-sm);
-  background: var(--neutral-100);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--neutral-700);
-}
-
-.kit-chip__remove {
-  border: 0;
-  background: none;
-  padding: 0 0.25rem;
-  font: inherit;
-  color: var(--neutral-500);
-  cursor: pointer;
-}
-
-.kit-chip__remove:hover {
-  color: var(--neutral-900);
-}
-
-.kit-chips__input {
-  flex: 1 1 8rem;
-  min-width: 8rem;
-  border: 0;
-  outline: none;
-  padding: var(--space-1);
-  font: inherit;
-  font-weight: 400;
-  color: var(--neutral-800);
-  background: transparent;
-}
-
 /* Phones only: the desktop table scrolls in its box, which would clip the menu. */
 th.kit-table__actions,
 td.kit-table__actions {
   display: none;
-}
-
-.kit-row-actions {
-  position: relative;
-  display: inline-block;
-}
-
-.kit-row-actions__toggle {
-  display: inline-grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: transparent;
-  color: var(--neutral-700);
-  font: inherit;
-  font-size: 1.125rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.kit-row-actions__toggle:hover,
-.kit-row-actions__toggle[aria-expanded='true'] {
-  background: var(--neutral-100);
-}
-
-.kit-row-actions__menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  min-width: 11rem;
-  padding: 4px;
-  border: 1px solid var(--neutral-200);
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-}
-
-.kit-row-actions__menu button {
-  min-height: 44px;
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--neutral-800);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-}
-
-.kit-row-actions__menu button:hover {
-  background: var(--neutral-100);
 }
 
 /* Phones: the posts table becomes a list of rows. */
@@ -427,8 +311,7 @@ td.kit-table__actions {
 /* Phones: iOS Safari zooms into a focused field under 16px, and a finger
    needs a 44px target. */
 @media (max-width: 767px) {
-  :where(input, select, textarea),
-  .kit-chips__input {
+  :where(input, select, textarea) {
     font-size: max(16px, 1em);
   }
 
