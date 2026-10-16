@@ -1228,53 +1228,61 @@ describe('task details under the row', () => {
 
   const noteA = () => screen.getByRole('region', { name: 'Note A' });
   const noteB = () => screen.getByRole('region', { name: 'Note B' });
-  const chevronIn = (note: HTMLElement) =>
-    within(note).findByRole('button', { name: 'Details for Call Sam' });
+  const toggleIn = (note: HTMLElement) =>
+    within(note).findByRole('button', {
+      name: /^(Show|Hide) details for Call Sam$/,
+    });
   const panelIn = (note: HTMLElement) =>
     within(note).queryByRole('group', { name: 'Details for Call Sam' });
 
-  test('a task starts collapsed with its row chips, and the chevron opens and closes its details', async () => {
+  test('a task starts collapsed with its row chips, and the control after its title opens and closes its details', async () => {
     seedTask({ description: 'Ask about the **launch**', tags: ['ops'] });
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    const chevron = await chevronIn(noteA());
-    const row = chevron.closest('.task-embed')!;
+    const toggle = await toggleIn(noteA());
+    const row = toggle.closest('.task-embed')!;
 
-    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAccessibleName('Show details for Call Sam');
+    expect(toggle.previousElementSibling).toHaveClass('task-embed__title-wrap');
+    expect(
+      within(row as HTMLElement).getAllByRole('button', { name: /details/i }),
+    ).toEqual([toggle]);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(panelIn(noteA())).toBeNull();
     expect(within(noteA()).getByRole('img', { name: 'Has details' }));
     expect(row).toHaveTextContent('High');
     expect(row).not.toHaveTextContent('ops');
 
-    await user.click(chevron);
-    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAccessibleName('Hide details for Call Sam');
     const panel = panelIn(noteA())!;
-    expect(chevron).toHaveAttribute('aria-controls', panel.id);
+    expect(toggle).toHaveAttribute('aria-controls', panel.id);
     expect(
       within(panel).getByRole('button', { name: 'Tags: ops' }),
     ).toBeVisible();
     expect(panelIn(noteB())).not.toBeNull();
 
     await user.keyboard('{Enter}');
-    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(panelIn(noteA())).toBeNull();
   });
 
   test('a press in the empty space after the title opens the details', async () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
-    const chevron = await chevronIn(noteA());
-    const row = chevron.closest('.task-embed')!;
+    const toggle = await toggleIn(noteA());
+    const row = toggle.closest('.task-embed')!;
 
     fireEvent.mouseDown(row);
-    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('editing the description saves it to the task and shows it on the task page', async () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    await user.click(await chevronIn(noteA()));
+    await user.click(await toggleIn(noteA()));
     const panel = panelIn(noteA())!;
     const editor = within(panel).getByRole('textbox', {
       name: 'Details for Call Sam',
@@ -1299,8 +1307,8 @@ describe('task details under the row', () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    const chevron = await chevronIn(noteA());
-    await user.click(chevron);
+    const toggle = await toggleIn(noteA());
+    await user.click(toggle);
     const panel = panelIn(noteA())!;
 
     await user.click(
@@ -1311,7 +1319,7 @@ describe('task details under the row', () => {
     await waitFor(() =>
       expect(api.tasks.get(TASK_ID)?.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/),
     );
-    const row = chevron.closest('.task-embed')!;
+    const row = toggle.closest('.task-embed')!;
     await waitFor(() => expect(row.querySelector('.task-due')).not.toBeNull());
   });
 
@@ -1319,8 +1327,8 @@ describe('task details under the row', () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    const chevron = await chevronIn(noteA());
-    await user.click(chevron);
+    const toggle = await toggleIn(noteA());
+    await user.click(toggle);
     const status = within(panelIn(noteA())!).getByRole('button', {
       name: 'Status: To do',
     });
@@ -1337,7 +1345,7 @@ describe('task details under the row', () => {
     await user.click(status);
     await user.click(screen.getByRole('menuitemradio', { name: 'Dropped' }));
     await waitFor(() => expect(api.tasks.get(TASK_ID)?.status).toBe('dropped'));
-    const row = chevron.closest('.task-embed')!;
+    const row = toggle.closest('.task-embed')!;
     await waitFor(() => expect(row).toHaveTextContent('Dropped'));
     expect(row).toHaveClass('task-embed--dropped');
   });
@@ -1346,7 +1354,7 @@ describe('task details under the row', () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    await user.click(await chevronIn(noteA()));
+    await user.click(await toggleIn(noteA()));
     const panel = panelIn(noteA())!;
     api.tasks.set(TASK_ID, {
       ...api.tasks.get(TASK_ID)!,
@@ -1369,7 +1377,7 @@ describe('task details under the row', () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    await user.click(await chevronIn(noteA()));
+    await user.click(await toggleIn(noteA()));
     const panel = panelIn(noteA())!;
     api.tasks.set(TASK_ID, {
       ...api.tasks.get(TASK_ID)!,
@@ -1393,18 +1401,18 @@ describe('task details under the row', () => {
     seedTask();
     renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    const chevron = await chevronIn(noteA());
+    const toggle = await toggleIn(noteA());
     const title = await within(noteA()).findByRole('textbox', {
       name: 'Task title',
     });
 
     await user.click(title);
     await user.keyboard('{Meta>}.{/Meta}');
-    expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await user.keyboard('{Control>}.{/Control}');
-    expect(chevron).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
-    await user.click(chevron);
+    await user.click(toggle);
     const panel = panelIn(noteA())!;
     await user.click(within(panel).getByRole('button', { name: 'Add tags' }));
     await user.keyboard('{Escape}');
@@ -1423,7 +1431,7 @@ describe('task details under the row', () => {
   test('⌘. with the caret beside a row in the note toggles its details', async () => {
     seedTask();
     const { container } = renderNotes(`Standup\n${tokenLine(TASK_ID)}`);
-    await chevronIn(noteA());
+    await toggleIn(noteA());
     const view = await editorView(
       container.querySelector<HTMLElement>('[aria-label="Note A"]')!,
     );
@@ -1442,26 +1450,26 @@ describe('task details under the row', () => {
       );
     });
     // The row is drawn again once the caret is on its line.
-    expect(await chevronIn(noteA())).toHaveAttribute('aria-expanded', 'true');
+    expect(await toggleIn(noteA())).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('open details stay open after a reload, on this device', async () => {
     seedTask();
     const first = renderNotes(tokenLine(TASK_ID));
     const user = userEvent.setup();
-    await user.click(await chevronIn(noteA()));
+    await user.click(await toggleIn(noteA()));
     expect(localStorage.getItem(TASK_DETAILS_OPEN_KEY)).toContain(TASK_ID);
     first.unmount();
 
     resetTaskDetailsStore();
     renderNotes(tokenLine(TASK_ID));
-    expect(await chevronIn(noteA())).toHaveAttribute('aria-expanded', 'true');
+    expect(await toggleIn(noteA())).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('the peek setting shows the first description line in that note only', async () => {
     seedTask({ description: '\n## Agenda\n- budget\n- hiring' });
     renderNotes(tokenLine(TASK_ID));
-    await chevronIn(noteA());
+    await toggleIn(noteA());
     expect(noteA().querySelector('.task-embed__peek')).toBeNull();
 
     act(() => setNotePeek(NOTE_A, true));
@@ -1629,10 +1637,10 @@ describe('moving tasks in a note', () => {
     ].join('\n');
     const { body: current } = renderNote(body);
     const user = userEvent.setup();
-    const chevron = await screen.findByRole('button', {
-      name: 'Details for Call Sam',
+    const toggle = await screen.findByRole('button', {
+      name: 'Show details for Call Sam',
     });
-    await user.click(chevron);
+    await user.click(toggle);
     await user.click(screen.getByRole('button', { name: 'Move to…' }));
     await user.click(
       screen.getByRole('menuitem', { name: 'Another day’s note…' }),
