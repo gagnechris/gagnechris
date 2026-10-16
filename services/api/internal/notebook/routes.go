@@ -420,6 +420,15 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 	if len(carried) == 0 {
 		return h.emptyDay(ctx, userID, area, date)
 	}
+	// Nesting follows the previous day's note: a task indented there after it
+	// carried in has no parent of its own, since only its home note sets one.
+	previous, err := h.notes.latestDailyBefore(ctx, userID, area, date)
+	if err != nil {
+		return nil, err
+	}
+	if previous != nil {
+		carried = NestLike(carried, previous.BodyMarkdown)
+	}
 	template, err := h.templates.get(ctx, userID, area)
 	if err != nil {
 		return nil, err

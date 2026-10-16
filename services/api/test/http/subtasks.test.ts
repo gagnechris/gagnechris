@@ -156,4 +156,32 @@ describe('subtasks come from indentation in the home note', () => {
     expect(mon.bodyMarkdown).not.toContain(id(42));
     expect(mon.bodyMarkdown).not.toContain(id(43));
   });
+
+  it('a new day nests carried tasks as the note of the day before did, wherever they were created', async () => {
+    const fri = await ok<Note>(
+      'PUT',
+      '/api/notebook/notes/daily/work/2026-09-04',
+      { body: { id: id(50), bodyMarkdown: '' } },
+    );
+    for (const n of [51, 52, 53, 54]) await task(n, fri.id);
+    await write(fri, [t(51), t(52), t(53), `  ${t(54)}`]);
+    expect(await parentOf(54)).toBe(id(53));
+
+    const mon = await ok<Note>(
+      'POST',
+      '/api/notebook/notes/daily/work/2026-09-07/open',
+      { body: { id: id(55) } },
+    );
+    await write(mon, [t(51), `  ${t(52)}`, t(53), t(54)]);
+    expect(await parentOf(52)).toBeNull();
+
+    const tue = await ok<{ bodyMarkdown: string }>(
+      'POST',
+      '/api/notebook/notes/daily/work/2026-09-08/open',
+      { body: { id: id(56) } },
+    );
+    expect(tue.bodyMarkdown).toContain(
+      `${t(51)}\n  ${t(52)}\n${t(53)}\n${t(54)}\n`,
+    );
+  });
 });

@@ -2,6 +2,8 @@ package notebook
 
 import (
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +55,29 @@ func TestSortTasksForList(t *testing.T) {
 	}
 	if ids != "123456" {
 		t.Errorf("order %s", ids)
+	}
+}
+
+func TestNestLike(t *testing.T) {
+	const a, b, c, d = "01ARZ3NDEKTSV4RRFFQ69G5FA1", "01ARZ3NDEKTSV4RRFFQ69G5FA2", "01ARZ3NDEKTSV4RRFFQ69G5FA3", "01ARZ3NDEKTSV4RRFFQ69G5FA4"
+	stored := a
+	tasks := []CarriedInTask{{ID: a}, {ID: strings.ToLower(b)}, {ID: c, ParentID: &stored}, {ID: d, ParentID: &stored}}
+	note := "{{task:" + a + "}}\n  {{task:" + b + "}}\n{{task:" + c + "}}\n"
+	got := NestLike(tasks, note)
+	parent := func(i int) string {
+		if got[i].ParentID == nil {
+			return ""
+		}
+		return *got[i].ParentID
+	}
+	if parent(0) != "" || parent(1) != a || parent(2) != "" || parent(3) != a {
+		t.Fatalf("parents = %q %q %q %q", parent(0), parent(1), parent(2), parent(3))
+	}
+	if tasks[2].ParentID == nil {
+		t.Fatal("NestLike changed its input")
+	}
+	want := []string{"{{task:" + a + "}}", "  {{task:" + strings.ToUpper(b) + "}}", "{{task:" + c + "}}"}
+	if lines := carriedInLines(got[:3]); !slices.Equal(lines, want) {
+		t.Fatalf("lines = %q", lines)
 	}
 }
