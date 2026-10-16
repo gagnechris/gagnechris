@@ -18,6 +18,7 @@ import { color, font, MIN_TARGET } from '../theme';
 import type { Subtasks } from '../notebook/useNoteSubtasks';
 import { Checkbox } from './Checkbox';
 import { Icon } from './Icon';
+import { IconButton } from './IconButton';
 
 const TITLE_LINE = 24;
 // Longer than iOS's delay before Backspace starts repeating, so a held key
@@ -47,7 +48,7 @@ type Props = {
   grip?: ReactNode;
   /** On a parent: its subtask count, which folds the lines under it. */
   subtasks?: Subtasks;
-  /** With it, a chevron opens and closes the task's details under the row. */
+  /** With it, a chevron after the title opens and closes the task's details under the row. */
   onToggleDetails?: () => void;
   detailsOpen?: boolean;
 };
@@ -295,6 +296,21 @@ export const TaskEmbedRow = ({
             inputRef={titleInput}
             a11yActions={a11yActions}
           />
+          {onToggleDetails ? (
+            <IconButton
+              size="sm"
+              label={`${detailsOpen ? 'Hide' : 'Show'} details for ${task.title}`}
+              expanded={detailsOpen}
+              onPress={onToggleDetails}
+              onLongPress={onLongPress}
+            >
+              <Icon
+                name={detailsOpen ? 'chevron.down' : 'chevron.right'}
+                size={14}
+                color={detailsOpen ? color.accent : color.muted}
+              />
+            </IconButton>
+          ) : null}
           {pills.length ? (
             <View
               style={styles.pills}
@@ -353,28 +369,12 @@ export const TaskEmbedRow = ({
             accessibilityLabel={`Open task ${task.title}`}
             onPress={onOpen}
             onLongPress={onLongPress}
-            style={onToggleDetails ? styles.openBeside : styles.open}
+            style={styles.open}
           >
             <Icon
               name={onToggleDetails ? 'arrow.up.right' : 'chevron.right'}
               size={onToggleDetails ? 14 : 16}
               color={color.muted}
-            />
-          </Pressable>
-        ) : null}
-        {onToggleDetails ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Details for ${task.title}`}
-            accessibilityState={{ expanded: detailsOpen }}
-            onPress={onToggleDetails}
-            onLongPress={onLongPress}
-            style={styles.open}
-          >
-            <Icon
-              name={detailsOpen ? 'chevron.up' : 'chevron.down'}
-              size={14}
-              color={detailsOpen ? color.accent : color.muted}
             />
           </Pressable>
         ) : null}
@@ -455,13 +455,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: -tokens.space[2],
-  },
-  // Two buttons share the edge, so the first gives up its outer margin.
-  openBeside: {
-    width: MIN_TARGET - tokens.space[3],
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   progress: {
     flexDirection: 'row',

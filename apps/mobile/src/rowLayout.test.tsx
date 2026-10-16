@@ -1,6 +1,7 @@
-import type { ReactTestRenderer } from 'react-test-renderer';
+import type { ReactTestInstance, ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it } from 'vitest';
-import { render } from '../test/render';
+import { expectAccessible } from '../test/accessible';
+import { byLabel, render } from '../test/render';
 import { MIN_TARGET } from './theme';
 import { ListRow } from './ui/ListRow';
 import { TaskEmbedRow } from './ui/TaskEmbedRow';
@@ -60,6 +61,46 @@ describe('row layout', () => {
     expect(
       (title.lineHeight as number) + 2 * (button.paddingVertical as number),
     ).toBe(MIN_TARGET);
+  });
+
+  it('puts the details button right after the title, and the open arrow at the end', async () => {
+    const renderer = await render(
+      <TaskEmbedRow
+        state={{
+          kind: 'task',
+          task: { title: 'do things', status: 'todo', priority: 'high' },
+          onToggle: () => undefined,
+          onRename: () => undefined,
+        }}
+        editable
+        onOpen={() => undefined}
+        onToggleDetails={() => undefined}
+      />,
+    );
+    const wrapOf = (node: ReactTestInstance) => {
+      let parent = node.parent;
+      while (parent && flatStyle(parent.props.style).flexWrap !== 'wrap') {
+        parent = parent.parent;
+      }
+      return parent;
+    };
+    const title = byLabel(renderer, 'Task title');
+    const details = byLabel(renderer, 'Show details for do things');
+    expect(wrapOf(details)).toBe(wrapOf(title));
+    const labels = renderer.root
+      .findAll(
+        (node) =>
+          typeof node.type === 'string' &&
+          typeof node.props.accessibilityLabel === 'string',
+      )
+      .map((node) => node.props.accessibilityLabel as string);
+    expect(labels.slice(labels.indexOf('Task title'))).toEqual([
+      'Task title',
+      'Show details for do things',
+      'High priority',
+      'Open task do things',
+    ]);
+    expectAccessible(renderer);
   });
 
   it('centers a list row title on its icons', async () => {
