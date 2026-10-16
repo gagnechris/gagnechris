@@ -91,13 +91,13 @@ describe('dailyTemplateHeadings', () => {
 });
 
 describe('carryIntoDailyTemplate', () => {
-  it('puts carried tasks at the end of the first section by default', () => {
+  it('puts carried tasks at the end of the first section by default, in place of its empty list items', () => {
     expect(
       carryIntoDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, [{ id: A }], null),
     ).toBe(
       DEFAULT_DAILY_TEMPLATES.work.replace(
         '## Focus for {{weekday}}\n- \n\n',
-        `## Focus for {{weekday}}\n- \n\n${t(A)}\n\n`,
+        `## Focus for {{weekday}}\n${t(A)}\n\n`,
       ),
     );
     expect(
@@ -106,7 +106,23 @@ describe('carryIntoDailyTemplate', () => {
         [{ id: A }],
         null,
       ),
-    ).toBe(`## Plans\n- \n\n${t(A)}\n\n## Errands\n- [ ] \n\n## Notes\n`);
+    ).toBe(`## Plans\n${t(A)}\n\n## Errands\n- [ ] \n\n## Notes\n`);
+  });
+
+  it('keeps the section content and drops only the empty list items that end it', () => {
+    expect(
+      carryIntoDailyTemplate(
+        '## A\n- keep\n- \n\n* [ ] \n1. \n## B\n- \n',
+        [{ id: A }],
+        null,
+      ),
+    ).toBe(`## A\n- keep\n\n${t(A)}\n\n## B\n- \n`);
+  });
+
+  it('leaves the template alone when nothing carries in', () => {
+    expect(carryIntoDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, [], null)).toBe(
+      DEFAULT_DAILY_TEMPLATES.work,
+    );
   });
 
   it('uses the chosen section, falling back to the first when it is gone, and nests subtasks', () => {

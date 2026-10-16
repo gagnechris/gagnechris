@@ -367,9 +367,12 @@ func DailyTemplateHeadings(markdown string) []string {
 	return out
 }
 
+var emptyListItem = regexp.MustCompile(`^[ \t]*(?:[-*+]|\d+[.)])(?:[ \t]+\[[ xX]?\])?[ \t]*$`)
+
 // CarryIntoDailyTemplate puts carried-in task embeds at the end of the
-// template's section (the first heading when that one is unset or gone). A
-// template with no heading gets a Carried in section on top instead.
+// template's section (the first heading when that one is unset or gone), in
+// place of the empty list items that end it. A template with no heading gets
+// a Carried in section on top instead.
 func CarryIntoDailyTemplate(markdown string, tasks []CarriedInTask, section *string) string {
 	if len(tasks) == 0 {
 		return markdown
@@ -392,11 +395,16 @@ func CarryIntoDailyTemplate(markdown string, tasks []CarriedInTask, section *str
 		end = headings[target+1].line
 	}
 	last := end - 1
-	for last > at && api.TrimJS(lines[last]) == "" {
+	filler := func(line string) bool {
+		return api.TrimJS(line) == "" || emptyListItem.MatchString(strings.TrimSuffix(line, "\r"))
+	}
+	for last > at && filler(lines[last]) {
 		last--
 	}
 	out := append([]string{}, lines[:last+1]...)
-	out = append(out, "")
+	if last > at {
+		out = append(out, "")
+	}
 	out = append(out, carriedInLines(tasks)...)
 	out = append(out, "")
 	out = append(out, lines[end:]...)

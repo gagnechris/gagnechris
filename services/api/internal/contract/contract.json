@@ -2873,7 +2873,7 @@
           ],
           "section": null
         },
-        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -2889,7 +2889,7 @@
           ],
           "section": null
         },
-        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -2909,7 +2909,7 @@
           ],
           "section": "Meetings"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -2925,7 +2925,7 @@
           ],
           "section": "Meetings"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -2945,7 +2945,7 @@
           ],
           "section": "Tomorrow"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
       },
       {
         "input": {
@@ -2961,7 +2961,7 @@
           ],
           "section": "Tomorrow"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+        "want": "## Focus for {{weekday}}\n- \n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
       },
       {
         "input": {
@@ -2981,7 +2981,7 @@
           ],
           "section": "Gone"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -2997,7 +2997,7 @@
           ],
           "section": "Gone"
         },
-        "want": "## Focus for {{weekday}}\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
+        "want": "## Focus for {{weekday}}\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Standup\n\n## Meetings\n\n## Notes\n\n## Tomorrow\n- \n"
       },
       {
         "input": {
@@ -3017,7 +3017,7 @@
           ],
           "section": null
         },
-        "want": "## Plans\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Errands\n- [ ] \n\n## Notes\n"
+        "want": "## Plans\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## Errands\n- [ ] \n\n## Notes\n"
       },
       {
         "input": {
@@ -3033,7 +3033,7 @@
           ],
           "section": null
         },
-        "want": "## Plans\n- \n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Errands\n- [ ] \n\n## Notes\n"
+        "want": "## Plans\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## Errands\n- [ ] \n\n## Notes\n"
       },
       {
         "input": {
@@ -3125,7 +3125,7 @@
           ],
           "section": null
         },
-        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+        "want": "## Only\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
       },
       {
         "input": {
@@ -3141,7 +3141,7 @@
           ],
           "section": null
         },
-        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+        "want": "## Only\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
       },
       {
         "input": {
@@ -3161,7 +3161,7 @@
           ],
           "section": null
         },
-        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+        "want": "## Only\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
       },
       {
         "input": {
@@ -3177,7 +3177,7 @@
           ],
           "section": null
         },
-        "want": "## Only\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+        "want": "## Only\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
       },
       {
         "input": {
@@ -3233,7 +3233,7 @@
           ],
           "section": "B"
         },
-        "want": "## A\r\nline\r\n## B\r\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+        "want": "## A\r\nline\r\n## B\r\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
       },
       {
         "input": {
@@ -3249,7 +3249,7 @@
           ],
           "section": "B"
         },
-        "want": "## A\r\nline\r\n## B\r\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+        "want": "## A\r\nline\r\n## B\r\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
       },
       {
         "input": {
@@ -3258,6 +3258,114 @@
           "section": "B"
         },
         "want": "## A\r\nline\r\n## B\r\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n- keep\n- \n\n* [ ] \n1. \n+ [x]\n## B\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\n- keep\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## B\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n- keep\n- \n\n* [ ] \n1. \n+ [x]\n## B\n- \n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\n- keep\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## B\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n- keep\n- \n\n* [ ] \n1. \n+ [x]\n## B\n- \n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## A\n- keep\n- \n\n* [ ] \n1. \n+ [x]\n## B\n- \n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\n- \r\n\r\n## B\r\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\r\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n\n## B\r\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\n- \r\n\r\n## B\r\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\r\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n\n## B\r\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\r\n- \r\n\r\n## B\r\n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## A\r\n- \r\n\r\n## B\r\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n-x\n- text\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\n-x\n- text\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n-x\n- text\n",
+          "tasks": [
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+              "parentId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            },
+            {
+              "id": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+            }
+          ],
+          "section": null
+        },
+        "want": "## A\n-x\n- text\n\n{{task:01ARZ3NDEKTSV4RRFFQ69G5FAV}}\n  {{task:01ARZ3NDEKTSV4RRFFQ69G5FB0}}\n"
+      },
+      {
+        "input": {
+          "markdown": "## A\n-x\n- text\n",
+          "tasks": [],
+          "section": null
+        },
+        "want": "## A\n-x\n- text\n"
       }
     ],
     "dailyTemplateHasTasks": [
