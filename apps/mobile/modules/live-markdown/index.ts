@@ -31,6 +31,8 @@ export type LiveMarkdownNativeProps = ViewProps & {
   ) => void;
   onFocusChange?: (event: NativeSyntheticEvent<{ focused: boolean }>) => void;
   onContentHeight?: (event: NativeSyntheticEvent<{ height: number }>) => void;
+  /** A tap on a link, except on the lines the caret is on. */
+  onLinkPress?: (event: NativeSyntheticEvent<{ href: string }>) => void;
 };
 
 const expoGlobal = (

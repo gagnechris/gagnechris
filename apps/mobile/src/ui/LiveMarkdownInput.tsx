@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LiveMarkdownNativeView } from '../../modules/live-markdown';
 import { liveMarkdownDecorations } from '../markdown/liveDecorations';
+import { NOTEBOOK_ORIGIN, openMarkdownLink } from '../markdown/links';
 import { color, font, readingFont } from '../theme';
 
 export type LiveMarkdownHandle = {
@@ -51,6 +52,10 @@ type Props = {
   inputAccessoryViewID?: string;
   autoFocus?: boolean;
   editable?: boolean;
+  /** What root-relative links resolve against; the Notebook host unless set. */
+  siteOrigin?: string;
+  /** Replaces opening a tapped link. */
+  onLinkPress?: (href: string) => void;
 };
 
 const MONO = 'Menlo';
@@ -120,7 +125,8 @@ const LINE_HEIGHT: Record<LiveMarkdownVariant, number> = {
 
 /**
  * A Markdown body that hides its syntax off the caret's lines and dims it on
- * them, through the native LiveMarkdown view. Without that view in the binary
+ * them, through the native LiveMarkdown view, where a tap on a link off the
+ * caret's lines opens it. Without that view in the binary
  * it is a plain multiline TextInput with the same props.
  */
 export const LiveMarkdownInput = (props: Props) =>
@@ -135,6 +141,8 @@ const FallbackInput = ({
   variant,
   style,
   resolveImage: _resolveImage,
+  siteOrigin: _siteOrigin,
+  onLinkPress: _onLinkPress,
   ...props
 }: Props) => (
   <TextInput
@@ -161,6 +169,8 @@ const NativeInput = ({
   resolveImage,
   style,
   accessibilityLabel,
+  siteOrigin = NOTEBOOK_ORIGIN,
+  onLinkPress,
   ...props
 }: Props) => {
   const Native = LiveMarkdownNativeView!;
@@ -213,6 +223,11 @@ const NativeInput = ({
         if (focused.current) onFocus?.();
         else onBlur?.();
       }}
+      onLinkPress={({ nativeEvent: { href } }) =>
+        onLinkPress
+          ? onLinkPress(href)
+          : void openMarkdownLink(href, siteOrigin)
+      }
       onContentHeight={(event) =>
         setHeight(Math.max(LINE_HEIGHT[variant], event.nativeEvent.height))
       }

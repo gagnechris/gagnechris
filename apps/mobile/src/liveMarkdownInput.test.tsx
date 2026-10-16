@@ -1,11 +1,13 @@
 import { createElement, useState, type ReactNode } from 'react';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
-import { describe, expect, it, vi } from 'vitest';
+import { openBrowserAsync } from 'expo-web-browser';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '../test/render';
 import {
   liveMarkdownDecorations,
   liveMarkdownHash,
 } from './markdown/liveDecorations';
+import { NOTEBOOK_ORIGIN } from './markdown/links';
 import {
   LiveMarkdownInput,
   type LiveMarkdownHandle,
@@ -68,9 +70,77 @@ describe('liveMarkdownDecorations', () => {
       ],
     });
   });
+
+  it('gives each link its target, with a www. URL on https', () => {
+    const marks = (line: string) =>
+      JSON.parse(liveMarkdownDecorations(line)).lines[0].marks.filter(
+        (mark: { k: string }) => mark.k === 'link',
+      );
+    expect(marks('see https://a.example/x.')).toEqual([
+      { f: 4, t: 23, k: 'link', h: 'https://a.example/x' },
+    ]);
+    expect(marks('**www.b.example**')).toEqual([
+      { f: 2, t: 15, k: 'link', h: 'https://www.b.example' },
+    ]);
+    expect(marks('[docs](/notes/1)')).toEqual([
+      { f: 1, t: 5, k: 'link', h: '/notes/1' },
+    ]);
+  });
 });
 
 describe('LiveMarkdownInput on the native view', () => {
+  beforeEach(() => vi.mocked(openBrowserAsync).mockClear());
+
+  it('opens a tapped link in the in-app browser, against the Notebook host', async () => {
+    const renderer = await render(
+      <LiveMarkdownInput
+        variant="note"
+        value="[n](/notes/1)"
+        onChangeText={() => undefined}
+      />,
+    );
+    act(() => native(renderer).props.onLinkPress(event({ href: '/notes/1' })));
+    expect(openBrowserAsync).toHaveBeenCalledWith(
+      `${NOTEBOOK_ORIGIN}/notes/1`,
+      expect.anything(),
+    );
+    act(() =>
+      native(renderer).props.onLinkPress(event({ href: 'javascript:x()' })),
+    );
+    expect(openBrowserAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves links against siteOrigin, and hands them to onLinkPress when given', async () => {
+    const onLinkPress = vi.fn();
+    const renderer = await render(
+      <>
+        <LiveMarkdownInput
+          variant="reading"
+          siteOrigin="https://site.example"
+          value=""
+          onChangeText={() => undefined}
+        />
+        <LiveMarkdownInput
+          variant="note"
+          value=""
+          onChangeText={() => undefined}
+          onLinkPress={onLinkPress}
+        />
+      </>,
+    );
+    const [post, custom] = renderer.root.findAll(
+      (node) => (node.type as string) === 'LiveMarkdownNative',
+    );
+    act(() => post!.props.onLinkPress(event({ href: '/posts/a' })));
+    expect(openBrowserAsync).toHaveBeenCalledWith(
+      'https://site.example/posts/a',
+      expect.anything(),
+    );
+    act(() => custom!.props.onLinkPress(event({ href: 'https://x.example' })));
+    expect(onLinkPress).toHaveBeenCalledWith('https://x.example');
+    expect(openBrowserAsync).toHaveBeenCalledTimes(1);
+  });
+
   it('passes the text with its decorations and labels the text view', async () => {
     const handle = { current: null };
     const renderer = await render(<Editor initial="**a**" handle={handle} />);
