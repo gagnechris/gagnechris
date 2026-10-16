@@ -43,6 +43,8 @@ const state = vi.hoisted(() => ({
   /** Holds each PUT in flight until it resolves; `offline` is read at send time. */
   putGate: null as null | Promise<void>,
   puts: 0,
+  /** Days the daily `open` route was called for, as `area:date`. */
+  opens: [] as string[],
   /** Daily notes the list route answers with, filtered by `from` and `to`. */
   listed: null as null | DailyNote[],
   note: null as null | {
@@ -88,7 +90,7 @@ vi.mock('../kit/markdown/MarkdownPreview', () => ({
 
 vi.mock('../workspace/api/client', () => ({
   createApiClient: () =>
-    openDailyViaGet({
+    recordOpens({
       GET: async (
         path: string,
         init?: { params?: { path?: { area?: string; date?: string } } },
@@ -263,6 +265,27 @@ vi.mock('../workspace/api/client', () => ({
     }),
 }));
 
+function recordOpens<C extends Parameters<typeof openDailyViaGet>[0]>(
+  client: C,
+): C {
+  const opening = openDailyViaGet(client);
+  return {
+    ...opening,
+    POST: (path: string, init?: never) => {
+      if (path.endsWith('/open')) {
+        const { area, date } =
+          (
+            init as unknown as
+              | { params?: { path?: { area?: string; date?: string } } }
+              | undefined
+          )?.params?.path ?? {};
+        state.opens.push(`${area}:${date}`);
+      }
+      return opening.POST!(path, init);
+    },
+  };
+}
+
 function renderToday(date: string | null = '2026-10-02') {
   const router = createMemoryRouter(
     [
@@ -329,6 +352,7 @@ describe('NotebookTodayPage', () => {
     state.putDelayMs = 0;
     state.putGate = null;
     state.puts = 0;
+    state.opens = [];
     state.listed = null;
     localStorage.clear();
     // Pin "today" away from the dates under test; only Date is faked.
@@ -931,17 +955,15 @@ describe('NotebookTodayPage', () => {
   });
 
   test('midnight does not swap the day out from under someone typing', async () => {
-    const user = userEvent.setup();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderToday(null);
     await screen.findByText('Work notebook · Today');
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     await user.type(editor, 'late night');
 
-    vi.setSystemTime(new Date(2026, 9, 21, 0, 0, 5));
-    act(() => {
-      window.dispatchEvent(new Event('focus'));
-    });
+    await advance(15_000);
 
     expect(
       screen.getByRole('heading', { level: 1, name: /October 20/ }),
@@ -957,7 +979,95 @@ describe('NotebookTodayPage', () => {
       },
       { timeout: 3000 },
     );
+    await advance(2_000);
+    expect(
+      screen.getByRole('heading', { level: 1, name: /October 20/ }),
+    ).toBeInTheDocument();
     expect(state.others['work:2026-10-21']).toBeUndefined();
+  });
+
+  test('a day held at midnight moves to the new day when the tab comes back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderToday(null);
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    await user.type(editor, 'late night');
+    await advance(15_000);
+    await waitFor(() => {
+      expect(state.others['work:2026-10-20']?.bodyMarkdown).toBe('late night');
+    });
+    expect(
+      screen.getByRole('heading', { level: 1, name: /October 20/ }),
+    ).toBeInTheDocument();
+
+    vi.setSystemTime(new Date(2026, 9, 21, 8, 0, 0));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /October 21/ }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(state.opens).toContain('work:2026-10-21');
+    });
+  });
+
+  test('a focused editor does not keep yesterday when the tab is shown on a new day', async () => {
+    vi.setSystemTime(new Date(2026, 9, 20, 22, 0, 0));
+    renderToday(null);
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    act(() => editor.focus());
+    expect(editor).toHaveFocus();
+
+    vi.setSystemTime(new Date(2026, 9, 21, 7, 30, 0));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /October 21/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Work notebook · Today')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(state.opens).toContain('work:2026-10-21');
+    });
+  });
+
+  test('unsaved text on return is saved to its own day before Today moves on', async () => {
+    const user = userEvent.setup();
+    let releasePut!: () => void;
+    state.putGate = new Promise((resolve) => {
+      releasePut = resolve;
+    });
+    vi.setSystemTime(new Date(2026, 9, 20, 22, 0, 0));
+    renderToday(null);
+    const editor = await screen.findByRole('textbox', { name: 'Note body' });
+    await user.type(editor, 'before bed');
+    await waitFor(() => {
+      expect(state.puts).toBeGreaterThan(0);
+    });
+
+    vi.setSystemTime(new Date(2026, 9, 21, 7, 30, 0));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(
+      screen.getByRole('heading', { level: 1, name: /October 20/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Note body' })).toBe(editor);
+
+    state.putGate = null;
+    releasePut();
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: /October 21/ },
+        { timeout: 3000 },
+      ),
+    ).toBeInTheDocument();
+    expect(state.others['work:2026-10-20']?.bodyMarkdown).toBe('before bed');
   });
 
   test('an idle Today page rolls over to the new day', async () => {
