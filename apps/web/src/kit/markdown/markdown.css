@@ -161,17 +161,31 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   outline: 2px solid var(--primary-500);
   outline-offset: 1px;
 }
+/* The band a task title's first line sits in. The handle, check, title and
+   subtask guide centre on it, so a wrapped title keeps them on its first line. */
+.task-embed,
+.markdown-editor .cm-task-line {
+  --task-embed-line: 1.75rem;
+}
+
 .task-embed {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 1.75rem;
+  min-height: var(--task-embed-line);
   line-height: 1.4;
 }
 
 .task-embed__check {
   flex: none;
+  align-self: flex-start;
+  min-height: var(--task-embed-line);
+}
+
+.task-embed[data-task-status] > .task-embed__title {
+  align-self: flex-start;
+  margin-top: calc((var(--task-embed-line) - 1.4em) / 2);
 }
 
 .task-embed__box {
@@ -207,8 +221,9 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 .task-embed__title-wrap {
   position: relative;
   flex: 0 1 auto;
+  align-self: flex-start;
   min-width: 0;
-  margin: 0 -0.25rem;
+  margin: calc((var(--task-embed-line) - 1.4em - 0.125rem) / 2) -0.25rem 0;
 }
 
 .task-embed__title-wrap::after {
@@ -291,9 +306,11 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   color: var(--primary-700);
 }
 
+/* Placed without a transform: the app-wide button:hover rule resets
+   transform, which would drop a translated handle off the title on hover. */
 .task-embed__handle {
   position: absolute;
-  top: 50%;
+  top: calc(var(--task-embed-line) / 2 - 0.75rem);
   left: -1.125rem;
   display: inline-flex;
   align-items: center;
@@ -307,7 +324,6 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   color: transparent;
   fill: currentColor;
   cursor: grab;
-  transform: translateY(-50%);
   touch-action: none;
 }
 
@@ -373,7 +389,7 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   content: '';
   position: absolute;
   top: 0;
-  bottom: 50%;
+  height: calc(var(--task-embed-line) / 2);
   left: calc(var(--task-guide) * 0.875rem + 6px + 0.55rem);
   width: 0.6rem;
   border-bottom: 1px solid var(--neutral-200);
@@ -575,8 +591,9 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 
 /* Phones: a 22px box with the full 44px as its tap target. */
 @media (max-width: 767px) {
-  .task-embed {
-    min-height: 44px;
+  .task-embed,
+  .markdown-editor .cm-task-line {
+    --task-embed-line: 44px;
   }
 
   .task-embed__title-wrap {
