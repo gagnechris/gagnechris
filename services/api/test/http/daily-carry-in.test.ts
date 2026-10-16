@@ -77,7 +77,7 @@ describe('opening a daily note carries in open tasks', () => {
         date: MON,
       }).replace(
         '## Focus for Monday\n- \n\n',
-        `## Focus for Monday\n- \n\n${embedLines(body)}\n\n`,
+        `## Focus for Monday\n${embedLines(body)}\n\n`,
       ),
     );
     expect(body).not.toContain('Carried in');
@@ -91,7 +91,7 @@ describe('opening a daily note carries in open tasks', () => {
     expect(monday.body.bodyMarkdown).toBe(
       DEFAULT_DAILY_TEMPLATES.personal.replace(
         '## Plans\n- \n\n',
-        `## Plans\n- \n\n{{task:${id(7)}}}\n\n`,
+        `## Plans\n{{task:${id(7)}}}\n\n`,
       ),
     );
   });

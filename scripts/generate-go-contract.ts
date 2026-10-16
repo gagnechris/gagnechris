@@ -663,6 +663,9 @@ const TEXT_CASES = {
       ['## Only', null],
       ['intro\n\n## A\ntext\n\n\n### B\n```\n## not a heading\n```\n', 'A'],
       ['## A\r\nline\r\n## B\r\n', 'B'],
+      ['## A\n- keep\n- \n\n* [ ] \n1. \n+ [x]\n## B\n- \n', null],
+      ['## A\r\n- \r\n\r\n## B\r\n', null],
+      ['## A\n-x\n- text\n', null],
     ] as const
   ).flatMap(([markdown, section]) =>
     [

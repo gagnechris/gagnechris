@@ -84,10 +84,13 @@ export function dailyTemplateHeadings(markdown: string): string[] {
   return [...new Set(texts.filter(Boolean))];
 }
 
+const EMPTY_LIST_ITEM = /^[ \t]*(?:[-*+]|\d+[.)])(?:[ \t]+\[[ xX]?\])?[ \t]*$/;
+
 /**
  * Carried-in task embeds at the end of the template's `section` (the first
- * heading when that one is unset or gone). A template with no heading gets
- * a Carried in section on top instead.
+ * heading when that one is unset or gone), in place of the empty list items
+ * that end it. A template with no heading gets a Carried in section on top
+ * instead.
  */
 export function carryIntoDailyTemplate(
   markdown: string,
@@ -102,10 +105,12 @@ export function carryIntoDailyTemplate(
   if (!target) return carriedInMarkdown(tasks) + markdown;
   const next = headings.find((h) => h.line > target.line);
   let last = (next?.line ?? lines.length) - 1;
-  while (last > target.line && lines[last]!.trim() === '') last -= 1;
+  const filler = (line: string) =>
+    line.trim() === '' || EMPTY_LIST_ITEM.test(line.replace(/\r$/, ''));
+  while (last > target.line && filler(lines[last]!)) last -= 1;
   return [
     ...lines.slice(0, last + 1),
-    '',
+    ...(last > target.line ? [''] : []),
     ...carriedInLines(tasks),
     ...(next ? ['', ...lines.slice(next.line)] : ['']),
   ].join('\n');
