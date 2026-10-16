@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect, test } from '../fixtures';
 
 const token = (id: string) => `{{task:${id}}}`;
@@ -490,4 +491,69 @@ test('All tasks shows a subtask’s parent above its title', async ({
   await expect(childRow.locator('.task-parent-label')).toHaveText(
     parent!.title,
   );
+});
+
+test('the drag handle stays on the title’s first line while hovered', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.note({ title: `${prefix} handles` });
+  const [parent, child, long] = await Promise.all(
+    [
+      'Launch site',
+      'Write copy',
+      'Go through every open pull request on the site repository, close the stale ones and write down what is left for next sprint',
+    ].map((t) => seed.task({ title: `${t} ${prefix}`, noteId: note.id })),
+  );
+  await seed.api.PUT('/api/notebook/notes/{id}', {
+    params: { path: { id: note.id } },
+    body: {
+      version: note.version,
+      bodyMarkdown: [
+        token(parent!.id),
+        `  ${token(child!.id)}`,
+        `  ${token(long!.id)}`,
+      ].join('\n'),
+    },
+  });
+  await signIn();
+  await page.goto(`${apps.notebook}/notes/${note.id}`);
+
+  const offsets = (row: Locator) =>
+    row.evaluate((el) => {
+      const mid = (r: DOMRect) => r.top + r.height / 2;
+      const title = el.querySelector('.task-embed__title-input')!;
+      const style = getComputedStyle(title);
+      const firstLine =
+        title.getBoundingClientRect().top +
+        parseFloat(style.paddingTop) +
+        parseFloat(style.lineHeight) / 2;
+      return {
+        handle:
+          mid(
+            el.querySelector('.task-embed__handle')!.getBoundingClientRect(),
+          ) - firstLine,
+        check:
+          mid(el.querySelector('.ui-check__box')!.getBoundingClientRect()) -
+          firstLine,
+        height: el.getBoundingClientRect().height,
+      };
+    });
+
+  for (const task of [parent!, child!, long!]) {
+    const row = page.locator(
+      `.cm-task-embed[data-task-id="${task.id}"] .task-embed`,
+    );
+    const handle = row.getByRole('button', { name: `Move ${task.title}` });
+    await row.getByRole('textbox', { name: 'Task title' }).hover();
+    const before = await offsets(row);
+    expect(Math.abs(before.handle)).toBeLessThan(1);
+    expect(Math.abs(before.check)).toBeLessThan(1);
+    if (task === long) expect(before.height).toBeGreaterThan(40);
+    await handle.hover();
+    expect(await offsets(row)).toEqual(before);
+  }
 });

@@ -78,7 +78,7 @@
 }
 
 .notebook-demo__tasks .task-embed {
-  min-height: 30px;
+  --task-embed-line: 30px;
 }
 
 .notebook-demo__add {
@@ -217,7 +217,7 @@
   }
 
   .notebook-demo__tasks .task-embed {
-    min-height: 40px;
+    --task-embed-line: 40px;
   }
 
   .notebook-demo__add {
