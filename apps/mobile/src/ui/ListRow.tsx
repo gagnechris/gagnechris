@@ -5,9 +5,10 @@ import { color, font, MIN_TARGET } from '../theme';
 
 type Props = {
   title: string;
-  detail?: string;
+  meta?: string;
   leading?: ReactNode;
   trailing?: ReactNode;
+  current?: boolean;
   destructive?: boolean;
   divider?: boolean;
   accessibilityLabel?: string;
@@ -15,11 +16,12 @@ type Props = {
   onPress?: () => void;
 };
 
-export const Row = ({
+export const ListRow = ({
   title,
-  detail,
+  meta,
   leading,
   trailing,
+  current,
   destructive,
   divider,
   accessibilityLabel,
@@ -32,15 +34,25 @@ export const Row = ({
       <Text style={[styles.title, destructive && styles.destructive]}>
         {title}
       </Text>
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
+      {meta ? <Text style={styles.meta}>{meta}</Text> : null}
       {trailing}
     </>
   );
-  const style = [styles.row, divider && styles.divider];
-  const label = accessibilityLabel ?? (detail ? `${title}, ${detail}` : title);
+  const style = [
+    styles.row,
+    divider && styles.divider,
+    current && styles.current,
+  ];
+  const label = accessibilityLabel ?? (meta ? `${title}, ${meta}` : title);
+  const state = current ? { selected: true } : undefined;
   if (!onPress) {
     return (
-      <View style={style} accessible accessibilityLabel={label}>
+      <View
+        style={style}
+        accessible
+        accessibilityLabel={label}
+        accessibilityState={state}
+      >
         {body}
       </View>
     );
@@ -50,6 +62,7 @@ export const Row = ({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
+      accessibilityState={state}
       onPress={onPress}
       style={({ pressed }) => [...style, pressed && styles.pressed]}
     >
@@ -73,6 +86,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
   },
+  current: { backgroundColor: color.accentSoft },
   pressed: { backgroundColor: color.fill },
   title: {
     flexGrow: 1,
@@ -82,7 +96,7 @@ const styles = StyleSheet.create({
     color: color.ink,
   },
   destructive: { color: color.alert },
-  detail: {
+  meta: {
     ...font.medium,
     fontSize: tokens.text.body,
     color: color.inkSoft,

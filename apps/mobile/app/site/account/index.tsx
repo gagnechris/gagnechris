@@ -49,11 +49,9 @@ const SignIn = () => {
         </Text>
       ) : null}
       <View style={styles.actions}>
-        <Button
-          title={authMode === 'local' ? 'Sign in (local)' : 'Sign in'}
-          disabled={busy}
-          onPress={() => void start()}
-        />
+        <Button variant="primary" disabled={busy} onPress={() => void start()}>
+          {authMode === 'local' ? 'Sign in (local)' : 'Sign in'}
+        </Button>
       </View>
     </ScrollView>
   );

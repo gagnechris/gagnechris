@@ -6,7 +6,7 @@ const meta = {
   title: 'Shared UI/Field',
   component: Field,
   parameters: catalog(
-    'none; screens use React Native `TextInput` directly',
+    'none: native forms use React Native `TextInput` with their own labels',
     'Labels one control and describes it by its hint. An `error` replaces the hint, and the control gets `aria-invalid` and `aria-describedby`. `tone="editorial"` is the public contact form look. The controls have their own entries.',
   ),
   args: { label: 'Title', children: null },

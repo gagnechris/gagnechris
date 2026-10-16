@@ -7,7 +7,7 @@ const meta = {
   title: 'Shared UI/Scrim',
   component: Scrim,
   parameters: catalog(
-    'n/a',
+    'none: the system draws it',
     '`--neutral-900` at 40% behind every modal surface. It is a button labelled Close, kept out of the tab order.',
   ),
   args: { onClick: fn() },

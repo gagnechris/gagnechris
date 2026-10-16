@@ -28,7 +28,7 @@ import {
   EditorHeaderButtons,
   PublishBar,
 } from '../../../src/admin/EditorChrome';
-import { ListRow } from '../../../src/admin/ListRow';
+import { ContentRow } from '../../../src/admin/ContentRow';
 import {
   DISCARD_PROMPT,
   publishableConfirm,
@@ -46,7 +46,7 @@ import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
 import { color, font } from '../../../src/theme';
 import { confirmAction } from '../../../src/ui/confirm';
 import { Icon } from '../../../src/ui/Icon';
-import { Row } from '../../../src/ui/Row';
+import { ListRow } from '../../../src/ui/ListRow';
 import { Section } from '../../../src/ui/Section';
 
 const confirm = publishableConfirm(
@@ -249,7 +249,7 @@ const ResumeScreen = () => {
           </Text>
           <Section>
             {draft.experience.map((row, index) => (
-              <ListRow
+              <ContentRow
                 key={row.id}
                 title={roleTitle(row)}
                 meta={roleMeta(row)}
@@ -258,7 +258,7 @@ const ResumeScreen = () => {
                 onPress={() => setRoleId(row.id)}
               />
             ))}
-            <Row
+            <ListRow
               title="Add role"
               divider={draft.experience.length > 0}
               leading={<Icon name="plus" color={color.accent} />}
@@ -309,7 +309,7 @@ const ResumeScreen = () => {
                 ))}
                 <Section>
                   {index > 0 ? (
-                    <Row
+                    <ListRow
                       title={`Move entry ${n} up`}
                       onPress={() =>
                         updateDraft((prev) => ({
@@ -319,7 +319,7 @@ const ResumeScreen = () => {
                       }
                     />
                   ) : null}
-                  <Row
+                  <ListRow
                     title={`Remove entry ${n}`}
                     destructive
                     divider={index > 0}
@@ -330,7 +330,7 @@ const ResumeScreen = () => {
             );
           })}
           <Section>
-            <Row
+            <ListRow
               title="Add entry"
               leading={<Icon name="plus" color={color.accent} />}
               onPress={() =>

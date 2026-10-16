@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/Dialog',
   component: Dialog,
   parameters: catalog(
-    'modal screens in `apps/mobile/app/`',
+    'none: modal screens in `apps/mobile/app/` and page sheets',
     'A centred modal: 480px (`sm` 400, `lg` 640), a title, a close IconButton and a footer with Cancel then the primary action. Focus moves to the first field and is trapped; Escape, the close button and the Scrim close it. Under 768px it opens as a BottomSheet with the action as Done.',
   ),
   args: { title: 'Invite user', onClose: fn(), children: null },

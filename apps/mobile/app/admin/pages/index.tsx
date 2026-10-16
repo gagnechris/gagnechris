@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { publishStatusLabel } from '../../../src/admin/labels';
-import { ListRow } from '../../../src/admin/ListRow';
+import { ContentRow } from '../../../src/admin/ContentRow';
 import { color, font } from '../../../src/theme';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
@@ -44,13 +44,13 @@ const PagesScreen = () => {
       }
     >
       <Section>
-        <ListRow
+        <ContentRow
           title="Home page"
           meta={statusMeta(home)}
           tags={['Name, title and About me']}
           onPress={() => router.push('/admin/pages/home')}
         />
-        <ListRow
+        <ContentRow
           title="Resume"
           meta={statusMeta(resume)}
           tags={['Experience, skills and education']}

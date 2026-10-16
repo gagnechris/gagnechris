@@ -127,22 +127,22 @@ const SiteResumeScreen = () => {
           </View>
           <View style={styles.actions}>
             <Button
-              title="Share PDF"
+              variant="primary"
               disabled={sharing}
               onPress={() => void share(data.pdfPath)}
-            />
-            <Button
-              title="View PDF"
-              variant="secondary"
-              onPress={() => void viewResumePdf(data.pdfPath)}
-            />
+            >
+              Share PDF
+            </Button>
+            <Button onPress={() => void viewResumePdf(data.pdfPath)}>
+              View PDF
+            </Button>
           </View>
           <Button
-            title="LinkedIn"
-            variant="secondary"
             accessibilityHint="Opens in Safari"
             onPress={() => void openMarkdownLink(SITE_LINKEDIN_URL)}
-          />
+          >
+            LinkedIn
+          </Button>
           <Experience view={data.view} />
           {data.view.competencies.length || data.view.skills.length ? (
             <Section label={data.view.labels.skills}>

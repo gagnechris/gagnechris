@@ -167,22 +167,22 @@ const DailyNoteEditor = ({
           </Text>
           <View style={styles.templateActions}>
             <Button
-              title="Start blank"
-              variant="secondary"
               onPress={() =>
                 editor.replaceFromEntity(startDailyNoteBlank(entity!))
               }
-            />
+            >
+              Start blank
+            </Button>
             <Button
-              title="Edit template"
-              variant="secondary"
               onPress={() =>
                 router.push({
                   pathname: '/more/templates',
                   params: { template: area },
                 })
               }
-            />
+            >
+              Edit template
+            </Button>
           </View>
         </View>
       ) : null}

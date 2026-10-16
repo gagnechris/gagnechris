@@ -17,7 +17,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { color, font } from '../../theme';
 import { Button } from '../../ui/Button';
 import { confirmAction } from '../../ui/confirm';
-import { Row } from '../../ui/Row';
+import { ListRow } from '../../ui/ListRow';
 import { Section } from '../../ui/Section';
 import { DetailsSheet, FieldError, FieldHint } from '../DetailsSheet';
 import { AccessLevelPicker } from './AccessLevelPicker';
@@ -145,7 +145,7 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
       <FieldError>{error ?? undefined}</FieldError>
       {removed ? null : (
         <Button
-          title={isPending ? 'Saving…' : 'Save access'}
+          variant="primary"
           disabled={!changed || busy}
           onPress={() =>
             void (draft
@@ -155,17 +155,22 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
                 )
               : undefined)
           }
-        />
+        >
+          {isPending ? 'Saving…' : 'Save access'}
+        </Button>
       )}
 
       {isSelf ? null : (
         <>
           <Section title="Account">
             {user.status === 'invited' ? (
-              <Row title="Resend invite" onPress={() => void resendInvite()} />
+              <ListRow
+                title="Resend invite"
+                onPress={() => void resendInvite()}
+              />
             ) : null}
             {actions.map((item, index) => (
-              <Row
+              <ListRow
                 key={item.kind}
                 title={item.title}
                 destructive={item.danger}

@@ -53,20 +53,16 @@ const NoAccessScreen = () => {
       <View style={styles.actions}>
         {adminLink ? (
           <Button
-            title="Open Notebook"
+            variant="primary"
             onPress={() => router.replace(SPACE_HOME.notebook)}
-          />
+          >
+            Open Notebook
+          </Button>
         ) : null}
-        <Button
-          title="Use a different account"
-          variant="secondary"
-          onPress={() => void switchAccount()}
-        />
-        <Button
-          title="Sign out"
-          variant="secondary"
-          onPress={() => void signOut()}
-        />
+        <Button onPress={() => void switchAccount()}>
+          Use a different account
+        </Button>
+        <Button onPress={() => void signOut()}>Sign out</Button>
       </View>
     </ScrollView>
   );

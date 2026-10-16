@@ -5,7 +5,7 @@ import { useSession } from '../../../src/session';
 import { color } from '../../../src/theme';
 import { AccountCard } from '../../../src/ui/AccountCard';
 import { Icon } from '../../../src/ui/Icon';
-import { Row } from '../../../src/ui/Row';
+import { ListRow } from '../../../src/ui/ListRow';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 import { YourApps } from '../../../src/ui/YourApps';
@@ -26,7 +26,7 @@ const AdminMoreScreen = () => {
       <YourApps current="admin" />
       <Section title="Account">
         {canAddPasskey ? (
-          <Row
+          <ListRow
             title="Add a passkey"
             accessibilityHint="Opens the sign-in page to save a passkey for this account"
             onPress={() => void addPasskeyFromMore()}
@@ -35,7 +35,11 @@ const AdminMoreScreen = () => {
             }
           />
         ) : null}
-        <Row title="Sign out of Admin" destructive onPress={confirmSignOut} />
+        <ListRow
+          title="Sign out of Admin"
+          destructive
+          onPress={confirmSignOut}
+        />
       </Section>
     </Screen>
   );

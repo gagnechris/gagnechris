@@ -16,7 +16,7 @@ const meta = {
   title: 'Shared UI/ListRow',
   component: ListRow,
   parameters: catalog(
-    '`apps/mobile/src/ui/Row.tsx`',
+    '`apps/mobile/src/ui/ListRow.tsx`',
     'A 52px row in a List: leading control (Checkbox, DragHandle or icon), a title that links to the item, meta, trailing badges and actions. The current item is `--primary-50` with `aria-current`. Trailing IconButtons show on hover and focus on desktop and always on touch screens.',
   ),
   args: {

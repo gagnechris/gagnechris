@@ -31,7 +31,7 @@ import {
   LiveMarkdownInput,
   type LiveMarkdownHandle,
 } from '../ui/LiveMarkdownInput';
-import { DragGrip, GRIP_INSET } from '../ui/DragGrip';
+import { DRAG_HANDLE_INSET, DragHandle } from '../ui/DragHandle';
 import { TaskEmbedRow } from '../ui/TaskEmbedRow';
 import { TaskParentLabel } from '../ui/TaskParentLabel';
 import { createUlid } from '../ulid';
@@ -487,7 +487,9 @@ export const NoteBodyEditor = ({
                 subtasks={subtasks.subtasksOf(segment.id)}
                 grip={
                   saved ? (
-                    <DragGrip {...rowDrag.handlers(segment.key, segment.id)} />
+                    <DragHandle
+                      {...rowDrag.handlers(segment.key, segment.id)}
+                    />
                   ) : undefined
                 }
               />
@@ -632,7 +634,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.accent,
   },
   parentLabel: {
-    marginLeft: GRIP_INSET + MIN_TARGET,
+    marginLeft: DRAG_HANDLE_INSET + MIN_TARGET,
     marginBottom: -6,
   },
   peek: {
@@ -642,7 +644,7 @@ const styles = StyleSheet.create({
     marginTop: -tokens.space[2],
     marginBottom: tokens.space[1],
     // Lines up with the title, past the grip, the checkbox and the row's gaps.
-    marginLeft: GRIP_INSET + MIN_TARGET,
+    marginLeft: DRAG_HANDLE_INSET + MIN_TARGET,
   },
   error: {
     ...font.medium,

@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/DragHandle',
   component: DragHandle,
   parameters: catalog(
-    '`apps/mobile/src/ui/DragGrip.tsx`',
+    '`apps/mobile/src/ui/DragHandle.tsx` (a drag gesture; VoiceOver moves rows from the row menu)',
     'A six-dot grip labelled "Reorder {item}". Space picks up, arrows move, Space or Escape drops, and each move is announced. Pointer dragging stays with the caller.',
   ),
   args: { item: 'Experience', onMove: fn() },

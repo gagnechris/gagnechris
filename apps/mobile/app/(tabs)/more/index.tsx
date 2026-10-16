@@ -8,7 +8,7 @@ import { color } from '../../../src/theme';
 import { AccountCard } from '../../../src/ui/AccountCard';
 import { useAreaPicker } from '../../../src/ui/AreaChip';
 import { Icon } from '../../../src/ui/Icon';
-import { Row } from '../../../src/ui/Row';
+import { ListRow } from '../../../src/ui/ListRow';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 import { YourApps } from '../../../src/ui/YourApps';
@@ -33,14 +33,14 @@ const MoreScreen = () => {
       <YourApps current="notebook" />
 
       <Section title="Notebook">
-        <Row
+        <ListRow
           title="Default area"
-          detail={areaName}
+          meta={areaName}
           accessibilityHint={`Chooses ${areas.map((a) => a.name).join(', ')}`}
           onPress={pickArea}
           trailing={<Icon name="chevron.right" size={14} color={color.muted} />}
         />
-        <Row
+        <ListRow
           title="Daily templates"
           divider
           accessibilityHint="Edits what each area's new daily notes start with"
@@ -51,7 +51,7 @@ const MoreScreen = () => {
 
       <Section title="Account">
         {canAddPasskey ? (
-          <Row
+          <ListRow
             title="Add a passkey"
             accessibilityHint="Opens the sign-in page to save a passkey for this account"
             onPress={() => void addPasskeyFromMore()}
@@ -60,7 +60,7 @@ const MoreScreen = () => {
             }
           />
         ) : null}
-        <Row
+        <ListRow
           title="Sign out of Notebook"
           destructive
           divider={canAddPasskey}

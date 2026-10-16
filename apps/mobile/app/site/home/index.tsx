@@ -65,17 +65,17 @@ const SiteHomeScreen = () => {
       </View>
       <View style={styles.links}>
         <Button
-          title="LinkedIn"
-          variant="secondary"
           accessibilityHint="Opens in Safari"
           onPress={() => void openMarkdownLink(SITE_LINKEDIN_URL)}
-        />
+        >
+          LinkedIn
+        </Button>
         <Button
-          title="GitHub"
-          variant="secondary"
           accessibilityHint="Opens in Safari"
           onPress={() => void openMarkdownLink(SITE_GITHUB_URL)}
-        />
+        >
+          GitHub
+        </Button>
       </View>
       <View style={styles.section}>
         <SectionTitle title={HOME_RECENT_POSTS_HEADING} />
@@ -88,11 +88,9 @@ const SiteHomeScreen = () => {
           />
         ))}
         {recent.length > 0 ? (
-          <Button
-            title={HOME_ALL_POSTS_LABEL}
-            variant="secondary"
-            onPress={() => router.navigate('/site/posts')}
-          />
+          <Button onPress={() => router.navigate('/site/posts')}>
+            {HOME_ALL_POSTS_LABEL}
+          </Button>
         ) : null}
       </View>
     </Screen>

@@ -8,10 +8,10 @@ import {
   type TaskStatus,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { color, font, MIN_TARGET } from '../../theme';
-import { Icon } from '../../ui/Icon';
-import { Row } from '../../ui/Row';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { color, font } from '../../theme';
+import { Checkbox } from '../../ui/Checkbox';
+import { ListRow } from '../../ui/ListRow';
 import { Section } from '../../ui/Section';
 import { showChoice } from '../taskActionSheets';
 
@@ -62,20 +62,14 @@ export const TaskFields = ({
   return (
     <>
       <View style={styles.titleRow}>
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: done }}
-          accessibilityLabel={done ? 'Reopen' : 'Complete'}
-          onPress={onToggleDone}
-          hitSlop={8}
-          style={styles.box}
-        >
-          <Icon
-            name={done ? 'checkmark.square.fill' : 'square'}
-            size={26}
-            color={done ? color.accent : color.inkSoft}
-          />
-        </Pressable>
+        <Checkbox
+          shape="round"
+          label={done ? 'Reopen' : 'Complete'}
+          checked={done}
+          dropped={draft.status === 'dropped'}
+          onChange={onToggleDone}
+          size={26}
+        />
         <TextInput
           style={[styles.title, done && styles.titleDone]}
           accessibilityLabel="Title"
@@ -90,21 +84,21 @@ export const TaskFields = ({
       </View>
 
       <Section>
-        <Row
+        <ListRow
           title="Shows on"
-          detail={showsOnText(draft, today)}
+          meta={showsOnText(draft, today)}
           onPress={onPickShowsOn}
         />
-        <Row
+        <ListRow
           divider
           title="Deadline"
-          detail={draft.dueDate ? formatTaskDay(draft.dueDate) : 'None'}
+          meta={draft.dueDate ? formatTaskDay(draft.dueDate) : 'None'}
           onPress={onPickDeadline}
         />
-        <Row
+        <ListRow
           divider
           title="Priority"
-          detail={PRIORITY_LABELS[draft.priority]}
+          meta={PRIORITY_LABELS[draft.priority]}
           onPress={() =>
             showChoice({
               title: 'Priority',
@@ -114,10 +108,10 @@ export const TaskFields = ({
             })
           }
         />
-        <Row
+        <ListRow
           divider
           title="Area"
-          detail={notebookAreaName(areas, draft.area)}
+          meta={notebookAreaName(areas, draft.area)}
           onPress={() =>
             showChoice<NotebookArea>({
               title: 'Area',
@@ -127,10 +121,10 @@ export const TaskFields = ({
             })
           }
         />
-        <Row
+        <ListRow
           divider
           title="Status"
-          detail={STATUS_LABELS[draft.status]}
+          meta={STATUS_LABELS[draft.status]}
           onPress={() =>
             showChoice({
               title: 'Status',
@@ -147,12 +141,6 @@ export const TaskFields = ({
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
-  box: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   title: {
     flex: 1,
     ...font.bold,

@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/Toolbar',
   component: Toolbar,
   parameters: catalog(
-    'the keyboard toolbar in `apps/mobile/src/ui/LiveMarkdownInput.tsx`',
+    'none: the keyboard toolbar in `apps/mobile/src/ui/LiveMarkdownInput.tsx`',
     'A row of IconButtons in a bordered box with optional separators. `role="toolbar"` with one tab stop; arrows move, Home and End jump. The phone editor accessory bar uses `lg` buttons.',
   ),
   args: { label: 'Formatting', children: null },

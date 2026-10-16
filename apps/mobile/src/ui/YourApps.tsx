@@ -6,7 +6,7 @@ import { useSession } from '../session';
 import { SPACE_HOME, type Space } from '../space';
 import { color, font } from '../theme';
 import { Icon } from './Icon';
-import { Row } from './Row';
+import { ListRow } from './ListRow';
 import { Section } from './Section';
 
 const APPS: Record<Space, { title: string; detail: string; icon: SFSymbol }> = {
@@ -43,7 +43,7 @@ export const YourApps = ({ current }: { current: Space | 'site' }) => {
         const app = APPS[space];
         const isCurrent = space === current;
         return (
-          <Row
+          <ListRow
             key={space}
             title={app.title}
             divider={index > 0}
@@ -66,7 +66,7 @@ export const YourApps = ({ current }: { current: Space | 'site' }) => {
           />
         );
       })}
-      <Row
+      <ListRow
         title="Site"
         divider
         accessibilityLabel={

@@ -9,7 +9,7 @@ const meta = {
   title: 'Shared UI/IconButton',
   component: IconButton,
   parameters: catalog(
-    'none (screens use `Pressable` + `Icon`)',
+    '`apps/mobile/src/ui/IconButton.tsx` (same variants and sizes, `pressed`, `count`)',
     'A square button holding one ShellIcon. `label` is the accessible name and the tooltip. Variants `ghost` (default), `outline` and `danger`; sizes `sm` 28, `md` 36 and `lg` 44; `pressed` makes it a toggle; `count` adds a badge read after the label.',
   ),
   args: {

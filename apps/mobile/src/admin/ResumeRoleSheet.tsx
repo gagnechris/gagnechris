@@ -6,7 +6,7 @@ import {
 import { Switch } from 'react-native';
 import { color } from '../theme';
 import { confirmAction } from '../ui/confirm';
-import { Row } from '../ui/Row';
+import { ListRow } from '../ui/ListRow';
 import { Section } from '../ui/Section';
 import { DetailsSheet, FieldHint, TextField } from './DetailsSheet';
 
@@ -86,7 +86,7 @@ export const ResumeRoleSheet = ({
         {...MONTH_INPUT}
       />
       <Section>
-        <Row
+        <ListRow
           title="Present (current role)"
           accessibilityLabel="Present (current role)"
           trailing={
@@ -116,16 +116,16 @@ export const ResumeRoleSheet = ({
       />
       <Section>
         {index > 0 ? (
-          <Row title="Move up" onPress={() => onMove(index - 1)} />
+          <ListRow title="Move up" onPress={() => onMove(index - 1)} />
         ) : null}
         {index < count - 1 ? (
-          <Row
+          <ListRow
             title="Move down"
             divider={index > 0}
             onPress={() => onMove(index + 1)}
           />
         ) : null}
-        <Row
+        <ListRow
           title="Remove role"
           destructive
           divider={count > 1}

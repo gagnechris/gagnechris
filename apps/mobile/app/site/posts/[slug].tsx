@@ -13,7 +13,7 @@ import {
   useRouter,
   useSegments,
 } from 'expo-router';
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 import {
   openMarkdownLink,
   PUBLIC_SITE_ORIGIN,
@@ -21,9 +21,10 @@ import {
 import { MarkdownView } from '../../../src/markdown/MarkdownView';
 import { SiteNotFound, siteUrlFor, useSitePost } from '../../../src/site/feed';
 import { LoadError, siteStyles, usePullToRefresh } from '../../../src/site/ui';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { color, font } from '../../../src/theme';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { Screen } from '../../../src/ui/Screen';
 
 /** `/posts/<slug>` on the public site, or null. */
@@ -55,25 +56,22 @@ const SitePostScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Share post"
+            <IconButton
+              size="lg"
+              label="Share post"
               onPress={() =>
                 void Share.share({ url, message: data?.title ?? url })
               }
-              style={styles.headerButton}
             >
               <Icon name="square.and.arrow.up" size={22} color={color.accent} />
-            </Pressable>
+            </IconButton>
           ),
         }}
       />
       {post.error instanceof SiteNotFound ? (
-        <EmptyState
-          icon="doc.text"
-          title="Post not found"
-          body="It may have been unpublished."
-        />
+        <EmptyState icon="doc.text" title="Post not found">
+          It may have been unpublished.
+        </EmptyState>
       ) : post.isError && !data ? (
         <LoadError what="this post" />
       ) : null}
@@ -134,11 +132,5 @@ const styles = StyleSheet.create({
     fontSize: tokens.text['2xl'],
     lineHeight: 34,
     color: color.ink,
-  },
-  headerButton: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

@@ -6,7 +6,7 @@ const meta = {
   title: 'Shared UI/Checkbox',
   component: Checkbox,
   parameters: catalog(
-    'the check inside `apps/mobile/src/ui/TaskRow.tsx`',
+    '`apps/mobile/src/ui/Checkbox.tsx` (`square` with `indeterminate`, `round` with `dropped`)',
     'A native checkbox under a drawn box; the whole label is the hit area. `square` for settings and fields (with a mixed state), `round` for tasks (done and dropped strike the label through).',
   ),
   args: { label: 'Featured on the homepage' },

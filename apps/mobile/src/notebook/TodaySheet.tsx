@@ -11,12 +11,11 @@ import {
   View,
 } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
-import { SegmentedControl } from '../ui/SegmentedControl';
 import { TaskRow } from '../ui/TaskRow';
+import { Tabs } from '../ui/Tabs';
 import { TaskParentsProvider } from './taskParents';
 
 type Tab = 'stillOpen' | 'comingUp';
-const TABS = ['stillOpen', 'comingUp'] as const;
 
 type Props = {
   visible: boolean;
@@ -81,15 +80,14 @@ export const TodaySheet = ({
             <Text style={styles.doneText}>Done</Text>
           </Pressable>
         </View>
-        <SegmentedControl
+        <Tabs
           label="Today’s tasks"
-          options={TABS}
-          labels={{
-            stillOpen: `Still open · ${stillOpen.length}`,
-            comingUp: `Coming up · ${comingUpCount}`,
-          }}
-          value={tab}
-          onChange={setTab}
+          items={[
+            { key: 'stillOpen', label: 'Still open', count: stillOpen.length },
+            { key: 'comingUp', label: 'Coming up', count: comingUpCount },
+          ]}
+          selected={tab}
+          onSelect={setTab}
         />
         {error ? (
           <Text style={styles.error} accessibilityRole="alert">

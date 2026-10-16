@@ -1,10 +1,10 @@
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { MarkdownView } from '../../markdown/MarkdownView';
 import { color, font } from '../../theme';
 import { Icon } from '../../ui/Icon';
+import { IconButton } from '../../ui/IconButton';
 import { LiveMarkdownInput } from '../../ui/LiveMarkdownInput';
-import { detailStyles } from '../DetailEditorShell';
 
 type Props = {
   description: string;
@@ -25,19 +25,18 @@ export const TaskDescription = ({
       <Text style={styles.label} accessibilityRole="header">
         DESCRIPTION
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Preview"
-        accessibilityState={{ selected: preview }}
+      <IconButton
+        size="lg"
+        label="Preview"
+        pressed={preview}
         onPress={onTogglePreview}
-        style={detailStyles.headerButton}
       >
         <Icon
           name={preview ? 'eye.fill' : 'eye'}
           size={18}
           color={preview ? color.accent : color.inkSoft}
         />
-      </Pressable>
+      </IconButton>
     </View>
     {preview ? (
       <View style={styles.description}>

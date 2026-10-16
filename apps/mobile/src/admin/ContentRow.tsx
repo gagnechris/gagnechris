@@ -12,7 +12,7 @@ type Props = {
   onPress?: () => void;
 };
 
-export const ListRow = ({ title, meta, tags, divider, onPress }: Props) => {
+export const ContentRow = ({ title, meta, tags, divider, onPress }: Props) => {
   const tagLine = tags.join(', ');
   const label = [title, meta, tagLine].filter(Boolean).join(', ');
   const body = (

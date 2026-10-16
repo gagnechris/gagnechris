@@ -35,7 +35,7 @@ import { Button } from '../../../src/ui/Button';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
-import { SegmentedControl } from '../../../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 import { SwipeRow } from '../../../src/ui/SwipeRow';
 import { TaskRow } from '../../../src/ui/TaskRow';
 import { TaskParentsProvider } from '../../../src/notebook/taskParents';
@@ -146,13 +146,12 @@ const TasksScreen = () => {
         />
       }
     >
-      <SegmentedControl
+      <SegmentedRadio
         label="Area"
-        options={[ALL_AREAS, ...areas.map((a) => a.id)]}
-        labels={{
+        options={segmentOptions([ALL_AREAS, ...areas.map((a) => a.id)], {
           [ALL_AREAS]: 'All',
           ...Object.fromEntries(areas.map((a) => [a.id, a.name])),
-        }}
+        })}
         value={listArea ?? ALL_AREAS}
         onChange={(picked) => {
           setAllAreas(picked === ALL_AREAS);
@@ -165,10 +164,9 @@ const TasksScreen = () => {
         label="Quick add task"
         placeholder={`Add to ${areaName}: Call Sam @tomorrow`}
       />
-      <SegmentedControl
+      <SegmentedRadio
         label="Status"
-        options={STATUSES}
-        labels={STATUS_LABELS}
+        options={segmentOptions(STATUSES, STATUS_LABELS)}
         value={status}
         onChange={setStatus}
       />
@@ -216,7 +214,9 @@ const TasksScreen = () => {
         showOn ? (
           <Text style={styles.status}>No tasks match.</Text>
         ) : (
-          <EmptyState icon="checkmark.square" {...EMPTY[status]} />
+          <EmptyState icon="checkmark.square" title={EMPTY[status].title}>
+            {EMPTY[status].body}
+          </EmptyState>
         )
       ) : (
         <TaskParentsProvider tasks={items}>
@@ -272,11 +272,11 @@ const TasksScreen = () => {
       )}
       {tasks.hasNextPage ? (
         <Button
-          title={tasks.isFetchingNextPage ? 'Loading…' : 'Load more'}
-          variant="secondary"
           disabled={tasks.isFetchingNextPage}
           onPress={() => void tasks.fetchNextPage()}
-        />
+        >
+          {tasks.isFetchingNextPage ? 'Loading…' : 'Load more'}
+        </Button>
       ) : null}
     </Screen>
   );

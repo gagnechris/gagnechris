@@ -170,11 +170,12 @@ export const ConflictPanel = ({
         {choicesFor(conflict).map((choice, index) => (
           <Button
             key={choice.resolution}
-            title={choice.label}
-            variant={index === 0 ? 'primary' : 'secondary'}
+            variant={index === 0 ? 'primary' : 'default'}
             disabled={busy}
             onPress={() => void choose(choice)}
-          />
+          >
+            {choice.label}
+          </Button>
         ))}
       </View>
     </View>

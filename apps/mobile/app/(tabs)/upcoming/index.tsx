@@ -24,7 +24,7 @@ import { color, font } from '../../../src/theme';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
-import { SegmentedControl } from '../../../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 import { TaskRow } from '../../../src/ui/TaskRow';
 import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
@@ -118,10 +118,12 @@ const UpcomingScreen = () => {
       }
     >
       <Text style={styles.subtitle}>Hidden until their day</Text>
-      <SegmentedControl
+      <SegmentedRadio
         label="Area"
-        options={areas.map((a) => a.id)}
-        labels={Object.fromEntries(areas.map((a) => [a.id, a.name]))}
+        options={segmentOptions(
+          areas.map((a) => a.id),
+          Object.fromEntries(areas.map((a) => [a.id, a.name])),
+        )}
         value={area}
         onChange={setArea}
       />
@@ -144,11 +146,9 @@ const UpcomingScreen = () => {
       ) : loading ? (
         <Text style={styles.subtitle}>Loading tasks…</Text>
       ) : groups.length === 0 ? (
-        <EmptyState
-          icon="calendar"
-          title="Nothing scheduled"
-          body="Add @mon, @oct 12 or @someday to a task to see it here."
-        />
+        <EmptyState icon="calendar" title="Nothing scheduled">
+          Add @mon, @oct 12 or @someday to a task to see it here.
+        </EmptyState>
       ) : (
         <TaskParentsProvider tasks={groups.flatMap((g) => g.tasks)}>
           {groups.map((group) => (

@@ -27,7 +27,7 @@ const meta = {
   title: 'Shared UI/Tabs',
   component: Tabs,
   parameters: catalog(
-    '`apps/mobile/src/ui/SpaceTabs.tsx`',
+    '`apps/mobile/src/ui/Tabs.tsx` (drawn as segments)',
     'For switching views of one thing; filters stay SegmentedRadio. `role="tablist"` with one tab stop; arrows move, Home and End jump. Optional count pill. Panels render when the items carry them.',
   ),
   args: { label: 'Task views', items, selected: 'today', onSelect: fn() },

@@ -6,18 +6,19 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { postMeta } from '../../../src/admin/labels';
-import { ListRow } from '../../../src/admin/ListRow';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { ContentRow } from '../../../src/admin/ContentRow';
+import { color, font } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
 import { showError } from '../../../src/ui/confirm';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { Screen } from '../../../src/ui/Screen';
-import { SearchField } from '../../../src/ui/SearchField';
+import { SearchInput } from '../../../src/ui/SearchInput';
 import { Section } from '../../../src/ui/Section';
-import { SegmentedControl } from '../../../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 
 const STATUSES = ['all', 'draft', 'published'] as const;
 type StatusFilter = (typeof STATUSES)[number];
@@ -91,28 +92,25 @@ const PostsScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New post"
-              accessibilityState={{ disabled: create.isPending }}
+            <IconButton
+              size="lg"
+              label="New post"
               disabled={create.isPending}
               onPress={() => void newPost()}
-              style={styles.compose}
             >
               <Icon name="square.and.pencil" size={22} color={color.accent} />
-            </Pressable>
+            </IconButton>
           ),
         }}
       />
-      <SearchField
+      <SearchInput
         placeholder="Search title, slug, tags"
         value={q}
-        onChangeText={setQ}
+        onValueChange={setQ}
       />
-      <SegmentedControl
+      <SegmentedRadio
         label="Post status"
-        options={STATUSES}
-        labels={labels}
+        options={segmentOptions(STATUSES, labels)}
         value={status}
         onChange={setStatus}
       />
@@ -126,17 +124,16 @@ const PostsScreen = () => {
         ) : filtered ? (
           <Text style={styles.status}>No posts match.</Text>
         ) : (
-          <EmptyState
-            icon="square.and.pencil"
-            title="No posts yet"
-            body="Start a draft with the compose button. It stays private until you publish it."
-          />
+          <EmptyState icon="square.and.pencil" title="No posts yet">
+            Start a draft with the compose button. It stays private until you
+            publish it.
+          </EmptyState>
         )
       ) : (
         <>
           <Section>
             {items.map((post, index) => (
-              <ListRow
+              <ContentRow
                 key={post.id}
                 title={post.title}
                 meta={postMeta(post)}
@@ -148,11 +145,11 @@ const PostsScreen = () => {
           </Section>
           {posts.hasNextPage ? (
             <Button
-              title={posts.isFetchingNextPage ? 'Loading…' : 'Load more'}
-              variant="secondary"
               disabled={posts.isFetchingNextPage}
               onPress={() => void posts.fetchNextPage()}
-            />
+            >
+              {posts.isFetchingNextPage ? 'Loading…' : 'Load more'}
+            </Button>
           ) : null}
         </>
       )}
@@ -166,12 +163,6 @@ const PostsScreen = () => {
 export default PostsScreen;
 
 const styles = StyleSheet.create({
-  compose: {
-    minHeight: MIN_TARGET,
-    minWidth: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   status: {
     ...font.regular,
     fontSize: 15,

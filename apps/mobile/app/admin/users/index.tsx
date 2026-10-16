@@ -15,14 +15,15 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
-import { ListRow } from '../../../src/admin/ListRow';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
+import { ContentRow } from '../../../src/admin/ContentRow';
 import { EditUserSheet } from '../../../src/admin/users/EditUserSheet';
 import { InviteUserSheet } from '../../../src/admin/users/InviteUserSheet';
 import { useSession } from '../../../src/session';
 import { canManageUsers } from '../../../src/space';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { color, font } from '../../../src/theme';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 
@@ -75,17 +76,16 @@ const UsersScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Invite user"
+            <IconButton
+              size="lg"
+              label="Invite user"
               onPress={() => {
                 setNotice(null);
                 setInviting(true);
               }}
-              style={styles.headerButton}
             >
               <Icon name="person.badge.plus" size={22} color={color.accent} />
-            </Pressable>
+            </IconButton>
           ),
         }}
       />
@@ -108,7 +108,7 @@ const UsersScreen = () => {
           {list.map((user, index) => {
             const you = user.id === me?.sub;
             return (
-              <ListRow
+              <ContentRow
                 key={user.id}
                 title={`${displayName(user)}${you ? ' (you)' : ''}`}
                 meta={`${levelLabel(user)} · ${STATUS_LABELS[user.status]} · Added ${formatAdded(user.createdAt)}`}
@@ -126,7 +126,7 @@ const UsersScreen = () => {
 
       <Section title="Access levels">
         {LEVEL_ORDER.map((level, index) => (
-          <ListRow
+          <ContentRow
             key={level}
             title={ACCESS_LEVEL_LABELS[level]}
             meta={`${count(level)} ${count(level) === 1 ? 'user' : 'users'} · ${LEVEL_APPS[level].join(', ')}`}
@@ -161,12 +161,6 @@ const UsersScreen = () => {
 export default UsersScreen;
 
 const styles = StyleSheet.create({
-  headerButton: {
-    minHeight: MIN_TARGET,
-    minWidth: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   notice: {
     ...font.medium,
     fontSize: tokens.text.base,
