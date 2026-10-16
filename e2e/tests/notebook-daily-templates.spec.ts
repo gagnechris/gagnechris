@@ -75,6 +75,6 @@ test('carried-in tasks go under the section picked in Daily templates', async ({
     { params: { path: { area: 'work', date: '2026-10-02' } } },
   );
   expect(data?.bodyMarkdown).toContain(
-    `## Meetings\n\n{{task:${task.id}}}\n\n## Notes`,
+    `## Meetings\n{{task:${task.id}}}\n\n## Notes`,
   );
 });
