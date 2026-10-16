@@ -3,7 +3,12 @@ import {
   type Task,
   type TaskEmbedState,
 } from '@gagnechris/app-core';
-import { NOTEBOOK_TITLE_MAX_LENGTH } from '@gagnechris/shared';
+import {
+  findBareUrls,
+  NOTEBOOK_TITLE_MAX_LENGTH,
+  shortenUrl,
+  type BareUrl,
+} from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import {
@@ -14,6 +19,7 @@ import {
   type RefObject,
 } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { openMarkdownLink } from '../markdown/links';
 import { color, font, MIN_TARGET } from '../theme';
 import type { Subtasks } from '../notebook/useNoteSubtasks';
 import { Checkbox } from './Checkbox';
@@ -64,6 +70,47 @@ const Pill = ({ text, tone }: { text: string; tone?: 'alert' | 'accent' }) => (
     {text}
   </Text>
 );
+
+const openUrl = (href: string) => void openMarkdownLink(href);
+
+const linkLabel = (href: string) =>
+  shortenUrl(href.replace(/^https?:\/\//i, ''));
+
+const LinkedTitle = ({ title, urls }: { title: string; urls: BareUrl[] }) => {
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const { from, to, href } of urls) {
+    parts.push(
+      title.slice(at, from),
+      <Text
+        key={from}
+        accessibilityRole="link"
+        style={styles.link}
+        onPress={() => openUrl(href)}
+      >
+        {title.slice(from, to)}
+      </Text>,
+    );
+    at = to;
+  }
+  parts.push(title.slice(at));
+  return <>{parts}</>;
+};
+
+// A text field can't hold links, so an editable title's URLs follow it.
+const TitleLinks = ({ urls }: { urls: BareUrl[] }) =>
+  urls.map(({ from, href }) => (
+    <Pressable
+      key={from}
+      accessibilityRole="link"
+      accessibilityLabel={linkLabel(href)}
+      onPress={() => openUrl(href)}
+      hitSlop={{ top: 8, bottom: 8 }}
+      style={styles.linkChip}
+    >
+      <Text style={styles.linkChipText}>{linkLabel(href)}</Text>
+    </Pressable>
+  ));
 
 type TitleProps = {
   title: string;
@@ -182,15 +229,34 @@ export const TaskEmbedRow = ({
     ...(onMenu ? [{ name: 'menu', label: 'Task actions' }] : []),
     ...(onRemove ? [{ name: 'remove', label: 'Delete task' }] : []),
   ];
-  const a11yActions = actions.length
-    ? {
-        accessibilityActions: actions,
-        onAccessibilityAction: (event: {
-          nativeEvent: { actionName: string };
-        }) =>
-          event.nativeEvent.actionName === 'menu' ? onMenu?.() : onRemove?.(),
-      }
-    : {};
+  /** VoiceOver can't reach a link inside the row's one element, so each is an action. */
+  const accessibilityActions = (links: BareUrl[] = []) => {
+    const all = [
+      ...actions,
+      ...links.map(({ href }, i) => ({
+        name: `link:${i}`,
+        label: `Open ${linkLabel(href)}`,
+      })),
+    ];
+    return all.length
+      ? {
+          accessibilityActions: all,
+          onAccessibilityAction: ({
+            nativeEvent: { actionName },
+          }: {
+            nativeEvent: { actionName: string };
+          }) => {
+            const link = actionName.startsWith('link:')
+              ? links[Number(actionName.slice('link:'.length))]
+              : undefined;
+            if (link) openUrl(link.href);
+            else if (actionName === 'menu') onMenu?.();
+            else onRemove?.();
+          },
+        }
+      : {};
+  };
+  const a11yActions = accessibilityActions();
   const removeActions = onLongPress ? { ...a11yActions, onLongPress } : {};
 
   if (state.kind !== 'task') {
@@ -227,6 +293,7 @@ export const TaskEmbedRow = ({
   }
 
   const { task, schedule, due, pending, onToggle } = state;
+  const urls = findBareUrls(task.title);
   const done = task.status === 'done';
   const dropped = task.status === 'dropped';
   const priority = PRIORITY_LABEL[task.priority];
@@ -311,6 +378,7 @@ export const TaskEmbedRow = ({
               />
             </IconButton>
           ) : null}
+          <TitleLinks urls={urls} />
           {pills.length ? (
             <View
               style={styles.pills}
@@ -392,10 +460,11 @@ export const TaskEmbedRow = ({
         accessibilityHint={onOpen ? 'Opens the task' : undefined}
         onPress={onOpen}
         disabled={!onOpen && !onLongPress}
-        {...removeActions}
+        {...(onLongPress ? { onLongPress } : {})}
+        {...accessibilityActions(urls)}
       >
         <Text style={[styles.title, (done || dropped) && styles.closed]}>
-          {task.title}
+          <LinkedTitle title={task.title} urls={urls} />
         </Text>
         <View style={styles.pills}>{pillViews}</View>
       </Pressable>
@@ -446,6 +515,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[2],
     paddingVertical: 2,
     overflow: 'hidden',
+  },
+  link: { color: tokens.color.link, textDecorationLine: 'underline' },
+  linkChip: {
+    minHeight: MIN_TARGET - tokens.space[4],
+    justifyContent: 'center',
+  },
+  linkChipText: {
+    ...font.medium,
+    fontSize: tokens.text.caption,
+    color: tokens.color.link,
+    textDecorationLine: 'underline',
   },
   pillAccent: { color: color.accentInk, backgroundColor: color.accentSoft },
   pillAlert: { color: color.alert },

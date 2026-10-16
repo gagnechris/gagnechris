@@ -23,10 +23,11 @@ export function liveMarkdownDecorations(
     ...(style ? { style } : {}),
     ...(marks.length
       ? {
-          marks: marks.map(({ from, to, kind }) => ({
+          marks: marks.map(({ from, to, kind, href }) => ({
             f: from,
             t: to,
             k: kind,
+            ...(kind === 'link' && href ? { h: href } : {}),
           })),
         }
       : {}),

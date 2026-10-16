@@ -111,6 +111,7 @@ export const MarkdownBodyField = ({
         ref={input}
         variant="reading"
         resolveImage={resolveImage}
+        siteOrigin={siteOrigin}
         accessibilityLabel="Body"
         value={value}
         onChangeText={onChange}

@@ -5,7 +5,7 @@ public class LiveMarkdownModule: Module {
     Name("LiveMarkdown")
 
     View(LiveMarkdownView.self) {
-      Events("onChangeText", "onSelectionChange", "onFocusChange", "onContentHeight")
+      Events("onChangeText", "onSelectionChange", "onFocusChange", "onContentHeight", "onLinkPress")
 
       Prop("value") { (view: LiveMarkdownView, value: String) in
         view.incoming.value = value

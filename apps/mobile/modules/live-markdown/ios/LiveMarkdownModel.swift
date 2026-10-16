@@ -13,10 +13,12 @@ struct LineDecoration: Decodable, Equatable {
 }
 
 /// `k` is hide, bullet, strong, em, code or link; offsets are within the line.
+/// A link carries its target in `h`.
 struct Mark: Decodable, Equatable {
   let f: Int
   let t: Int
   let k: String
+  let h: String?
 }
 
 struct ImageMark: Decodable, Equatable {
@@ -63,6 +65,8 @@ extension NSAttributedString.Key {
   static let liveMarkdownBullet = NSAttributedString.Key("LiveMarkdownBullet")
   /// On dimmed syntax: the colour its line's text takes.
   static let liveMarkdownSyntax = NSAttributedString.Key("LiveMarkdownSyntax")
+  /// On a link's text: its target.
+  static let liveMarkdownLink = NSAttributedString.Key("LiveMarkdownLink")
 }
 
 /// The same hash the JS side computes over the UTF-16 code units.

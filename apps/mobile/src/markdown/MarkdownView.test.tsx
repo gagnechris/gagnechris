@@ -212,6 +212,19 @@ describe('MarkdownView', () => {
     expect(native.openURL).toHaveBeenCalledWith('mailto:a@example.com');
   });
 
+  it('links bare http(s) and www. URLs in a note', () => {
+    const renderer = render(
+      <MarkdownView markdown="See https://a.example/x, or www.b.example." />,
+    );
+    const links = findAllByTestId(renderer, 'md-a');
+    expect(links).toHaveLength(2);
+    act(() => links[0]!.props.onPress());
+    expect(native.openBrowserAsync).toHaveBeenCalledWith(
+      'https://a.example/x',
+      expect.anything(),
+    );
+  });
+
   it('hands link presses to onLinkPress when given', () => {
     const onLinkPress = vi.fn();
     const renderer = render(

@@ -36,15 +36,19 @@ private struct ImageRange {
 /// Plain markdown in a TextKit 1 text view. Lines the selection doesn't touch
 /// hide their syntax, and the lines it touches keep their formatting with the
 /// syntax dimmed; a line holding only an image shows the image, which
-/// the caret steps over and Backspace removes whole.
-final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDelegate {
+/// the caret steps over and Backspace removes whole. A tap on a link opens it,
+/// except on the lines the caret is on, where it places the caret.
+final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDelegate,
+  UIGestureRecognizerDelegate {
   let onChangeText = EventDispatcher()
   let onSelectionChange = EventDispatcher()
   let onFocusChange = EventDispatcher()
   let onContentHeight = EventDispatcher()
+  let onLinkPress = EventDispatcher()
 
   let textView = LiveMarkdownTextView(usingTextLayoutManager: false)
   private let placeholderLabel = UILabel()
+  private lazy var linkTap = UITapGestureRecognizer(target: self, action: #selector(tappedLink(_:)))
 
   var incoming = IncomingProps()
   var autoFocus = false
@@ -94,6 +98,8 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     placeholderLabel.numberOfLines = 0
     placeholderLabel.isAccessibilityElement = false
     textView.addSubview(placeholderLabel)
+    linkTap.delegate = self
+    addGestureRecognizer(linkTap)
   }
 
   // MARK: - Layout
@@ -466,6 +472,9 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
           .foregroundColor: liveMarkdownColor(theme.colors.link),
           .underlineStyle: NSUnderlineStyle.single.rawValue,
         ], range: range)
+        if let href = mark.h {
+          storage.addAttribute(.liveMarkdownLink, value: href, range: range)
+        }
       default:
         break
       }
@@ -484,6 +493,7 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     }
     attributes[.liveMarkdownHidden] = nil
     attributes[.liveMarkdownBullet] = nil
+    attributes[.liveMarkdownLink] = nil
     if let text = attributes.removeValue(forKey: .liveMarkdownSyntax) as? UIColor {
       attributes[.foregroundColor] = text
     }
@@ -641,6 +651,51 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
       }
     }
     return nil
+  }
+
+  // MARK: - Links
+
+  /// The link under `point` (in the text view), unless its line is one the caret is on.
+  private func link(at point: CGPoint) -> String? {
+    let storage = textView.textStorage
+    guard storage.length > 0 else { return nil }
+    let layoutManager = textView.layoutManager
+    let inContainer = CGPoint(
+      x: point.x - textView.textContainerInset.left,
+      y: point.y - textView.textContainerInset.top)
+    var fraction: CGFloat = 0
+    let glyph = layoutManager.glyphIndex(
+      for: inContainer, in: textView.textContainer, fractionOfDistanceThroughGlyph: &fraction)
+    let rect = layoutManager.boundingRect(
+      forGlyphRange: NSRange(location: glyph, length: 1), in: textView.textContainer)
+    // The nearest glyph can sit past the end of a short line.
+    guard rect.insetBy(dx: -2, dy: -2).contains(inContainer) else { return nil }
+    let index = layoutManager.characterIndexForGlyph(at: glyph)
+    guard index < storage.length, !activeLines.contains(lineIndex(at: index)) else { return nil }
+    return storage.attribute(.liveMarkdownLink, at: index, effectiveRange: nil) as? String
+  }
+
+  @objc private func tappedLink(_ recognizer: UITapGestureRecognizer) {
+    guard let href = link(at: recognizer.location(in: textView)) else { return }
+    onLinkPress(["href": href])
+  }
+
+  override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+    guard gestureRecognizer === linkTap else {
+      return super.gestureRecognizerShouldBegin(gestureRecognizer)
+    }
+    return link(at: gestureRecognizer.location(in: textView)) != nil
+  }
+
+  /// The text view's own taps (focus, caret, word selection) wait for a link
+  /// tap to fail, so opening a link doesn't also bring up the keyboard.
+  func gestureRecognizer(
+    _ gestureRecognizer: UIGestureRecognizer,
+    shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+  ) -> Bool {
+    guard gestureRecognizer === linkTap, otherGestureRecognizer is UITapGestureRecognizer,
+          let view = otherGestureRecognizer.view else { return false }
+    return view.isDescendant(of: textView)
   }
 
   // MARK: - UITextViewDelegate
