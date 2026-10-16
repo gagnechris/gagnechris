@@ -9,7 +9,9 @@ import {
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  findBareUrls,
   NOTEBOOK_TITLE_MAX_LENGTH,
+  shortenUrl,
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
@@ -102,6 +104,61 @@ const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   med: null,
   low: 'Low',
 };
+
+const ExternalLink = ({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) => (
+  <a
+    className={className}
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    title={href}
+  >
+    {children}
+  </a>
+);
+
+function LinkedText({ text }: { text: string }) {
+  const parts: ReactNode[] = [];
+  let at = 0;
+  for (const { from, to, href } of findBareUrls(text)) {
+    parts.push(text.slice(at, from));
+    parts.push(
+      <ExternalLink key={from} href={href} className="task-embed__link">
+        {text.slice(from, to)}
+      </ExternalLink>,
+    );
+    at = to;
+  }
+  parts.push(text.slice(at));
+  return <>{parts}</>;
+}
+
+// A textarea can't hold links, so an editable title's URLs follow it.
+function TitleLinks({ title }: { title: string }) {
+  const urls = findBareUrls(title);
+  if (urls.length === 0) return null;
+  return (
+    <>
+      {urls.map(({ from, href }) => (
+        <ExternalLink
+          key={from}
+          href={href}
+          className="task-embed__link task-embed__link--chip"
+        >
+          {shortenUrl(href.replace(/^https?:\/\//i, ''))}
+        </ExternalLink>
+      ))}
+    </>
+  );
+}
 
 function TaskEmbedTitle({
   title,
@@ -396,8 +453,11 @@ export function TaskEmbedRow({
           onIndent={moving?.indent}
         />
       ) : (
-        <span className="task-embed__title">{task.title}</span>
+        <span className="task-embed__title">
+          <LinkedText text={task.title} />
+        </span>
       )}
+      {onRename && !pending ? <TitleLinks title={task.title} /> : null}
       {details ? (
         <IconButton
           size="sm"

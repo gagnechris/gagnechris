@@ -12,6 +12,7 @@ import {
   liveMarkdownLine,
   parseTaskEmbedLine,
   scanFences,
+  shortenUrl,
   type FenceBlock,
   type LiveLineStyle,
   type LiveMark,
@@ -29,9 +30,6 @@ const strongMark = Decoration.mark({ class: 'cm-md-strong' });
 const emphasisMark = Decoration.mark({ class: 'cm-md-em' });
 const codeMark = Decoration.mark({ class: 'cm-md-code' });
 const syntaxMark = Decoration.mark({ class: 'cm-md-syntax' });
-
-/** Longer URLs are shortened on the caret line until the caret enters the link. */
-export const LINK_URL_MAX = 24;
 
 const CHECKLIST = /^([ \t]*)[-*+][ \t]+\[([ xX])\](?!\()[ \t]?/;
 
@@ -108,16 +106,6 @@ class UrlWidget extends WidgetType {
     el.textContent = this.text;
     return el;
   }
-}
-
-/** `example.com/a-long/path` → `example.com/…`. */
-export function shortenUrl(url: string): string {
-  if (url.length <= LINK_URL_MAX) return url;
-  const bare = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
-  const slash = bare.indexOf('/');
-  const host = slash < 0 ? bare : bare.slice(0, slash);
-  if (host.length > 0 && host.length < LINK_URL_MAX) return `${host}/…`;
-  return `${bare.slice(0, LINK_URL_MAX - 1)}…`;
 }
 
 /** Lines any selection range touches; their markdown stays visible. */

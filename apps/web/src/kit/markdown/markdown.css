@@ -300,6 +300,21 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
   text-decoration: none;
 }
 
+.task-embed__link {
+  color: var(--primary-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.task-embed__link--chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .task-embed__open:hover,
 .task-embed__open:focus-visible {
   background: var(--primary-50);

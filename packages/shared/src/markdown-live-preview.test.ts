@@ -45,6 +45,50 @@ describe('liveMarkdownLine', () => {
     ]);
   });
 
+  const links = (text: string) =>
+    liveMarkdownLine(text)
+      .marks.filter((m) => m.kind === 'link')
+      .map((m) => [text.slice(m.from, m.to), m.href]);
+
+  it.each([
+    ['# https://a.io/x', 'heading'],
+    ['- https://a.io/x', 'list item'],
+    ['1. https://a.io/x', 'numbered item'],
+    ['- [ ] https://a.io/x', 'checklist item'],
+    ['- [x] https://a.io/x', 'checked item'],
+    ['> https://a.io/x', 'quote'],
+    ['> - https://a.io/x', 'list in a quote'],
+    ['**https://a.io/x**', 'bold'],
+    ['_https://a.io/x_', 'italic'],
+    ['see (https://a.io/x).', 'parentheses'],
+    ['<https://a.io/x>', 'angle brackets'],
+    ['HTTPS://a.io/x', 'upper-case scheme'],
+  ])('links the URL in %s (%s)', (text) => {
+    const scheme = /HTTPS/.test(text) ? 'HTTPS' : 'https';
+    expect(links(text)).toEqual([[`${scheme}://a.io/x`, `${scheme}://a.io/x`]]);
+  });
+
+  it('links a www. URL to https', () => {
+    expect(links('- see www.a.io/x.')).toEqual([
+      ['www.a.io/x', 'https://www.a.io/x'],
+    ]);
+  });
+
+  it('keeps bold on a bold URL', () => {
+    expect(
+      liveMarkdownLine('**https://a.io**').marks.filter(
+        (m) => m.kind === 'strong',
+      ),
+    ).toEqual([{ from: 2, to: 14, kind: 'strong' }]);
+  });
+
+  it('reads a markdown link whose URL has parentheses or no scheme', () => {
+    expect(links('[Foo](https://w.org/Foo_(bar)) [a](www.a.io)')).toEqual([
+      ['Foo', 'https://w.org/Foo_(bar)'],
+      ['a', 'https://www.a.io'],
+    ]);
+  });
+
   it('leaves a URL inside a markdown link or code span to that syntax', () => {
     const text = '[https://a.io](https://a.io) `https://b.io`';
     expect(
