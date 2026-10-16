@@ -92,7 +92,8 @@ button {
     box-shadow var(--transition-normal);
 }
 
-button:hover {
+/* :where keeps the specificity low enough for component hover rules to win. */
+button:hover:where(:not(:disabled)) {
   background-color: var(--primary-600);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);

@@ -84,6 +84,7 @@
 }
 
 .ui-chip__remove {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -109,4 +110,17 @@
 .ui-chip-select__chevron {
   margin-right: -2px;
   color: var(--neutral-500);
+}
+
+/* Phones: a 44px hit area around the 18px glyph. */
+@media (max-width: 767px) {
+  .ui-chip__remove::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
 }
