@@ -398,6 +398,32 @@ export function TaskEmbedRow({
       ) : (
         <span className="task-embed__title">{task.title}</span>
       )}
+      {details ? (
+        <IconButton
+          size="sm"
+          className="task-embed__details-toggle"
+          label={
+            open
+              ? `Hide details for ${task.title}`
+              : `Show details for ${task.title}`
+          }
+          title={open ? 'Hide details (⌘.)' : 'Show details (⌘.)'}
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={details.onToggle}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            <path
+              d="M6 4l4 4-4 4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </IconButton>
+      ) : null}
       {to ? (
         <Link
           to={to}
@@ -449,28 +475,6 @@ export function TaskEmbedRow({
         <span className={`task-embed__pill task-embed__pill--${task.priority}`}>
           {priority}
         </span>
-      ) : null}
-      {details ? (
-        <IconButton
-          size="sm"
-          className="task-embed__chevron"
-          label={`Details for ${task.title}`}
-          title={open ? 'Collapse details (⌘.)' : 'Expand details (⌘.)'}
-          aria-expanded={open}
-          aria-controls={open ? panelId : undefined}
-          onClick={details.onToggle}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <path
-              d="M4 6l4 4 4-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </IconButton>
       ) : null}
     </div>
   );

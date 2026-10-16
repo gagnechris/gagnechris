@@ -223,9 +223,14 @@ test('task details open under the row, save the description and stay open after 
   await signIn();
   await page.goto(`${apps.notebook}/notes/${note.id}`);
 
-  const chevron = page.getByRole('button', { name: `Details for ${title}` });
-  await expect(chevron).toHaveAttribute('aria-expanded', 'false');
-  await chevron.click();
+  const show = page.getByRole('button', { name: `Show details for ${title}` });
+  const hide = page.getByRole('button', { name: `Hide details for ${title}` });
+  await expect(show).toHaveAttribute('aria-expanded', 'false');
+  await expect(
+    page.locator('.task-embed__title-wrap + .task-embed__details-toggle'),
+  ).toHaveAccessibleName(`Show details for ${title}`);
+  await show.click();
+  await expect(hide).toHaveAttribute('aria-expanded', 'true');
   const details = page.getByRole('group', { name: `Details for ${title}` });
   await details.getByRole('textbox', { name: `Details for ${title}` }).click();
   await page.keyboard.type('Book the venue');
@@ -241,9 +246,9 @@ test('task details open under the row, save the description and stay open after 
   await page.keyboard.press('Escape');
   await expect(details).toBeHidden();
   await expect(page.getByRole('img', { name: 'Has details' })).toBeVisible();
-  await chevron.click();
+  await show.click();
   await page.reload();
-  await expect(chevron).toHaveAttribute('aria-expanded', 'true');
+  await expect(hide).toHaveAttribute('aria-expanded', 'true');
   await expect(details).toContainText('Book the venue');
 
   await page.getByRole('link', { name: `Open task ${title}` }).click();

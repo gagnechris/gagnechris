@@ -460,7 +460,7 @@ describe('templates in a task’s details inside a note', () => {
 
     fireEvent.click(
       await screen.findByRole('button', {
-        name: 'Details for Hire a designer',
+        name: 'Show details for Hire a designer',
       }),
     );
     const panel = await screen.findByRole('group', {
