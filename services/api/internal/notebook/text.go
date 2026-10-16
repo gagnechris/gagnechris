@@ -225,6 +225,33 @@ func carriedInLines(tasks []CarriedInTask) []string {
 	return lines
 }
 
+// NestLike sets the parent of each task note embeds from note's indentation,
+// none when it isn't indented under a task there; tasks note doesn't embed
+// keep theirs.
+func NestLike(tasks []CarriedInTask, note string) []CarriedInTask {
+	embedded := map[string]bool{}
+	for _, e := range FindTaskEmbeds(note) {
+		embedded[e.ID] = true
+	}
+	parents := map[string]string{}
+	for _, s := range TaskEmbedParents(note) {
+		parents[s.ID] = s.ParentID
+	}
+	out := make([]CarriedInTask, len(tasks))
+	for i, t := range tasks {
+		out[i] = t
+		id := strings.ToUpper(t.ID)
+		if !embedded[id] {
+			continue
+		}
+		out[i].ParentID = nil
+		if p, ok := parents[id]; ok {
+			out[i].ParentID = &p
+		}
+	}
+	return out
+}
+
 // CarriedInMarkdown is the block a new daily note opens with when its
 // template has no heading to carry tasks into.
 func CarriedInMarkdown(tasks []CarriedInTask) string {

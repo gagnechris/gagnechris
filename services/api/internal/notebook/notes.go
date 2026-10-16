@@ -342,6 +342,37 @@ func (r *notesRepo) getDaily(ctx context.Context, userID, area, date string) (*N
 	return n, nil
 }
 
+// latestDailyBefore is the area's newest live daily note dated before date,
+// among the last few days that have one, or nil.
+func (r *notesRepo) latestDailyBefore(ctx context.Context, userID, area, date string) (*Note, error) {
+	res, err := r.table.DB.Query(ctx, &dynamodb.QueryInput{
+		TableName:              aws.String(r.table.Name),
+		IndexName:              aws.String(keys.GSI1),
+		KeyConditionExpression: aws.String("gsi1pk = :pk AND gsi1sk BETWEEN :from AND :to"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk":   data.S(keys.NotebookAreaGSI1Pk(userID, area)),
+			":from": data.S("DATE#"),
+			// `DATE#<date>` sorts before every `DATE#<date>#NOTE#<id>`.
+			":to": data.S("DATE#" + date),
+		},
+		ScanIndexForward: aws.Bool(false),
+		Limit:            aws.Int32(latestDailyScan),
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range res.Items {
+		n, err := r.base.parse(item)
+		if err != nil || n.Deleted {
+			continue
+		}
+		return &n, nil
+	}
+	return nil, nil
+}
+
+const latestDailyScan = 10
+
 type dailyFields struct {
 	id string
 	noteFields
