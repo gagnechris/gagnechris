@@ -162,20 +162,41 @@ export default function NotebookTodayPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const editorRef = useRef<HTMLDivElement>(null);
   const unsavedRef = useRef(false);
-  const onUnsavedChange = useCallback((unsaved: boolean) => {
-    unsavedRef.current = unsaved;
-  }, []);
   // Midnight must not swap the day under someone mid-sentence: hold the
-  // previous day until they navigate.
+  // previous day. Coming back to the tab releases it, once nothing is unsaved.
   const [heldDay, setHeldDay] = useState<string | null>(null);
-  const followsTodayRef = useRef(true);
-  const today = useLocalToday(
-    useCallback((previous: string) => {
-      if (!followsTodayRef.current) return;
-      const focused = editorRef.current?.contains(document.activeElement);
-      if (unsavedRef.current || focused) setHeldDay(previous);
-    }, []),
+  const heldDayRef = useRef<string | null>(null);
+  const releaseWhenSavedRef = useRef(false);
+  const holdDay = useCallback((day: string | null) => {
+    heldDayRef.current = day;
+    releaseWhenSavedRef.current = false;
+    setHeldDay(day);
+  }, []);
+  const onUnsavedChange = useCallback(
+    (unsaved: boolean) => {
+      unsavedRef.current = unsaved;
+      if (!unsaved && releaseWhenSavedRef.current) holdDay(null);
+    },
+    [holdDay],
   );
+  const followsTodayRef = useRef(true);
+  const today = useLocalToday({
+    onRollover: useCallback(
+      (previous: string, _next: string, returned: boolean) => {
+        if (!followsTodayRef.current) return;
+        // Focus left in the editor while the tab was away is not typing.
+        const typing =
+          !returned && editorRef.current?.contains(document.activeElement);
+        if (unsavedRef.current || typing) holdDay(previous);
+      },
+      [holdDay],
+    ),
+    onReturn: useCallback(() => {
+      if (heldDayRef.current === null) return;
+      if (unsavedRef.current) releaseWhenSavedRef.current = true;
+      else holdDay(null);
+    }, [holdDay]),
+  });
   const dateParam = searchParams.get('date');
   const followsToday = !(dateParam && isCalendarDay(dateParam));
   useEffect(() => {
@@ -260,7 +281,7 @@ export default function NotebookTodayPage() {
   // Leaving a day unmounts its editor, which flushes unsaved text.
   const setDate = (next: string) => {
     if (next === date) return;
-    setHeldDay(null);
+    holdDay(null);
     setSearchParams((params) => {
       if (next === today) params.delete('date');
       else params.set('date', next);
