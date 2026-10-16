@@ -16,7 +16,7 @@ import { PUBLIC_SITE_ORIGIN, resolveMarkdownUrl } from '../markdown/links';
 import { color, font, MIN_TARGET } from '../theme';
 import { confirmAction } from '../ui/confirm';
 import { Icon } from '../ui/Icon';
-import { Row } from '../ui/Row';
+import { ListRow } from '../ui/ListRow';
 import { Section } from '../ui/Section';
 
 /** A page sheet with Done, holding an editor's secondary fields. */
@@ -208,7 +208,7 @@ export const ImageField = ({
         />
       ) : null}
       <Section>
-        <Row
+        <ListRow
           title={
             uploading
               ? 'Uploading photo…'
@@ -220,7 +220,7 @@ export const ImageField = ({
           onPress={uploading ? undefined : onChoose}
         />
         {uri ? (
-          <Row
+          <ListRow
             title={`Remove ${label.toLowerCase()}`}
             destructive
             divider

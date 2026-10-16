@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/Drawer',
   component: Drawer,
   parameters: catalog(
-    'modal screens in `apps/mobile/app/`',
+    'none: modal screens in `apps/mobile/app/` and page sheets',
     'A 400px panel from the right edge, full height: a header with title and close, a scrolling body and a footer. Same focus rules as Dialog. Under 768px it opens as a BottomSheet.',
   ),
   args: { title: 'Edit user', onClose: fn(), children: null },

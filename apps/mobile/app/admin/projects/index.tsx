@@ -10,14 +10,15 @@ import { sortProjectsByOrder } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text } from 'react-native';
+import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { projectMeta } from '../../../src/admin/labels';
-import { ListRow } from '../../../src/admin/ListRow';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { ContentRow } from '../../../src/admin/ContentRow';
+import { color, font } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
 import { showError } from '../../../src/ui/confirm';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 
@@ -82,16 +83,14 @@ const ProjectsScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New project"
-              accessibilityState={{ disabled: create.isPending }}
+            <IconButton
+              size="lg"
+              label="New project"
               disabled={create.isPending}
               onPress={() => void newProject()}
-              style={styles.compose}
             >
               <Icon name="plus" size={22} color={color.accent} />
-            </Pressable>
+            </IconButton>
           ),
         }}
       />
@@ -103,22 +102,21 @@ const ProjectsScreen = () => {
         <Text style={styles.status}>Loading projects…</Text>
       ) : projects.length === 0 ? (
         <>
-          <EmptyState
-            icon="square.grid.2x2"
-            title="No projects yet"
-            body="Start from drafts for Posts, Notebook and Don’t Feed the Bears, or create one from scratch. Nothing is public until you publish it."
-          />
+          <EmptyState icon="square.grid.2x2" title="No projects yet">
+            Start from drafts for Posts, Notebook and Don’t Feed the Bears, or
+            create one from scratch. Nothing is public until you publish it.
+          </EmptyState>
           <Button
-            title={starters.isPending ? 'Creating…' : 'Create starter projects'}
-            variant="secondary"
             disabled={starters.isPending}
             onPress={() => void createStarters()}
-          />
+          >
+            {starters.isPending ? 'Creating…' : 'Create starter projects'}
+          </Button>
         </>
       ) : (
         <Section>
           {projects.map((project, index) => (
-            <ListRow
+            <ContentRow
               key={project.id}
               title={project.name}
               meta={projectMeta(project)}
@@ -139,12 +137,6 @@ const ProjectsScreen = () => {
 export default ProjectsScreen;
 
 const styles = StyleSheet.create({
-  compose: {
-    minHeight: MIN_TARGET,
-    minWidth: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   status: {
     ...font.regular,
     fontSize: 15,

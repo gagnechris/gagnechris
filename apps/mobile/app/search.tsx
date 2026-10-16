@@ -14,14 +14,7 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../src/area';
 import { dailyNotePath } from '../src/notebook/detailRoutes';
@@ -31,10 +24,12 @@ import {
   writeRecentSearches,
 } from '../src/notebook/recentSearches';
 import { color, font, MIN_TARGET } from '../src/theme';
+import { Checkbox } from '../src/ui/Checkbox';
 import { Excerpt } from '../src/ui/Excerpt';
 import { Icon } from '../src/ui/Icon';
+import { SearchInput } from '../src/ui/SearchInput';
 import { Section } from '../src/ui/Section';
-import { SegmentedControl } from '../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../src/ui/SegmentedRadio';
 
 const SCOPES = ['area', 'all'] as const;
 type Scope = (typeof SCOPES)[number];
@@ -133,21 +128,12 @@ const SearchScreen = () => {
     return (
       <View key={hit.id} style={[styles.hit, index > 0 && styles.divider]}>
         {check !== undefined ? (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: check }}
-            accessibilityLabel={
-              check ? `Reopen ${hit.title}` : `Complete ${hit.title}`
-            }
-            onPress={() => void toggle(task!)}
-            style={styles.box}
-          >
-            <Icon
-              name={check ? 'checkmark.square.fill' : 'square'}
-              size={22}
-              color={check ? color.accent : color.inkSoft}
-            />
-          </Pressable>
+          <Checkbox
+            shape="round"
+            label={check ? `Reopen ${hit.title}` : `Complete ${hit.title}`}
+            checked={check}
+            onChange={() => void toggle(task!)}
+          />
         ) : null}
         <Pressable
           accessibilityRole="button"
@@ -183,19 +169,12 @@ const SearchScreen = () => {
     <View style={[styles.screen, { paddingTop: insets.top + tokens.space[2] }]}>
       <View style={styles.bar}>
         <View style={styles.field}>
-          <Icon name="magnifyingglass" size={17} color={color.muted} />
-          <TextInput
-            style={styles.input}
-            accessibilityLabel="Search notes and tasks"
+          <SearchInput
             placeholder="Search notes and tasks"
-            placeholderTextColor={color.muted}
             value={q}
-            onChangeText={setQ}
-            onSubmitEditing={() => remember(q)}
-            returnKeyType="search"
-            autoCorrect={false}
+            onValueChange={setQ}
+            onSubmit={() => remember(q)}
             autoFocus
-            clearButtonMode="while-editing"
           />
         </View>
         <Pressable
@@ -212,10 +191,9 @@ const SearchScreen = () => {
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
       >
-        <SegmentedControl
+        <SegmentedRadio
           label="Search scope"
-          options={SCOPES}
-          labels={SCOPE_LABELS}
+          options={segmentOptions(SCOPES, SCOPE_LABELS)}
           value={scope}
           onChange={setScope}
         />
@@ -296,23 +274,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.space[2],
   },
-  field: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[2],
-    minHeight: MIN_TARGET,
-    paddingHorizontal: tokens.space[3],
-    borderRadius: tokens.radius.md + 2,
-    backgroundColor: color.fill,
-  },
-  input: {
-    flex: 1,
-    minHeight: MIN_TARGET,
-    ...font.regular,
-    fontSize: tokens.text.body,
-    color: color.ink,
-  },
+  field: { flex: 1 },
   cancel: { minHeight: MIN_TARGET, justifyContent: 'center' },
   cancelText: {
     ...font.regular,
@@ -328,12 +290,6 @@ const styles = StyleSheet.create({
   divider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
-  },
-  box: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   hitText: {
     flex: 1,

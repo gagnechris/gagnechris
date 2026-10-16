@@ -16,7 +16,7 @@ const meta = {
   title: 'Shared UI/SegmentedRadio',
   component: SegmentedRadio,
   parameters: catalog(
-    '`apps/mobile/src/ui/SegmentedControl.tsx`',
+    '`apps/mobile/src/ui/SegmentedRadio.tsx`',
     'A radio group drawn as a segmented control: one tab stop, arrow keys move the selection.',
   ),
   args: {

@@ -16,6 +16,7 @@ import {
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import type { Subtasks } from '../notebook/useNoteSubtasks';
+import { Checkbox } from './Checkbox';
 import { Icon } from './Icon';
 
 const TITLE_LINE = 24;
@@ -261,23 +262,16 @@ export const TaskEmbedRow = ({
     </>
   );
   const checkbox = (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: done, disabled: pending }}
-      accessibilityLabel={
-        done ? `Reopen ${task.title}` : `Complete ${task.title}`
-      }
-      disabled={pending}
-      onPress={toggle}
-      hitSlop={8}
-      style={styles.box}
-    >
-      <Icon
-        name={done ? 'checkmark.square.fill' : 'square'}
-        size={22}
-        color={done ? color.accent : color.inkSoft}
+    <View style={styles.box}>
+      <Checkbox
+        shape="round"
+        label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
+        checked={done}
+        dropped={dropped}
+        disabled={pending}
+        onChange={toggle}
       />
-    </Pressable>
+    </View>
   );
 
   if (editable && state.onRename) {
@@ -416,13 +410,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TARGET,
     gap: tokens.space[2],
   },
-  box: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -tokens.space[2],
-  },
+  box: { marginLeft: -tokens.space[2] },
   titleButton: {
     flex: 1,
     flexDirection: 'row',

@@ -24,9 +24,9 @@ import { tokens } from '@gagnechris/tokens';
 import { StyleSheet, View } from 'react-native';
 import { color } from '../theme';
 import { Icon } from '../ui/Icon';
-import { Row } from '../ui/Row';
+import { ListRow } from '../ui/ListRow';
 import { Section } from '../ui/Section';
-import { SegmentedControl } from '../ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../ui/SegmentedRadio';
 import {
   ChipsField,
   DetailsSheet,
@@ -114,10 +114,9 @@ export const ProjectDetailsSheet = ({
       <FieldHint>One line, shown on Home and Projects.</FieldHint>
 
       <FieldLabel>Stage</FieldLabel>
-      <SegmentedControl
+      <SegmentedRadio
         label="Stage"
-        options={STAGES}
-        labels={PROJECT_STAGE_LABELS}
+        options={segmentOptions(STAGES, PROJECT_STAGE_LABELS)}
         value={draft.stage}
         onChange={(stage) => set('stage', stage)}
       />
@@ -147,10 +146,9 @@ export const ProjectDetailsSheet = ({
       />
 
       <FieldLabel>Demo</FieldLabel>
-      <SegmentedControl
+      <SegmentedRadio
         label="Demo"
-        options={DEMOS}
-        labels={DEMO_LABELS}
+        options={segmentOptions(DEMOS, DEMO_LABELS)}
         value={draft.demo || 'none'}
         onChange={(demo) =>
           set('demo', demo === 'none' ? '' : (demo as ProjectDemo))
@@ -206,7 +204,7 @@ export const ProjectDetailsSheet = ({
               error={errors.url}
             />
             <Section>
-              <Row
+              <ListRow
                 title={`Remove link ${n}`}
                 destructive
                 onPress={() =>
@@ -221,7 +219,7 @@ export const ProjectDetailsSheet = ({
         );
       })}
       <Section>
-        <Row
+        <ListRow
           title="Add link"
           leading={<Icon name="plus" color={color.accent} />}
           onPress={() =>

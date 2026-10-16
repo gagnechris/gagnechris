@@ -34,7 +34,7 @@ const meta = {
   title: 'Shared UI/RadioCardGroup',
   component: RadioCardGroup,
   parameters: catalog(
-    'none',
+    'none: rows with a check mark (`apps/mobile/src/admin/users/AccessLevelPicker.tsx`)',
     'Radios drawn as cards for choices that need a sentence each. One tab stop; arrows move the selection.',
   ),
   args: {

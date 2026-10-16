@@ -7,7 +7,7 @@ const meta = {
   title: 'Shared UI/Button',
   component: Button,
   parameters: catalog(
-    '`apps/mobile/src/ui/Button.tsx` (`primary`, `secondary` map to web `primary`, `default`)',
+    '`apps/mobile/src/ui/Button.tsx` (same variants and sizes, `loading`; no `href`)',
     'The action button. Variants `default`, `primary`, `danger`, `ghost` and `link`; sizes `sm`, `md` and `lg`; `loading` shows a spinner and keeps focus. Renders a link when given `href`. `tone="editorial"` is the public site look.',
   ),
   args: { children: 'Save', onClick: fn() },

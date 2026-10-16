@@ -18,8 +18,9 @@ import {
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
+import { Chip } from '../ui/Chip';
 import { LiveMarkdownInput } from '../ui/LiveMarkdownInput';
 import { showChoice } from './taskActionSheets';
 import { useTaskDates } from './taskDetail/useTaskDates';
@@ -37,26 +38,6 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   med: 'Medium priority',
   low: 'Low priority',
 };
-
-const Chip = ({
-  label,
-  text,
-  onPress,
-}: {
-  label: string;
-  text: string;
-  onPress: () => void;
-}) => (
-  <Pressable
-    accessibilityRole="button"
-    accessibilityLabel={label}
-    onPress={onPress}
-    hitSlop={CHIP_SLOP}
-    style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-  >
-    <Text style={styles.chipText}>{text}</Text>
-  </Pressable>
-);
 
 type Props = { task: Task; today: string };
 
@@ -130,8 +111,7 @@ export const TaskDetailsPanel = ({ task, today }: Props) => {
       />
       <View style={styles.chips}>
         <Chip
-          label={`Status: ${STATUS_LABELS[task.status]}`}
-          text={STATUS_LABELS[task.status]}
+          accessibilityLabel={`Status: ${STATUS_LABELS[task.status]}`}
           onPress={() =>
             showChoice({
               title: 'Status',
@@ -140,20 +120,23 @@ export const TaskDetailsPanel = ({ task, today }: Props) => {
               onChoose: setStatus,
             })
           }
-        />
+        >
+          {STATUS_LABELS[task.status]}
+        </Chip>
         <Chip
-          label={`Start: ${start ?? 'none'}`}
-          text={start ? `Start ${start}` : 'Start'}
+          accessibilityLabel={`Start: ${start ?? 'none'}`}
           onPress={() => pickShowsOn('Show this task on')}
-        />
+        >
+          {start ? `Start ${start}` : 'Start'}
+        </Chip>
         <Chip
-          label={`Due: ${due ?? 'none'}`}
-          text={due ? `Due ${due}` : 'Due'}
+          accessibilityLabel={`Due: ${due ?? 'none'}`}
           onPress={pickDeadline}
-        />
+        >
+          {due ? `Due ${due}` : 'Due'}
+        </Chip>
         <Chip
-          label={`Priority: ${PRIORITY_LABELS[task.priority]}`}
-          text={PRIORITY_LABELS[task.priority]}
+          accessibilityLabel={`Priority: ${PRIORITY_LABELS[task.priority]}`}
           onPress={() =>
             showChoice({
               title: 'Priority',
@@ -162,18 +145,19 @@ export const TaskDetailsPanel = ({ task, today }: Props) => {
               onChoose: (priority) => patch({ priority }),
             })
           }
-        />
+        >
+          {PRIORITY_LABELS[task.priority]}
+        </Chip>
         <Chip
-          label={
+          accessibilityLabel={
             task.tags.length ? `Tags: ${task.tags.join(', ')}` : 'Add tags'
           }
-          text={
-            task.tags.length
-              ? task.tags.map((t) => `#${t}`).join(' ')
-              : 'Add tags'
-          }
           onPress={editTags}
-        />
+        >
+          {task.tags.length
+            ? task.tags.map((t) => `#${t}`).join(' ')
+            : 'Add tags'}
+        </Chip>
         {saving ? (
           <Text style={styles.save} accessibilityLiveRegion="polite">
             {saveLabel(description.saveState, description.dirty)}
@@ -190,9 +174,6 @@ export const TaskDetailsPanel = ({ task, today }: Props) => {
   );
 };
 
-const CHIP_HEIGHT = 28;
-const CHIP_SLOP = (MIN_TARGET - CHIP_HEIGHT) / 2;
-
 const styles = StyleSheet.create({
   panel: {
     marginLeft: MIN_TARGET - tokens.space[2],
@@ -207,19 +188,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: tokens.space[2],
-  },
-  chip: {
-    minHeight: CHIP_HEIGHT,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.space[3],
-    borderRadius: tokens.radius.md,
-    backgroundColor: color.fill,
-  },
-  pressed: { opacity: 0.6 },
-  chipText: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.inkSoft,
   },
   save: {
     ...font.regular,

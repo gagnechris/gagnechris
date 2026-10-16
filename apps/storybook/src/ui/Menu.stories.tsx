@@ -17,7 +17,7 @@ const meta = {
   title: 'Shared UI/Menu',
   component: Menu,
   parameters: catalog(
-    '`ActionSheetIOS` (`apps/mobile/src/ui/AreaChip.tsx`, `notebook/taskActionSheets`)',
+    'none: `ActionSheetIOS` (`pickFromSheet` in `apps/mobile/src/ui/Chip.tsx`, `notebook/taskActionSheets`)',
     'One Menu surface opened from a trigger with `aria-haspopup` and `aria-expanded`. Arrows move, typing jumps, Enter picks, Escape and an outside click close and return focus. Items take an icon, a shortcut, `danger` and `disabled`; MenuRadioGroup marks the current item with a check. Under 768px the same items open in a BottomSheet.',
   ),
   args: {

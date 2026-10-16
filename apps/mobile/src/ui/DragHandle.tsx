@@ -15,7 +15,7 @@ type Props = {
 };
 
 /** The grip a row is dragged by. VoiceOver moves rows from their menu instead. */
-export const DragGrip = (props: Props) => {
+export const DragHandle = (props: Props) => {
   const latest = useLatest(props);
   const responder = useMemo(
     () =>
@@ -37,22 +37,22 @@ export const DragGrip = (props: Props) => {
       {...responder.panHandlers}
       accessible={false}
       importantForAccessibility="no-hide-descendants"
-      style={styles.grip}
+      style={styles.handle}
     >
       <Icon name="line.3.horizontal" size={14} color={color.muted} />
     </View>
   );
 };
 
-const GRIP_WIDTH = 22;
+const HANDLE_WIDTH = 22;
 
-/** How far a row's grip pushes its title right, past the row's gap. */
-export const GRIP_INSET = GRIP_WIDTH + tokens.space[2];
+/** How far a row's handle pushes its title right, past the row's gap. */
+export const DRAG_HANDLE_INSET = HANDLE_WIDTH + tokens.space[2];
 
 const styles = StyleSheet.create({
   // Clear of the screen's left edge, where iOS's swipe back would take the touch.
-  grip: {
-    width: GRIP_WIDTH,
+  handle: {
+    width: HANDLE_WIDTH,
     height: MIN_TARGET,
     alignItems: 'center',
     justifyContent: 'center',

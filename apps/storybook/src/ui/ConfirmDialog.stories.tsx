@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/ConfirmDialog',
   component: ConfirmDialog,
   parameters: catalog(
-    '`apps/mobile/src/ui/confirm.ts` (native alert)',
+    'none: `apps/mobile/src/ui/confirm.ts` (native alert)',
     'A centred yes/no question; the confirming action is styled as danger. Apps open it through `confirmStore` and `ConfirmDialogHost`.',
   ),
   args: {

@@ -1,10 +1,11 @@
 import type { VersionedEntityActionBarProps } from '@gagnechris/app-core';
 import { saveLabel } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, font, MIN_TARGET } from '../theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { color, font } from '../theme';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { IconButton } from '../ui/IconButton';
 import { publishStatusLabel } from './labels';
 
 type HeaderProps = {
@@ -34,41 +35,38 @@ export const EditorHeaderButtons = ({
       {saveLabel(actionBar.saveState, actionBar.dirty, { offline })}
     </Text>
     {onTogglePreview ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Preview"
-        accessibilityState={{ selected: preview }}
-        onPress={onTogglePreview}
-        style={styles.headerButton}
+      <IconButton
+        size="lg"
+        label="Preview"
+        pressed={preview}
         disabled={!ready}
+        onPress={onTogglePreview}
       >
         <Icon
           name={preview ? 'eye.fill' : 'eye'}
           color={preview ? color.accent : color.ink}
         />
-      </Pressable>
+      </IconButton>
     ) : null}
     {onDetails ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Details"
-        onPress={onDetails}
-        style={styles.headerButton}
+      <IconButton
+        size="lg"
+        label="Details"
         disabled={!ready}
+        onPress={onDetails}
       >
         <Icon name="slider.horizontal.3" color={color.ink} />
-      </Pressable>
+      </IconButton>
     ) : null}
     {onMenu ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={menuLabel}
-        onPress={onMenu}
-        style={styles.headerButton}
+      <IconButton
+        size="lg"
+        label={menuLabel}
         disabled={!ready}
+        onPress={onMenu}
       >
         <Icon name="ellipsis.circle" color={color.ink} />
-      </Pressable>
+      </IconButton>
     ) : null}
   </View>
 );
@@ -89,10 +87,12 @@ export const PublishBar = ({
       <Text style={styles.statusLabel}>{publishStatusLabel(actionBar)}</Text>
       {canPublish ? (
         <Button
-          title={published ? 'Publish changes' : 'Publish'}
+          variant="primary"
           disabled={actionBar.busy || offline}
           onPress={actionBar.onPublish}
-        />
+        >
+          {published ? 'Publish changes' : 'Publish'}
+        </Button>
       ) : null}
     </View>
   );
@@ -103,12 +103,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[1],
-  },
-  headerButton: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   saveState: {
     ...font.medium,

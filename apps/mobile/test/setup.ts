@@ -99,6 +99,7 @@ vi.mock('react-native', () => ({
   View: host('View'),
   Text: host('Text'),
   Image: host('Image'),
+  ActivityIndicator: host('ActivityIndicator'),
   ScrollView: host('ScrollView'),
   SectionList,
   Pressable,

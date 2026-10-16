@@ -15,7 +15,7 @@ const meta = {
   title: 'Shared UI/Combobox',
   component: Combobox,
   parameters: catalog(
-    'none',
+    'none: choices open an action sheet',
     'A TextInput with a listbox popup in the Menu surface. Focus stays in the input; arrows move the active option (`aria-activedescendant`), Enter picks, Escape closes. Empty and loading rows use hint text; errors use `--color-error`.',
   ),
   args: {

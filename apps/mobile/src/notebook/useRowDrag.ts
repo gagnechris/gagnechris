@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { useRef, useState } from 'react';
 import { Animated, type LayoutChangeEvent } from 'react-native';
 import { useDragScroll } from '../ui/DragScroll';
-import type { DragMove } from '../ui/DragGrip';
+import type { DragMove } from '../ui/DragHandle';
 import type { NoteSegment } from './noteSegments';
 import { dropTaskBlock, taskBlockLines } from './taskBlockEdits';
 

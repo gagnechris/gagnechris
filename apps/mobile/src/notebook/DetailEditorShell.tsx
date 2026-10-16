@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,8 +17,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { EditorOfflineNotice, useIsOnline } from '../net';
-import { color, font, MIN_TARGET } from '../theme';
+import { color, font } from '../theme';
 import { Icon } from '../ui/Icon';
+import { IconButton } from '../ui/IconButton';
 import { ConflictPanel } from './ConflictPanel';
 import { useSaveOnBackground } from './useSaveOnBackground';
 import { useDragScrollView } from '../ui/DragScroll';
@@ -206,15 +206,14 @@ export const DetailEditorShell = <TEntity,>({
                 {label}
               </Text>
               {headerActions?.(ready)}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={menuLabel}
-                onPress={onMenu}
-                style={detailStyles.headerButton}
+              <IconButton
+                size="lg"
+                label={menuLabel}
                 disabled={!ready}
+                onPress={onMenu}
               >
                 <Icon name="ellipsis.circle" color={color.ink} />
-              </Pressable>
+              </IconButton>
             </View>
           ),
         }}
@@ -239,15 +238,6 @@ export const DetailEditorShell = <TEntity,>({
     </View>
   );
 };
-
-export const detailStyles = StyleSheet.create({
-  headerButton: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

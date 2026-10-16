@@ -3,26 +3,37 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from './Icon';
 
-export const SearchField = ({
-  placeholder,
-  value,
-  onChangeText,
-}: {
-  placeholder: string;
+type Props = {
   value: string;
-  onChangeText: (value: string) => void;
-}) => (
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  /** VoiceOver's name; defaults to the placeholder. */
+  label?: string;
+  onSubmit?: () => void;
+  autoFocus?: boolean;
+};
+
+export const SearchInput = ({
+  value,
+  onValueChange,
+  placeholder,
+  label = placeholder,
+  onSubmit,
+  autoFocus,
+}: Props) => (
   <View style={styles.field}>
     <Icon name="magnifyingglass" size={17} color={color.muted} />
     <TextInput
       style={styles.input}
       placeholder={placeholder}
       placeholderTextColor={color.muted}
-      accessibilityLabel={placeholder}
+      accessibilityLabel={label}
       value={value}
-      onChangeText={onChangeText}
+      onChangeText={onValueChange}
+      onSubmitEditing={onSubmit}
       returnKeyType="search"
       autoCorrect={false}
+      autoFocus={autoFocus}
       clearButtonMode="while-editing"
     />
   </View>

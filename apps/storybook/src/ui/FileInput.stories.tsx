@@ -7,7 +7,7 @@ const meta = {
   title: 'Shared UI/FileInput',
   component: FileInput,
   parameters: catalog(
-    'none',
+    'none: photos come from the system picker',
     'A dashed drop zone with a `sm` Button and a hint. Dragging a file over it turns it `--primary-600` on `--primary-50`; `uploading` shows the file name and a progress bar.',
   ),
   args: {

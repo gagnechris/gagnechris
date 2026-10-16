@@ -7,7 +7,7 @@ const meta = {
   title: 'Shared UI/BottomSheet',
   component: BottomSheet,
   parameters: catalog(
-    'none',
+    'none: page sheets',
     'A phone bottom sheet with a grabber, Close, title and Done. Drag the grabber down to dismiss.',
   ),
   args: { title: 'Project details', onClose: () => {}, children: null },

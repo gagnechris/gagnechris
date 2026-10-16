@@ -5,7 +5,9 @@ import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { isOpenStatus, useTaskParent } from '../notebook/taskParents';
+import { Checkbox } from './Checkbox';
 import { Icon } from './Icon';
+import { IconButton } from './IconButton';
 import { TaskParentLabel } from './TaskParentLabel';
 
 const CHIP_HEIGHT = 20;
@@ -64,31 +66,16 @@ export const TaskRow = ({
   return (
     <View style={styles.row}>
       {onToggle ? (
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: closed }}
-          accessibilityLabel={
-            closed ? `Reopen ${task.title}` : `Complete ${task.title}`
-          }
-          onPress={() => {
+        <Checkbox
+          shape="round"
+          label={closed ? `Reopen ${task.title}` : `Complete ${task.title}`}
+          checked={done}
+          dropped={task.status === 'dropped'}
+          onChange={() => {
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onToggle();
           }}
-          hitSlop={8}
-          style={styles.box}
-        >
-          <Icon
-            name={
-              done
-                ? 'checkmark.square.fill'
-                : closed
-                  ? 'xmark.square'
-                  : 'square'
-            }
-            size={22}
-            color={done ? color.accent : closed ? color.muted : color.inkSoft}
-          />
-        </Pressable>
+        />
       ) : null}
       <Pressable
         style={styles.text}
@@ -172,14 +159,9 @@ export const TaskRow = ({
         </Pressable>
       ) : null}
       {onMore ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`More for ${task.title}`}
-          onPress={onMore}
-          style={styles.action}
-        >
+        <IconButton size="lg" label={`More for ${task.title}`} onPress={onMore}>
           <Icon name="ellipsis" size={18} color={color.inkSoft} />
-        </Pressable>
+        </IconButton>
       ) : null}
     </View>
   );
@@ -194,12 +176,6 @@ const styles = StyleSheet.create({
     paddingRight: tokens.space[2],
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: color.border,
-  },
-  box: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   text: {
     flex: 1,

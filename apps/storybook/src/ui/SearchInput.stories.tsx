@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/SearchInput',
   component: SearchInput,
   parameters: catalog(
-    '`apps/mobile/src/ui/SearchField.tsx`',
+    '`apps/mobile/src/ui/SearchInput.tsx`',
     'A search icon at the start and a clear button once there is text. Escape clears; on an empty box Escape passes through to close the popup around it. No error state.',
   ),
   args: {

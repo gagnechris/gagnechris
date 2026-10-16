@@ -28,11 +28,9 @@ const SitePostsScreen = () => {
       <Text style={siteStyles.muted}>{POSTS_INDEX_INTRO}</Text>
       {posts.isError && !posts.data ? <LoadError what="posts" /> : null}
       {posts.data && years.length === 0 ? (
-        <EmptyState
-          icon="doc.text"
-          title="No posts"
-          body={POSTS_INDEX_EMPTY_TEXT}
-        />
+        <EmptyState icon="doc.text" title="No posts">
+          {POSTS_INDEX_EMPTY_TEXT}
+        </EmptyState>
       ) : null}
       {years.map(({ year, posts: items }) => (
         <View key={year} style={styles.year}>

@@ -2,7 +2,7 @@ import type { ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it } from 'vitest';
 import { render } from '../test/render';
 import { MIN_TARGET } from './theme';
-import { Row } from './ui/Row';
+import { ListRow } from './ui/ListRow';
 import { TaskEmbedRow } from './ui/TaskEmbedRow';
 
 const flatStyle = (style: unknown): Record<string, unknown> =>
@@ -63,7 +63,7 @@ describe('row layout', () => {
   });
 
   it('centers a list row title on its icons', async () => {
-    const renderer = await render(<Row title="Sign out" />);
+    const renderer = await render(<ListRow title="Sign out" />);
     expectWrappedLinesCentered(renderer);
   });
 });

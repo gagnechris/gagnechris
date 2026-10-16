@@ -71,7 +71,7 @@ const meta = {
   title: 'Workspace/SearchPalette',
   component: SearchPalette,
   parameters: catalog(
-    '`apps/mobile/src/ui/SearchField.tsx` (the field only)',
+    '`apps/mobile/app/search.tsx` with `apps/mobile/src/ui/SearchInput.tsx`',
     'The ⌘K search dialog: grouped results, arrow keys move, Enter opens, ⌘Enter toggles a task.',
   ),
   args: {

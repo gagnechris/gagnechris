@@ -29,7 +29,7 @@ import {
 import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
 import { color, font } from '../../../src/theme';
 import { nativeConfirm } from '../../../src/ui/confirm';
-import { SegmentedControl } from '../../../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 
 const TOOLBAR_ID = 'template-keyboard-toolbar';
 
@@ -169,10 +169,12 @@ const DailyTemplatesScreen = () => {
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
     >
-      <SegmentedControl
+      <SegmentedRadio
         label="Template"
-        options={areas.map((a) => a.id)}
-        labels={labels}
+        options={segmentOptions(
+          areas.map((a) => a.id),
+          labels,
+        )}
         value={area}
         onChange={setPicked}
       />

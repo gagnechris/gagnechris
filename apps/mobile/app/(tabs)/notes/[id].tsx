@@ -33,7 +33,6 @@ import { nativeRetrySignals } from '../../../src/net';
 import {
   DetailEditorShell,
   detailEditorRoute,
-  detailStyles,
   type DetailScreenProps,
 } from '../../../src/notebook/DetailEditorShell';
 import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
@@ -48,6 +47,7 @@ import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { TaskEmbedRow } from '../../../src/ui/TaskEmbedRow';
 
 const DELETE_PROMPT = 'delete-note';
@@ -188,19 +188,18 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
       onMenu={showMenu}
       headerLargeTitleEnabled={false}
       headerActions={(ready) => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Preview"
-          accessibilityState={{ selected: preview }}
-          onPress={() => setPreview((on) => !on)}
-          style={detailStyles.headerButton}
+        <IconButton
+          size="lg"
+          label="Preview"
+          pressed={preview}
           disabled={!ready}
+          onPress={() => setPreview((on) => !on)}
         >
           <Icon
             name={preview ? 'eye.fill' : 'eye'}
             color={preview ? color.accent : color.ink}
           />
-        </Pressable>
+        </IconButton>
       )}
       backgroundColor={color.surface}
       contentStyle={styles.content}

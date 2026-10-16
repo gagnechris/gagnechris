@@ -19,7 +19,6 @@ import { tokens } from '@gagnechris/tokens';
 import { Stack, useRouter } from 'expo-router';
 import { memo, useCallback, useMemo, useState } from 'react';
 import {
-  Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
@@ -32,15 +31,16 @@ import { useNoteRowActions } from '../../../src/notebook/noteActions';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { useOpenTaskIds } from '../../../src/notebook/useOpenTaskIds';
 import { createUlid } from '../../../src/ulid';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { color, font } from '../../../src/theme';
 import { showError } from '../../../src/ui/confirm';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 import { NoteRow, type RowAction } from '../../../src/ui/NoteRow';
-import { Row } from '../../../src/ui/Row';
-import { SearchField } from '../../../src/ui/SearchField';
+import { ListRow } from '../../../src/ui/ListRow';
+import { SearchInput } from '../../../src/ui/SearchInput';
 import { CardRow, SectionTitle } from '../../../src/ui/Section';
-import { SegmentedControl } from '../../../src/ui/SegmentedControl';
+import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 
 const NOTE_KINDS = ['all', 'daily', 'pages'] as const;
 type NoteKind = (typeof NOTE_KINDS)[number];
@@ -215,11 +215,9 @@ const NotesScreen = () => {
   ) : loading ? (
     <Text style={styles.status}>Loading notes…</Text>
   ) : (
-    <EmptyState
-      icon="doc.text"
-      title="No notes yet"
-      body="Daily notes and pages you write show here, pinned ones first."
-    />
+    <EmptyState icon="doc.text" title="No notes yet">
+      Daily notes and pages you write show here, pinned ones first.
+    </EmptyState>
   );
 
   return (
@@ -227,16 +225,14 @@ const NotesScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New page"
-              accessibilityState={{ disabled: create.isPending }}
+            <IconButton
+              size="lg"
+              label="New page"
               disabled={create.isPending}
               onPress={() => void newPage()}
-              style={styles.compose}
             >
               <Icon name="square.and.pencil" size={22} color={color.accent} />
-            </Pressable>
+            </IconButton>
           ),
         }}
       />
@@ -259,15 +255,14 @@ const NotesScreen = () => {
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <SearchField
+            <SearchInput
               placeholder="Search notes"
               value={q}
-              onChangeText={setQ}
+              onValueChange={setQ}
             />
-            <SegmentedControl
+            <SegmentedRadio
               label="Note type"
-              options={NOTE_KINDS}
-              labels={NOTE_KIND_LABELS}
+              options={segmentOptions(NOTE_KINDS, NOTE_KIND_LABELS)}
               value={kind}
               onChange={setKind}
             />
@@ -298,9 +293,9 @@ const NotesScreen = () => {
           const { hit } = item;
           return (
             <CardRow first={first} last={last}>
-              <Row
+              <ListRow
                 title={hit.title}
-                detail={searchHitDetail(hit)}
+                meta={searchHitDetail(hit)}
                 divider={!first}
                 onPress={() =>
                   open({
@@ -331,12 +326,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     paddingTop: tokens.space[4],
     paddingBottom: tokens.space[2],
-  },
-  compose: {
-    minHeight: MIN_TARGET,
-    minWidth: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   status: {
     ...font.regular,

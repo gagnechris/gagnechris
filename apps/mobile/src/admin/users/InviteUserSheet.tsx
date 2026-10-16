@@ -78,10 +78,12 @@ export const InviteUserSheet = ({ visible, onClose, onDone }: Props) => {
       </FieldHint>
       <FieldError>{error ?? undefined}</FieldError>
       <Button
-        title={isPending ? 'Sending…' : 'Send invite'}
+        variant="primary"
         disabled={isPending || !email.trim()}
         onPress={() => void send()}
-      />
+      >
+        {isPending ? 'Sending…' : 'Send invite'}
+      </Button>
     </DetailsSheet>
   );
 };

@@ -27,6 +27,7 @@ import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { AreaChip } from '../../../src/ui/AreaChip';
 import { Icon } from '../../../src/ui/Icon';
+import { IconButton } from '../../../src/ui/IconButton';
 
 const TodayScreen = () => {
   const insets = useSafeAreaInsets();
@@ -136,25 +137,23 @@ const TodayScreen = () => {
         </View>
         <View style={styles.headerActions}>
           <AreaChip />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Search"
+          <IconButton
+            size="lg"
+            label="Search"
             onPress={() => router.push('/search')}
-            style={styles.navButton}
           >
             <Icon name="magnifyingglass" size={20} color={color.ink} />
-          </Pressable>
+          </IconButton>
         </View>
       </View>
       <View style={styles.dayNav}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous day"
+        <IconButton
+          size="lg"
+          label="Previous day"
           onPress={() => goTo(addDays(date, -1))}
-          style={styles.navButton}
         >
           <Icon name="chevron.left" size={18} color={color.ink} />
-        </Pressable>
+        </IconButton>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Jump to today"
@@ -169,14 +168,13 @@ const TodayScreen = () => {
             Today
           </Text>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next day"
+        <IconButton
+          size="lg"
+          label="Next day"
           onPress={() => goTo(addDays(date, 1))}
-          style={styles.navButton}
         >
           <Icon name="chevron.right" size={18} color={color.ink} />
-        </Pressable>
+        </IconButton>
       </View>
 
       <Pressable

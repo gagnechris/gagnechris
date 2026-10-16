@@ -10,7 +10,7 @@ import {
 } from '@gagnechris/shared';
 import { color } from '../theme';
 import { Icon } from '../ui/Icon';
-import { Row } from '../ui/Row';
+import { ListRow } from '../ui/ListRow';
 import { Section } from '../ui/Section';
 import {
   ChipsField,
@@ -117,10 +117,10 @@ export const PostDetailsSheet = ({
             const on = draft.projectIds.includes(project.id);
             const stage = PROJECT_STAGE_LABELS[project.stage];
             return (
-              <Row
+              <ListRow
                 key={project.id}
                 title={project.name}
-                detail={stage}
+                meta={stage}
                 divider={index > 0}
                 accessibilityLabel={`${project.name}, ${stage}${on ? ', selected' : ''}`}
                 trailing={
