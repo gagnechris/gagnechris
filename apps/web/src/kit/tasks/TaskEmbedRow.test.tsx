@@ -67,6 +67,40 @@ describe('TaskEmbedRow', () => {
     );
   });
 
+  test.each([
+    [
+      'an editable title',
+      { onRename: () => {} },
+      'Read https://example.com/docs/a-long-page.',
+      'example.com/…',
+      'https://example.com/docs/a-long-page',
+    ],
+    [
+      'a read-only title',
+      {},
+      'Read www.example.com/docs.',
+      'www.example.com/docs',
+      'https://www.example.com/docs',
+    ],
+  ])('links the URL in %s in a new tab', (_name, extra, title, name, href) => {
+    render(
+      <MemoryRouter>
+        <TaskEmbedRow
+          view={{
+            kind: 'task',
+            task: { title, status: 'todo', priority: 'med' },
+            onToggle: () => {},
+            ...extra,
+          }}
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name });
+    expect(link).toHaveAttribute('href', href);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   test('a pending task cannot be toggled; a deleted one is muted', () => {
     const { rerender } = render(
       <TaskEmbedRow

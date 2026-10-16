@@ -2,7 +2,8 @@ import { deleteCharBackward } from '@codemirror/commands';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { livePreview, openableHref, shortenUrl } from './livePreview';
+import { shortenUrl } from '@gagnechris/shared';
+import { livePreview, openableHref } from './livePreview';
 import { taskEmbedEditor } from './taskEmbeds';
 
 const TASK = '01JAAAAAAAAAAAAAAAAAAAAAAA';
@@ -250,6 +251,43 @@ describe('clicking a link', () => {
       '_blank',
       'noopener,noreferrer',
     );
+    open.mockRestore();
+  });
+
+  test.each([
+    ['www.a.io/x', 'https://www.a.io/x'],
+    ['**https://a.io/x**', 'https://a.io/x'],
+    ['*https://a.io/x*', 'https://a.io/x'],
+    ['_https://a.io/x_', 'https://a.io/x'],
+    ['(https://w.org/Foo_(bar))', 'https://w.org/Foo_(bar)'],
+    ['[a](www.a.io/x)', 'https://www.a.io/x'],
+    ['# Read https://a.io/x', 'https://a.io/x'],
+    ['- https://a.io/x', 'https://a.io/x'],
+    ['- [ ] https://a.io/x.', 'https://a.io/x'],
+    ['- [x] https://a.io/x', 'https://a.io/x'],
+    ['> https://a.io/x', 'https://a.io/x'],
+  ])('a click on %s opens %s', (line, href) => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const v = setup(`top\n${line}`, 0);
+    const links = lineEl(v, 2).querySelectorAll('.cm-md-link');
+    expect(links).toHaveLength(1);
+    click(links[0]!);
+    expect(open).toHaveBeenCalledWith(
+      new URL(href).href,
+      '_blank',
+      'noopener,noreferrer',
+    );
+    open.mockRestore();
+  });
+
+  test('a long URL is one link with its full address', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const url = `https://example.com/${'segment/'.repeat(40)}end`;
+    const v = setup(`top\nsee ${url}, then`, 0);
+    const links = lineEl(v, 2).querySelectorAll('.cm-md-link');
+    expect([...links].map((l) => l.textContent)).toEqual([url]);
+    click(links[0]!);
+    expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer');
     open.mockRestore();
   });
 

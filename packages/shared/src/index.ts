@@ -307,11 +307,15 @@ export {
 } from './markdown-live-preview.js';
 export { markdownPlainText } from './markdown-text.js';
 export {
+  findBareUrls,
   isSafeLinkHref,
   isSitePath,
   LINK_HREF_MAX_LENGTH,
+  linkHref,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,
+  shortenUrl,
+  type BareUrl,
 } from './links.js';
 export {
   HOME_PROJECTS_LIMIT,

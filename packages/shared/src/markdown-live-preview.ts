@@ -1,3 +1,4 @@
+import { findBareUrls, linkHref } from './links.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
 import { parseTaskEmbedLine } from './task-embeds.js';
 
@@ -5,8 +6,9 @@ const HEADING = /^(#{1,6})([ \t]+)/;
 const QUOTE = /^([ \t]{0,3}>[ \t]?)/;
 const BULLET = /^([ \t]*)([-*+])([ \t]+)(?!\[[ xX]\])/;
 const CODE_SPAN = /(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g;
-const LINK = /(?<!!)\[([^\]\n]+)\]\(([^)\s]+)(?:[ \t]+"[^"\n]*")?\)/g;
-const BARE_URL = /\bhttps?:\/\/[^\s<>()[\]]*[^\s<>()[\].,;:!?'"]/g;
+// One level of balanced parentheses in the URL, as in Wikipedia links.
+const LINK =
+  /(?<!!)\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)(?:[ \t]+"[^"\n]*")?\)/g;
 const STRONG = /(\*\*|__)(?=\S)([^\n]*?\S)\1/g;
 const EMPHASIS = /(?<![*_\w])([*_])(?=[^\s*_])([^\n*_]*?[^\s*_])\1(?![*_\w])/g;
 
@@ -73,22 +75,15 @@ function inlineMarks(text: string, offset: number, out: LiveMark[]) {
         from: offset + from + 1,
         to: offset + labelEnd,
         kind: 'link',
-        href: m[2]!,
+        href: linkHref(m[2]!),
       },
       { from: offset + labelEnd, to: offset + to, kind: 'hide' },
     );
   }
-  for (const m of text.matchAll(BARE_URL)) {
-    const from = m.index;
-    const to = from + m[0].length;
+  for (const { from, to, href } of findBareUrls(text)) {
     if (overlaps(taken, from, to)) continue;
     taken.push({ from, to });
-    out.push({
-      from: offset + from,
-      to: offset + to,
-      kind: 'link',
-      href: m[0],
-    });
+    out.push({ from: offset + from, to: offset + to, kind: 'link', href });
   }
   for (const [pattern, kind] of [
     [STRONG, 'strong'],
