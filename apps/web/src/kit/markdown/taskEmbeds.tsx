@@ -449,6 +449,11 @@ const setTextareaValue = Object.getOwnPropertyDescriptor(
   'value',
 )?.set;
 
+const embedWidgetAt = (view: EditorView, at: number) =>
+  [...view.contentDOM.querySelectorAll<HTMLElement>('.cm-task-embed')].find(
+    (el) => view.posAtDOM(el) === at,
+  );
+
 /**
  * Puts the caret in the title field of the embed widget at `at`, at its start
  * or end, inserting `text` there as if typed. False when the row has no field.
@@ -459,10 +464,7 @@ function focusEmbedTitle(
   atStart: boolean,
   text = '',
 ): boolean {
-  const widget = [
-    ...view.contentDOM.querySelectorAll<HTMLElement>('.cm-task-embed'),
-  ].find((el) => view.posAtDOM(el) === at);
-  const field = widget?.querySelector('textarea');
+  const field = embedWidgetAt(view, at)?.querySelector('textarea');
   if (!field) return false;
   field.focus();
   let caret = atStart ? 0 : field.value.length;
@@ -493,8 +495,9 @@ const focusEmbedTitleSoon = (
 
 /**
  * Text typed on an embed's line would break its token, so it goes to the
- * title field instead; a pasted block lands on its own lines, after the
- * row's subtasks when pasted at its end.
+ * title field instead. Lines pasted or inserted there land after the outer
+ * block, so they never come between a parent and its subtasks; only above a
+ * top-level row do they go before it.
  */
 function guardEmbedLines(widgets: StateField<DecorationSet>) {
   return EditorState.transactionFilter.of((tr) => {
@@ -514,20 +517,30 @@ function guardEmbedLines(widgets: StateField<DecorationSet>) {
         effects: typedEffect.of({ at: embed.from, text: edit.text, atStart }),
       };
     }
-    if (atStart ? edit.text.endsWith('\n') : edit.text.startsWith('\n')) {
+    const userEvent = tr.annotation(Transaction.userEvent);
+    if (atStart && indentWidth(line.text) === 0) {
+      if (edit.text.endsWith('\n')) return tr;
+      const insert = `${edit.text}\n`;
+      return {
+        changes: { from: line.from, insert },
+        selection: { anchor: line.from + insert.length - 1 },
+        userEvent,
+      };
+    }
+    const { doc } = tr.startState;
+    // Zero-based, the line after the block is its last line's number.
+    const end = doc.line(lineAfterOuterBlock(doc.toJSON(), line.number - 1));
+    if (!atStart && end.number === line.number && edit.text.startsWith('\n')) {
       return tr;
     }
-    const insert = atStart ? `${edit.text}\n` : `\n${edit.text}`;
-    const from = atStart
-      ? line.from
-      : tr.startState.doc.line(
-          // Zero-based, the line after the block is its last line's number.
-          lineAfterOuterBlock(tr.startState.doc.toJSON(), line.number - 1),
-        ).to;
+    // A whole-line paste before a subtask ends in the break that went before it.
+    const text = atStart ? edit.text.replace(/\n$/, '') : edit.text;
+    const insert = text.startsWith('\n') ? text : `\n${text}`;
     return {
-      changes: { from, insert },
-      selection: { anchor: from + insert.length - (atStart ? 1 : 0) },
-      userEvent: tr.annotation(Transaction.userEvent),
+      changes: { from: end.to, insert },
+      selection: { anchor: end.to + insert.length },
+      scrollIntoView: true,
+      userEvent,
     };
   });
 }
@@ -535,9 +548,77 @@ function guardEmbedLines(widgets: StateField<DecorationSet>) {
 /**
  * Backspace at the start of the line under an embed, or Delete at the end of
  * the line above one, would join text onto its token: an empty line goes,
- * and the caret moves into the title.
+ * and the caret moves into the title. With the caret beside a row, Enter
+ * leaves its block, Backspace deletes it the way the title's Backspace does,
+ * and nothing joins another line onto the row or splits it from its subtasks.
  */
 function embedEdgeKeys(widgets: StateField<DecorationSet>) {
+  const onRow = (view: EditorView) => {
+    const { state } = view;
+    const sel = state.selection.main;
+    if (!sel.empty) return null;
+    const line = state.doc.lineAt(sel.head);
+    const embed = embedOn(state.field(widgets), line);
+    return embed ? { line, embed, atStart: sel.head <= embed.from } : null;
+  };
+  const rowEnter = (view: EditorView) => {
+    const row = onRow(view);
+    if (!row) return false;
+    // A new line above a top-level row splits nothing.
+    if (row.atStart && indentWidth(row.line.text) === 0) return false;
+    const el = embedWidgetAt(view, row.embed.from);
+    if (!el) return false;
+    leaveTaskEmbed(view, el, true);
+    return true;
+  };
+  const rowBackspace = (view: EditorView) => {
+    const row = onRow(view);
+    if (!row) return false;
+    if (!row.atStart) {
+      const el = embedWidgetAt(view, row.embed.from);
+      if (el) deleteTaskEmbedLine(view, el);
+      return true;
+    }
+    const { doc } = view.state;
+    const above = row.line.number > 1 ? doc.line(row.line.number - 1) : null;
+    let at = row.embed.from;
+    if (above && above.length === 0) {
+      view.dispatch({
+        changes: { from: above.from, to: above.to + 1 },
+        userEvent: 'delete.backward',
+      });
+      at -= 1;
+    }
+    focusEmbedTitleSoon(view, at, true);
+    return true;
+  };
+  const rowDelete = (view: EditorView) => {
+    const row = onRow(view);
+    if (!row) return false;
+    if (row.atStart) {
+      focusEmbedTitleSoon(view, row.embed.from, true);
+      return true;
+    }
+    const { state } = view;
+    const { line } = row;
+    if (line.number === state.doc.lines) return true;
+    let folded = false;
+    state.field(foldDecorations).between(line.to, line.to, (from) => {
+      if (from === line.to) folded = true;
+    });
+    if (folded) return true;
+    const next = state.doc.line(line.number + 1);
+    if (next.length === 0) {
+      view.dispatch({
+        changes: { from: line.to, to: next.from },
+        userEvent: 'delete.forward',
+      });
+      return true;
+    }
+    const embed = embedOn(state.field(widgets), next);
+    if (embed) focusEmbedTitleSoon(view, embed.from, true);
+    return true;
+  };
   const neighbour = (view: EditorView, dir: -1 | 1) => {
     const { state } = view;
     const sel = state.selection.main;
@@ -546,7 +627,6 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
     if (sel.head !== (dir < 0 ? line.from : line.to)) return null;
     const n = line.number + dir;
     if (n < 1 || n > state.doc.lines) return null;
-    if (embedOn(state.field(widgets), line)) return null;
     const embed = embedOn(state.field(widgets), state.doc.line(n));
     return embed ? { line, embed } : null;
   };
@@ -578,9 +658,11 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
       shiftKey('down', false),
       shiftKey('up', true),
       shiftKey('down', true),
+      { key: 'Enter', run: rowEnter },
       {
         key: 'Backspace',
         run: (view) => {
+          if (rowBackspace(view)) return true;
           const hit = neighbour(view, -1);
           if (!hit) return false;
           if (hit.line.length === 0) {
@@ -596,6 +678,7 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
       {
         key: 'Delete',
         run: (view) => {
+          if (rowDelete(view)) return true;
           const hit = neighbour(view, 1);
           if (!hit) return false;
           const at =
