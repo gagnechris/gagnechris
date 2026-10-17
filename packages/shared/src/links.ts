@@ -90,3 +90,7 @@ export function shortenUrl(url: string): string {
   if (host.length > 0 && host.length < LINK_URL_MAX) return `${host}/…`;
   return `${bare.slice(0, LINK_URL_MAX - 1)}…`;
 }
+
+/** A link's visible text: the URL without `http(s)://`, shortened. */
+export const linkLabel = (href: string): string =>
+  shortenUrl(href.replace(/^https?:\/\//i, ''));

@@ -5,8 +5,8 @@ import {
 } from '@gagnechris/app-core';
 import {
   findBareUrls,
+  linkLabel,
   NOTEBOOK_TITLE_MAX_LENGTH,
-  shortenUrl,
   type BareUrl,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -72,9 +72,6 @@ const Pill = ({ text, tone }: { text: string; tone?: 'alert' | 'accent' }) => (
 );
 
 const openUrl = (href: string) => void openMarkdownLink(href);
-
-const linkLabel = (href: string) =>
-  shortenUrl(href.replace(/^https?:\/\//i, ''));
 
 const LinkedTitle = ({ title, urls }: { title: string; urls: BareUrl[] }) => {
   const parts: ReactNode[] = [];
