@@ -5,6 +5,7 @@ import {
   carryIntoDailyTemplate,
   dailyTemplateHasTasks,
   dailyTemplateHeadings,
+  dailyTemplateNamedWeekday,
   defaultDailyTemplate,
   fillDailyTemplate,
 } from './daily-templates.js';
@@ -159,5 +160,15 @@ describe('UpdateDailyTemplateRequestSchema carryOverSection', () => {
     expect(parse(undefined)).toBe(true);
     expect(parse('Focus for Monday')).toBe(false);
     expect(parse('')).toBe(false);
+  });
+});
+
+describe('dailyTemplateNamedWeekday', () => {
+  it('finds a weekday typed into the template, not the token', () => {
+    expect(dailyTemplateNamedWeekday('## Focus for Tuesday\n* \n')).toBe(
+      'Tuesday',
+    );
+    expect(dailyTemplateNamedWeekday(DEFAULT_DAILY_TEMPLATES.work)).toBeNull();
+    expect(dailyTemplateNamedWeekday('## Mondays and Sundaylike')).toBeNull();
   });
 });

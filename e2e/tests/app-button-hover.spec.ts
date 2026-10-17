@@ -114,3 +114,54 @@ test('library controls keep their own hover, and the search clear button stays u
   );
   expect(await clear.boundingBox()).toEqual(boxAtRest);
 });
+
+test('sidebar links stay un-underlined on hover', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await signIn();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const [url, name] of [
+    [`${apps.notebook}/settings/templates`, 'Note templates'],
+    [`${apps.admin}/`, 'Projects'],
+  ] as const) {
+    await page.goto(url);
+    const link = page
+      .getByRole('navigation')
+      .getByRole('link', { name, exact: true })
+      .first();
+    await link.hover();
+    await expect
+      .poll(() =>
+        link.evaluate((el) => getComputedStyle(el).textDecorationLine),
+      )
+      .toBe('none');
+  }
+});
+
+test('a clicked sidebar link shows no focus ring until a key is pressed', async ({
+  page,
+  apps,
+  signIn,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'WebKit does not focus a clicked link');
+  await signIn();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${apps.notebook}/settings/templates`);
+  const link = page
+    .getByRole('navigation')
+    .getByRole('link', { name: 'Note templates', exact: true })
+    .first();
+  const ring = () =>
+    link.evaluate((el) => [
+      el === document.activeElement,
+      getComputedStyle(el).outlineStyle,
+    ]);
+  await link.click();
+  await expect(link).toHaveAttribute('aria-current', 'page');
+  await expect.poll(ring).toEqual([true, 'none']);
+  await page.keyboard.press('Shift');
+  await expect.poll(ring).toEqual([true, 'solid']);
+});

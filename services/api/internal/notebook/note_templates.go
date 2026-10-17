@@ -206,7 +206,7 @@ func (r *noteTemplatesRepo) create(ctx context.Context, userID, id, name, body s
 				return t, rerr
 			}
 		}
-		return NoteTemplate{}, err
+		return NoteTemplate{}, mapWriteError(err)
 	}
 	return t.NoteTemplate, nil
 }
@@ -244,7 +244,7 @@ func (r *noteTemplatesRepo) update(ctx context.Context, userID, id string, expec
 		if data.ClassifyWriteError(err) == data.WriteConflict {
 			return NoteTemplate{}, r.conflict(ctx, userID, id, base)
 		}
-		return NoteTemplate{}, err
+		return NoteTemplate{}, mapWriteError(err)
 	}
 	return t.NoteTemplate, nil
 }
@@ -266,5 +266,11 @@ func (r *noteTemplatesRepo) delete(ctx context.Context, userID, id string, expec
 	if err != nil && data.ClassifyWriteError(err) == data.WriteConflict {
 		return r.conflict(ctx, userID, id, base)
 	}
-	return err
+	return mapWriteError(err)
+}
+
+// mapWriteError is a write's throttling or size error as the client sees it,
+// once the caller has handled its own conflicts.
+func mapWriteError(err error) error {
+	return store.MapWriteError(err, "Write conflict", store.ClaimWrite{VersionIndex: -1})
 }
