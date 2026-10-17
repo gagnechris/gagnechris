@@ -7,6 +7,10 @@ import {
 } from '@gagnechris/shared';
 import type { Resume } from './query/api.js';
 
+/** What Unpublish does to the public resume, for the confirm prompt on web and iOS. */
+export const RESUME_UNPUBLISH_NOTE =
+  '/resume will say “Resume available on request”, and the PDF download is removed.';
+
 export type RoleDates = { start: string; end: string | null };
 
 export type ExperienceDraft = {
