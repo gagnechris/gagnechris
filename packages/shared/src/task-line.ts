@@ -10,9 +10,23 @@ export type TaskLineDraft = {
   priority: TaskPriority;
 };
 
-/** A task title is one line: pasted line breaks become spaces. */
-export const oneLineTaskTitle = (text: string) =>
-  text.replace(/\s*\n\s*/g, ' ');
+/**
+ * A task title is one line: each line break, with the whitespace around it,
+ * becomes one space. Split rather than a regex, which backtracks on long runs
+ * of spaces.
+ */
+export function oneLineTaskTitle(text: string): string {
+  const pieces = text.split('\n');
+  if (pieces.length === 1) return text;
+  const last = pieces.length - 1;
+  return pieces
+    .map((piece, i) => {
+      const end = i < last ? piece.trimEnd() : piece;
+      return i > 0 ? end.trimStart() : end;
+    })
+    .filter((piece, i) => i === 0 || i === last || piece !== '')
+    .join(' ');
+}
 
 /** `[ ] ` at the start of a line, after any indent. */
 export const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
