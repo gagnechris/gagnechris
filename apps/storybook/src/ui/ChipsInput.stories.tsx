@@ -30,7 +30,7 @@ const meta = {
   component: Tags,
   parameters: catalog(
     'none',
-    'A list of short values typed as chips: Enter or a comma adds one, Backspace on an empty input removes the last.',
+    'A list of short values typed as chips: Enter, a comma or leaving the input adds one, Backspace on an empty input removes the last.',
   ),
   args: { initial: ['react', 'design systems'] },
 } satisfies Meta<typeof Tags>;
