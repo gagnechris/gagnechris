@@ -9,6 +9,7 @@ import {
   Compartment,
   EditorState,
   Prec,
+  Transaction,
   type Extension,
 } from '@codemirror/state';
 import {
@@ -87,6 +88,25 @@ const External = Annotation.define<boolean>();
 
 /** A `value` that lags the doc this long after a keystroke is stale, not a reset. */
 const TYPING_GRACE_MS = 200;
+
+/** Replaces only the span that differs, so the caret keeps its place. */
+function minimalChange(from: string, to: string) {
+  const max = Math.min(from.length, to.length);
+  let start = 0;
+  while (start < max && from[start] === to[start]) start += 1;
+  let end = 0;
+  while (
+    end < max - start &&
+    from[from.length - 1 - end] === to[to.length - 1 - end]
+  ) {
+    end += 1;
+  }
+  return {
+    from: start,
+    to: from.length - end,
+    insert: to.slice(start, to.length - end),
+  };
+}
 
 const fillPane = EditorView.theme({ '& .cm-scroller': { height: '100%' } });
 
@@ -288,8 +308,10 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(
         const doc = view.state.doc.toString();
         if (value === doc) return;
         view.dispatch({
-          changes: { from: 0, to: doc.length, insert: value },
-          annotations: External.of(true),
+          changes: minimalChange(doc, value),
+          // Undo must not revert a change the user didn't type, such as a
+          // task added from another list or a deleted task's line.
+          annotations: [External.of(true), Transaction.addToHistory.of(false)],
         });
       };
       const wait = lastTyped.current + TYPING_GRACE_MS - Date.now();

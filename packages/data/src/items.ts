@@ -168,6 +168,8 @@ export const RemovedUserItemSchema = z.object({
   userId: z.string().min(1),
   email: z.string(),
   previousLevel: AccessLevelSchema.nullable(),
+  /** Set until every removal step has run. */
+  pending: z.literal(true).optional(),
   createdAt: z.string().min(1),
   removedBy: z.string().min(1),
 });
@@ -737,6 +739,8 @@ export const NotebookAreasItemSchema = z.object({
   areas: z
     .array(z.object({ id: NotebookAreaSchema, name: z.string().min(1) }))
     .min(1),
+  /** Each listed area id: a write into an area checks it is still here. */
+  areaIndex: z.record(NotebookAreaSchema, z.literal(true)).optional(),
   version: z.number().int().positive(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
@@ -757,6 +761,9 @@ export function buildNotebookAreasItem(
     entityType: 'notebookAreas',
     userId,
     areas: list.areas.map(({ id, name }) => ({ id, name })),
+    areaIndex: Object.fromEntries(
+      list.areas.map(({ id }) => [id, true as const]),
+    ),
     version: list.version,
     createdAt: list.createdAt,
     updatedAt: list.updatedAt,

@@ -1,4 +1,5 @@
 /** Platform-neutral: no marked, HTML renderers, OpenAPI, or Node DynamoDB helpers. */
+// Every export needs an importer outside this package (scripts/test/exports-used.test.ts).
 export { APEX_DOMAIN, PROJECT_DEMO_IDS } from './constants.js';
 export {
   pageTitle,
@@ -12,66 +13,41 @@ export {
   SITE_PROFILE_IMAGE_SRC,
 } from './site-config.js';
 export * from './schemas.js';
-export {
-  taskMatchesSchedule,
-  taskShowsOn,
-  taskStartsAfter,
-  type TaskScheduleFilter,
-} from './task-schedule.js';
+export { taskMatchesSchedule, taskShowsOn } from './task-schedule.js';
 export {
   addDays,
   calendarDay,
-  daysBetween,
   formatCalendarDay,
   isCalendarDay,
   localDateString,
   localDayOf,
   MONTH_LONG,
-  MONTH_SHORT,
   parseCalendarDay,
   relativeDayLabel,
   WEEKDAY_LONG,
-  WEEKDAY_SHORT,
   weekdayName,
   weekdayOf,
-  type CalendarDayFormat,
 } from './calendar.js';
 export {
-  activeTaskDateQuery,
-  activeTaskDueQuery,
   formatTaskDay,
-  matchesTaskDateQuery,
   nextWeekday,
   noteDisplayTitle,
   parseTaskSyntax,
-  resolveTaskDateToken,
-  taskDateMenuOptions,
   taskDateToken,
-  type ParsedTaskSyntax,
-  type TaskDateMenuOption,
   type TaskSchedule,
 } from './task-syntax.js';
 export { DEFAULT_HOME } from './home-default.js';
 export { DEFAULT_RESUME } from './resume-default.js';
 export {
-  experienceCompanyLine,
-  formatResumeDateRange,
-  formatResumeMonth,
   formatResumeShortMonth,
-  isEarlierResumeRole,
-  parseLegacyCompanyLine,
   planResumeDateMigration,
   resumeRoleDates,
-  structuredExperience,
-  type LegacyCompanyLineParse,
-  type ResumeDateMigrationPlan,
   type ResumeDateMigrationRow,
 } from './resume-dates.js';
 export {
   normalizeResumeText,
   RESUME_DOWNLOAD_FILENAME,
   RESUME_PAGE_TITLE,
-  RESUME_SECTION_LABELS,
   RESUME_UNAVAILABLE_TEXT,
   resumeView,
   type ResumeEducationLine,
@@ -96,30 +72,23 @@ export {
   HOME_ALL_POSTS_LABEL,
   HOME_RECENT_POSTS_HEADING,
   selectHomeRecentPosts,
-  type HomeRecentPost,
   POSTS_INDEX_EMPTY_TEXT,
   POSTS_INDEX_INTRO,
   POSTS_RSS_LINK,
   postsIndexView,
   postsYearId,
-  UNDATED_POSTS_LABEL,
   type PostsIndexEntry,
   type PostsIndexItem,
   type PostsIndexYear,
-  type PostsYearGroup,
 } from './posts-index.js';
-export { textExcerpt } from './excerpt.js';
 export {
-  countWords,
   POST_AUTHOR_NOTE,
   POST_META_SEPARATOR,
   readingMinutes,
   readingTimeLabel,
-  WORDS_PER_MINUTE,
 } from './post-reading.js';
-export { createUlid, type RandomBytes } from './ulid.js';
+export { createUlid } from './ulid.js';
 export {
-  CARRIED_IN_HEADING,
   carriedInMarkdown,
   findTaskEmbeds,
   parseTaskEmbedLine,
@@ -130,10 +99,7 @@ export {
   taskEmbedNesting,
   taskEmbedParents,
   taskEmbedToken,
-  type CarriedInTask,
-  type TaskEmbed,
   type TaskEmbedMarkdownTask,
-  type TaskEmbedNesting,
 } from './task-embeds.js';
 export { indentWidth } from './indent-width.js';
 export {
@@ -162,7 +128,6 @@ export {
   typedBulletCheckboxAsTask,
   type TaskLineDraft,
 } from './task-line.js';
-export { byNewest } from './by-newest.js';
 export { parseTagsText } from './tags-text.js';
 export {
   highlightParts,
@@ -170,11 +135,7 @@ export {
   wordMatches,
   type TextRange,
 } from './search-highlight.js';
-export {
-  embedContext,
-  taskMentions,
-  type TaskMention,
-} from './task-mentions.js';
+export { taskMentions } from './task-mentions.js';
 export { deepEqual } from './deep-equal.js';
 export { newestById } from './newest-by-id.js';
 export {
@@ -187,18 +148,12 @@ export {
   snoozeBaseDay,
   sourceNoteName,
   stillOpenSource,
-  type BucketTask,
   type ComingUpDay,
   type SourceNote,
   type StillOpenSource,
   type TodayTaskBuckets,
 } from './today-task-buckets.js';
-export {
-  groupUpcomingTasks,
-  noteChipLabel,
-  type UpcomingGroup,
-  type UpcomingTask,
-} from './upcoming-groups.js';
+export { groupUpcomingTasks, noteChipLabel } from './upcoming-groups.js';
 export { taskScheduleLabel } from './task-schedule-label.js';
 export {
   matchesTaskShowOn,
@@ -209,12 +164,11 @@ export {
   type TaskShowOnFilter,
 } from './task-show-on.js';
 export { taskDue, type TaskDue } from './task-due.js';
-export { compareTasksForList, sortTasksForList } from './task-list-order.js';
+export { sortTasksForList } from './task-list-order.js';
 export {
   openTaskDateQuery,
   taskDateMenuIds,
   taskDateMenuItems,
-  tokenNeedsDate,
   tomorrowOf,
   type TaskDateKind,
   type TaskDateMenuItem,
@@ -228,8 +182,6 @@ export {
   taskDateMenuReducer,
   tokenInsertion,
   type TaskDateMenuAction,
-  type TaskDateMenuKey,
-  type TaskDateMenuRange,
   type TaskDateMenuState,
 } from './task-date-menu-state.js';
 export {
@@ -241,62 +193,46 @@ export {
   noteTitle,
   notesInArchiveView,
   sidebarStandingNotes,
-  type ListNote,
-  type NoteSection,
 } from './note-list-sections.js';
 export {
   DEFAULT_NOTEBOOK_AREAS,
-  defaultNotebookAreas,
   NOTEBOOK_AREA_DUPLICATE_ID_MESSAGE,
   NOTEBOOK_AREA_DUPLICATE_NAME_MESSAGE,
   NOTEBOOK_AREA_NAME_MAX_LENGTH,
   NOTEBOOK_AREA_STORAGE_KEY,
   NOTEBOOK_AREAS_MAX,
-  NotebookAreaEntrySchema,
   notebookAreaHeading,
   notebookAreaIdFromName,
   notebookAreaName,
   NotebookAreasSchema,
   resolveNotebookArea,
-  UpdateNotebookAreasRequestSchema,
   type NotebookAreaEntry,
   type NotebookAreas,
-  type UpdateNotebookAreasRequest,
 } from './notebook-area.js';
 export {
   DAILY_TEMPLATE_DATE_TOKEN,
   DAILY_TEMPLATE_MAX_BYTES,
   DAILY_TEMPLATE_SECTION_MESSAGE,
   DAILY_TEMPLATE_TASK_MESSAGE,
-  DailyTemplateSchema,
   DEFAULT_DAILY_TEMPLATES,
-  UpdateDailyTemplateRequestSchema,
   carryIntoDailyTemplate,
   dailyTemplateHasTasks,
   dailyTemplateHeadings,
   dailyTemplateNamedWeekday,
   dailyTemplateWeekdayMessage,
-  defaultDailyTemplate,
-  defaultDailyTemplateMarkdown,
   fillDailyTemplate,
   type DailyTemplate,
-  type UpdateDailyTemplateRequest,
 } from './daily-templates.js';
 export {
   compareNoteTemplates,
-  CreateNoteTemplateRequestSchema,
   fillNoteTemplate,
   filterNoteTemplates,
   NOTE_TEMPLATE_LIMIT_MESSAGE,
   NOTE_TEMPLATE_MAX_BYTES,
   NOTE_TEMPLATE_MAX_COUNT,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
-  NoteTemplateListResponseSchema,
   NoteTemplateSchema,
-  UpdateNoteTemplateRequestSchema,
-  type CreateNoteTemplateRequest,
   type NoteTemplate,
-  type UpdateNoteTemplateRequest,
 } from './note-templates.js';
 export {
   fenceLineKind,
@@ -307,9 +243,6 @@ export {
   liveMarkdownLine,
   liveMarkdownLines,
   MARKDOWN_IMAGE,
-  standaloneMarkdownImage,
-  type LiveImage,
-  type LiveLine,
   type LiveLineStyle,
   type LiveMark,
 } from './markdown-live-preview.js';
@@ -319,14 +252,13 @@ export {
   isSafeLinkHref,
   isSitePath,
   LINK_HREF_MAX_LENGTH,
-  linkHref,
+  linkLabel,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,
   shortenUrl,
   type BareUrl,
 } from './links.js';
 export {
-  HOME_PROJECTS_LIMIT,
   PROJECT_IDEA_PREVIEW_TEXT,
   PROJECT_MINI_UI,
   PROJECT_PREVIEW_HEIGHT,
@@ -348,7 +280,6 @@ export {
   projectBuildLogEmptyText,
   projectBuildLogPosts,
   projectCardHref,
-  projectCardView,
   projectCardViews,
   projectHasPage,
   projectPagePath,
@@ -359,20 +290,12 @@ export {
   sortProjectsByOrder,
   type PostProjectLink,
   type ProjectBuildLogPost,
-  type ProjectCardSource,
   type ProjectCardView,
-  type ProjectMiniKind,
   type ProjectMiniNode,
   type ProjectPageView,
-  type ProjectPreview,
-  type ProjectPublishFieldErrors,
 } from './projects.js';
 export * from './users.js';
-export {
-  saveLabel,
-  type SaveLabelOptions,
-  type SaveState,
-} from './save-label.js';
+export { saveLabel, type SaveState } from './save-label.js';
 export {
   emptyNoteDraft,
   noteDraftFromNote,
