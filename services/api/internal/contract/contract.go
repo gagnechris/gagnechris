@@ -51,6 +51,8 @@ type API struct {
 	SESGlobalDailyCap                 int        `json:"sesGlobalDailyCap"`
 	ResumeNotifySESDailyCap           int        `json:"resumeNotifySesDailyCap"`
 	MinContactSubmitMs                int64      `json:"minContactSubmitMs"`
+	OriginVerifyHeader                string     `json:"originVerifyHeader"`
+	ViewerAddressHeader               string     `json:"viewerAddressHeader"`
 	NotebookImageUploadsPerUserPerDay int        `json:"notebookImageUploadsPerUserPerDay"`
 	Metrics                           APIMetrics `json:"metrics"`
 }

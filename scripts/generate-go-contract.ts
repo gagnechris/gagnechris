@@ -189,7 +189,9 @@ import {
 } from '@gagnechris/shared';
 import {
   API_METRICS,
+  API_ORIGIN_VERIFY_HEADER,
   API_SERVICE_NAME,
+  API_VIEWER_ADDRESS_HEADER,
   CONTACT_PER_IP_PER_HOUR,
   MIN_CONTACT_SUBMIT_MS,
   NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY,
@@ -751,6 +753,8 @@ const contract = {
     sesGlobalDailyCap: SES_GLOBAL_DAILY_CAP,
     resumeNotifySesDailyCap: RESUME_NOTIFY_SES_DAILY_CAP,
     minContactSubmitMs: MIN_CONTACT_SUBMIT_MS,
+    originVerifyHeader: API_ORIGIN_VERIFY_HEADER,
+    viewerAddressHeader: API_VIEWER_ADDRESS_HEADER,
     notebookImageUploadsPerUserPerDay: NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY,
     metrics: API_METRICS,
   },

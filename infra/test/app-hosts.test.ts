@@ -5,7 +5,14 @@ import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
-import { loadAppViewerRequest } from '../lib/cloudfront/harness.js';
+import {
+  API_ORIGIN_VERIFY_HEADER,
+  API_VIEWER_ADDRESS_HEADER,
+} from '@gagnechris/shared/server';
+import {
+  loadApiViewerRequest,
+  loadAppViewerRequest,
+} from '../lib/cloudfront/harness.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { ApiStack } from '../lib/stacks/api-stack.js';
 import { AuthStack } from '../lib/stacks/auth-stack.js';
@@ -336,6 +343,38 @@ describe('app hosts: CloudFront', () => {
     }
   });
 
+  it('vouches for the viewer address on /api/* of every host', () => {
+    const functions = resourcesOf(built.site, 'AWS::CloudFront::Function');
+    const apiFn = Object.entries(functions).find(
+      ([, f]) => f.Properties.Name === 'gagnechris-prod-api-viewer-request',
+    );
+    expect(apiFn).toBeDefined();
+    for (const host of [
+      'gagnechris.com',
+      'admin.gagnechris.com',
+      'notebook.gagnechris.com',
+    ]) {
+      const config = distributionFor(host);
+      const api = behavior(config, '/api/*')!;
+      expect(api.FunctionAssociations, host).toEqual([
+        {
+          EventType: 'viewer-request',
+          FunctionARN: { 'Fn::GetAtt': [apiFn![0], 'FunctionARN'] },
+        },
+      ]);
+      const origin = (config.Origins as Array<Record<string, Json>>).find(
+        (o) => o.Id === api.TargetOriginId,
+      )!;
+      expect(origin.OriginCustomHeaders, host).toEqual([
+        {
+          HeaderName: API_ORIGIN_VERIFY_HEADER,
+          HeaderValue:
+            '{{resolve:secretsmanager:gagnechris-prod-api-origin-verify:SecretString:::}}',
+        },
+      ]);
+    }
+  });
+
   it('serves /media/* from the site bucket on admin only', () => {
     const admin = distributionFor('admin.gagnechris.com');
     const media = behavior(admin, '/media/*');
@@ -636,6 +675,21 @@ describe('app hosts: API Gateway', () => {
       Ref: expect.stringMatching(/cognitoiosclientid/),
     });
     expect(vars.AUTH_LEGACY_WEB_CLIENT_ID).toBeUndefined();
+    const [secretId, secret] = Object.entries(
+      resourcesOf(built.api, 'AWS::SecretsManager::Secret'),
+    ).find(
+      ([, r]) => r.Properties.Name === 'gagnechris-prod-api-origin-verify',
+    )!;
+    expect(secret.Properties.GenerateSecretString).toMatchObject({
+      ExcludePunctuation: true,
+      PasswordLength: 48,
+    });
+    expect(vars.API_ORIGIN_SECRET).toEqual({
+      'Fn::Join': [
+        '',
+        ['{{resolve:secretsmanager:', { Ref: secretId }, ':SecretString:::}}'],
+      ],
+    });
     expect(JSON.stringify(vars)).not.toMatch(/cognitodevclientid/);
   });
 
@@ -650,6 +704,29 @@ describe('app hosts: API Gateway', () => {
     expect(JSON.stringify(built.api.toJSON())).not.toMatch(
       /UserPoolWebClient|cognito-web-client-id/,
     );
+  });
+});
+
+describe('api-viewer-request function', () => {
+  const handler = loadApiViewerRequest();
+
+  it("passes the viewer's address and drops a viewer's own origin secret", () => {
+    const out = handler({
+      request: {
+        uri: '/api/contact',
+        headers: {
+          [API_ORIGIN_VERIFY_HEADER]: { value: 'guess' },
+          [API_VIEWER_ADDRESS_HEADER]: { value: '10.0.0.1' },
+          'content-type': { value: 'application/json' },
+        },
+      },
+      viewer: { ip: '2001:db8::7' },
+    });
+    expect(out.uri).toBe('/api/contact');
+    expect(out.headers).toEqual({
+      [API_VIEWER_ADDRESS_HEADER]: { value: '2001:db8::7' },
+      'content-type': { value: 'application/json' },
+    });
   });
 });
 

@@ -408,6 +408,61 @@ func TestHandleLambda(t *testing.T) {
 	}
 }
 
+func TestHandleLambdaTrustsTheViewerAddressOnlyWithTheOriginSecret(t *testing.T) {
+	var seen *Request
+	ta := newTestApp(t, Route{Method: "POST", Pattern: "/contact", Auth: Public, Handler: func(_ context.Context, r *Request) (*Response, error) {
+		seen = r
+		return JSON(200, map[string]bool{"ok": true}), nil
+	}})
+	ta.app.WithOriginSecret("s3cret")
+	verify, viewer := contract.Data.API.OriginVerifyHeader, contract.Data.API.ViewerAddressHeader
+	cases := []struct {
+		name    string
+		headers map[string]string
+		want    string
+	}{
+		{"via CloudFront", map[string]string{verify: "s3cret", viewer: "203.0.113.7"}, "203.0.113.7"},
+		{"via CloudFront over IPv6", map[string]string{"X-Origin-Verify": "s3cret", "X-Viewer-Address": "2001:db8::1"}, "2001:db8::1"},
+		{"wrong secret", map[string]string{verify: "guess", viewer: "203.0.113.7"}, "198.51.100.1"},
+		{"no secret", map[string]string{viewer: "203.0.113.7"}, "198.51.100.1"},
+		{"no viewer address", map[string]string{verify: "s3cret"}, "198.51.100.1"},
+		{"bad viewer address", map[string]string{verify: "s3cret", viewer: "203.0.113.7, 10.0.0.1"}, "198.51.100.1"},
+	}
+	for _, c := range cases {
+		seen = nil
+		out, err := ta.app.HandleLambda(context.Background(), events.APIGatewayV2HTTPRequest{
+			RawPath: "/api/contact",
+			Headers: c.headers,
+			RequestContext: events.APIGatewayV2HTTPRequestContext{
+				HTTP: events.APIGatewayV2HTTPRequestContextHTTPDescription{Method: "POST", SourceIP: "198.51.100.1"},
+			},
+		})
+		if err != nil || out.StatusCode != 200 || seen == nil {
+			t.Fatalf("%s: %v %+v", c.name, err, out)
+		}
+		if seen.SourceIP != c.want {
+			t.Errorf("%s: SourceIP %q, want %q", c.name, seen.SourceIP, c.want)
+		}
+		if _, ok := seen.Headers[verify]; ok {
+			t.Errorf("%s: handler saw the origin secret", c.name)
+		}
+	}
+
+	unset := newTestApp(t, Route{Method: "POST", Pattern: "/contact", Auth: Public, Handler: func(_ context.Context, r *Request) (*Response, error) {
+		seen = r
+		return JSON(200, map[string]bool{"ok": true}), nil
+	}})
+	if _, err := unset.app.HandleLambda(context.Background(), events.APIGatewayV2HTTPRequest{
+		RawPath: "/api/contact",
+		Headers: map[string]string{verify: "", viewer: "203.0.113.7"},
+		RequestContext: events.APIGatewayV2HTTPRequestContext{
+			HTTP: events.APIGatewayV2HTTPRequestContextHTTPDescription{Method: "POST", SourceIP: "198.51.100.1"},
+		},
+	}); err != nil || seen.SourceIP != "198.51.100.1" {
+		t.Errorf("without a configured secret: %v %q", err, seen.SourceIP)
+	}
+}
+
 func TestHTTPHandlerClaims(t *testing.T) {
 	ta := newTestApp(t,
 		Route{Method: "GET", Pattern: "/notebook/me", Auth: Notebook, Handler: func(_ context.Context, r *Request) (*Response, error) {

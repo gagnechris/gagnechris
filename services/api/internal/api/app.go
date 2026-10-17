@@ -26,6 +26,7 @@ type App struct {
 	// request; Lambda's Init Duration minus it is runtime bootstrap.
 	bundleReadyMs int64
 	served        atomic.Bool
+	originSecret  string
 }
 
 func NewApp(router *Router, log *slog.Logger, metrics *observability.Metrics, processStart time.Time) *App {
@@ -38,6 +39,12 @@ func NewApp(router *Router, log *slog.Logger, metrics *observability.Metrics, pr
 }
 
 func (a *App) Router() *Router { return a.router }
+
+// WithOriginSecret is the value CloudFront sends in the origin verify header.
+func (a *App) WithOriginSecret(secret string) *App {
+	a.originSecret = secret
+	return a
+}
 
 // Serve fills req.Log and req.Metrics and never returns nil.
 func (a *App) Serve(ctx context.Context, req *Request, rawPath string, log *slog.Logger) (res *Response) {
