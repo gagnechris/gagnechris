@@ -181,6 +181,29 @@ describe('useMoveTaskToDay', () => {
     expect(result?.note.id).toBe(DAY);
   });
 
+  test('keeps the subtasks and notes when the day already embeds the task', async () => {
+    const lines = `${block}\n  budget is 40k`;
+    const { server, move } = setup({
+      day: note(DAY, `## Carried in\n\n${embed(A)}\n`, 2),
+    });
+    let removed = false;
+    await move({
+      area: 'work',
+      date: DATE,
+      fromNoteId: FROM,
+      task: task(A),
+      readLines: () => lines,
+      removeLines: () => {
+        removed = true;
+        return true;
+      },
+    });
+
+    expect(server.day.bodyMarkdown).toBe(`## Carried in\n\n${lines}\n`);
+    expect(removed).toBe(true);
+    expect(server.taskPuts.sort()).toEqual([A, B]);
+  });
+
   test('saves the old note without the lines when its editor is gone', async () => {
     const { server, move } = setup();
     const result = await move({
