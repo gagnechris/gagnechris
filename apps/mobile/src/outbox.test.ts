@@ -285,6 +285,36 @@ describe('the outbox', () => {
     expect(server.state.taskStore.get(T1)?.noteId).toBe(day);
   });
 
+  it('sends a task with no note when its new note is deleted before it was ever sent', async () => {
+    const day = '01J0000000000000000000DAY1';
+    setOnline(false);
+    cacheTask(
+      (await postTask({ id: T1, area: 'work', title: 'Call Sam', noteId: day }))
+        .data,
+    );
+    await client.PUT('/api/notebook/notes/daily/{area}/{date}', {
+      params: { path: { area: 'work', date: '2026-10-02' } },
+      body: { id: day, bodyMarkdown: `{{task:${T1}}}` } as never,
+    });
+    await client.DELETE('/api/notebook/notes/{id}', {
+      params: { path: { id: day } },
+      body: { version: 1 },
+    });
+    expect(
+      queryClient.getQueryData<Task>(queryKeys.tasks.detail(T1))?.noteId,
+    ).toBeNull();
+
+    setOnline(true);
+    await activeOutbox()!.drain();
+    expect(outboxFailedCount()).toBe(0);
+    expect(outboxPendingCount()).toBe(0);
+    expect(server.state.store.has(day)).toBe(false);
+    expect(server.state.taskStore.get(T1)).toMatchObject({
+      title: 'Call Sam',
+      noteId: null,
+    });
+  });
+
   it('keeps queued writes through an expired session and sends them after sign-in', async () => {
     setOnline(false);
     await putNote('n1', { version: 1, bodyMarkdown: 'written offline' });
