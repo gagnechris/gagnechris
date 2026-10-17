@@ -11,6 +11,8 @@ import {
   DAILY_TEMPLATE_DATE_TOKEN,
   DAILY_TEMPLATE_TASK_MESSAGE,
   dailyTemplateHasTasks,
+  dailyTemplateNamedWeekday,
+  dailyTemplateWeekdayMessage,
   dailyTemplateHeadings,
   fillDailyTemplate,
   formatCalendarDay,
@@ -112,6 +114,7 @@ function TemplateEditor({
     );
   }
 
+  const namedWeekday = dailyTemplateNamedWeekday(text);
   const error =
     editor.saveError ??
     (reset.error
@@ -154,6 +157,11 @@ function TemplateEditor({
           label={`${label} template`}
           placeholder="Write what each new day starts with…"
         />
+        {namedWeekday ? (
+          <p className="kit-hint" role="status">
+            {dailyTemplateWeekdayMessage(namedWeekday)}
+          </p>
+        ) : null}
         <p className="kit-hint">
           Headings, lists and checklists. {DAILY_TEMPLATE_DATE_TOKEN} fills in
           the day when the note is created.
