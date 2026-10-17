@@ -149,6 +149,19 @@ describe('note body on the live-preview view', () => {
     expect(markdown.current).toBe(`Intro\n{{task:${creates[0]!.id}}}`);
   });
 
+  it('typing - [ ] in a bullet makes the line a task line', async () => {
+    const { renderer, creates, markdown } = await setup('Intro\n');
+    tap(renderer, 6);
+    typeAt(renderer, 'Intro\n', 6, '- [ ]');
+    expect(markdown.current).toBe('Intro\n[ ]');
+    expect(lastView(renderer).props.selectionRequest?.slice(1)).toEqual([9, 9]);
+
+    typeAt(renderer, 'Intro\n[ ]', 9, ' Call Sam');
+    tap(renderer, 2);
+    await pause();
+    expect(creates.map((c) => c.draft.title)).toEqual(['Call Sam']);
+  });
+
   it('turns a task line into a task when Hide keyboard is pressed', async () => {
     const { renderer, creates } = await setup('');
     tap(renderer, 0);

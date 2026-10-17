@@ -1,3 +1,4 @@
+import { EditorView } from '@codemirror/view';
 import { render, screen } from '@testing-library/react';
 import { StrictMode, useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -27,6 +28,26 @@ describe('NotebookMarkdownBody', () => {
       screen.getByRole('textbox', { name: 'Note body' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Loading editor/)).toBeNull();
+  });
+
+  test('turns on the browser spelling and grammar checks', () => {
+    renderBody();
+    const body = screen.getByRole('textbox', { name: 'Note body' });
+    expect(body).toHaveAttribute('spellcheck', 'true');
+    expect(body).toHaveAttribute('autocorrect', 'on');
+  });
+
+  test('without a note (the template editors), - [ ] stays a checklist bullet', () => {
+    renderBody('- [ ');
+    const content = screen.getByRole('textbox', { name: 'Note body' });
+    const view = EditorView.findFromDOM(content)!;
+    const insert = () =>
+      view.state.update({ changes: { from: 4, insert: ']' } });
+    const handled = view.state
+      .facet(EditorView.inputHandler)
+      .some((handler) => handler(view, 4, 4, ']', insert));
+    if (!handled) view.dispatch(insert());
+    expect(view.state.doc.toString()).toBe('- [ ]');
   });
 
   test('leaves focus alone when it mounts, StrictMode included', () => {

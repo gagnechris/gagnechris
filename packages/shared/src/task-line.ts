@@ -15,6 +15,45 @@ export const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
 
 const TASK_LINE = /^([ \t]*)\[ \][ \t]+(\S.*?)[ \t]*$/;
 
+const BULLET_CHECKBOX = /^([ \t]*)[-*+][ \t]+\[ \]$/;
+
+/**
+ * A line's text up to the caret, just after typing the `]` of `- [ ]`: the
+ * same line as a task line (`[ ]` after the indent), or null.
+ */
+export function bulletCheckboxAsTask(beforeCaret: string): string | null {
+  const match = BULLET_CHECKBOX.exec(beforeCaret);
+  return match ? `${match[1]}[ ]` : null;
+}
+
+/**
+ * `after` is `before` with one `]` typed before `caret`; when that `]`
+ * completes `- [ ]` at a bullet's start, the text with that bullet as a task
+ * line and the caret after its `[ ]`. A `- [ ](url)` link is left alone.
+ */
+export function typedBulletCheckboxAsTask(
+  before: string,
+  after: string,
+  caret: number,
+): { text: string; caret: number } | null {
+  if (
+    caret < 1 ||
+    after.length !== before.length + 1 ||
+    after[caret - 1] !== ']' ||
+    after[caret] === '(' ||
+    after.slice(0, caret - 1) + after.slice(caret) !== before
+  ) {
+    return null;
+  }
+  const from = after.lastIndexOf('\n', caret - 1) + 1;
+  const task = bulletCheckboxAsTask(after.slice(from, caret));
+  if (task === null) return null;
+  return {
+    text: after.slice(0, from) + task + after.slice(caret),
+    caret: from + task.length,
+  };
+}
+
 /** The one place a typed line becomes task fields, task syntax included. */
 export function taskLineDraft(
   text: string,
