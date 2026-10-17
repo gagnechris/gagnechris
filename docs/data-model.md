@@ -74,7 +74,9 @@ filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
 | `entityType` | `slug`             |
 
 Create/rename: conditional `PutItem` with `attribute_not_exists(pk)` so two
-posts cannot claim the same slug.
+posts cannot claim the same slug. A post holds the claim on its draft slug and,
+while it has a `PUBLISHED` row, on the live slug too: a draft rename keeps the
+live URL reserved until publish, unpublish, discard or delete releases it.
 
 #### `SLUG#<oldSlug>` / `REDIRECT` — rename / soft URL keep
 
@@ -84,8 +86,8 @@ posts cannot claim the same slug.
 | `postId`     | Owning post                 |
 | `entityType` | `slugRedirect`              |
 
-On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
-update `META.slug`. The publisher reads `REDIRECT` by slug when it would
+On rename: write `REDIRECT` for the old slug, claim `SLUG#new` / `POST`,
+release the old claim unless it is the live slug, update `META.slug`. The publisher reads `REDIRECT` by slug when it would
 delete the page at an old published slug: if the row's `postId` is
 published, it leaves a redirect page there instead (see Architecture,
 request flow), which the edge serves as a 301 to the post's current slug. A
@@ -101,7 +103,7 @@ then replaces the redirect.
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
 | List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claims                                                                                                                                                    |
 | Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
 ### Tags
