@@ -52,6 +52,7 @@ export {
   parseResumeLines,
   RESUME_PDF_PATH,
   resumeContentFromDraft,
+  RESUME_UNPUBLISH_NOTE,
   resumeDraftFromResume,
   resumePayload,
   resumeRoleEndId,
