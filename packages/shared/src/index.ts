@@ -270,6 +270,8 @@ export {
   carryIntoDailyTemplate,
   dailyTemplateHasTasks,
   dailyTemplateHeadings,
+  dailyTemplateNamedWeekday,
+  dailyTemplateWeekdayMessage,
   defaultDailyTemplate,
   defaultDailyTemplateMarkdown,
   fillDailyTemplate,
