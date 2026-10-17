@@ -223,3 +223,48 @@ export function removeTaskBlock(markdown: string, taskId: string): string {
   const { first, last } = markdownItemBlock(lines, line);
   return [...lines.slice(0, first), ...lines.slice(last + 1)].join('\n');
 }
+
+/**
+ * The note with a task's block (`block` starts with the task's line) moved
+ * into it: after its text, or, when the note already embeds the task, the
+ * lines it lacks under that task's line. Tasks the note already embeds are
+ * left out. Null when the note already holds every line.
+ */
+export function addMovedTaskBlock(
+  markdown: string,
+  taskId: string,
+  block: string,
+): string | null {
+  const present = new Set(findTaskEmbeds(markdown).map((e) => e.id));
+  const at = taskEmbedLineOf(markdown, taskId);
+  if (at === null) {
+    const body = markdown.trimEnd();
+    const moved = removeTaskEmbedLines(block, present);
+    return `${body}${body ? '\n\n' : ''}${moved}\n\n`;
+  }
+  const lines = markdown.split('\n');
+  const { first, last } = markdownItemBlock(lines, at);
+  const have = new Map<string, number>();
+  for (let n = first + 1; n <= last; n += 1) {
+    const key = lines[n]!.trim();
+    have.set(key, (have.get(key) ?? 0) + 1);
+  }
+  const [head = '', ...under] = block.split('\n');
+  const missing = removeTaskEmbedLines(under.join('\n'), present)
+    .split('\n')
+    .filter((line) => {
+      const key = line.trim();
+      if (!key) return false;
+      const count = have.get(key) ?? 0;
+      if (count > 0) have.set(key, count - 1);
+      return count === 0;
+    });
+  if (missing.length === 0) return null;
+  const added = reindent(
+    missing.join('\n'),
+    indentWidth(lines[at]!) - indentWidth(head),
+  );
+  return [...lines.slice(0, last + 1), added, ...lines.slice(last + 1)].join(
+    '\n',
+  );
+}

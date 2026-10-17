@@ -146,6 +146,100 @@ test('Discard changes brings back the published post', async ({
   );
 });
 
+test('a draft slug rename keeps View live on the live slug, and Discard brings the slug back', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  request,
+}) => {
+  const post = await seed.publishedPost();
+  await signIn();
+  await openPost(page, apps.admin, post.id, post.title);
+
+  const draftSlug = `${post.slug}-draft`;
+  await page.getByText('Details', { exact: true }).click();
+  await page.getByLabel(/^Slug/).fill(draftSlug);
+  await saved(page);
+  expect(await stored(seed, post.id)).toMatchObject({
+    slug: draftSlug,
+    publishedSlug: post.slug,
+  });
+  await expect(page.getByRole('link', { name: 'View live' })).toHaveAttribute(
+    'href',
+    `${site()}/posts/${post.slug}`,
+  );
+  expect((await publicPage(request, post.slug)).status).toBe(200);
+  expect((await publicPage(request, draftSlug)).status).toBe(404);
+
+  await page.getByRole('button', { name: 'Discard changes' }).click();
+  await page
+    .getByRole('alertdialog')
+    .getByRole('button', { name: 'Discard' })
+    .click();
+  await expect(page.getByLabel(/^Slug/)).toHaveValue(post.slug);
+  const restored = await stored(seed, post.id);
+  expect(restored).toMatchObject({
+    slug: post.slug,
+    hasUnpublishedChanges: false,
+  });
+  expect(restored?.publishedSlug).toBeUndefined();
+  expect((await publicPage(request, post.slug)).status).toBe(200);
+});
+
+test('a too-large body says so, and Leave without saving drops it', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const post = await seed.post({
+    title: `${prefix} Too large`,
+    bodyMarkdown: 'Small.',
+  });
+  await signIn();
+  await openPost(page, apps.admin, post.id, post.title);
+
+  const body = page.locator('.markdown-editor .cm-content');
+  await body.click();
+  // Over DynamoDB's 400 KB item limit, pasted because typing it takes minutes.
+  await body.evaluate(
+    (el, text) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', text);
+      el.dispatchEvent(
+        new ClipboardEvent('paste', {
+          clipboardData: data,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    },
+    `${'x'.repeat(99)}\n`.repeat(4_200),
+  );
+  await page.keyboard.press('ControlOrMeta+S');
+  await expect(page.getByRole('alert')).toContainText('Too large to save');
+
+  const puts: string[] = [];
+  page.on('request', (req) => {
+    if (req.method() === 'PUT') puts.push(req.url());
+  });
+  await page.getByRole('link', { name: '← Posts' }).click();
+  const leave = page.getByRole('alertdialog');
+  await expect(leave).toContainText('Leave without saving?');
+  await leave.getByRole('button', { name: 'Leave' }).click();
+  await expect(page).toHaveURL(`${apps.admin}/`);
+  const putsAtLeave = puts.length;
+
+  await page.getByRole('link', { name: post.title }).click();
+  await expect(titleInput(page)).toHaveValue(post.title);
+  await expect(body).toHaveText('Small.');
+  await expect(page.getByText('Too large to save')).toHaveCount(0);
+  expect(puts).toHaveLength(putsAtLeave);
+  expect((await stored(seed, post.id))?.bodyMarkdown).toBe('Small.');
+});
+
 test('Unpublish takes the post off the site; Delete removes it', async ({
   page,
   apps,

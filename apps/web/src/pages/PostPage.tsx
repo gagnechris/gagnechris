@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { siteUrl } from '@gagnechris/shared';
 import { PostPageBody } from '@gagnechris/public-ui';
 import { documentPostView, loadPublishedPost } from '../posts/publishedPost';
@@ -10,6 +10,7 @@ import { ReadingBar } from './ReadingBar';
 
 function PostPage() {
   const { slug = '' } = useParams<{ slug: string }>();
+  const { hash } = useLocation();
   const published = usePublishedView(slug, documentPostView, loadPublishedPost);
 
   if (!slug.trim() || published.status === 'missing') return <NotFound />;
@@ -29,9 +30,13 @@ function PostPage() {
   }
 
   const post = published.view;
+  // The fetch followed a renamed post's 301, so show the URL it landed on.
+  if (post.slug && post.slug !== slug) {
+    return <Navigate to={`/posts/${post.slug}${hash}`} replace />;
+  }
   return (
     <>
-      <PageHead {...post.head} url={siteUrl(`/posts/${slug}`)} />
+      <PageHead {...post.head} url={siteUrl(`/posts/${post.slug || slug}`)} />
       <PostPageBody post={post} />
       <ReadingBar title={post.title} />
     </>

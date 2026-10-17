@@ -9,6 +9,7 @@ import {
   projectResource,
   useDeleteProjectMutation,
 } from '@gagnechris/app-core';
+import { projectLiveHref } from '@gagnechris/shared';
 import { MarkdownBodyEditor } from '../kit/markdown/MarkdownBodyEditor';
 import { ProjectEditorFields } from './ProjectEditorFields';
 import { publicImageSrc, publicUrl } from './publicUrl';
@@ -83,11 +84,10 @@ function ProjectEditorPageInner({ projectId }: { projectId: string }) {
           ← Projects
         </Link>
       }
-      viewLiveHref={(project) =>
-        project.status === 'published'
-          ? publicUrl(project.href ?? `/projects/${project.slug}`)
-          : null
-      }
+      viewLiveHref={(project) => {
+        const href = projectLiveHref(project);
+        return href ? publicUrl(href) : null;
+      }}
       actionBar={{ dirty: actionBarProps.dirty || editor.unsavedFields }}
       notices={
         publishBlocked && publishInvalid ? (

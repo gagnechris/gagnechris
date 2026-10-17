@@ -1,9 +1,16 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { ActionSheetIOS, Share } from 'react-native';
+import { PUBLIC_SITE_ORIGIN } from '../markdown/links';
+
+/** A live path or `href` as a URL to open: site paths on the public site, others as they are. */
+export const liveUrl = (path: string | null | undefined): string | null =>
+  !path ? null : path.startsWith('/') ? `${PUBLIC_SITE_ORIGIN}${path}` : path;
 
 type Options = {
-  /** The public URL while published, else null. */
+  /** The public URL while published, else null; a published project with no page has none. */
   liveUrl: string | null;
+  /** Shows Unpublish and Discard; defaults to having a live URL. */
+  published?: boolean;
   hasUnpublishedChanges: boolean;
   onDiscard: () => void;
   onUnpublish: () => void;
@@ -14,6 +21,7 @@ type Options = {
 /** The ⋯ menu of a publishable editor. */
 export function showPublishableMenu({
   liveUrl,
+  published = liveUrl !== null,
   hasUnpublishedChanges,
   onDiscard,
   onUnpublish,
@@ -25,6 +33,8 @@ export function showPublishableMenu({
       { label: 'View on site', run: () => void openBrowserAsync(liveUrl) },
       { label: 'Share link', run: () => void Share.share({ url: liveUrl }) },
     );
+  }
+  if (published) {
     if (hasUnpublishedChanges) {
       items.push({ label: 'Discard unpublished changes', run: onDiscard });
     }

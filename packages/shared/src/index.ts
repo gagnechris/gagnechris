@@ -102,6 +102,7 @@ export {
 } from './task-embeds.js';
 export { indentWidth } from './indent-width.js';
 export {
+  addMovedTaskBlock,
   insertAfterTaskBlock,
   isMarkdownItem,
   lineAfterOuterBlock,
@@ -271,6 +272,7 @@ export {
   PROJECTS_PATH,
   POST_PART_OF_LABEL,
   postPartOfSeparator,
+  postLivePath,
   postPartOfSuffix,
   postProjectLinks,
   PROJECT_BUILD_LOG_HEADING,
@@ -281,6 +283,7 @@ export {
   projectBuildLogEmptyText,
   projectBuildLogPosts,
   projectCardHref,
+  projectLiveHref,
   projectCardViews,
   projectHasPage,
   projectPagePath,

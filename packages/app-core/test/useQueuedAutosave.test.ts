@@ -480,6 +480,40 @@ describe('useQueuedAutosave recovery', () => {
     expect(performSave).not.toHaveBeenCalled();
   });
 
+  test('dropRefused forgets a refused save, so unmount sends nothing', async () => {
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status: 413,
+    }));
+    const { result, unmount } = renderEdited(performSave);
+    await act(async () => {
+      await result.current.save();
+    });
+    act(() => result.current.dropRefused());
+
+    unmount();
+    await flush();
+
+    expect(performSave).toHaveBeenCalledTimes(1);
+  });
+
+  test('dropRefused keeps edits a network failure will retry', async () => {
+    const performSave = vi.fn(async () => ({
+      ok: false as const,
+      status: 503,
+    }));
+    const { result, unmount } = renderEdited(performSave);
+    await act(async () => {
+      await result.current.save();
+    });
+    act(() => result.current.dropRefused());
+
+    unmount();
+    await flush();
+
+    expect(performSave).toHaveBeenCalledTimes(2);
+  });
+
   test('does not save on unmount when nothing is pending', async () => {
     const performSave = vi.fn(async () => ({
       ok: true as const,
