@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   formatResumeShortMonth,
   RESUME_MONTH_PATTERN,
 } from '@gagnechris/shared';
-import { Button, DragHandle, List, ListRow } from '@gagnechris/ui';
+import {
+  Button,
+  DragHandle,
+  List,
+  ListRow,
+  useDragReorder,
+} from '@gagnechris/ui';
 import {
   experienceRangeError,
   roleTitle,
@@ -29,7 +35,6 @@ const roleDatesLabel = (role: ExperienceDraft) => {
 
 export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
   const list = useRef<HTMLUListElement>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
 
   const move = (from: number, to: number) => {
@@ -44,34 +49,11 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
       );
     }
   };
-  const dragToRef = useRef(dragTo);
-  useEffect(() => {
-    dragToRef.current = dragTo;
+  const drag = useDragReorder({
+    ids: roles.map((role) => role.id),
+    list,
+    onMove: dragTo,
   });
-
-  // Window listeners, not pointer capture: reordering moves the row's DOM
-  // node, which drops capture mid-drag.
-  useEffect(() => {
-    if (!draggingId) return;
-    const onMove = (e: PointerEvent) => {
-      const from = roles.findIndex((role) => role.id === draggingId);
-      const rows = [...(list.current?.children ?? [])];
-      const to = rows.findIndex((row) => {
-        const rect = row.getBoundingClientRect();
-        return e.clientY >= rect.top && e.clientY < rect.bottom;
-      });
-      if (from >= 0 && to >= 0) dragToRef.current(from, to);
-    };
-    const stop = () => setDraggingId(null);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', stop);
-      window.removeEventListener('pointercancel', stop);
-    };
-  }, [draggingId, roles]);
 
   return (
     <>
@@ -83,7 +65,7 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
             <ListRow
               key={role.id}
               className={
-                draggingId === role.id ? 'admin-row--dragging' : undefined
+                drag.dragging === role.id ? 'admin-row--dragging' : undefined
               }
               leading={
                 <DragHandle
@@ -92,10 +74,7 @@ export function ResumeRoleList({ roles, onReorder, onOpen, onAdd }: Props) {
                   count={roles.length}
                   aria-describedby="resume-role-reorder-hint"
                   onMove={(by) => move(index, index + by)}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    setDraggingId(role.id);
-                  }}
+                  onPointerDown={drag.start(role.id)}
                 />
               }
               title={roleTitle(role)}

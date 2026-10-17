@@ -33,9 +33,9 @@ more sit in `apps/web/src/workspace/ui`. iOS primitives live in
 | BottomSheet      | `@gagnechris/ui` `BottomSheet`                                                                                   | Admin                        | none: page sheets                                                                                      |
 | Card             | `@gagnechris/ui` `Card` (`boxed`, `flat`; `compact`, `selected`, interactive with `href` or `onClick`)           | public site                  | `Card` in `site/ui.tsx`, `ui/AccountCard.tsx`                                                          |
 | ListRow          | `@gagnechris/ui` `List`, `ListRow`                                                                               | Admin, Notebook              | `ui/ListRow.tsx` (`meta`, `leading`, `trailing`, `current`)                                            |
-| Toolbar          | `@gagnechris/ui` `Toolbar`, `ToolbarSeparator`                                                                   | Admin, Notebook              | none: keyboard toolbar in `ui/LiveMarkdownInput.tsx`                                                   |
-| DragHandle       | `@gagnechris/ui` `DragHandle`                                                                                    | Admin                        | `ui/DragHandle.tsx` (a drag gesture; the row menu moves rows for VoiceOver)                            |
-| EmptyState       | `@gagnechris/ui` `EmptyState`                                                                                    | Notebook                     | `ui/EmptyState.tsx` (`icon`, `title`, text, `action`)                                                  |
+| Toolbar          | `@gagnechris/ui` `Toolbar`                                                                                       | Admin, Notebook              | none: keyboard toolbar in `ui/LiveMarkdownInput.tsx`                                                   |
+| DragHandle       | `@gagnechris/ui` `DragHandle`, `useDragReorder`                                                                  | Admin, Notebook              | `ui/DragHandle.tsx` (a drag gesture; the row menu moves rows for VoiceOver)                            |
+| EmptyState       | `@gagnechris/ui` `EmptyState`                                                                                    | Admin, Notebook              | `ui/EmptyState.tsx` (`icon`, `title`, text, `action`)                                                  |
 | Chips input      | `@gagnechris/ui` `ChipsInput` (a Chip per item)                                                                  | Admin                        | none                                                                                                   |
 | Confirm dialog   | `@gagnechris/ui` `ConfirmDialog`, mounted by `workspace/ui/ConfirmDialogHost.tsx`                                | Admin, Notebook              | none: `ui/confirm.ts` (native alert)                                                                   |
 | SegmentedRadio   | `@gagnechris/ui` `SegmentedRadio`                                                                                | Admin, Notebook              | `ui/SegmentedRadio.tsx`                                                                                |
@@ -45,7 +45,7 @@ more sit in `apps/web/src/workspace/ui`. iOS primitives live in
 | Resize handle    | `workspace/ui/ResizeHandle.tsx`                                                                                  | Notebook                     | web only                                                                                               |
 | Save indicator   | `workspace/ui/SaveIndicator.tsx`                                                                                 | Notebook                     | none                                                                                                   |
 | Editor actions   | `workspace/ui/EditorActionBar.tsx`                                                                               | Admin                        | screen header buttons                                                                                  |
-| Repeater         | `workspace/ui/Repeater.tsx`                                                                                      | Admin                        | none                                                                                                   |
+| Repeater         | `workspace/ui/Repeater.tsx` (a `DragHandle` per row)                                                             | Admin                        | none                                                                                                   |
 | Row actions menu | `admin/PostRowActions.tsx` (`Menu` from an `IconButton`)                                                         | Admin                        | `ui/SwipeRow.tsx`                                                                                      |
 | Table, list      | `.kit-table`, `.kit-list` CSS only                                                                               | Admin                        | `ui/ListRow.tsx`, `ui/Section.tsx`                                                                     |
 | Hooks            | `@gagnechris/ui` `useModalDialog`, `useDismiss`, `useTabs`; `kit/useMediaQuery.ts`, `kit/useDebouncedValue.ts`   | Admin, Notebook              | n/a                                                                                                    |
@@ -157,7 +157,7 @@ look of the app it demonstrates.
 
 The same control is styled several ways:
 
-- **Buttons:** `.kit-btn`, `.bottom-sheet__button`.
+- **Buttons:** `.ui-btn`, `.bottom-sheet__button`.
 - **Menus:** `.workspace-actions`, `.workspace-more`, `.site-menu`.
 - **Chips and pills:** `.today-row__chip`, `.task-embed__pill`,
   `.notebook-upcoming__chip`, `.users-chip`.
@@ -169,7 +169,7 @@ The same control is styled several ways:
 Where the apps style the same control differently, this is the look the library
 uses:
 
-- **Button:** `.kit-btn` wins, in `sm`, `md` and `lg` sizes with a `link`
+- **Button:** `Button` (`.ui-btn`), in `sm`, `md` and `lg` sizes with a `link`
   variant. A disabled button is 55% opacity in every variant, including primary,
   and hovering it changes nothing.
 - **Icon buttons:** one IconButton, ghost by default, 8px corners.
@@ -217,7 +217,8 @@ design canvas, and each component has a story in the Storybook catalog
   `--neutral-300` border), `danger` (`--color-danger` icon, hover
   `--color-danger-bg`).
 - Sizes: `sm` 28px with a 16px icon (task rows), `md` 36px with an 18px icon,
-  `lg` 44px with a 20px icon (phone toolbars, the shell).
+  `lg` 44px with a 20px icon (phone toolbars, the shell). Under 768px `sm`
+  and `md` grow to 44px, so no page CSS resizes them.
 - `label` is required: it is the accessible name and shows as the tooltip. `pressed` sets
   `aria-pressed` with a `--primary-50` fill and `--primary-700` icon. An
   optional `count` shows as a `--primary-600` pill at the top right and is
@@ -342,7 +343,7 @@ on hover and focus on desktop and always on touch screens.
 ### Toolbar
 
 A row of IconButtons in a white box with a `--neutral-200` border and
-`--radius-md`, 4px padding, 2px gaps and optional 1px separators.
+`--radius-md`, 4px padding and 2px gaps.
 `role="toolbar"` with one tab stop; arrows move. The phone editor accessory
 bar uses `lg` buttons above the keyboard.
 
@@ -351,6 +352,11 @@ bar uses `lg` buttons above the keyboard.
 A six-dot grip, 24×32 (44px tall under 768px), `--neutral-400`, grab cursor,
 labelled "Reorder {item}". Space picks up, arrows move, Space drops, and each
 move is announced.
+
+Every reorderable list uses it: the resume roles, the Repeater rows (project
+links, education) and the Notebook areas. `useDragReorder` adds pointer
+dragging over the list's rows; a list that saves on each change, like the
+areas, reorders locally and saves on the drop.
 
 ### EmptyState
 

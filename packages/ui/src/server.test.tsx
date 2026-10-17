@@ -33,7 +33,6 @@ import {
   TextArea,
   TextInput,
   Toolbar,
-  ToolbarSeparator,
 } from './index.js';
 
 const noop = () => {};
@@ -202,7 +201,6 @@ describe('components render without a browser', () => {
       'Toolbar',
       <Toolbar label="Formatting">
         <IconButton label="Bold">B</IconButton>
-        <ToolbarSeparator />
       </Toolbar>,
       'role="toolbar"',
     ],

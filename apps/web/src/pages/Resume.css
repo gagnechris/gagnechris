@@ -39,7 +39,7 @@
 }
 
 /* The library Button, drawn white on ink as the design has it. */
-.resume-intro__actions .kit-btn.resume-download {
+.resume-intro__actions .ui-btn.resume-download {
   min-height: 44px;
   padding: 0 18px;
   border: 0;
@@ -49,7 +49,7 @@
   color: white;
 }
 
-.resume-intro__actions .kit-btn.resume-download:hover {
+.resume-intro__actions .ui-btn.resume-download:hover {
   background-color: var(--neutral-800);
   color: white;
   text-decoration: none;
@@ -337,7 +337,7 @@
     font-size: var(--text-lead);
   }
 
-  .resume-intro__actions .kit-btn.resume-download {
+  .resume-intro__actions .ui-btn.resume-download {
     flex: 1 0 100%;
     min-height: 48px;
     border-radius: 8px;

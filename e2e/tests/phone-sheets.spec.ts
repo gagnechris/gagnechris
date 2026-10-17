@@ -81,14 +81,14 @@ test('project secondary fields open in a bottom sheet', async ({
   await signIn();
   await page.goto(`${apps.admin}/projects/${project.id}`);
   await expect(page.getByLabel('Pitch')).toBeVisible();
-  await expect(page.getByLabel('Order')).toHaveCount(0);
+  await expect(page.getByLabel('Order', { exact: true })).toHaveCount(0);
 
   await page
     .getByRole('button', { name: 'Stack, demo, order and links' })
     .click();
   const sheet = page.getByRole('dialog', { name: 'Project details' });
   await expectBottomSheet(page, sheet);
-  await expect(sheet.getByLabel('Order')).toBeVisible();
+  await expect(sheet.getByLabel('Order', { exact: true })).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Add link' })).toBeVisible();
 });
 

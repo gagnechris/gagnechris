@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { describe, expect, test } from 'vitest';
 import { IconButton } from './IconButton.js';
-import { Toolbar, ToolbarSeparator } from './Toolbar.js';
+import { Toolbar } from './Toolbar.js';
 
 const Harness = () => (
   <>
@@ -10,7 +10,6 @@ const Harness = () => (
     <Toolbar label="Formatting">
       <IconButton label="Bold">B</IconButton>
       <IconButton label="Italic">I</IconButton>
-      <ToolbarSeparator />
       <IconButton label="Strike" disabled>
         S
       </IconButton>
@@ -27,10 +26,6 @@ describe('Toolbar', () => {
     expect(
       screen.getByRole('toolbar', { name: 'Formatting' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('separator')).toHaveAttribute(
-      'aria-orientation',
-      'vertical',
-    );
     const bold = screen.getByRole('button', { name: 'Bold' });
     const italic = screen.getByRole('button', { name: 'Italic' });
     const link = screen.getByRole('button', { name: 'Link' });

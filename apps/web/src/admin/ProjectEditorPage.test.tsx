@@ -140,8 +140,8 @@ describe('ProjectEditorPage fields', () => {
       'since 2026',
     );
     await user.selectOptions(screen.getByLabelText('Demo'), 'notebook');
-    await user.clear(screen.getByLabelText('Order', { exact: false }));
-    await user.type(screen.getByLabelText('Order', { exact: false }), '5');
+    await user.clear(screen.getByLabelText(/^Order/));
+    await user.type(screen.getByLabelText(/^Order/), '5');
     await user.type(screen.getByLabelText('Markdown'), ' and how');
     await save(user);
 

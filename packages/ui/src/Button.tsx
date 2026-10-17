@@ -44,11 +44,11 @@ export const Button = ({
   ...rest
 }: Props) => {
   const classes = cx(
-    'kit-btn',
-    variant !== 'default' && `kit-btn--${variant}`,
-    size !== 'md' && `kit-btn--${size}`,
-    tone === 'editorial' && 'kit-btn--editorial',
-    loading && 'kit-btn--loading',
+    'ui-btn',
+    variant !== 'default' && `ui-btn--${variant}`,
+    size !== 'md' && `ui-btn--${size}`,
+    tone === 'editorial' && 'ui-btn--editorial',
+    loading && 'ui-btn--loading',
     className,
   );
 
@@ -75,7 +75,7 @@ export const Button = ({
       {...buttonRest}
     >
       {loading ? (
-        <span className="kit-btn__spinner" aria-hidden="true" />
+        <span className="ui-btn__spinner" aria-hidden="true" />
       ) : null}
       {children}
     </button>

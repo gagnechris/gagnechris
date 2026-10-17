@@ -58,24 +58,24 @@ describe('Repeater', () => {
     expect(screen.getAllByLabelText(/^Title /)).toHaveLength(3);
   });
 
-  test('reordering keeps focus on the moved field', async () => {
+  test('the drag handle moves a row from the keyboard and keeps its focus', async () => {
     const user = userEvent.setup();
     render(<Harness reorderable />);
 
-    const second = screen.getByLabelText('Title b');
-    second.focus();
-    expect(second).toHaveFocus();
+    screen.getByRole('button', { name: 'Reorder row 2' }).focus();
+    await user.keyboard(' {ArrowUp} ');
 
-    await user.click(screen.getByRole('button', { name: 'Move row 2 up' }));
+    expect(
+      screen
+        .getAllByLabelText(/^Title /)
+        .map((el) => el.getAttribute('aria-label')),
+    ).toEqual(['Title b', 'Title a']);
+    expect(screen.getByLabelText('Title b')).toHaveValue('Second');
+    expect(screen.getByRole('button', { name: 'Reorder row 1' })).toHaveFocus();
+  });
 
-    const moved = screen.getByLabelText('Title b');
-    expect(moved).toHaveValue('Second');
-    expect(screen.getAllByLabelText(/^Title /)[0]).toHaveAttribute(
-      'aria-label',
-      'Title b',
-    );
-    // mousedown preventDefault on reorder buttons keeps focus on the field
-    // (stable keys). Do not call focus() here — that would hide a regression.
-    expect(moved).toHaveFocus();
+  test('without reorderable there is no drag handle', () => {
+    render(<Harness />);
+    expect(screen.queryByRole('button', { name: /^Reorder / })).toBeNull();
   });
 });

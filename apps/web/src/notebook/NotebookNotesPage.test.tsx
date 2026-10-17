@@ -303,6 +303,28 @@ describe('NotebookNotesPage', () => {
     );
   });
 
+  test('New closes on Escape with focus back on it, on a click outside, and when focus leaves', async () => {
+    const user = userEvent.setup();
+    renderNotes();
+    const newButton = await screen.findByRole('button', { name: 'New' });
+    const menu = () => screen.queryByRole('group', { name: 'New note' });
+
+    await user.click(newButton);
+    await user.click(within(menu()!).getByLabelText('Note for a day'));
+    await user.keyboard('{Escape}');
+    expect(menu()).toBeNull();
+    expect(newButton).toHaveFocus();
+
+    await user.click(newButton);
+    await user.click(screen.getByRole('heading', { level: 1 }));
+    expect(menu()).toBeNull();
+
+    await user.click(newButton);
+    within(menu()!).getByRole('button', { name: 'Standing note' }).focus();
+    await user.tab();
+    expect(menu()).toBeNull();
+  });
+
   test('archived notes leave the default list and the Standing filter; Archived shows them', async () => {
     const user = userEvent.setup();
     server.notes = [

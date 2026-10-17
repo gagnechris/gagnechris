@@ -1,4 +1,4 @@
-.kit-btn {
+.ui-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -16,46 +16,46 @@
   cursor: pointer;
 }
 
-.kit-btn:hover:not(:disabled) {
+.ui-btn:hover:not(:disabled) {
   background: var(--neutral-100);
 }
 
-.kit-btn:focus-visible {
+.ui-btn:focus-visible {
   outline: 2px solid var(--primary-600);
   outline-offset: 2px;
 }
 
-.kit-btn:disabled {
+.ui-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.kit-btn--primary {
+.ui-btn--primary {
   background: var(--primary-600);
   border-color: var(--primary-600);
   color: white;
 }
 
-.kit-btn--primary:hover:not(:disabled) {
+.ui-btn--primary:hover:not(:disabled) {
   background: var(--primary-700);
 }
 
-.kit-btn--danger {
+.ui-btn--danger {
   color: var(--color-danger);
   border-color: var(--color-danger-border);
 }
 
-.kit-btn--danger:hover:not(:disabled) {
+.ui-btn--danger:hover:not(:disabled) {
   background: var(--color-danger-bg);
 }
 
-.kit-btn--ghost {
+.ui-btn--ghost {
   border-color: transparent;
   background: transparent;
   color: var(--neutral-700);
 }
 
-.kit-btn--link {
+.ui-btn--link {
   min-height: 0;
   padding: 0;
   border: 0;
@@ -65,28 +65,28 @@
   text-underline-offset: 0.15em;
 }
 
-.kit-btn--link:hover:not(:disabled) {
+.ui-btn--link:hover:not(:disabled) {
   background: none;
   text-decoration-thickness: 2px;
 }
 
-.kit-btn--sm {
+.ui-btn--sm {
   min-height: 32px;
   padding: 0 var(--space-3);
   font-size: var(--text-caption);
 }
 
-.kit-btn--lg {
+.ui-btn--lg {
   min-height: 44px;
   padding: 0 1.25rem;
   font-size: var(--text-base);
 }
 
-.kit-btn--loading {
+.ui-btn--loading {
   cursor: progress;
 }
 
-.kit-btn__spinner {
+.ui-btn__spinner {
   flex: none;
   width: 14px;
   height: 14px;
@@ -96,44 +96,44 @@
   animation: ui-spin 0.7s linear infinite;
 }
 
-.kit-btn--editorial {
+.ui-btn--editorial {
   min-height: 50px;
   padding: 0 var(--space-6);
   border-radius: var(--radius-editorial);
   font-size: var(--text-base);
 }
 
-.kit-btn--editorial.kit-btn--primary {
+.ui-btn--editorial.ui-btn--primary {
   border-color: var(--color-link);
   background: var(--color-link);
 }
 
-.kit-btn--editorial.kit-btn--primary:hover:not(:disabled) {
+.ui-btn--editorial.ui-btn--primary:hover:not(:disabled) {
   border-color: var(--primary-800);
   background: var(--primary-800);
 }
 
-.kit-btn--editorial:focus-visible {
+.ui-btn--editorial:focus-visible {
   outline-color: var(--color-link);
 }
 
-.kit-btn--editorial.kit-btn--loading {
+.ui-btn--editorial.ui-btn--loading {
   opacity: 0.7;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kit-btn__spinner {
+  .ui-btn__spinner {
     animation-duration: 2s;
   }
 }
 
 /* Phones: a finger needs a 44px target. */
 @media (max-width: 767px) {
-  .kit-btn:not(.kit-btn--link) {
+  .ui-btn:not(.ui-btn--link) {
     min-height: 44px;
   }
 
-  .kit-btn.kit-btn--editorial {
+  .ui-btn.ui-btn--editorial {
     min-height: 50px;
   }
 }
