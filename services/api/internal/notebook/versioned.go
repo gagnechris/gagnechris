@@ -78,6 +78,9 @@ type versioned[T any, P entity[T]] struct {
 	// be told from a different one with the same id.
 	createHash func(T) string
 	claim      *uniqueClaim[T]
+	// area is the area a record lives in; a write that puts it into an area
+	// carries that area's fence.
+	area func(T) string
 }
 
 func (s *versioned[T, P]) nowISO() string { return jstime.ISO(s.now()) }
@@ -268,7 +271,15 @@ func (s *versioned[T, P]) create(ctx context.Context, e T) error {
 		}
 		claim.ClaimCode, claim.ClaimMessage = s.claim.code, s.claim.message
 	}
+	fence := -1
+	if s.area != nil {
+		fence = len(items)
+		items = append(items, areaFence(s.table, userID, s.area(e)))
+	}
 	_, err := s.table.DB.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{TransactItems: items})
+	if data.FailedCondition(err, fence) {
+		return unknownArea()
+	}
 	return store.MapWriteError(err, "Create conflict ("+s.label+")", claim)
 }
 
@@ -443,12 +454,22 @@ func (s *versioned[T, P]) mutate(ctx context.Context, userID, id string, expecte
 		return next, err
 	}
 	P(&next).setVersion(base + 1)
-	_, err = s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName:                 aws.String(s.table.Name),
-		Item:                      s.storedItem(next, nil, store.OptString(raw, "createHash")),
-		ConditionExpression:       aws.String(store.VersionMatchCondition),
-		ExpressionAttributeValues: store.VersionMatchValues(base),
-	})
+	put := s.put(s.storedItem(next, nil, store.OptString(raw, "createHash")), store.VersionMatchCondition, store.VersionMatchValues(base))
+	if s.area != nil && s.area(next) != s.area(existing) {
+		_, err = s.table.DB.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{
+			TransactItems: []types.TransactWriteItem{put, areaFence(s.table, userID, s.area(next))},
+		})
+		if data.FailedCondition(err, 1) && !data.FailedCondition(err, 0) {
+			return next, unknownArea()
+		}
+	} else {
+		_, err = s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{
+			TableName:                 put.Put.TableName,
+			Item:                      put.Put.Item,
+			ConditionExpression:       put.Put.ConditionExpression,
+			ExpressionAttributeValues: put.Put.ExpressionAttributeValues,
+		})
+	}
 	err = store.MapVersionedWriteError(err, "Update conflict ("+s.label+" version)", store.ClaimWrite{VersionIndex: -1},
 		func() error { return s.versionConflict(ctx, userID, id, base) })
 	return next, err

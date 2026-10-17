@@ -49,6 +49,7 @@ func newNotesRepo(table *data.Table, now func() time.Time) *notesRepo {
 	r.base = &versioned[Note, *Note]{
 		table: table, now: now, label: "note", changeType: noteChangeType,
 		key: noteKey, parse: ParseNote, item: noteItem, createHash: noteCreateHash,
+		area: func(n Note) string { return n.Area },
 	}
 	r.base.claim = r.dailyClaim()
 	return r
