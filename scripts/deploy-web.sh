@@ -79,6 +79,13 @@ if [ "${MODE}" = upload ]; then
   done
 fi
 
+# The admin app links public pages (View live, previews) at this origin.
+VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
+# Production GA4 property. Only this build sets it, so local, preview and e2e
+# builds load no Google Analytics.
+GA_MEASUREMENT_ID="G-CDG30T24XY"
+export VITE_PUBLIC_SITE_ORIGIN GA_MEASUREMENT_ID
+
 if [ "${MODE}" != upload ]; then
   for setting in "${COGNITO_SETTINGS[@]}"; do
     var="${setting%%=*}"
@@ -88,12 +95,6 @@ if [ "${MODE}" != upload ]; then
     fi
     export "${var?}"
   done
-  # The admin app links public pages (View live, previews) at this origin.
-  VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
-  # Production GA4 property. Only this build sets it, so local, preview and e2e
-  # builds load no Google Analytics.
-  GA_MEASUREMENT_ID="G-CDG30T24XY"
-  export VITE_PUBLIC_SITE_ORIGIN GA_MEASUREMENT_ID
 
   npm run build -w @gagnechris/web
   npm run --silent check:web-shells
