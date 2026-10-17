@@ -355,6 +355,7 @@ back. Restore deletes the row. See `docs/architecture.md`, Users and access.
 | `userId`        | Cognito `sub`, same as in `sk`                          |
 | `email`         | Email at removal                                        |
 | `previousLevel` | `full` \| `cms` \| `notebook` \| `null` (had no access) |
+| `pending`       | `true` until every removal step has run; absent after   |
 | `createdAt`     | ISO-8601, when they were removed                        |
 | `removedBy`     | `sub` of the Full Admin who removed them                |
 

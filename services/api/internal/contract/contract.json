@@ -900,6 +900,10 @@
             }
           ]
         },
+        "pending": {
+          "type": "boolean",
+          "const": true
+        },
         "createdAt": {
           "type": "string",
           "minLength": 1
