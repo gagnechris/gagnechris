@@ -21,6 +21,10 @@ const (
 	defaultLimit = 20
 )
 
+// scanByteCap bounds the text read per type, so a notebook of long notes
+// stops well inside the Lambda's memory and time.
+var scanByteCap = 16_000_000
+
 // Hit is NotebookSearchHitSchema, in its field order.
 type Hit struct {
 	Type    string  `json:"type"`
@@ -81,7 +85,9 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 			return rd.AreaNotesNewestFirst(ctx, userID, a, cursor, limit, limitBytes)
 		})
 	}
-	notes, notesCut, err := scan([][]source[notebook.Note]{noteSources})
+	notes, notesCut, err := scan([][]source[notebook.Note]{noteSources}, func(n notebook.Note) int {
+		return len(n.Title) + len(n.BodyMarkdown)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +106,9 @@ func (h handler) search(ctx context.Context, r *api.Request) (*api.Response, err
 			})
 		}
 	}
-	tasks, tasksCut, err := scan(taskPhases)
+	tasks, tasksCut, err := scan(taskPhases, func(t notebook.Task) int {
+		return len(t.Title) + len(t.Description)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -138,10 +146,11 @@ type response struct {
 
 type source[T any] func(cursor string, limit, limitBytes int) (store.Page[T], error)
 
-// scan reads up to scanCap rows, phase by phase, a page from each source in
-// turn so no one area or status uses up the cap; truncated reports rows it
-// left unread.
-func scan[T any](phases [][]source[T]) (rows []T, truncated bool, err error) {
+// scan reads up to scanCap rows and about scanByteCap bytes of their text,
+// phase by phase, a page from each source in turn so no one area or status
+// uses up the cap; truncated reports rows it left unread.
+func scan[T any](phases [][]source[T], size func(T) int) (rows []T, truncated bool, err error) {
+	read := 0
 	for _, sources := range phases {
 		cursors := make([]string, len(sources))
 		done := make([]bool, len(sources))
@@ -150,12 +159,15 @@ func scan[T any](phases [][]source[T]) (rows []T, truncated bool, err error) {
 				if done[i] {
 					continue
 				}
-				if len(rows) >= scanCap {
+				if len(rows) >= scanCap || read >= scanByteCap {
 					return rows, true, nil
 				}
-				page, err := fetch(cursors[i], min(scanPage, scanCap-len(rows)), store.PageByteBudget)
+				page, err := fetch(cursors[i], min(scanPage, scanCap-len(rows)), min(store.PageByteBudget, scanByteCap-read))
 				if err != nil {
 					return nil, false, err
+				}
+				for _, row := range page.Items {
+					read += size(row)
 				}
 				rows = append(rows, page.Items...)
 				cursors[i] = page.NextCursor
