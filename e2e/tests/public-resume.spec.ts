@@ -212,4 +212,40 @@ test.describe('the resume page', () => {
     expect(after.subarray(0, 5).toString()).toBe('%PDF-');
     expect(after.equals(before)).toBe(false);
   });
+
+  test('Unpublish from the admin takes /resume and its PDF down, as its prompt says', async ({
+    page,
+    apps,
+    signIn,
+    request,
+  }) => {
+    await signIn();
+    await page.goto(`${apps.admin}/resume`);
+    await expect(
+      page.getByRole('textbox', { name: 'Summary', exact: true }),
+    ).not.toHaveValue('');
+
+    try {
+      await page.getByRole('button', { name: 'Unpublish' }).click();
+      const prompt = page.getByRole('alertdialog');
+      await expect(prompt).toContainText('Resume available on request');
+      await expect(prompt).toContainText('PDF');
+      await prompt.getByRole('button', { name: 'Unpublish' }).click();
+
+      await expect
+        .poll(async () => (await request.get(`${site()}/resume`)).text())
+        .toContain('Resume available on request.');
+      const pdf = await request.get(`${site()}/resume.pdf`);
+      expect((await pdf.body()).subarray(0, 5).toString()).not.toBe('%PDF-');
+    } finally {
+      await publishResume(owner(), (current) => current);
+    }
+    await expect
+      .poll(async () =>
+        (await (await request.get(`${site()}/resume.pdf`)).body())
+          .subarray(0, 5)
+          .toString(),
+      )
+      .toBe('%PDF-');
+  });
 });
