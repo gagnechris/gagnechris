@@ -437,7 +437,7 @@ func TestHandleLambdaTrustsTheViewerAddressOnlyWithTheOriginSecret(t *testing.T)
 				HTTP: events.APIGatewayV2HTTPRequestContextHTTPDescription{Method: "POST", SourceIP: "198.51.100.1"},
 			},
 		})
-		if err != nil || out.StatusCode != 200 || seen == nil {
+		if err != nil || out.StatusCode != http.StatusOK || seen == nil {
 			t.Fatalf("%s: %v %+v", c.name, err, out)
 		}
 		if seen.SourceIP != c.want {
