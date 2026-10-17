@@ -263,6 +263,23 @@ describe('daily templates', () => {
     expect(state.resets).toBe(1);
   });
 
+  test('a weekday typed into the template gets a hint; {{weekday}} does not', async () => {
+    const user = userEvent.setup();
+    renderAt('/settings/templates?area=work');
+    const editor = await screen.findByRole('textbox', {
+      name: 'Work template',
+    });
+    expect(screen.queryByText(/Every new day will say/)).toBeNull();
+
+    await user.clear(editor);
+    await user.type(editor, '## Focus for Tuesday');
+    expect(
+      screen.getByText(
+        'Every new day will say Tuesday. Use {{weekday}} to show each day’s own name.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   test('the carried-in section select lists the template’s headings and saves the choice', async () => {
     const user = userEvent.setup();
     renderAt('/settings/templates?area=work');

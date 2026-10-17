@@ -6,6 +6,7 @@ import {
   taskDateMenuItems,
   taskDateToken,
   tokenInsertion,
+  typedBulletCheckboxAsTask,
   type TaskDateMenuItem,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -301,10 +302,19 @@ export const NoteBodyEditor = ({
       else trims.current.delete(key);
       text = rebased.text;
     }
-    edit(key, text);
-    if (caret) {
-      // Rebasing only drops lines from the start of what the view holds.
-      const shift = typed.length - text.length;
+    // Rebasing only drops lines from the start of what the view holds.
+    const shift = typed.length - text.length;
+    const task =
+      caret && caret.start === caret.end
+        ? typedBulletCheckboxAsTask(before, text, caret.start - shift)
+        : null;
+    if (task) {
+      text = task.text;
+      edit(key, text, { start: task.caret, end: task.caret });
+    } else {
+      edit(key, text);
+    }
+    if (caret && !task) {
       caretStale.current = false;
       setFocus({
         key,

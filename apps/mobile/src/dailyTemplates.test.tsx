@@ -88,6 +88,15 @@ describe('daily templates on iOS', () => {
     expect(allText(renderer)).toContain('New Family notes start like this.');
   });
 
+  it('hints when the template names a weekday instead of {{weekday}}', async () => {
+    const renderer = await launch(<DailyTemplatesScreen />);
+    const editor = () => input(renderer, 'Work template');
+    act(() => editor().props.onChangeText('## Focus for Tuesday\n- \n'));
+    expect(allText(renderer)).toContain('Every new day will say Tuesday.');
+    act(() => editor().props.onChangeText('## Focus for {{weekday}}\n- \n'));
+    expect(allText(renderer)).not.toContain('Every new day will say');
+  });
+
   it('saves checklists and never saves task lines', async () => {
     const renderer = await launch(<DailyTemplatesScreen />);
     const editor = () => input(renderer, 'Work template');

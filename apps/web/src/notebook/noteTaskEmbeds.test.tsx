@@ -40,6 +40,7 @@ import { useState } from 'react';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { insertNoteTemplate } from './noteTemplateMenu';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 import {
   resetTaskDetailsStore,
@@ -2138,5 +2139,140 @@ after`);
     expect(body()).toBe(
       `${nested(SUB_1, SUB_2)}\n![image](notebook-image:pasted.png)\n\n\nafter`,
     );
+  });
+
+  describe('with the caret beside a row', () => {
+    const note = `${nested(SUB_1, SUB_2)}\nafter`;
+
+    async function escapeFrom(title: string) {
+      const user = userEvent.setup();
+      await user.click(await screen.findByDisplayValue(title));
+      await user.keyboard('{Escape}');
+      return editorView(document.body);
+    }
+
+    test('Enter beside a parent opens a line after its subtasks', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+
+      press(view, 'Enter');
+      typeInto(view, 'Agenda');
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+    });
+
+    test('Enter beside a subtask opens a line after the whole block', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Pick dates');
+
+      press(view, 'Enter');
+      typeInto(view, 'Agenda');
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+    });
+
+    test('Backspace beside a subtask deletes only its line', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Pick dates');
+
+      press(view, 'Backspace');
+
+      expect(body()).toBe(`${nested(SUB_2)}\nafter`);
+    });
+
+    test('Backspace beside a parent deletes its line and takes its subtasks out a level', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Backspace');
+
+      expect(body()).toBe(`${tokenLine(SUB_1)}\n${tokenLine(SUB_2)}\nafter`);
+    });
+
+    test('Delete beside a parent goes into its first subtask instead of joining the lines', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Delete');
+
+      expect(body()).toBe(note);
+      const field = screen.getByDisplayValue('Pick dates');
+      await waitFor(() => expect(field).toHaveFocus());
+      expect((field as HTMLTextAreaElement).selectionStart).toBe(0);
+    });
+
+    test('Delete beside a row above a line of text leaves both lines', async () => {
+      seed([]);
+      const { body } = renderNote(`${tokenLine(PARENT)}\nafter`);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Delete');
+
+      expect(body()).toBe(`${tokenLine(PARENT)}\nafter`);
+    });
+
+    test('lines pasted beside a parent or a subtask land after the block', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      await screen.findByDisplayValue('Book venue');
+      const view = await editorView(document.body);
+
+      act(() => {
+        const at = view.state.doc.line(1).to;
+        view.dispatch({
+          changes: { from: at, insert: '\nfoo' },
+          selection: { anchor: at + 4 },
+          userEvent: 'input.paste',
+        });
+      });
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nfoo\nafter`);
+
+      act(() => {
+        const at = view.state.doc.line(2).from;
+        view.dispatch({
+          changes: { from: at, insert: 'bar\n' },
+          selection: { anchor: at + 4 },
+          userEvent: 'input.paste',
+        });
+      });
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nbar\nfoo\nafter`);
+    });
+
+    test('a template inserted beside a parent goes after its subtasks', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      act(() => insertNoteTemplate(view, '## Agenda\n'));
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n## Agenda\n\nafter`);
+    });
   });
 });

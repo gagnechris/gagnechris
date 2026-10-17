@@ -15,16 +15,34 @@ import {
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
   noteTemplateHasEmbeds,
 } from '@gagnechris/shared';
-import { Button, Field, List, ListRow, TextInput } from '@gagnechris/ui';
+import {
+  Button,
+  EmptyState,
+  Field,
+  List,
+  ListRow,
+  TextInput,
+} from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { createUlid } from '../lib/ulid';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
+import ShellIcon from '../workspace/ui/ShellIcon';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 
 type Draft = { name: string; bodyMarkdown: string };
 
 const INITIAL_DRAFT: Draft = { name: '', bodyMarkdown: '' };
+
+const MARKDOWN_PREFIX = /^\s*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]?\]\s+)?|\[ \]\s+)/;
+
+function templateSummary(bodyMarkdown: string): string {
+  const line = bodyMarkdown
+    .split('\n')
+    .map((l) => l.replace(MARKDOWN_PREFIX, '').trim())
+    .find(Boolean);
+  return line ?? 'Empty';
+}
 
 function TemplateEditor({
   id,
@@ -204,15 +222,14 @@ function TemplateList({
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
-  if (templates.length === 0) {
-    return <p className="kit-hint">No templates yet.</p>;
-  }
+  if (templates.length === 0) return null;
   return (
     <List aria-label="Templates">
       {[...templates].sort(compareNoteTemplates).map((template) => (
         <ListRow
           key={template.id}
           title={template.name}
+          meta={templateSummary(template.bodyMarkdown)}
           current={template.id === selected}
           onClick={() => onSelect(template.id)}
         />
@@ -273,12 +290,20 @@ export default function NotebookNoteTemplatesPage() {
               id={selected}
               onDeleted={() => select(null)}
             />
+          ) : list.length === 0 ? (
+            <EmptyState
+              icon={<ShellIcon name="templates" size={32} />}
+              title="No templates yet"
+            >
+              Name one under New template to start.
+            </EmptyState>
           ) : (
-            <p className="kit-hint note-templates__empty">
-              {list.length === 0
-                ? 'Create a template to start.'
-                : 'Choose a template to edit it.'}
-            </p>
+            <EmptyState
+              icon={<ShellIcon name="templates" size={32} />}
+              title="Choose a template"
+            >
+              Pick one from the list to edit its text.
+            </EmptyState>
           )}
         </div>
       )}
