@@ -627,11 +627,6 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
     height: 44px;
   }
 
-  .task-embed__details-toggle.ui-icon-btn--sm {
-    width: 2.25rem;
-    height: 44px;
-  }
-
   /* A 44px target around a 26px chip. */
   .task-embed__progress,
   .task-details__chips .ui-chip--button {

@@ -45,7 +45,7 @@ export const Split: Story = {
       {(resetButton) => (
         <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <button type="button" className="kit-btn">
+            <button type="button" className="ui-btn">
               New note
             </button>
             {resetButton}

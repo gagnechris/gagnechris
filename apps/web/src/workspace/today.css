@@ -408,7 +408,7 @@
     display: none;
   }
 
-  .notebook-today__day-nav > .kit-btn {
+  .notebook-today__day-nav > .ui-btn {
     min-width: 44px;
     min-height: 44px;
   }

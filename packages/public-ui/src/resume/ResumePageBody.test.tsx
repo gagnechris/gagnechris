@@ -231,7 +231,7 @@ describe('ResumePageBody', () => {
         '<p class="resume-intro__summary">Results-driven',
     );
     expect(html).toContain(
-      '<a class="kit-btn resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf"><svg',
+      '<a class="ui-btn resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf"><svg',
     );
     expect(html).toContain('</svg>Download PDF</a>');
     expect(html).toContain(

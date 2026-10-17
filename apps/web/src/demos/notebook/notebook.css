@@ -19,7 +19,7 @@
   border-bottom: 1px solid var(--neutral-200);
 }
 
-.notebook-demo__bar .kit-btn {
+.notebook-demo__bar .ui-btn {
   padding: 7px 12px;
   font-size: var(--text-caption);
 }
@@ -123,7 +123,7 @@
   border-radius: var(--radius-sm);
 }
 
-.notebook-demo__add .kit-btn {
+.notebook-demo__add .ui-btn {
   flex: none;
   min-height: 36px;
   padding: 0 14px;
@@ -245,7 +245,7 @@
     outline-offset: 1px;
   }
 
-  .notebook-demo__add .kit-btn {
+  .notebook-demo__add .ui-btn {
     min-height: 44px;
     border-radius: 10px;
     font-size: 1rem;

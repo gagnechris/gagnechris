@@ -64,7 +64,7 @@
   width: 100%;
 }
 
-.no-access__row > .kit-btn {
+.no-access__row > .ui-btn {
   flex: 1 1 10rem;
 }
 

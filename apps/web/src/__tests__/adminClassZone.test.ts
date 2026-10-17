@@ -46,7 +46,7 @@ describe('admin-* classes', () => {
       const sheet = path.join(dir, 'probe.css');
       const component = path.join(dir, 'Probe.tsx');
       fs.writeFileSync(sheet, '.admin-hint { color: red; }\n');
-      fs.writeFileSync(component, 'export const c = "kit-btn admin-btn";\n');
+      fs.writeFileSync(component, 'export const c = "ui-btn admin-btn";\n');
       expect(adminClassesOutsideAdmin([sheet, component])).toHaveLength(2);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

@@ -96,7 +96,7 @@ h4 {
 }
 
 /* index.css lifts every button on hover; library controls stay flat. */
-.kit-btn:hover,
+.ui-btn:hover,
 .ui-icon-btn:hover {
   transform: none;
   box-shadow: none;

@@ -13,7 +13,7 @@ import {
   useCreateStarterProjectsMutation,
   useProjectsQuery,
 } from '@gagnechris/app-core';
-import { Button, StatusBadge } from '@gagnechris/ui';
+import { Button, EmptyState, StatusBadge } from '@gagnechris/ui';
 import './projects.css';
 
 export default function AdminProjectsPage() {
@@ -84,21 +84,22 @@ export default function AdminProjectsPage() {
       {isPending && !error ? <p>Loading…</p> : null}
 
       {projects && projects.length === 0 ? (
-        <div className="admin-project-empty">
-          <p>No projects yet.</p>
-          <p className="kit-hint">
-            Start from drafts for Posts, Notebook and Don’t Feed the Bears, or
-            create one from scratch. Nothing is public until you publish it.
-          </p>
-          <Button
-            disabled={starterMutation.isPending}
-            onClick={() => void createStarters()}
-          >
-            {starterMutation.isPending
-              ? 'Creating…'
-              : 'Create starter projects'}
-          </Button>
-        </div>
+        <EmptyState
+          title="No projects yet."
+          action={
+            <Button
+              disabled={starterMutation.isPending}
+              onClick={() => void createStarters()}
+            >
+              {starterMutation.isPending
+                ? 'Creating…'
+                : 'Create starter projects'}
+            </Button>
+          }
+        >
+          Start from drafts for Posts, Notebook and Don’t Feed the Bears, or
+          create one from scratch. Nothing is public until you publish it.
+        </EmptyState>
       ) : null}
 
       {projects && projects.length > 0 ? (

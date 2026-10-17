@@ -357,7 +357,7 @@
   gap: var(--space-3);
 }
 
-.users-account-row > .kit-btn {
+.users-account-row > .ui-btn {
   flex: none;
 }
 

@@ -35,12 +35,6 @@
   margin: 0 0 var(--space-4);
 }
 
-.admin-editor-fields {
-  display: grid;
-  gap: var(--space-4);
-  margin: var(--space-6) 0;
-}
-
 .admin-post-projects {
   margin: 0;
   padding: 0;
@@ -211,10 +205,6 @@
         var(--vv-offset-top, 0px)
     );
     overflow: auto;
-  }
-
-  .admin-editor-split .admin-editor-fields {
-    margin-top: 0;
   }
 
   .admin-editor-split .admin-preview-title {

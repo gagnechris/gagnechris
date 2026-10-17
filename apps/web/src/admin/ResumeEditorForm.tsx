@@ -192,6 +192,9 @@ function ResumeOverview({
             addLabel="Add entry"
             removeLabel="Remove entry"
             reorderable
+            itemName={(item, position) =>
+              item.title.trim() || `entry ${position}`
+            }
             renderItem={(item, { update }) => (
               <>
                 {(
