@@ -1,0 +1,191 @@
+.notebook-templates {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-4);
+}
+
+/* Side column on the left on wide screens; narrow ones keep source order. */
+@media (min-width: 1000px) {
+  .notebook-templates {
+    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+    grid-template-areas: 'side main';
+    align-items: start;
+  }
+
+  .notebook-templates__editor {
+    grid-area: main;
+  }
+
+  .notebook-templates__side {
+    grid-area: side;
+  }
+}
+
+.notebook-templates__editor,
+.notebook-templates__side {
+  min-width: 0;
+}
+
+.notebook-templates__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.notebook-templates__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.notebook-templates__bar h2 {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+}
+
+.notebook-templates__carry {
+  max-width: 24rem;
+  margin-top: var(--space-4);
+}
+
+.notebook-templates__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.note-templates__new {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* .notebook-card ul is for prose lists. */
+.note-templates__picker .ui-list {
+  display: block;
+  padding: 0;
+}
+
+.note-templates__picker .note-templates__new {
+  margin-top: var(--space-3);
+}
+
+.note-templates__new .kit-field {
+  width: 100%;
+}
+
+.notebook-areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 40rem;
+}
+
+.notebook-areas__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notebook-areas__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.notebook-areas__row .kit-field {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
+/* Level with the input under the field's label, whether or not a hint shows. */
+.notebook-areas__actions {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  margin-top: calc(1lh + var(--space-2));
+}
+
+.notebook-areas__new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--neutral-200);
+}
+
+.notebook-areas__new .kit-field {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
+.note-template-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(22rem, 100vw - 2rem);
+}
+
+.note-template-picker .ui-combobox {
+  flex: none;
+}
+
+.note-template-option__preview {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notebook-card {
+  padding: var(--space-4);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.notebook-card + .notebook-card {
+  margin-top: var(--space-4);
+}
+
+.notebook-card h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+}
+
+.notebook-card ul {
+  margin: 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.notebook-card__meta {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
+.notebook-card__preview {
+  font-size: var(--text-sm);
+}
+
+/* The card is the preview's only frame. */
+.notebook-card__preview .markdown-preview {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}

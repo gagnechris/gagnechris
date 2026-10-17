@@ -1,0 +1,130 @@
+.workspace-search {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: start center;
+  padding: 10vh var(--space-4) var(--space-4);
+}
+
+.workspace-search__panel {
+  position: relative;
+  width: min(36rem, 100%);
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: 0 12px 40px color-mix(in srgb, black 18%, transparent);
+}
+
+.workspace-search__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.workspace-search__toolbar > .kit-input {
+  flex: 1 1 14rem;
+}
+
+.workspace-search__cancel {
+  display: none;
+}
+
+/* Phones: search fills the screen, with Cancel beside the field. */
+
+@media (max-width: 767px) {
+  .workspace-search {
+    padding: 0;
+  }
+
+  .workspace-search__panel {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    padding: calc(var(--space-3) + env(safe-area-inset-top, 0px)) var(--space-4)
+      calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .workspace-search__toolbar > .kit-input {
+    flex: 1 1 0;
+    min-width: 0;
+    order: -2;
+  }
+
+  .workspace-search__cancel {
+    display: inline-flex;
+    order: -1;
+    padding: 0 var(--space-1);
+    color: var(--primary-700);
+  }
+
+  .workspace-search__scope {
+    flex: 1 1 100%;
+  }
+
+  .workspace-search__hit {
+    min-height: 44px;
+  }
+}
+
+.workspace-search__scope {
+  flex: 0 1 14rem;
+}
+
+.workspace-search__check {
+  display: inline-flex;
+  flex: none;
+}
+
+.workspace-search__group-label {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--neutral-600);
+}
+
+.workspace-search__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--neutral-900);
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-search__hit--active,
+.workspace-search__hit:hover {
+  background: color-mix(in srgb, var(--neutral-200) 70%, white);
+}
+
+.workspace-search__hit-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  font-weight: 600;
+}
+
+.workspace-search__hit-snippet {
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+}
+
+.workspace-search__hit-title mark,
+.workspace-search__hit-snippet mark {
+  background: color-mix(in srgb, gold 55%, white);
+  color: inherit;
+  padding: 0 0.1em;
+}
