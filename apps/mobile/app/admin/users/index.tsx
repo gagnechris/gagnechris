@@ -3,7 +3,7 @@ import {
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
   LEVEL_ORDER,
-  STATUS_LABELS,
+  statusLabel,
   userErrorMessage,
   useUsersQuery,
 } from '@gagnechris/app-core';
@@ -111,7 +111,7 @@ const UsersScreen = () => {
               <ContentRow
                 key={user.id}
                 title={`${displayName(user)}${you ? ' (you)' : ''}`}
-                meta={`${levelLabel(user)} · ${STATUS_LABELS[user.status]} · Added ${formatAdded(user.createdAt)}`}
+                meta={`${levelLabel(user)} · ${statusLabel(user)} · Added ${formatAdded(user.createdAt)}`}
                 tags={[user.email]}
                 divider={index > 0}
                 onPress={() => {

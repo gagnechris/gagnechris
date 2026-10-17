@@ -1,4 +1,5 @@
 import {
+  SEARCH_TRUNCATED_HINT,
   useDebouncedNotebookSearch,
   useTaskToggle,
   type LiveTaskHit,
@@ -254,9 +255,7 @@ const SearchScreen = () => {
           </>
         )}
         {searching && search.truncated && !search.pending ? (
-          <Text style={styles.status}>
-            Only your most recent notes and tasks were searched.
-          </Text>
+          <Text style={styles.status}>{SEARCH_TRUNCATED_HINT}</Text>
         ) : null}
       </ScrollView>
     </View>

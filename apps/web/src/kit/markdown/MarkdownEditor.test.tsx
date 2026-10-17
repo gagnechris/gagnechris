@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { undo } from '@codemirror/commands';
 import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -356,6 +357,39 @@ describe('MarkdownEditor task list + options', () => {
       expect(handle.current!.view()!.state.doc.toString()).toBe('two'),
     );
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  test('a new value prop keeps the caret where it was and is not undone', () => {
+    vi.useFakeTimers();
+    try {
+      const handle = createRef<MarkdownEditorHandle>();
+      const onChange = vi.fn();
+      const { rerender } = render(
+        <MarkdownEditor ref={handle} value="one two" onChange={onChange} />,
+      );
+      const view = handle.current!.view()!;
+      view.dispatch({ selection: { anchor: 3 } });
+      handle.current!.insertText('!');
+      expect(onChange).toHaveBeenLastCalledWith('one! two');
+      vi.advanceTimersByTime(500);
+
+      rerender(
+        <MarkdownEditor
+          ref={handle}
+          value="zero one! two"
+          onChange={onChange}
+        />,
+      );
+      expect(view.state.doc.toString()).toBe('zero one! two');
+      expect(view.state.selection.main.head).toBe('zero one!'.length);
+
+      undo(view);
+      expect(view.state.doc.toString()).toBe('zero one two');
+      expect(undo(view)).toBe(false);
+      expect(view.state.doc.toString()).toBe('zero one two');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('a value that lags a keystroke does not undo it', () => {

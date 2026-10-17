@@ -120,6 +120,11 @@ func notebookAreasItem(userID string, a storedAreas) data.Item {
 	item["entityType"] = data.S("notebookAreas")
 	item["userId"] = data.S(userID)
 	item["areas"] = &types.AttributeValueMemberL{Value: list}
+	index := data.Item{}
+	for _, e := range a.Areas.Areas {
+		index[e.ID] = data.Bool(true)
+	}
+	item["areaIndex"] = data.M(index)
 	item["version"] = data.N(int64(a.Version))
 	item["createdAt"] = data.S(a.createdAt)
 	item["updatedAt"] = data.S(*a.UpdatedAt)
@@ -148,14 +153,31 @@ func (r *areasRepo) get(ctx context.Context, userID string) (Areas, error) {
 	return a.Areas, nil
 }
 
+func unknownArea() error {
+	return api.BadRequest("area must be one of your areas", map[string]string{"area": "not_found"})
+}
+
 // require is the list, or a 400 when area isn't on it: rows only go into
 // the user's own areas.
 func (r *areasRepo) require(ctx context.Context, userID, area string) (Areas, error) {
 	a, err := r.get(ctx, userID)
 	if err == nil && !a.Has(area) {
-		err = api.BadRequest("area must be one of your areas", map[string]string{"area": "not_found"})
+		err = unknownArea()
 	}
 	return a, err
+}
+
+// areaFence joins a write that puts a row into area, so the write fails if
+// the area was removed after require read the list. A row written before
+// areaIndex existed has none, and no row is the default list; neither has
+// had an area removed.
+func areaFence(table *data.Table, userID, area string) types.TransactWriteItem {
+	return types.TransactWriteItem{ConditionCheck: &types.ConditionCheck{
+		TableName:                aws.String(table.Name),
+		Key:                      areasKey(userID),
+		ConditionExpression:      aws.String("attribute_not_exists(areaIndex) OR attribute_exists(areaIndex.#area)"),
+		ExpressionAttributeNames: map[string]string{"#area": area},
+	}}
 }
 
 func (r *areasRepo) conflict(ctx context.Context, userID string, expected int) error {
@@ -166,28 +188,98 @@ func (r *areasRepo) conflict(ctx context.Context, userID string, expected int) e
 	return store.VersionConflict(expected, &current.Version, current)
 }
 
-// inUse is whether the area holds a live note or task.
-func (r *areasRepo) inUse(ctx context.Context, userID, area string) (bool, error) {
-	pks := []string{keys.NotebookAreaGSI1Pk(userID, area)}
-	for _, s := range TaskStatuses {
-		pks = append(pks, keys.TaskAreaStatusGSI1Pk(userID, area, s))
+// areaContents counts an area's live notes and tasks by kind.
+type areaContents struct {
+	notes, archived     int
+	open, done, dropped int
+}
+
+func (c areaContents) empty() bool { return c.notes+c.open+c.done+c.dropped == 0 }
+
+func (r *areasRepo) count(ctx context.Context, pk string, filter string) (int, error) {
+	in := &dynamodb.QueryInput{
+		TableName:                 aws.String(r.table.Name),
+		IndexName:                 aws.String(keys.GSI1),
+		KeyConditionExpression:    aws.String("gsi1pk = :pk"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
+		Select:                    types.SelectCount,
 	}
-	for _, pk := range pks {
-		res, err := r.table.DB.Query(ctx, &dynamodb.QueryInput{
-			TableName:                 aws.String(r.table.Name),
-			IndexName:                 aws.String(keys.GSI1),
-			KeyConditionExpression:    aws.String("gsi1pk = :pk"),
-			ExpressionAttributeValues: map[string]types.AttributeValue{":pk": data.S(pk)},
-			Limit:                     aws.Int32(1),
-		})
+	if filter != "" {
+		in.FilterExpression = aws.String(filter)
+		in.ExpressionAttributeValues[":true"] = data.Bool(true)
+	}
+	total := 0
+	pages := dynamodb.NewQueryPaginator(r.table.DB, in)
+	for pages.HasMorePages() {
+		page, err := pages.NextPage(ctx)
 		if err != nil {
-			return false, err
+			return 0, err
 		}
-		if len(res.Items) > 0 {
-			return true, nil
+		total += int(page.Count)
+	}
+	return total, nil
+}
+
+func (r *areasRepo) contents(ctx context.Context, userID, area string) (areaContents, error) {
+	var c areaContents
+	var err error
+	notesPk := keys.NotebookAreaGSI1Pk(userID, area)
+	if c.notes, err = r.count(ctx, notesPk, ""); err != nil {
+		return c, err
+	}
+	if c.notes > 0 {
+		if c.archived, err = r.count(ctx, notesPk, "archived = :true"); err != nil {
+			return c, err
 		}
 	}
-	return false, nil
+	for _, status := range TaskStatuses {
+		n, err := r.count(ctx, keys.TaskAreaStatusGSI1Pk(userID, area, status), "")
+		if err != nil {
+			return c, err
+		}
+		switch status {
+		case "done":
+			c.done += n
+		case "dropped":
+			c.dropped += n
+		default:
+			c.open += n
+		}
+	}
+	return c, nil
+}
+
+func plural(n int, one string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return strconv.Itoa(n) + " " + one + "s"
+}
+
+// inUseMessage names what keeps an area from being removed.
+func inUseMessage(name string, c areaContents) string {
+	var parts []string
+	switch {
+	case c.notes > 0 && c.archived == c.notes:
+		parts = append(parts, plural(c.notes, "archived note"))
+	case c.archived > 0:
+		parts = append(parts, plural(c.notes, "note")+" ("+strconv.Itoa(c.archived)+" archived)")
+	case c.notes > 0:
+		parts = append(parts, plural(c.notes, "note"))
+	}
+	for _, k := range []struct {
+		n    int
+		kind string
+	}{{c.open, "open task"}, {c.done, "done task"}, {c.dropped, "dropped task"}} {
+		if k.n > 0 {
+			parts = append(parts, plural(k.n, k.kind))
+		}
+	}
+	list := parts[0]
+	if len(parts) > 1 {
+		list = strings.Join(parts[:len(parts)-1], ", ") + " and " + parts[len(parts)-1]
+	}
+	return name + " still has " + list + ". Move or delete them before removing it."
 }
 
 // write saves the list. A removed area must be empty; its daily template
@@ -213,15 +305,12 @@ func (r *areasRepo) write(ctx context.Context, userID string, list []contract.Ar
 		}
 	}
 	for _, id := range removed {
-		used, err := r.inUse(ctx, userID, id)
+		c, err := r.contents(ctx, userID, id)
 		if err != nil {
 			return Areas{}, err
 		}
-		if used {
-			return Areas{}, &api.ConflictError{
-				Message: current.Name(id) + " still has notes or tasks. Move or delete them before removing it.",
-				Code:    api.CodeConflict,
-			}
+		if !c.empty() {
+			return Areas{}, &api.ConflictError{Message: inUseMessage(current.Name(id), c), Code: api.CodeConflict}
 		}
 	}
 	now := jstime.ISO(r.now())
@@ -252,7 +341,7 @@ func (r *areasRepo) write(ctx context.Context, userID string, list []contract.Ar
 		if data.ClassifyWriteError(err) == data.WriteConflict {
 			return Areas{}, r.conflict(ctx, userID, base)
 		}
-		return Areas{}, err
+		return Areas{}, mapWriteError(err)
 	}
 	return saved.Areas, nil
 }

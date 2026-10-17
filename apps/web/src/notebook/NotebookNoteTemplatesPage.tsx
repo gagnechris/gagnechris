@@ -13,16 +13,34 @@ import {
   DAILY_TEMPLATE_DATE_TOKEN,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
 } from '@gagnechris/shared';
-import { Button, Field, List, ListRow, TextInput } from '@gagnechris/ui';
+import {
+  Button,
+  EmptyState,
+  Field,
+  List,
+  ListRow,
+  TextInput,
+} from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { createUlid } from '../lib/ulid';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
+import ShellIcon from '../workspace/ui/ShellIcon';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 
 type Draft = { name: string; bodyMarkdown: string };
 
 const INITIAL_DRAFT: Draft = { name: '', bodyMarkdown: '' };
+
+const MARKDOWN_PREFIX = /^\s*(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]?\]\s+)?|\[ \]\s+)/;
+
+function templateSummary(bodyMarkdown: string): string {
+  const line = bodyMarkdown
+    .split('\n')
+    .map((l) => l.replace(MARKDOWN_PREFIX, '').trim())
+    .find(Boolean);
+  return line ?? 'Empty';
+}
 
 function TemplateEditor({
   id,
@@ -87,7 +105,7 @@ function TemplateEditor({
 
   return (
     <section
-      className="note-templates__editor"
+      className="notebook-templates__editor"
       aria-label={`${entity.name} template`}
     >
       <div className="notebook-templates__bar">
@@ -126,12 +144,6 @@ function TemplateEditor({
         label="Template text"
         placeholder="Write what this template inserts…"
       />
-      <p className="kit-hint">
-        Task lines (<code>[ ] text</code>) become tasks in the note you insert
-        the template into. <code>{'{{date}}'}</code>,{' '}
-        <code>{'{{weekday}}'}</code> and <code>{'{{area}}'}</code> are filled in
-        then.
-      </p>
     </section>
   );
 }
@@ -190,15 +202,14 @@ function TemplateList({
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
-  if (templates.length === 0) {
-    return <p className="kit-hint">No templates yet.</p>;
-  }
+  if (templates.length === 0) return null;
   return (
     <List aria-label="Templates">
       {[...templates].sort(compareNoteTemplates).map((template) => (
         <ListRow
           key={template.id}
           title={template.name}
+          meta={templateSummary(template.bodyMarkdown)}
           current={template.id === selected}
           onClick={() => onSelect(template.id)}
         />
@@ -244,27 +255,60 @@ export default function NotebookNoteTemplatesPage() {
       ) : templates.isPending ? (
         <p>Loading templates…</p>
       ) : (
-        <div className="note-templates">
-          <div className="note-templates__side">
-            <TemplateList
-              templates={list}
-              selected={selected}
-              onSelect={select}
-            />
-            <NewTemplateForm onCreated={select} />
-          </div>
+        <div className="notebook-templates">
+          <aside className="notebook-templates__side">
+            <section
+              className="notebook-card note-templates__picker"
+              aria-labelledby="note-templates-list"
+            >
+              <h2 id="note-templates-list">Templates</h2>
+              <TemplateList
+                templates={list}
+                selected={selected}
+                onSelect={select}
+              />
+              <NewTemplateForm onCreated={select} />
+            </section>
+            <section
+              className="notebook-card"
+              aria-labelledby="note-templates-rules"
+            >
+              <h2 id="note-templates-rules">How templates work</h2>
+              <ul>
+                <li>Every area shares these templates.</li>
+                <li>
+                  Task lines (<code>[ ] text</code>) become tasks in the note
+                  you insert the template into.
+                </li>
+                <li>
+                  <code>{'{{date}}'}</code>, <code>{'{{weekday}}'}</code> and{' '}
+                  <code>{'{{area}}'}</code> are filled in when you insert it.
+                </li>
+              </ul>
+            </section>
+          </aside>
           {selected ? (
             <TemplateEditor
               key={selected}
               id={selected}
               onDeleted={() => select(null)}
             />
+          ) : list.length === 0 ? (
+            <EmptyState
+              className="notebook-templates__editor"
+              icon={<ShellIcon name="templates" size={32} />}
+              title="No templates yet"
+            >
+              Name one under New template to start.
+            </EmptyState>
           ) : (
-            <p className="kit-hint note-templates__empty">
-              {list.length === 0
-                ? 'Create a template to start.'
-                : 'Choose a template to edit it.'}
-            </p>
+            <EmptyState
+              className="notebook-templates__editor"
+              icon={<ShellIcon name="templates" size={32} />}
+              title="Choose a template"
+            >
+              Pick one from the list to edit its text.
+            </EmptyState>
           )}
         </div>
       )}

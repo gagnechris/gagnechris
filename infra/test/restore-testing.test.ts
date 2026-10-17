@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { App, Stack } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import { getEnvironment } from '../lib/config/environments.js';
 import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
+import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -27,7 +28,7 @@ let template: Template;
 let ciTemplate: Template;
 
 beforeAll(() => {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', testEnv);
   const deps = new Stack(app, 'RestoreTestDeps', {
     env: { account: config.account, region: config.region },

@@ -215,7 +215,7 @@ describe('Notebook areas over HTTP (DynamoDB Local)', () => {
     expect(refused.body).toMatchObject({
       error: 'conflict',
       message:
-        'Family still has notes or tasks. Move or delete them before removing it.',
+        'Family still has 1 open task. Move or delete them before removing it.',
     });
 
     await ok('PUT', `/api/notebook/tasks/${taskId}`, {
@@ -244,6 +244,151 @@ describe('Notebook areas over HTTP (DynamoDB Local)', () => {
       status: 400,
       body: { fields: { area: 'not_found' } },
     });
+  });
+
+  it('says how many notes and tasks of each kind keep an area', async () => {
+    const as = user('counts');
+    await ok('PUT', PATH, {
+      user: as,
+      body: { version: 0, areas: WITH_FAMILY },
+    });
+    const at = '2026-09-01T12:00:00.000Z';
+    const note = (archived: boolean) =>
+      buildNoteMetaItem({
+        id: ulid(),
+        userId: as,
+        area: 'family',
+        type: 'page',
+        date: null,
+        title: 'Plans',
+        bodyMarkdown: '',
+        tags: [],
+        pinned: false,
+        archived,
+        taskIds: [],
+        version: 1,
+        createdAt: at,
+        updatedAt: at,
+        deleted: false,
+      });
+    const task = (status: 'todo' | 'in_progress' | 'done' | 'dropped') =>
+      buildTaskMetaItem({
+        id: ulid(),
+        userId: as,
+        area: 'family',
+        title: 'Picnic',
+        description: '',
+        priority: 'med',
+        status,
+        dueDate: null,
+        startDate: null,
+        someday: false,
+        completedAt: status === 'done' ? at : null,
+        noteId: null,
+        parentId: null,
+        tags: [],
+        version: 1,
+        createdAt: at,
+        updatedAt: at,
+        deleted: false,
+      });
+    const remove = () =>
+      call('PUT', PATH, { user: as, body: { version: 1, areas: DEFAULTS } });
+    const put = (Item: Record<string, unknown>) =>
+      h.doc.send(new PutCommand({ TableName: h.tableName, Item }));
+
+    await put(note(true));
+    expect((await remove()).body).toMatchObject({
+      message:
+        'Family still has 1 archived note. Move or delete them before removing it.',
+    });
+    for (const Item of [
+      note(false),
+      note(false),
+      task('done'),
+      task('done'),
+      task('dropped'),
+    ]) {
+      await put(Item);
+    }
+    const refused = await remove();
+    expect(refused.status).toBe(409);
+    expect(refused.body).toMatchObject({
+      error: 'conflict',
+      message:
+        'Family still has 3 notes (1 archived), 2 done tasks and 1 dropped task. Move or delete them before removing it.',
+    });
+  });
+
+  it('refuses a note or task written into an area removed after the list was read', async () => {
+    const as = user('fence');
+    await ok('PUT', PATH, {
+      user: as,
+      body: { version: 0, areas: WITH_FAMILY },
+    });
+    const task = await ok('POST', '/api/notebook/tasks', {
+      user: as,
+      body: { id: ulid(), area: 'work', title: 'Plan' },
+    });
+    // The list still names Family, as a request that read it just before the
+    // removal would see; the index the removal wrote no longer has it.
+    const key = keys.notebook.areas(as);
+    const stored = await h.doc.send(
+      new GetCommand({ TableName: h.tableName, Key: key }),
+    );
+    await h.doc.send(
+      new PutCommand({
+        TableName: h.tableName,
+        Item: { ...stored.Item, areaIndex: { work: true, personal: true } },
+      }),
+    );
+    const refused = { status: 400, body: { fields: { area: 'not_found' } } };
+    expect(
+      await call('POST', '/api/notebook/tasks', {
+        user: as,
+        body: { id: ulid(), area: 'family', title: 'Too late' },
+      }),
+    ).toMatchObject(refused);
+    expect(
+      await call('POST', '/api/notebook/notes', {
+        user: as,
+        body: { id: ulid(), area: 'family', type: 'page', title: 'Too late' },
+      }),
+    ).toMatchObject(refused);
+    expect(
+      await call('PUT', `/api/notebook/tasks/${task.id}`, {
+        user: as,
+        body: { version: task.version, area: 'family' },
+      }),
+    ).toMatchObject(refused);
+    expect(
+      await call('PUT', `/api/notebook/notes/daily/family/${DAY}`, {
+        user: as,
+        body: { id: ulid(), bodyMarkdown: 'Too late' },
+      }),
+    ).toMatchObject(refused);
+    expect(
+      await ok('PUT', `/api/notebook/tasks/${task.id}`, {
+        user: as,
+        body: { version: task.version, title: 'Still in Work' },
+      }),
+    ).toMatchObject({ area: 'work', title: 'Still in Work' });
+  });
+
+  it('answers 400 for a daily note in an area that is not yours', async () => {
+    const as = user('unknown-daily');
+    const refused = { status: 400, body: { fields: { area: 'not_found' } } };
+    expect(
+      await call('GET', `/api/notebook/notes/daily/family/${DAY}`, {
+        user: as,
+      }),
+    ).toMatchObject(refused);
+    expect(
+      await call('POST', `/api/notebook/notes/daily/family/${DAY}/open`, {
+        user: as,
+        body: { id: ulid() },
+      }),
+    ).toMatchObject(refused);
   });
 
   it('rejects stale versions, repeated ids, bad slugs and an empty list', async () => {

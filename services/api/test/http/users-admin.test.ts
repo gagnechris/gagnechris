@@ -3,7 +3,7 @@ import {
   USER_EMAIL_MAX_LENGTH,
   USER_NAME_MAX_LENGTH,
 } from '@gagnechris/shared';
-import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import type { ManagedUser } from '@gagnechris/shared';
 import { idToken, siteAdmin, userAdmin } from './support/claims.js';
@@ -295,6 +295,72 @@ describe('users and access', () => {
       user: { id: editor.id, level: 'full', status: 'invited' },
       restored: true,
     });
+  });
+
+  it('a removal that stopped part-way is unfinished until it runs again, and restore sets exactly the chosen level', async () => {
+    const lead = await invite('lead@example.com', 'full');
+    const base = `/admin/users/${lead.id}`;
+    const key = keys.removedUser(lead.id);
+    await h.doc.send(
+      new PutCommand({
+        TableName: h.tableName,
+        Item: {
+          ...key,
+          entityType: 'removedUser',
+          userId: lead.id,
+          email: 'lead@example.com',
+          previousLevel: 'full',
+          pending: true,
+          createdAt: '2026-10-01T00:00:00.000Z',
+          removedBy: OWNER,
+        },
+      }),
+    );
+    const listed = async () =>
+      ((await call('GET', '/admin/users')).body.users as ManagedUser[]).find(
+        (u) => u.id === lead.id,
+      );
+    expect(await listed()).toEqual({
+      ...lead,
+      status: 'removed',
+      removalUnfinished: true,
+    });
+
+    const restored = await call('POST', `${base}/restore`, {
+      body: { level: 'cms' },
+    });
+    expect(user(restored)).toEqual({ ...lead, level: 'cms' });
+
+    expect(user(await call('POST', `${base}/remove`))).toEqual({
+      ...lead,
+      level: 'cms',
+      status: 'removed',
+    });
+    const row = await h.doc.send(
+      new GetCommand({ TableName: h.tableName, Key: key }),
+    );
+    expect(row.Item).toMatchObject({ previousLevel: 'cms' });
+    expect(row.Item).not.toHaveProperty('pending');
+    expect(await listed()).not.toHaveProperty('removalUnfinished');
+  });
+
+  it('inviting a pending invite again at another level is user_exists', async () => {
+    const pending = await invite('pending@example.com', 'notebook');
+    for (const level of ['full', 'cms']) {
+      expect(
+        await call('POST', '/admin/users', {
+          body: { email: 'pending@example.com', level },
+        }),
+      ).toEqual({
+        status: 409,
+        body: {
+          error: 'user_exists',
+          message: 'Someone with this email already has an account.',
+        },
+      });
+    }
+    const all = (await call('GET', '/admin/users')).body.users as ManagedUser[];
+    expect(all.find((u) => u.id === pending.id)).toEqual(pending);
   });
 
   it('restoring someone removed with no access asks for a level', async () => {
