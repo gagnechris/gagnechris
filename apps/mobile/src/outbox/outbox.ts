@@ -195,8 +195,31 @@ export class Outbox {
         deleted: true,
         updatedAt: this.now(),
       };
-      await db.withTransactionAsync(() => deleteOps(db, plan.drop));
+      // The API refuses a task whose note doesn't exist; an online delete
+      // leaves its tasks with no note, so these go out that way too.
+      const homeless =
+        next.entity === 'note'
+          ? this.ops.filter(
+              (op) =>
+                op.entity === 'task' &&
+                op.body.noteId === next.entityId &&
+                !plan.drop.includes(op.seq),
+            )
+          : [];
+      await db.withTransactionAsync(async () => {
+        await deleteOps(db, plan.drop);
+        for (const op of homeless) {
+          op.body = { ...op.body, noteId: null };
+          await rewriteOp(db, op);
+        }
+      });
       this.ops = this.ops.filter((op) => !plan.drop.includes(op.seq));
+      if (next.entity === 'note') {
+        for (const id of this.deps.tasksInNote(next.entityId)) {
+          const task = this.deps.lookup('task', id);
+          if (task) this.deps.onReplaced('task', { ...task, noteId: null });
+        }
+      }
       this.notify();
       return {
         seq: null,

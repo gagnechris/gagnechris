@@ -74,7 +74,9 @@ filter is `sk = PUBLISHED`, so draft META updates never invoke the Lambda.
 | `entityType` | `slug`             |
 
 Create/rename: conditional `PutItem` with `attribute_not_exists(pk)` so two
-posts cannot claim the same slug.
+posts cannot claim the same slug. A post holds the claim on its draft slug and,
+while it has a `PUBLISHED` row, on the live slug too: a draft rename keeps the
+live URL reserved until publish, unpublish, discard or delete releases it.
 
 #### `SLUG#<oldSlug>` / `REDIRECT` — rename / soft URL keep
 
@@ -84,8 +86,8 @@ posts cannot claim the same slug.
 | `postId`     | Owning post                 |
 | `entityType` | `slugRedirect`              |
 
-On rename: write `REDIRECT` for the old slug, replace `SLUG#new` / `POST`,
-update `META.slug`. The publisher reads `REDIRECT` by slug when it would
+On rename: write `REDIRECT` for the old slug, claim `SLUG#new` / `POST`,
+release the old claim unless it is the live slug, update `META.slug`. The publisher reads `REDIRECT` by slug when it would
 delete the page at an old published slug: if the row's `postId` is
 published, it leaves a redirect page there instead (see Architecture,
 request flow), which the edge serves as a 301 to the post's current slug. A
@@ -101,7 +103,7 @@ then replaces the redirect.
 | Search / count (admin)  | Same queries; `q` is matched in the API on the projected rows (reads 200 rows at a time, stops at the page limit). Counts are `Select: COUNT` on each status partition                                             |
 | List published by date  | GSI1 `STATUS#published` ids ∪ `SITE#publish` `postIds` → `BatchGet` `PUBLISHED`                                                                                                                                    |
 | Enforce slug uniqueness | Conditional put on `SLUG#` / `POST`                                                                                                                                                                                |
-| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claim                                                                                                                                                     |
+| Soft delete             | Set META `status=deleted`, delete `PUBLISHED`, drop slug claims                                                                                                                                                    |
 | Publish / discard       | Publish copies META → `PUBLISHED`; discard copies `PUBLISHED` → META                                                                                                                                               |
 
 ### Tags
@@ -441,7 +443,7 @@ Context written under the task.
 - `taskIds` is derived by the API from `bodyMarkdown` on every create and update (unique ids, first-seen order); clients never send it. A row with no `taskIds` attribute derives it on read.
 - Parsing lives in `@gagnechris/shared` (`findTaskEmbeds`, `taskEmbedIds`, `replaceTaskEmbeds`, `removeTaskEmbedLines`, `taskEmbedFallbackLine`) and is React Native safe, so the native app can use the same parser.
 - A renderer without live tasks replaces each embed line with a plain checklist line: `- [ ] Title`, `- [x] Title` when done, `- [ ] ~~Title~~ (dropped)` when dropped, or `- [ ] (deleted task)` when the task is gone. The Notebook export and search do this; the shared markdown sanitizer passes an unrendered token through as text.
-- On the web, typing `[ ] some text` on its own line (not `- [ ]`, which stays a markdown checklist) and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. Each `[ ]` line makes its own task, so the same text twice gives two tasks, and pasting several `[ ]` lines converts each one. Undoing a conversion brings the line back; leaving it again embeds the same task (its token is no longer in the note), and if the line was edited first the task is updated to the new text, so undo never leaves an orphan (and is not a delete).
+- On the web, typing `[ ] some text` on its own line and then pressing Enter or leaving the line creates the task with a client ULID (`noteId` = this note, `area` = the note's area, and `startDate`, `someday` and `priority` from the line's task syntax, which is removed from the title; see `docs/architecture.md`) and replaces the line with the token in the same editor change, so the next autosave already holds the token. Creates retry with the same ULID, so a lost response never makes a second task. Each `[ ]` line makes its own task, so the same text twice gives two tasks, and pasting several `[ ]` lines converts each one. Undoing a conversion brings the line back; leaving it again embeds the same task (its token is no longer in the note), and if the line was edited first the task is updated to the new text, so undo never leaves an orphan (and is not a delete). In a note, typing the `]` that completes `- [ ]` (or `* [ ]`, `+ [ ]`) at a bullet's start rewrites the line to `[ ]` after the same indent (`bulletCheckboxAsTask` in `@gagnechris/shared`; on the web one undo step brings the bullet back), so it becomes a task the same way; `- [ ]` already in the text, pasted, or in a template stays a markdown checklist.
 - **Subtasks:** an embed line indented under another embed line, with no blank line between them, is a subtask of that task. Subtasks are one level deep: a task line under a subtask is nested but has no parent. Only the task's home note decides its parent, and only when the parent is in the same area and is not itself a subtask, so two notes cannot nest tasks under each other. The API sets each task's `parentId` from its home note on every note create and update (`taskEmbedNesting` and `taskEmbedParents` in `@gagnechris/shared`, ported to Go), when a task moves to another note or area, and clears it when the parent is deleted. That clear reads only the parent's home note, daily notes dated from the day before the parent was created and pages saved since then; a subtask homed in an older note keeps the deleted parent's id until that note is next saved. Setting a parent never fails the note save or the task update; a failure is logged.
 - Deleting an embed line deletes its task, in whichever note the line was. The delete waits `EMBED_DELETE_GRACE_MS` (3 s) and is dropped if the line comes back first (undo, paste); closing the note sends it at once. Cutting a line does not delete the task, since it is being moved. A note line whose task is deleted or missing is taken out of the note, and the note saves without it.
 

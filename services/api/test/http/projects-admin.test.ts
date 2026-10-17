@@ -416,6 +416,30 @@ describe('publish, discard and delete', () => {
     ).toBeUndefined();
   });
 
+  it('keeps the live slug while a renamed draft is unpublished', async () => {
+    const live = await act(await create({ name: 'Hello' }), 'publish');
+    const renamed = await edit(live, { slug: 'hello-world' });
+    const res = await call('POST', '/api/admin/projects', {
+      body: { name: 'Hello' },
+    });
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({
+      error: 'slug_taken',
+      message: 'Slug "hello" is already taken',
+    });
+    expect((await row(keys.project.slugClaim('hello')))?.projectId).toBe(
+      live.id,
+    );
+
+    const discarded = await act(renamed, 'discard');
+    expect(discarded.slug).toBe('hello');
+    expect(await row(keys.project.slugClaim('hello-world'))).toBeUndefined();
+
+    await act(await edit(discarded, { slug: 'hello-world' }), 'publish');
+    expect(await row(keys.project.slugClaim('hello'))).toBeUndefined();
+    expect((await create({ name: 'Hello' })).slug).toBe('hello');
+  });
+
   it('leaves a redirect on rename and refuses a taken slug', async () => {
     const a = await create({ name: 'Alpha' });
     await create({ name: 'Beta' });

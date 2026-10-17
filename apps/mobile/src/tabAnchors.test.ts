@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
-import { getReactNavigationConfig } from 'expo-router/build/getReactNavigationConfig';
 import { getRoutes } from 'expo-router/build/getRoutes';
+import { getLayoutAnchor } from 'expo-router/build/layoutAnchor';
 import { describe, expect, it } from 'vitest';
 
 // The real route tree: tab layouts load (they carry `unstable_settings`),
@@ -19,7 +19,9 @@ const appContext = Object.assign(
   },
 );
 
-const spaceScreens = (space: '(tabs)' | 'admin') => {
+type RouteNode = Parameters<typeof getLayoutAnchor>[0];
+
+const anchor = (space: '(tabs)' | 'admin', tab: string) => {
   const routes = getRoutes(
     appContext as never,
     {
@@ -27,20 +29,17 @@ const spaceScreens = (space: '(tabs)' | 'admin') => {
       skipGenerated: true,
     } as never,
   );
-  const config = getReactNavigationConfig(routes!, true) as {
-    screens: Record<
-      string,
-      { screens: Record<string, { initialRouteName?: string }> }
-    >;
-  };
-  return config.screens[space]!.screens;
+  const node = routes?.children
+    .find((r) => r.route === space)
+    ?.children.find((r) => r.route === tab);
+  return node && getLayoutAnchor(node as RouteNode);
 };
 
 describe('Notebook tab stacks', () => {
   it.each(['today', 'upcoming', 'notes', 'tasks'])(
     'put the %s list under a detail opened from outside the tab',
     (tab) => {
-      expect(spaceScreens('(tabs)')[tab]?.initialRouteName).toBe('index');
+      expect(anchor('(tabs)', tab)).toBe('index');
     },
   );
 });
@@ -49,7 +48,7 @@ describe('Admin tab stacks', () => {
   it.each(['posts', 'projects', 'pages'])(
     'put the %s list under a screen opened from a link',
     (tab) => {
-      expect(spaceScreens('admin')[tab]?.initialRouteName).toBe('index');
+      expect(anchor('admin', tab)).toBe('index');
     },
   );
 });
