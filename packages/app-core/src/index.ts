@@ -278,6 +278,7 @@ export {
   useMergeIntoDailyNoteMutation,
   useNotesByIds,
   useNotesQuery,
+  useArchiveNoteMutation,
   usePinNoteMutation,
   type DailyNoteResourceParams,
   type NoteResourceParams,

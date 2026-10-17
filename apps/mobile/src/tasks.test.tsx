@@ -243,7 +243,13 @@ describe('All tasks', () => {
 
     await act(async () => byLabel(renderer, 'Dropped').props.onPress());
     await settle(10);
-    expect(has(renderer.root, 'Reopen Old idea')).toBe(1);
+    expect(has(renderer.root, 'Reopen Old idea')).toBe(0);
+    const box = byLabel(renderer, 'Complete Old idea');
+    expect(box.props.accessibilityState.checked).toBe(false);
+    expect(box.props.accessibilityValue).toEqual({ text: 'Dropped' });
+    await act(async () => box.props.onPress());
+    await settle(10);
+    expect(server.state.taskStore.get(C)!.status).toBe('done');
   });
 
   it('shows a subtask’s parent above its title, muted once the parent is done', async () => {
@@ -312,7 +318,12 @@ describe('All tasks', () => {
 
     await act(async () => byLabel(renderer, 'Dropped').props.onPress());
     await settle(10);
-    await act(async () => byLabel(renderer, 'Reopen Dentist').props.onPress());
+    act(() => byLabel(renderer, 'More for Dentist').props.onPress());
+    const [reopenSheet, pick] = vi.mocked(
+      ActionSheetIOS.showActionSheetWithOptions,
+    ).mock.lastCall!;
+    expect(reopenSheet.options).toEqual(['Reopen', 'Cancel']);
+    await act(async () => pick(0));
     await settle(10);
     expect(server.state.taskStore.get(B)!.status).toBe('todo');
   });

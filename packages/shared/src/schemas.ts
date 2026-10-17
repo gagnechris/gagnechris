@@ -651,6 +651,11 @@ export function isOpenTaskStatus(status: TaskStatus): boolean {
   return status === 'todo' || status === 'in_progress';
 }
 
+/** What a task's checkbox does: a done task reopens; any other, dropped too, completes. */
+export const taskCheckboxAction = (
+  status: TaskStatus,
+): 'complete' | 'reopen' => (status === 'done' ? 'reopen' : 'complete');
+
 /** Well under DynamoDB's 400 KB item cap so oversize is a 413, not a 500. */
 export const NOTEBOOK_TEXT_MAX_BYTES = 100_000;
 export const NOTEBOOK_TITLE_MAX_LENGTH = 300;

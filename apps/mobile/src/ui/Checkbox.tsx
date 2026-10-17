@@ -53,9 +53,10 @@ export const Checkbox = ({
       accessibilityRole="checkbox"
       accessibilityLabel={label}
       accessibilityState={{
-        checked: mixed ? 'mixed' : checked || isDropped,
+        checked: mixed ? 'mixed' : checked,
         disabled,
       }}
+      accessibilityValue={isDropped ? { text: 'Dropped' } : undefined}
       disabled={disabled}
       onPress={() => onChange(!checked)}
       hitSlop={8}

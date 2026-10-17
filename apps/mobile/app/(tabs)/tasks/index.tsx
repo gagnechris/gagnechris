@@ -6,6 +6,7 @@ import {
 } from '@gagnechris/app-core';
 import {
   isOpenTaskStatus,
+  taskCheckboxAction,
   matchesTaskShowOn,
   sortTasksForList,
   taskShowOnQuery,
@@ -260,7 +261,11 @@ const TasksScreen = () => {
                     due={open ? taskDue(task, today) : null}
                     priority={task.priority}
                     onOpen={() => router.push(`/tasks/${task.id}`)}
-                    onToggle={() => (open ? complete(task) : reopen(task))}
+                    onToggle={() =>
+                      taskCheckboxAction(task.status) === 'reopen'
+                        ? reopen(task)
+                        : complete(task)
+                    }
                     onMore={() => showMore(task)}
                     moreLabel={open ? 'Complete or drop' : 'Reopen'}
                   />

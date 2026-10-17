@@ -10,6 +10,10 @@ export type TaskLineDraft = {
   priority: TaskPriority;
 };
 
+/** A task title is one line: pasted line breaks become spaces. */
+export const oneLineTaskTitle = (text: string) =>
+  text.replace(/\s*\n\s*/g, ' ');
+
 /** `[ ] ` at the start of a line, after any indent. */
 export const TASK_LINE_PREFIX = /^[ \t]*\[ \][ \t]+/;
 

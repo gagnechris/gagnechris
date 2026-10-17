@@ -8,6 +8,11 @@ type Props = {
   meta?: string;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /**
+   * A control at the end that carries its own VoiceOver label, such as a
+   * switch: the row is then not one element, so VoiceOver reaches the control.
+   */
+  control?: ReactNode;
   current?: boolean;
   destructive?: boolean;
   divider?: boolean;
@@ -21,6 +26,7 @@ export const ListRow = ({
   meta,
   leading,
   trailing,
+  control,
   current,
   destructive,
   divider,
@@ -31,10 +37,20 @@ export const ListRow = ({
   const body = (
     <>
       {leading}
-      <Text style={[styles.title, destructive && styles.destructive]}>
+      <Text
+        style={[styles.title, destructive && styles.destructive]}
+        accessibilityElementsHidden={control ? true : undefined}
+      >
         {title}
       </Text>
-      {meta ? <Text style={styles.meta}>{meta}</Text> : null}
+      {meta ? (
+        <Text
+          style={styles.meta}
+          accessibilityElementsHidden={control ? true : undefined}
+        >
+          {meta}
+        </Text>
+      ) : null}
       {trailing}
     </>
   );
@@ -45,6 +61,14 @@ export const ListRow = ({
   ];
   const label = accessibilityLabel ?? (meta ? `${title}, ${meta}` : title);
   const state = current ? { selected: true } : undefined;
+  if (control) {
+    return (
+      <View style={style}>
+        {body}
+        {control}
+      </View>
+    );
+  }
   if (!onPress) {
     return (
       <View

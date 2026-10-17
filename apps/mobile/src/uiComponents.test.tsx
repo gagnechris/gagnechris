@@ -1,5 +1,5 @@
 import { tokens } from '@gagnechris/tokens';
-import { ActionSheetIOS } from 'react-native';
+import { ActionSheetIOS, Switch } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { expectAccessible } from '../test/accessible';
@@ -199,8 +199,11 @@ describe('Checkbox', () => {
       'mixed',
     );
     expect(byLabel(renderer, 'Dropped').props.accessibilityState.checked).toBe(
-      true,
+      false,
     );
+    expect(byLabel(renderer, 'Dropped').props.accessibilityValue).toEqual({
+      text: 'Dropped',
+    });
     act(() => byLabel(renderer, 'Round').props.onPress());
     expect(onChange).toHaveBeenCalledWith(false);
     expectAccessible(renderer);
@@ -239,6 +242,21 @@ describe('Chip and ChipSelect', () => {
     const renderer = await render(<Chip onRemove={onRemove}>work</Chip>);
     act(() => byLabel(renderer, 'Remove work').props.onPress());
     expect(onRemove).toHaveBeenCalled();
+    expectAccessible(renderer);
+  });
+
+  it('keeps the remove button reachable on a chip that also presses', async () => {
+    const onPress = vi.fn();
+    const onRemove = vi.fn();
+    const renderer = await render(
+      <Chip onPress={onPress} onRemove={onRemove}>
+        work
+      </Chip>,
+    );
+    act(() => byLabel(renderer, 'work').props.onPress());
+    act(() => byLabel(renderer, 'Remove work').props.onPress());
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledTimes(1);
     expectAccessible(renderer);
   });
 
@@ -321,6 +339,35 @@ describe('ListRow, SearchInput and EmptyState', () => {
     expect(row.props.accessibilityState).toEqual({ selected: true });
     expect(flatStyle(row.props.style).backgroundColor).toBe(color.accentSoft);
     expectAccessible(renderer);
+  });
+
+  it('ListRow leaves a control at its end reachable on its own', async () => {
+    const renderer = await render(
+      <ListRow
+        title="Present"
+        control={<Switch accessibilityLabel="Present" value={false} />}
+      />,
+    );
+    expect(
+      renderer.root.findAll(
+        (node) =>
+          typeof node.type === 'string' && node.props.accessible === true,
+      ),
+    ).toEqual([]);
+    expect(byLabel(renderer, 'Present').type).toBe('Switch');
+    expectAccessible(renderer);
+  });
+
+  it('expectAccessible flags a control inside one accessible element', async () => {
+    const renderer = await render(
+      <ListRow
+        title="Present"
+        trailing={<Switch accessibilityLabel="Present" value={false} />}
+      />,
+    );
+    expect(() => expectAccessible(renderer)).toThrow(
+      /Switch "Present" sits inside "Present"/,
+    );
   });
 
   it('SearchInput reports each change through onValueChange', async () => {

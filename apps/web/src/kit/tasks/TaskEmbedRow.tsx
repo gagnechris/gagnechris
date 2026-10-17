@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import {
   findBareUrls,
   NOTEBOOK_TITLE_MAX_LENGTH,
+  oneLineTaskTitle,
   shortenUrl,
   type Task,
   type TaskDue,
@@ -300,7 +301,7 @@ function TaskEmbedTitle({
         onFocus={() => {
           if (draftRef.current === null) edit(title);
         }}
-        onChange={(e) => edit(e.target.value.replace(/\s*\n\s*/g, ' '))}
+        onChange={(e) => edit(oneLineTaskTitle(e.target.value))}
         onBlur={() => {
           if (draftRef.current !== null) commit();
         }}

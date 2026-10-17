@@ -81,19 +81,38 @@ export const Chip = ({
       </View>
     );
   }
+  const press = {
+    accessibilityRole: 'button',
+    accessibilityLabel: accessibilityLabel ?? children,
+    accessibilityHint,
+    accessibilityState: { disabled, selected: pressed },
+    onPress,
+    disabled,
+    hitSlop: CHIP_SLOP,
+  } as const;
+  // Side by side, not nested: VoiceOver can't reach a button inside another.
+  if (remove) {
+    return (
+      <View style={box}>
+        <Pressable
+          {...press}
+          style={({ pressed: touched }) => [
+            styles.content,
+            touched && styles.touched,
+          ]}
+        >
+          {content}
+        </Pressable>
+        {remove}
+      </View>
+    );
+  }
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? children}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled, selected: pressed }}
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={CHIP_SLOP}
+      {...press}
       style={({ pressed: touched }) => [...box, touched && styles.touched]}
     >
       <View style={styles.content}>{content}</View>
-      {remove}
     </Pressable>
   );
 };

@@ -152,6 +152,7 @@ export {
 } from './task-blocks.js';
 export {
   bulletCheckboxAsTask,
+  oneLineTaskTitle,
   parseTaskLine,
   TASK_LINE_PREFIX,
   taskLineDraft,
@@ -236,6 +237,7 @@ export {
   noteOpenTaskCount,
   noteSections,
   noteTitle,
+  notesInArchiveView,
   sidebarStandingNotes,
   type ListNote,
   type NoteSection,

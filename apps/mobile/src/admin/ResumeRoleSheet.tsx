@@ -88,8 +88,7 @@ export const ResumeRoleSheet = ({
       <Section>
         <ListRow
           title="Present (current role)"
-          accessibilityLabel="Present (current role)"
-          trailing={
+          control={
             <Switch
               accessibilityLabel="Present (current role)"
               value={role.present}

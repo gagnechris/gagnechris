@@ -13,6 +13,7 @@ import {
   noteFirstLine,
   noteOpenTaskCount,
   noteSections,
+  notesInArchiveView,
   noteTitle,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
@@ -73,10 +74,10 @@ export default function NotebookNotesPage() {
   } = useNotebookExport();
 
   const sections = useMemo(() => {
-    const showArchived = typeFilter === 'archived';
-    const all = (
-      notesQuery.data?.pages.flatMap((page) => page.items) ?? []
-    ).filter((n) => Boolean(n.archived) === showArchived);
+    const all = notesInArchiveView(
+      notesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+      typeFilter === 'archived',
+    );
     const needle = q.trim().toLowerCase();
     const matching = needle
       ? all.filter(
