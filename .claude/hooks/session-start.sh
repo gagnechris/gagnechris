@@ -11,7 +11,7 @@ cd "$CLAUDE_PROJECT_DIR"
 # The image's preinstalled Node can trail .nvmrc, and engine-strict rejects it.
 export NVM_DIR="${NVM_DIR:-/opt/nvm}"
 # shellcheck disable=SC1091
-source "$NVM_DIR/nvm.sh"
+source "$NVM_DIR/nvm.sh" --no-use
 # nvm's remote version lookup fails now and then; one failure here leaves the
 # session with no node_modules.
 for attempt in 1 2 3; do
@@ -26,8 +26,9 @@ export PATH="$node_bin:$PATH"
 
 # Chromium is preinstalled at PLAYWRIGHT_BROWSERS_PATH; skip browser downloads.
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-npm install --no-audit --no-fund
-# npm ci: an install would rewrite the mobile lockfile's workspace link metadata.
+# npm ci, not install: an install rewrites lockfile metadata when the image's npm
+# differs, and that churn ends up in commits.
+npm ci --no-audit --no-fund
 npm ci --prefix apps/mobile --no-audit --no-fund
 
 # The image's Go fetches the toolchain services/api/go.mod pins (GOTOOLCHAIN=auto).

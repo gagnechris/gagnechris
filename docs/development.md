@@ -22,8 +22,8 @@ npm ci --prefix apps/mobile
 `.claude/hooks/session-start.sh` runs at the start of each cloud session (it
 exits immediately on a local machine). It installs the Node version from
 `.nvmrc` with nvm and puts it first on `PATH` for the session, installs root
-dependencies (`npm install`, without Playwright browser downloads) and
-`apps/mobile` dependencies (`npm ci`), downloads the Go toolchain and modules
+dependencies (without Playwright browser downloads) and `apps/mobile`
+dependencies with `npm ci`, downloads the Go toolchain and modules
 for `services/api/` and its tools, installs `rsync` if it is missing (the
 scripts tests and `seed-shell` need it), starts the Docker daemon (logging to
 `/var/log/dockerd.log`) and sets `E2E_CHROMIUM_EXECUTABLE` to the image's
@@ -112,6 +112,13 @@ set. `npm install` points `core.hooksPath` at `.githooks`, whose `pre-push`
 runs `npm run verify`; `git push --no-verify` skips it. The build, web shell,
 RN bundle, Storybook build, CDK synth, e2e and integration checks stay CI-only (run them
 yourself when the change touches them).
+
+Unit tests in `verify`, the CI **Test** step and `scripts/ci/mobile-checks.sh`
+run with `TZ=Pacific/Kiritimati` (`TEST_TZ` in `scripts/verify.ts`), UTC+14. From
+10:00 UTC on, its local date is a day ahead of UTC, so a test that hard-codes
+today's date or weekday, or mixes UTC and local days, fails on its own PR. A
+plain `npm test` uses your own time zone; run `TZ=Pacific/Kiritimati npm test`
+to match CI.
 
 ```bash
 npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile

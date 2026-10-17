@@ -131,8 +131,8 @@ const note = (n: number, overrides: Partial<Note>): Note => ({
   pinned: false,
   taskIds: [],
   version: 1,
-  createdAt: '2026-09-01T13:00:00.000Z',
-  updatedAt: '2026-09-01T13:00:00.000Z',
+  createdAt: new Date(2026, 8, 1, 13).toISOString(),
+  updatedAt: new Date(2026, 8, 1, 13).toISOString(),
   deleted: false,
   ...overrides,
 });

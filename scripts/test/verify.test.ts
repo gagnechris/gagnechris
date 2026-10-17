@@ -5,6 +5,7 @@ import {
   planSteps,
   runAll,
   schedule,
+  TEST_TZ,
   type Step,
   type Workspace,
 } from '../verify.js';
@@ -54,6 +55,15 @@ describe('verify', () => {
     expect(affectedWorkspaces(['package-lock.json'], all)).toHaveLength(
       all.length,
     );
+  });
+
+  it('runs tests, and only tests, in TEST_TZ', () => {
+    const steps = planSteps(['apps/web/src/a.tsx'], [], all);
+    for (const step of steps) {
+      expect(step.env?.TZ).toBe(
+        step.name.startsWith('Test ') ? TEST_TZ : undefined,
+      );
+    }
   });
 
   it('formats and lints only the changed files', () => {

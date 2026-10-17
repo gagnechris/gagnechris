@@ -147,7 +147,7 @@ describe('stillOpenSource', () => {
     id: 't',
     title: 'Draft spec',
     noteId: 'n1',
-    createdAt: '2026-09-30T15:00:00.000Z',
+    createdAt: new Date(2026, 8, 30, 15).toISOString(),
   });
 
   test('names the home daily note and how long ago', () => {
