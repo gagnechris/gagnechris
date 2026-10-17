@@ -6,4 +6,4 @@
 - `npm install` installs a `pre-push` hook that runs `npm run verify`, the CI checks your changes can affect. Don't bypass it with `--no-verify`; fix what it reports.
 - Open a PR and wait for every required check to pass before merging: **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**.
 - Branches don't need to be up to date with `main` to merge. If `main` goes red after a merge (you'll get an alert email), fix it forward with a PR before merging anything else.
-- Branch protection on `main` is defined in `scripts/main-branch-ruleset.json` and applied via `scripts/apply-branch-protection.sh`.
+- Branch protection on `main` is defined in `scripts/main-branch-ruleset.json`, and the `ios-v*` release tag ruleset in `scripts/ios-release-tag-ruleset.json`; `scripts/apply-branch-protection.sh` applies both.

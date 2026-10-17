@@ -1,4 +1,4 @@
-import { Aspects, App, Stack } from 'aws-cdk-lib';
+import { Aspects, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
@@ -21,6 +21,7 @@ import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
+import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -34,7 +35,7 @@ type Json = any;
 type Resource = { Type: string; Properties: Record<string, Json> };
 
 function build() {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', testEnv);
   const env = { account: config.account, region: config.region };
   const deps = new Stack(app, 'Deps', { env });

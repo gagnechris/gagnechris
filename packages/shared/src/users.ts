@@ -61,6 +61,8 @@ export const ManagedUserSchema = z.object({
   level: AccessLevelSchema.nullable(),
   status: ManagedUserStatusSchema,
   createdAt: z.string().nullable(),
+  /** Removed, but a step failed, so they may still sign in; removing again finishes it. */
+  removalUnfinished: z.boolean().optional(),
 });
 export type ManagedUser = z.infer<typeof ManagedUserSchema>;
 

@@ -20,6 +20,9 @@ export interface Step {
   cmd: string[];
   // Steps with the same group run one after another.
   group?: string;
+  // Generate steps rewrite files that other steps read, so they all finish
+  // before any other step starts.
+  phase?: 'generate';
 }
 
 // Changes here can break any workspace.
@@ -32,16 +35,31 @@ const GLOBAL_FILES = [
   '.npmrc',
 ];
 
+// Changes here can change the result for files nobody touched.
+const LINT_CONFIG = ['eslint.config.js', 'package.json', 'package-lock.json'];
+const FORMAT_CONFIG = [
+  'prettier.config.js',
+  '.prettierignore',
+  'package.json',
+  'package-lock.json',
+];
+
 const LINTABLE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 
 // Inputs outside a workspace's own directory, by workspace directory.
 const EXTRA_INPUTS: Record<string, string[]> = {
-  scripts: ['.github/', '.githooks/'],
+  scripts: [
+    '.github/',
+    '.githooks/',
+    '.claude/hooks/',
+    'packages/app-core/',
+    'packages/ui/',
+  ],
 };
 
-// openapi:check and go:generate:check both rewrite the generated Go files that
-// the other and the Go steps read.
+// openapi:check and go:generate:check both rewrite the generated Go files.
 const GO_CODEGEN_GROUP = 'go-codegen';
+const GO_GROUP = 'go';
 
 // Inputs of each generated-file check; a change under any prefix runs it.
 const CODEGEN: Array<{ script: string; inputs: string[]; group?: string }> = [
@@ -166,8 +184,9 @@ export function planSteps(
   const steps: Step[] = [];
   const files = everything ? [] : existing;
   const changed = [...existing, ...deleted];
+  const lintConfig = changed.some((f) => LINT_CONFIG.includes(f));
 
-  if (everything) {
+  if (everything || changed.some((f) => FORMAT_CONFIG.includes(f))) {
     steps.push({ name: 'Prettier', cmd: ['npm', 'run', 'format:check'] });
   } else if (files.length > 0) {
     steps.push({
@@ -179,7 +198,7 @@ export function planSteps(
   const lintable = files.filter(
     (f) => LINTABLE.test(f) && !inDir(f, 'apps/mobile'),
   );
-  if (everything) {
+  if (everything || lintConfig) {
     steps.push({ name: 'ESLint', cmd: ['npm', 'run', 'lint'] });
   } else if (lintable.length > 0) {
     steps.push({
@@ -196,7 +215,7 @@ export function planSteps(
     if (
       w.prefix &&
       w.scripts.includes('lint') &&
-      (everything || changed.some((f) => inDir(f, w.dir)))
+      (everything || lintConfig || changed.some((f) => inDir(f, w.dir)))
     ) {
       steps.push({ name: `Lint ${w.name}`, cmd: npmRun(w, 'lint') });
     }
@@ -215,9 +234,30 @@ export function planSteps(
       steps.push({
         name: script,
         cmd: ['npm', 'run', script],
+        phase: 'generate',
         ...(group ? { group } : {}),
       });
     }
+  }
+
+  // The scripts tests include the repo-wide ticket-id check, which any file
+  // can fail.
+  if (
+    changed.length > 0 &&
+    !steps.some((s) => s.name === 'Test @gagnechris/scripts')
+  ) {
+    steps.push({
+      name: 'Ticket ids',
+      cmd: [
+        'npm',
+        'run',
+        'test',
+        '-w',
+        '@gagnechris/scripts',
+        '--',
+        'test/no-ticket-ids.test.ts',
+      ],
+    });
   }
 
   if (
@@ -244,19 +284,19 @@ export function planSteps(
     steps.push({
       name: 'Go lint',
       cmd: ['npm', 'run', 'go:lint'],
-      group: GO_CODEGEN_GROUP,
+      group: GO_GROUP,
     });
     steps.push({
       name: 'Go test',
       cmd: ['npm', 'run', 'go:test'],
-      group: GO_CODEGEN_GROUP,
+      group: GO_GROUP,
     });
   }
   return steps;
 }
 
-function git(args: string[]): string {
-  const r = spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+function git(args: string[], root = ROOT): string {
+  const r = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
   if (r.status !== 0)
     throw new Error(`git ${args.join(' ')}: ${r.stderr.trim()}`);
   return r.stdout.trim();
@@ -264,27 +304,52 @@ function git(args: string[]): string {
 
 const lines = (s: string) => s.split('\n').filter(Boolean);
 
-function changedFiles():
-  { changed: string[]; added: string[]; deleted: string[] } | undefined {
+// The checks read the working tree, so they speak for a pushed commit only
+// when the tree is that commit.
+export function pushedTreeProblem(
+  sha: string,
+  root = ROOT,
+): string | undefined {
+  const head = git(['rev-parse', 'HEAD'], root);
+  const pushed = git(['rev-parse', `${sha}^{commit}`], root);
+  if (head !== pushed) {
+    return `the pushed commit ${pushed.slice(0, 12)} is not HEAD (${head.slice(0, 12)}); check it out and push again`;
+  }
+  const dirty = git(['status', '--porcelain', '--untracked-files=all'], root);
+  if (dirty) {
+    return `the working tree has changes the push does not carry; commit or stash them (git stash -u) and push again:\n${dirty}`;
+  }
+  return undefined;
+}
+
+export function changedFiles(
+  root = ROOT,
+): { changed: string[]; added: string[]; deleted: string[] } | undefined {
   let base: string;
   try {
-    base = git(['merge-base', 'origin/main', 'HEAD']);
+    base = git(['merge-base', 'origin/main', 'HEAD'], root);
   } catch {
     return undefined;
   }
   // Against the working tree, so uncommitted edits count too. Without rename
   // detection a rename lists both paths.
+  const untracked = lines(
+    git(['ls-files', '--others', '--exclude-standard'], root),
+  );
   const changed = new Set([
     ...lines(
-      git(['diff', '--name-only', '--no-renames', '--diff-filter=ACMRD', base]),
+      git(
+        ['diff', '--name-only', '--no-renames', '--diff-filter=ACMRD', base],
+        root,
+      ),
     ),
-    ...lines(git(['ls-files', '--others', '--exclude-standard'])),
+    ...untracked,
   ]);
   const added = new Set([
-    ...lines(git(['diff', '--name-only', '--diff-filter=AR', base])),
-    ...lines(git(['ls-files', '--others', '--exclude-standard'])),
+    ...lines(git(['diff', '--name-only', '--diff-filter=AR', base], root)),
+    ...untracked,
   ]);
-  const exists = (f: string) => existsSync(join(ROOT, f));
+  const exists = (f: string) => existsSync(join(root, f));
   return {
     changed: [...changed].filter(exists).sort(),
     added: [...added].sort(),
@@ -346,26 +411,39 @@ export async function runAll(
   runStep: (step: Step) => Promise<Result> = run,
 ): Promise<Result[]> {
   const results: Result[] = [];
-  const units = schedule(steps);
-  let next = 0;
-  const worker = async () => {
-    while (next < units.length) {
-      for (const step of units[next++]!) {
-        const result = await runStep(step);
-        console.log(
-          `${result.ok ? '✓' : '✗'} ${result.step.name} (${result.seconds}s)`,
-        );
-        if (!result.ok) console.log(result.output);
-        results.push(result);
+  const pool = async (units: Step[][]) => {
+    let next = 0;
+    const worker = async () => {
+      while (next < units.length) {
+        for (const step of units[next++]!) {
+          const result = await runStep(step);
+          console.log(
+            `${result.ok ? '✓' : '✗'} ${result.step.name} (${result.seconds}s)`,
+          );
+          if (!result.ok) console.log(result.output);
+          results.push(result);
+        }
       }
-    }
+    };
+    await Promise.all(Array.from({ length: concurrency }, worker));
   };
-  await Promise.all(Array.from({ length: concurrency }, worker));
+  await pool(schedule(steps.filter((s) => s.phase === 'generate')));
+  await pool(schedule(steps.filter((s) => s.phase !== 'generate')));
   return results;
 }
 
 async function main(argv: string[]) {
   const everything = argv.includes('--all');
+  const pushedAt = argv.indexOf('--pushed');
+  if (pushedAt !== -1) {
+    const problem = pushedTreeProblem(argv[pushedAt + 1] ?? '');
+    if (problem) {
+      console.error(
+        `verify: ${problem}\n(git push --no-verify skips this check.)`,
+      );
+      process.exit(1);
+    }
+  }
   const diff = everything ? undefined : changedFiles();
   if (!everything && !diff) {
     console.log('No origin/main to diff against; running every check.');
