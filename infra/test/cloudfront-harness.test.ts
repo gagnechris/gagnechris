@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const HARNESS = 'infra/lib/cloudfront/harness.ts';
 const FUNCTION_FILE =
-  /(?:viewer-request-function|viewer-response-function|app-viewer-request)\.js/;
+  /(?:viewer-request-function|viewer-response-function|app-viewer-request|api-viewer-request)\.js/;
 
 const tracked = execFileSync('git', ['ls-files', '*.ts', '*.tsx', '*.mjs'], {
   cwd: ROOT,

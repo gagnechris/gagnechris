@@ -27,12 +27,17 @@ import {
   type AuthUser,
 } from './auth/session';
 import { WorkspaceQueryProvider } from './query/WorkspaceQueryProvider';
-import { IconButton, Scrim, useModalDialog } from '@gagnechris/ui';
+import {
+  IconButton,
+  PanelCollapseButton,
+  PanelExpandEdge,
+  Scrim,
+  useModalDialog,
+  usePanelEdgeFocus,
+} from '@gagnechris/ui';
 import { visibleNavSections } from './navSections';
-import { PanelCollapseButton, PanelExpandEdge } from './ui/PanelEdge';
 import { ResizeHandle } from './ui/ResizeHandle';
 import ShellIcon, { type ShellIconName } from './ui/ShellIcon';
-import { usePanelEdgeFocus } from './ui/usePanelEdgeFocus';
 import { useStoredWidth } from './ui/useStoredWidth';
 import { noteColumnRoom } from './ui/noteColumn';
 import { useVisualViewportCssVars } from './useVisualViewportCssVars';

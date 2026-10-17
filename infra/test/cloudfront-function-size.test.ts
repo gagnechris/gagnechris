@@ -64,6 +64,7 @@ describe('CloudFront function code', () => {
         'viewer-request-function.js',
         'viewer-response-function.js',
         'app-viewer-request.js',
+        'api-viewer-request.js',
       ]
         .map((name) => functionSource(name))
         .sort(),

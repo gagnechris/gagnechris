@@ -29,7 +29,8 @@ type Request struct {
 	// Claims are the JWT authorizer's; nil on public routes.
 	Claims    map[string]string
 	RequestID string
-	// SourceIP is the caller's address as API Gateway saw it.
+	// SourceIP is the viewer's address when CloudFront vouches for it,
+	// otherwise the address that connected to API Gateway.
 	SourceIP string
 	Params   map[string]string
 	Log      *slog.Logger

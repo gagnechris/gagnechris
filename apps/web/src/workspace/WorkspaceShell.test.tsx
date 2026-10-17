@@ -231,7 +231,7 @@ describe('collapsible sidebar', () => {
     const collapse = sidebarToggle();
     expect(sidebar).toContainElement(collapse);
     expect(
-      collapse.closest('.workspace-edge-track')?.previousElementSibling,
+      collapse.closest('.ui-panel-edge-track')?.previousElementSibling,
     ).toBe(screen.getByRole('separator', { name: 'Resize sidebar' }));
     expect(collapse).toHaveAttribute('aria-expanded', 'true');
     expect(collapse).toHaveAttribute('title', 'Hide sidebar (⌘\\)');
@@ -241,8 +241,8 @@ describe('collapsible sidebar', () => {
     expect(shell(container)).toHaveClass('workspace--sidebar-closed');
     const expand = sidebarToggle();
     expect(sidebar).not.toContainElement(expand);
-    expect(expand.closest('.workspace-edge-zone')).toHaveClass(
-      'workspace-edge-zone--left',
+    expect(expand.closest('.ui-panel-edge-zone')).toHaveClass(
+      'ui-panel-edge-zone--left',
     );
     expect(expand).toHaveFocus();
     expect(expand).toHaveAttribute('aria-expanded', 'false');
@@ -253,7 +253,7 @@ describe('collapsible sidebar', () => {
     expect(shell(container)).not.toHaveClass('workspace--sidebar-closed');
     expect(sidebarToggle()).toHaveAttribute('aria-expanded', 'true');
     expect(sidebarToggle()).toHaveFocus();
-    expect(container.querySelector('.workspace-edge-zone')).toBeNull();
+    expect(container.querySelector('.ui-panel-edge-zone')).toBeNull();
   });
 
   test('Tab reaches the sidebar edge button, and ⌘\\ hands focus to the window edge', async () => {

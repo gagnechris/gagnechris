@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Builds the Storybook catalog and ships it to components.gagnechris.com.
+#
+#   deploy-components.sh         build, then upload
+#   deploy-components.sh build   build only, with no AWS access
+#   deploy-components.sh upload  upload an existing build
 set -euo pipefail
+
+MODE="${1:-all}"
+case "${MODE}" in
+  all | build | upload) ;;
+  *)
+    echo "Usage: deploy-components.sh [build|upload]" >&2
+    exit 2
+    ;;
+esac
 
 ENV_NAME="${ENV_NAME:-prod}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -18,14 +31,23 @@ ssm_value() {
     --query 'Parameter.Value' --output text
 }
 
-BUCKET="$(ssm_value componentsBucketName)"
-DISTRIBUTION_ID="$(ssm_value componentsDistributionId)"
+if [ "${MODE}" != build ]; then
+  BUCKET="$(ssm_value componentsBucketName)"
+  DISTRIBUTION_ID="$(ssm_value componentsDistributionId)"
+fi
 
-npm run storybook:build
+if [ "${MODE}" != upload ]; then
+  npm run storybook:build
+fi
 
 if [ ! -f "${DIST}/index.html" ]; then
   echo "Missing build output: ${DIST}/index.html" >&2
   exit 1
+fi
+
+if [ "${MODE}" = build ]; then
+  echo "Components build complete."
+  exit 0
 fi
 
 echo "Deploying components → s3://${BUCKET} (CloudFront ${DISTRIBUTION_ID})"

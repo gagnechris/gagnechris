@@ -23,6 +23,11 @@ The brief a coordinating session gives each agent it asks to implement a ticket.
 ## Tests that prove the fix
 
 - Every acceptance criterion needs a test that **fails when the fix is reverted**. Revert the fix, run the test, watch it fail, then restore the fix. Say so in the PR body.
+- Tests must pass on any day, at any hour, in any time zone and with any generated id:
+  - Never hard-code today's date or weekday. Fix the clock (`vi.setSystemTime`, Playwright `page.clock`) or derive the expected value from the same clock the code reads.
+  - Build local times with `new Date(y, m, d, h)`, not a `…Z` string, when the code shows a local day. Unit tests run at UTC+14 in `verify` and CI to catch this.
+  - Generated ULIDs can contain any short run of the other letters, so a search term in a test whose results include raw ids needs an I, L, O or U.
+  - For layout that depends on a day or month name, pin the clock to the longest one.
 - Match the surrounding code's style. Keep comments sparse. Update docs in the same PR when behavior or commands change.
 
 ## Git safety

@@ -372,7 +372,8 @@ const unindented = (text: string) => text.replace(/^[ \t]+/gm, '');
 /**
  * A typed or deleted change that would remove or join the lines a fold hides
  * is dropped: nothing on screen says they would go. Taking out the parent's
- * whole line, or only changing the hidden lines' indent, is fine.
+ * whole line, a change that also covers the parent's whole row (select all),
+ * or only changing the hidden lines' indent, is fine.
  */
 const keepFoldedLines = EditorState.transactionFilter.of((tr) => {
   if (
@@ -390,8 +391,12 @@ const keepFoldedLines = EditorState.transactionFilter.of((tr) => {
     const reindented =
       unindented(doc.sliceString(a, b)) === unindented(inserted.toString());
     folds.between(a, b, (from, to) => {
-      const parentLine = a <= doc.lineAt(from).from && b === from + 1;
-      if (a <= to && b > from && !parentLine && !reindented) hidden = true;
+      const rowStart = doc.lineAt(from).from;
+      const parentLine = a <= rowStart && b === from + 1;
+      const wholeBlock = a <= rowStart && b >= to;
+      if (a <= to && b > from && !parentLine && !wholeBlock && !reindented) {
+        hidden = true;
+      }
     });
   });
   return hidden ? {} : tr;
