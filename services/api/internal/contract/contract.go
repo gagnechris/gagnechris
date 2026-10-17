@@ -51,6 +51,8 @@ type API struct {
 	SESGlobalDailyCap                 int        `json:"sesGlobalDailyCap"`
 	ResumeNotifySESDailyCap           int        `json:"resumeNotifySesDailyCap"`
 	MinContactSubmitMs                int64      `json:"minContactSubmitMs"`
+	OriginVerifyHeader                string     `json:"originVerifyHeader"`
+	ViewerAddressHeader               string     `json:"viewerAddressHeader"`
 	NotebookImageUploadsPerUserPerDay int        `json:"notebookImageUploadsPerUserPerDay"`
 	Metrics                           APIMetrics `json:"metrics"`
 }
@@ -140,6 +142,7 @@ type Notebook struct {
 	NoteTemplateNameMaxLength   int               `json:"noteTemplateNameMaxLength"`
 	NoteTemplateMaxCount        int               `json:"noteTemplateMaxCount"`
 	NoteTemplateLimitMessage    string            `json:"noteTemplateLimitMessage"`
+	NoteTemplateEmbedMessage    string            `json:"noteTemplateEmbedMessage"`
 	AreaIDPattern               string            `json:"areaIdPattern"`
 	AreaIDMaxLength             int               `json:"areaIdMaxLength"`
 	AreaNameMaxLength           int               `json:"areaNameMaxLength"`

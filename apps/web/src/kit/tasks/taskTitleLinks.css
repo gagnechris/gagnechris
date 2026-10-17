@@ -1,0 +1,14 @@
+/* Shrinks before the title does, so a long title keeps the row's width. */
+.task-title-link {
+  flex: 0 100 auto;
+  align-self: center;
+  min-width: 2.5em;
+  max-width: 12rem;
+  overflow: hidden;
+  color: var(--primary-700);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
