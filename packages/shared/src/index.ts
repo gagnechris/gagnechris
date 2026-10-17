@@ -137,7 +137,9 @@ export {
 } from './task-embeds.js';
 export { indentWidth } from './indent-width.js';
 export {
+  insertAfterTaskBlock,
   isMarkdownItem,
+  lineAfterOuterBlock,
   markdownItemBlock,
   noteHeadings,
   reindent,

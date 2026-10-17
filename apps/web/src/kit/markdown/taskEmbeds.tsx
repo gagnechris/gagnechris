@@ -7,7 +7,6 @@ import {
   type Extension,
   type Line,
   type Range,
-  type Text,
 } from '@codemirror/state';
 import {
   Decoration,
@@ -23,6 +22,7 @@ import {
   fenceLineKind,
   findTaskEmbeds,
   indentWidth,
+  lineAfterOuterBlock,
   parseTaskEmbedLine,
   parseTaskLine,
   reindent,
@@ -528,7 +528,8 @@ function guardEmbedLines(widgets: StateField<DecorationSet>) {
       };
     }
     const { doc } = tr.startState;
-    const end = doc.line(outerBlockEnd(doc, line.number));
+    // Zero-based, the line after the block is its last line's number.
+    const end = doc.line(lineAfterOuterBlock(doc.toJSON(), line.number - 1));
     if (!atStart && end.number === line.number && edit.text.startsWith('\n')) {
       return tr;
     }
@@ -771,25 +772,6 @@ export function taskEmbedEditor({
 }
 
 /**
- * The last line of the outermost block holding line `n`. A blank line inside
- * a block would end it and take its subtasks from their parent.
- */
-function outerBlockEnd(doc: Text, n: number): number {
-  let top = n;
-  for (let k = n - 1; k >= 1 && indentWidth(doc.line(top).text) > 0; k -= 1) {
-    const text = doc.line(k).text;
-    if (!text.trim()) break;
-    if (
-      indentWidth(text) < indentWidth(doc.line(top).text) &&
-      blockEnd(doc, k) >= n
-    ) {
-      top = k;
-    }
-  }
-  return blockEnd(doc, top);
-}
-
-/**
  * Moves the caret out of an embed row back into the note: onto the blank line
  * after its block (adding one unless the next line is already blank), or to
  * the end of the embed's own line.
@@ -809,7 +791,7 @@ export function leaveTaskEmbed(
     view.dispatch({ selection: { anchor: line.to } });
     return;
   }
-  const end = doc.line(outerBlockEnd(doc, line.number));
+  const end = doc.line(lineAfterOuterBlock(doc.toJSON(), line.number - 1));
   if (end.number < doc.lines && !doc.line(end.number + 1).text.trim()) {
     const next = doc.line(end.number + 1);
     view.dispatch({ selection: { anchor: next.to }, scrollIntoView: true });

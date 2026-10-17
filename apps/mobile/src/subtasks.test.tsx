@@ -53,6 +53,26 @@ const titled = (renderer: ReactTestRenderer, title: string) =>
       node.props.accessibilityLabel === `Open task ${title}`,
   ).length;
 
+const bodies = (renderer: ReactTestRenderer) =>
+  renderer.root.findAll(
+    (node) =>
+      (node.type as string) === 'TextInput' &&
+      node.props.accessibilityLabel === 'Note body',
+  );
+
+const titleFields = (renderer: ReactTestRenderer) =>
+  renderer.root.findAll(
+    (node) =>
+      typeof node.type === 'string' &&
+      node.props.accessibilityLabel === 'Task title',
+  );
+
+const savedBody = (body: string) =>
+  vi.waitFor(
+    () => expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(body),
+    { timeout: 3_000 },
+  );
+
 const family = () =>
   serve(
     [
@@ -198,5 +218,41 @@ describe('subtasks in a note', () => {
     const renderer = await renderNote();
     await settle(10);
     expect(byLabel(renderer, 'Subtask of Trip, finished')).toBeTruthy();
+  });
+
+  it.each([
+    ['a parent', 0],
+    ['a subtask with a sibling below', 1],
+  ])(
+    'Return in the title of %s opens a line after the whole block',
+    async (_, row) => {
+      family();
+      const renderer = await renderNote();
+      act(() => titleFields(renderer)[row]!.props.onSubmitEditing());
+      await settle(2);
+      const opened = bodies(renderer).find((b) => b.props.value === '\nafter')!;
+      act(() => opened.props.onChangeText('Call hotel\nafter'));
+      await savedBody(
+        `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nCall hotel\nafter`,
+      );
+    },
+  );
+
+  it('puts a paste that starts with a line break under a row after its block', async () => {
+    family();
+    const renderer = await renderNote();
+    const [, underParent] = bodies(renderer);
+    expect(underParent!.props.value).toBe('');
+    act(() =>
+      underParent!.props.onChangeText('\nCall hotel', { start: 11, end: 11 }),
+    );
+    await savedBody(
+      `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nCall hotel\nafter`,
+    );
+    const why = bodies(renderer).find((b) => b.props.value === '    why')!;
+    act(() => why.props.onChangeText('\nPack    why', { start: 5, end: 5 }));
+    await savedBody(
+      `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nPack\nCall hotel\nafter`,
+    );
   });
 });
