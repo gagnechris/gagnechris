@@ -11,7 +11,9 @@ import {
 import {
   compareNoteTemplates,
   DAILY_TEMPLATE_DATE_TOKEN,
+  NOTE_TEMPLATE_EMBED_MESSAGE,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
+  noteTemplateHasEmbeds,
 } from '@gagnechris/shared';
 import { Button, Field, List, ListRow, TextInput } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
@@ -61,6 +63,18 @@ function TemplateEditor({
   });
   const { draft, updateDraft, entity, dirty, saveState, busy, runDelete } =
     editor;
+  // Text with a task embed is shown but never saved: autosave keeps the last
+  // valid text until the embed is gone.
+  const [invalidText, setInvalidText] = useState<string | null>(null);
+  const text = invalidText ?? draft.bodyMarkdown;
+  const onTextChange = (next: string) => {
+    if (noteTemplateHasEmbeds(next)) {
+      setInvalidText(next);
+      return;
+    }
+    setInvalidText(null);
+    updateDraft((current) => ({ ...current, bodyMarkdown: next }));
+  };
 
   if (editor.loadError || editor.isLoading || !entity) {
     return editor.loadError ? (
@@ -78,10 +92,7 @@ function TemplateEditor({
       handle.insertText(DAILY_TEMPLATE_DATE_TOKEN);
       handle.focus();
     } else {
-      updateDraft((current) => ({
-        ...current,
-        bodyMarkdown: `${current.bodyMarkdown}${DAILY_TEMPLATE_DATE_TOKEN}`,
-      }));
+      onTextChange(`${text}${DAILY_TEMPLATE_DATE_TOKEN}`);
     }
   };
 
@@ -117,12 +128,15 @@ function TemplateEditor({
           }
         />
       </Field>
+      {invalidText !== null ? (
+        <p className="workspace-panel__error" role="alert">
+          {NOTE_TEMPLATE_EMBED_MESSAGE}
+        </p>
+      ) : null}
       <NotebookMarkdownBody
         editorRef={editorRef}
-        value={draft.bodyMarkdown}
-        onChange={(bodyMarkdown) =>
-          updateDraft((current) => ({ ...current, bodyMarkdown }))
-        }
+        value={text}
+        onChange={onTextChange}
         label="Template text"
         placeholder="Write what this template inserts…"
       />

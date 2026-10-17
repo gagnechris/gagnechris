@@ -64,7 +64,7 @@ test('hovering the sidebar edge shows a button that collapses it; the window edg
     'offsetLeft',
     0,
   );
-  const zone = page.locator('.workspace-edge-zone--left');
+  const zone = page.locator('.ui-panel-edge-zone--left');
   expect(
     await zone.evaluate((el) => ({
       position: getComputedStyle(el).position,

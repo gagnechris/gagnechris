@@ -140,6 +140,7 @@ type Notebook struct {
 	NoteTemplateNameMaxLength   int               `json:"noteTemplateNameMaxLength"`
 	NoteTemplateMaxCount        int               `json:"noteTemplateMaxCount"`
 	NoteTemplateLimitMessage    string            `json:"noteTemplateLimitMessage"`
+	NoteTemplateEmbedMessage    string            `json:"noteTemplateEmbedMessage"`
 	AreaIDPattern               string            `json:"areaIdPattern"`
 	AreaIDMaxLength             int               `json:"areaIdMaxLength"`
 	AreaNameMaxLength           int               `json:"areaNameMaxLength"`

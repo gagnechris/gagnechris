@@ -11,12 +11,12 @@ import { Link } from 'react-router-dom';
 import {
   findBareUrls,
   NOTEBOOK_TITLE_MAX_LENGTH,
-  shortenUrl,
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
 import { Button, Checkbox, Chip, IconButton } from '@gagnechris/ui';
 import { TaskDuePill } from './TaskDuePill';
+import { TaskTitleLinks } from './TaskTitleLinks';
 
 export type TaskEmbedView =
   | { kind: 'loading' }
@@ -139,25 +139,6 @@ function LinkedText({ text }: { text: string }) {
   }
   parts.push(text.slice(at));
   return <>{parts}</>;
-}
-
-// A textarea can't hold links, so an editable title's URLs follow it.
-function TitleLinks({ title }: { title: string }) {
-  const urls = findBareUrls(title);
-  if (urls.length === 0) return null;
-  return (
-    <>
-      {urls.map(({ from, href }) => (
-        <ExternalLink
-          key={from}
-          href={href}
-          className="task-embed__link task-embed__link--chip"
-        >
-          {shortenUrl(href.replace(/^https?:\/\//i, ''))}
-        </ExternalLink>
-      ))}
-    </>
-  );
 }
 
 function TaskEmbedTitle({
@@ -457,7 +438,12 @@ export function TaskEmbedRow({
           <LinkedText text={task.title} />
         </span>
       )}
-      {onRename && !pending ? <TitleLinks title={task.title} /> : null}
+      {onRename && !pending ? (
+        <TaskTitleLinks
+          title={task.title}
+          className="task-embed__link task-embed__link--chip"
+        />
+      ) : null}
       {details ? (
         <IconButton
           size="sm"

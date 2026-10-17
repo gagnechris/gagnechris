@@ -12,7 +12,7 @@ const MORNING = new Date(`${DAY}T09:00:00-05:00`);
 const tasksToggle = (page: Page) =>
   page.getByRole('button', { name: 'Tasks', exact: true });
 const side = (page: Page) => page.locator('#notebook-today-side');
-const expandZone = (page: Page) => page.locator('.workspace-edge-zone--right');
+const expandZone = (page: Page) => page.locator('.ui-panel-edge-zone--right');
 const opacity = (locator: Locator) =>
   locator.evaluate((el) => getComputedStyle(el).opacity);
 
@@ -91,13 +91,13 @@ test('hovering the panel edge shows a button that collapses it; the window edge 
   await page.mouse.move(600, 400);
   await expect(expand).toBeInViewport();
   expect(await opacity(expand)).toBe('1');
-  await expect(expand.locator('.workspace-edge-button__count')).toHaveText(
+  await expect(expand.locator('.ui-panel-edge__count')).toHaveText(
     String(stillOpenCount),
   );
   const layout = await page.evaluate(() => {
     const grid = document.querySelector('.notebook-today')!;
     const main = document.querySelector('.notebook-today__main')!;
-    const zone = document.querySelector('.workspace-edge-zone--right')!;
+    const zone = document.querySelector('.ui-panel-edge-zone--right')!;
     return {
       grid: grid.getBoundingClientRect().right,
       main: main.getBoundingClientRect().right,

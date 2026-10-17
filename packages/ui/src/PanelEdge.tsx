@@ -1,4 +1,6 @@
+/** @jsxRuntime automatic */
 import { useId, type Ref } from 'react';
+import { cx } from './cx.js';
 
 type ButtonProps = {
   /** The accessible name, the same whether the panel is open or closed. */
@@ -38,11 +40,10 @@ function EdgeButton({
   const countId = useId();
   const pointsLeft = open === (side === 'left');
   return (
-    // eslint-disable-next-line no-restricted-syntax -- the panel edge is a feature control, not a primitive
     <button
       ref={ref}
       type="button"
-      className="workspace-edge-button"
+      className="ui-panel-edge"
       aria-label={label}
       aria-controls={controls}
       aria-expanded={open}
@@ -63,10 +64,10 @@ function EdgeButton({
       </svg>
       {count ? (
         <>
-          <span className="workspace-edge-button__count" aria-hidden="true">
+          <span className="ui-panel-edge__count" aria-hidden="true">
             {count}
           </span>
-          <span id={countId} className="kit-visually-hidden">
+          <span id={countId} className="ui-visually-hidden">
             {`${count} ${countLabel ?? ''}`.trim()}
           </span>
         </>
@@ -75,12 +76,15 @@ function EdgeButton({
   );
 }
 
-/** Rides a panel's resize edge; shows while the edge is hovered or focused. */
+/**
+ * Rides a panel's resize edge; shows while the edge is hovered or focused.
+ * The caller places the track (`className`) along the panel's edge.
+ */
 export const PanelCollapseButton = ({
   className,
   ...props
 }: Omit<ButtonProps, 'open'> & { className: string }) => (
-  <div className={`workspace-edge-track ${className}`}>
+  <div className={cx('ui-panel-edge-track', className)}>
     <EdgeButton {...props} open />
   </div>
 );
@@ -91,14 +95,12 @@ export const PanelExpandEdge = ({
   ...props
 }: Omit<ExpandProps, 'open'> & { className?: string }) => (
   <div
-    className={[
-      'workspace-edge-zone',
-      `workspace-edge-zone--${props.side}`,
-      props.count ? 'workspace-edge-zone--counted' : '',
-      className ?? '',
-    ]
-      .filter(Boolean)
-      .join(' ')}
+    className={cx(
+      'ui-panel-edge-zone',
+      `ui-panel-edge-zone--${props.side}`,
+      props.count ? 'ui-panel-edge-zone--counted' : undefined,
+      className,
+    )}
   >
     <EdgeButton {...props} open={false} />
   </div>

@@ -398,7 +398,7 @@ describe('NotebookTodayPage', () => {
     const collapse = tasksButton();
     expect(side).toContainElement(collapse);
     expect(
-      collapse.closest('.workspace-edge-track')?.previousElementSibling,
+      collapse.closest('.ui-panel-edge-track')?.previousElementSibling,
     ).toBe(screen.getByRole('separator', { name: 'Resize task panel' }));
     expect(collapse).toHaveAttribute('aria-expanded', 'true');
     expect(collapse).toHaveAttribute('aria-controls', side.id);
@@ -408,8 +408,8 @@ describe('NotebookTodayPage', () => {
     expect(side.parentElement).toHaveClass('notebook-today--side-closed');
     const expand = tasksButton();
     expect(side).not.toContainElement(expand);
-    expect(expand.closest('.workspace-edge-zone')).toHaveClass(
-      'workspace-edge-zone--right',
+    expect(expand.closest('.ui-panel-edge-zone')).toHaveClass(
+      'ui-panel-edge-zone--right',
     );
     expect(expand).toHaveFocus();
     expect(expand).toHaveAttribute('aria-expanded', 'false');
