@@ -149,7 +149,12 @@ const AdminResumePage = () => {
               setEditingRoleId={setEditingRoleId}
             />
 
-            <div className="admin-editor-split__preview">
+            <div
+              className="admin-editor-split__preview"
+              role="region"
+              aria-label="Resume preview"
+              tabIndex={0}
+            >
               <h2 className="admin-preview-title">Preview</h2>
               <ResumePreview resume={resume} draft={draft} content={content} />
             </div>

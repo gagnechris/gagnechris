@@ -1,5 +1,11 @@
 /** @jsxRuntime automatic */
-import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
+import {
+  useRef,
+  useState,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDialog } from './useModalDialog.js';
 
@@ -12,6 +18,10 @@ type Props = {
   onClose: () => void;
   /** Replaces the Done button, which only closes the sheet. */
   done?: ReactNode;
+  /** Text of the button that closes the sheet without acting. */
+  closeLabel?: string;
+  /** Starts focus somewhere other than the first control. */
+  initialFocus?: RefObject<HTMLElement | null>;
   children: ReactNode;
 };
 
@@ -21,6 +31,8 @@ export function BottomSheet({
   label = title,
   onClose,
   done,
+  closeLabel = 'Close',
+  initialFocus,
   children,
 }: Props) {
   const [dragY, setDragY] = useState(0);
@@ -28,6 +40,7 @@ export function BottomSheet({
   const { dialogProps } = useModalDialog<HTMLElement>({
     label,
     onClose,
+    initialFocus,
     lockScroll: true,
   });
 
@@ -72,7 +85,7 @@ export function BottomSheet({
             className="bottom-sheet__button"
             onClick={onClose}
           >
-            Close
+            {closeLabel}
           </button>
           <h2 className="bottom-sheet__title">{title}</h2>
           {done ?? (

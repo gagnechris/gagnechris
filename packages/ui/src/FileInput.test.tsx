@@ -86,4 +86,49 @@ describe('FileInput', () => {
       screen.getByRole('button', { name: 'Preview: Choose file' }),
     ).toHaveAccessibleDescription('PNG Add a preview image.');
   });
+
+  test('focus moves to the progress bar while uploading and back to the button after', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <FileInput aria-label="Cover" onFiles={() => {}} />,
+    );
+    await user.tab();
+    expect(
+      screen.getByRole('button', { name: 'Cover: Choose file' }),
+    ).toHaveFocus();
+
+    rerender(
+      <FileInput
+        aria-label="Cover"
+        onFiles={() => {}}
+        uploading={{ name: 'a.png' }}
+      />,
+    );
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement).toContainElement(
+      screen.getByRole('progressbar'),
+    );
+
+    rerender(<FileInput aria-label="Cover" onFiles={() => {}} />);
+    expect(
+      screen.getByRole('button', { name: 'Cover: Choose file' }),
+    ).toHaveFocus();
+  });
+
+  test('aria-invalid marks the button outside a Field, and a Field error marks it inside one', () => {
+    render(
+      <>
+        <FileInput aria-label="Cover" aria-invalid onFiles={() => {}} />
+        <Field label="Preview" error="Add a preview image.">
+          <FileInput onFiles={() => {}} />
+        </Field>
+      </>,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Cover: Choose file' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      screen.getByRole('button', { name: 'Preview Choose file' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+  });
 });

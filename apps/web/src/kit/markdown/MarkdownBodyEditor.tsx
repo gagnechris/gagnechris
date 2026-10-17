@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import { MEDIA_CONTENT_TYPES } from '@gagnechris/shared';
 import type { EditorView } from '@codemirror/view';
 import { IconButton, Toolbar } from '@gagnechris/ui';
@@ -49,7 +49,6 @@ export function MarkdownBodyEditor({
     [resolveImageSrc],
   );
   const fileRef = useRef<HTMLInputElement>(null);
-  const fileId = useId();
 
   const run = (command: (view: EditorView) => void) => {
     const view = editorRef.current?.view();
@@ -74,10 +73,10 @@ export function MarkdownBodyEditor({
       <div className="markdown-workspace markdown-workspace--single">
         <div className="markdown-bar">
           <Toolbar label="Insert" className="markdown-toolbar">
-            <label
-              htmlFor={fileId}
-              className="markdown-toolbar__btn"
-              title="Insert image"
+            <IconButton
+              label="Insert image"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => fileRef.current?.click()}
             >
               {icon(
                 <>
@@ -86,16 +85,16 @@ export function MarkdownBodyEditor({
                   <path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
                 </>,
               )}
-            </label>
-            {/* eslint-disable-next-line no-restricted-syntax -- the hidden native file picker behind the Insert image label */}
+            </IconButton>
+            {/* eslint-disable-next-line no-restricted-syntax -- the hidden native file picker behind Insert image */}
             <input
               ref={fileRef}
-              id={fileId}
               className="kit-visually-hidden"
               type="file"
               multiple
               accept={MEDIA_CONTENT_TYPES.join(',')}
-              aria-label="Insert image"
+              tabIndex={-1}
+              aria-hidden="true"
               onChange={(e) => {
                 const files = Array.from(e.target.files ?? []);
                 if (fileRef.current) fileRef.current.value = '';

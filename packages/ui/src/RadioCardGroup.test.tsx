@@ -6,8 +6,8 @@ import { RadioCardGroup } from './RadioCardGroup.js';
 
 type Level = 'viewer' | 'editor' | 'owner' | 'admin';
 
-const Harness = () => {
-  const [value, setValue] = useState<Level>('viewer');
+const Harness = ({ initial = 'viewer' }: { initial?: Level }) => {
+  const [value, setValue] = useState<Level>(initial);
   return (
     <RadioCardGroup
       label="Access level"
@@ -57,5 +57,14 @@ describe('RadioCardGroup', () => {
     await user.keyboard('{ArrowUp}');
     expect(radios[3]).toBeChecked();
     expect(radios.map((r) => r.tabIndex)).toEqual([-1, -1, -1, 0]);
+  });
+
+  test('a disabled selection leaves the first enabled card as the tab stop', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial="owner" />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios.map((r) => r.tabIndex)).toEqual([0, -1, -1, -1]);
+    await user.tab();
+    expect(radios[0]).toHaveFocus();
   });
 });

@@ -103,10 +103,25 @@ export function useModalDialog<T extends HTMLElement = HTMLDivElement>({
       return;
     }
     const active = document.activeElement;
-    if (e.shiftKey && (active === first || !ref.current?.contains(active))) {
+    // Compared by position, so focus on an element outside the tab order
+    // (a menu item, say) still wraps instead of leaving the dialog.
+    const follows = (el: Element) =>
+      active !== null &&
+      Boolean(
+        active.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    if (!ref.current?.contains(active)) {
+      if (e.shiftKey) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (
+      e.shiftKey &&
+      !items.some((el) => !follows(el) && el !== active)
+    ) {
       e.preventDefault();
       last.focus();
-    } else if (!e.shiftKey && active === last) {
+    } else if (!e.shiftKey && !items.some(follows)) {
       e.preventDefault();
       first.focus();
     }

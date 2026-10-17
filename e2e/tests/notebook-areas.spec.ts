@@ -78,3 +78,24 @@ test('an area added in Settings gets its own daily note and tasks, keeps them wh
     page.getByText('You can have up to 4 areas. Remove one to add another.'),
   ).toBeVisible();
 });
+
+test('on a phone each area keeps its move and remove buttons beside its name', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn();
+  await page.goto(`${apps.notebook}/settings/areas`);
+  const rows = page.getByRole('list', { name: 'Areas' }).getByRole('listitem');
+  await expect(rows.first()).toBeVisible();
+  for (const row of await rows.all()) {
+    const name = await row.getByRole('textbox').boundingBox();
+    const remove = await row
+      .getByRole('button', { name: /^Remove / })
+      .boundingBox();
+    expect(remove!.x).toBeGreaterThan(name!.x + name!.width - 1);
+    expect(remove!.y).toBeLessThan(name!.y + name!.height);
+    expect(remove!.x + remove!.width).toBeLessThanOrEqual(390);
+  }
+});
