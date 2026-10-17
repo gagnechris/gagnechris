@@ -8,7 +8,7 @@ const read = (rel: string) =>
     .readFileSync(path.resolve(__dirname, rel), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '');
 const markdownCss = read('markdown.css');
-const workspaceCss = read('../../workspace/workspace.css');
+const workspaceCss = read('../../workspace/shell.css');
 
 /** Declarations from every rule whose selector list includes `selector`. */
 function rulesFor(css: string, selector: string): string {

@@ -42,7 +42,7 @@ const globalButtonHoverSelectors = cssFiles(src).flatMap((file) =>
 describe('global button hover rules', () => {
   it('finds the site-wide hover lift and the app reset', () => {
     expect(globalButtonHoverSelectors.map(([file]) => file)).toEqual(
-      expect.arrayContaining(['index.css', 'workspace/workspace.css']),
+      expect.arrayContaining(['index.css', 'workspace/shell.css']),
     );
   });
 

@@ -29,7 +29,7 @@ The contract is defined in TypeScript (wire schemas, keys, stored rows) and the 
 | 6   | `services/api/internal/keys/keys.go`, `keys_test.go`                                | Go key builders                                           |
 | 7   | `services/api/internal/notebook/items.go`, `apicheck.go`, `versioned.go`            | Go struct, row parse / build, response check, entity glue |
 | 8   | `services/api/internal/notebook/bookmarks.go`                                       | new: repository on the `versioned` store                  |
-| 9   | `services/api/internal/notebook/routes.go`                                          | handlers + `Routes` entries                               |
+| 9   | `services/api/internal/notebook/routes.go`, `bookmarks_routes.go`                   | `Routes` entries; new: handlers                           |
 | 10  | `services/api/internal/notebook/sync.go`                                            | `syncAdapters` entry                                      |
 | 11  | `services/api/test/http/bookmarks.test.ts`                                          | new: HTTP suite test                                      |
 | 12  | `packages/shared/src/constants.ts`, `services/api/internal/restoretest/validate.go` | restore-test schema check, count floor, key rule          |
@@ -367,7 +367,7 @@ Store options worth knowing:
 - `now` — the only clock (`Routes(table, now)`, `time.Now` when nil); create, update and tombstone timestamps come from it.
 - `store.WalkPartitions` — one cursor across several partitions (tasks page across area × status).
 
-## 9. Routes — `services/api/internal/notebook/routes.go`
+## 9. Routes — `services/api/internal/notebook/routes.go` and `bookmarks_routes.go`
 
 Add `bookmarks *bookmarksRepo` to `handlers`, construct it in `Routes`, and add the routes:
 
@@ -379,7 +379,7 @@ route(http.MethodPut, "/notebook/bookmarks/:id", "UpdateBookmark", h.updateBookm
 route(http.MethodDelete, "/notebook/bookmarks/:id", "DeleteBookmark", h.deleteBookmark),
 ```
 
-The handlers read the body with `api.Validator` to the zod schema's rules, in its field order, so the 400 lists the same issues. The package's helpers cover the Notebook schemas: `title` and `text` (`NotebookTitleSchema`, `NotebookTextSchema`), `tags`, `idParam`, `bodyVersion`, `expected` (resolves `If-Match` / `body.version`; 400 when a required one is missing), `versionOnly` for writes that take only a version, `pageLimit` and `listResponse`.
+The handlers go in `bookmarks_routes.go`, as each entity's do (`areas_routes.go`, `note_templates_routes.go`); `routes.go` keeps `Routes`, the shared helpers and the notes and tasks handlers. They read the body with `api.Validator` to the zod schema's rules, in its field order, so the 400 lists the same issues. The package's helpers cover the Notebook schemas: `title` and `text` (`NotebookTitleSchema`, `NotebookTextSchema`), `tags`, `idParam`, `bodyVersion`, `expected` (resolves `If-Match` / `body.version`; 400 when a required one is missing), `versionOnly` for writes that take only a version, `pageLimit` and `listResponse`.
 
 ```go
 func bookmarkResponse(status int, b Bookmark) (*api.Response, error) {

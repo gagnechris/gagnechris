@@ -1,4 +1,4 @@
-// Matches --note-column-min in workspace.css.
+// Matches --note-column-min in shell.css.
 export const NOTE_COLUMN_MIN = 480;
 
 /** How far a panel may still grow before the note column drops below its minimum. */

@@ -1,0 +1,485 @@
+.notebook-today {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* A remembered width gives way on a small window so the note keeps its minimum. */
+@media (min-width: 1000px) {
+  .notebook-today {
+    grid-template-columns: minmax(0, 1fr) clamp(
+        14rem,
+        var(--today-side-width, 22rem),
+        100% - var(--note-column-min) - var(--today-side-gap)
+      );
+    column-gap: var(--today-side-gap);
+    align-items: start;
+  }
+
+  /* The panel's side of the page is chrome: the fill reaches past the panel
+     to the window's right edge and the page's top and bottom without moving
+     anything. */
+  .notebook-today:not(.notebook-today--overlay) > .notebook-today__side {
+    align-self: stretch;
+    border-image: linear-gradient(
+        to right,
+        var(--neutral-200) 1px,
+        var(--neutral-50) 1px
+      )
+      fill 0 / 0 / 1.75rem 100vw calc(3rem + 100vh) var(--space-4);
+  }
+}
+
+.notebook-today__main {
+  min-width: 0;
+}
+
+/* A writing page is white between the panels; the sidebar and the Today
+   panel stay on the chrome colour. */
+.workspace-main:has(.notebook-column) {
+  --workspace-surface: white;
+  max-width: none;
+  background: var(--workspace-surface);
+}
+
+.workspace-shell:has(.notebook-column) .workspace-sidebar {
+  background: var(--neutral-50);
+}
+
+/* The sidebar gives way too, once the Today panel is at its own minimum. A
+   collapsed one keeps its full width so its negative margin hides all of it. */
+@media not all and (max-width: 767px) {
+  .workspace-shell:not(.workspace--rail, .workspace--sidebar-closed):has(
+      .notebook-column
+    )
+    .workspace-sidebar {
+    flex-basis: min(
+      var(--workspace-sidebar-width, 15.5rem),
+      max(
+        12rem,
+        100% - 5rem - var(--note-column-min) - var(--note-column-beside, 0px)
+      )
+    );
+  }
+}
+
+@media (min-width: 1000px) {
+  .workspace-shell:has(
+    .notebook-today:not(.notebook-today--side-closed, .notebook-today--overlay)
+  ) {
+    --note-column-beside: calc(14rem + var(--today-side-gap));
+  }
+}
+
+.notebook-today__header {
+  align-items: flex-end;
+}
+
+/* Keeps the note's tools on the title row; the date wraps instead. */
+@media not all and (max-width: 767px) {
+  .workspace-action-bar.notebook-today__header {
+    flex-wrap: nowrap;
+  }
+
+  .notebook-today__header > .workspace-toolbar {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+}
+
+.note-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.note-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 14rem;
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.notebook-today__kicker {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--neutral-600);
+}
+
+.notebook-today__title {
+  min-width: 0;
+}
+
+/* A last resort under the phone title size below. */
+.notebook-today__title h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.notebook-today__side {
+  position: relative;
+  min-width: 0;
+}
+
+@media (max-width: 999px) {
+  .notebook-today--side-closed .notebook-today__side {
+    display: none;
+  }
+}
+
+/* The closed panel keeps its column at zero width so opening and closing
+   can slide; visibility flips after the slide so its controls leave the
+   tab order. */
+@media (min-width: 1000px) {
+  .notebook-today--side-closed {
+    grid-template-columns: minmax(0, 1fr) 0px;
+    column-gap: 0;
+  }
+
+  .notebook-today--side-closed .notebook-today__side {
+    visibility: hidden;
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  .notebook-today__side > :not(.workspace-resize-handle, .ui-panel-edge-track) {
+    min-width: 14rem;
+  }
+}
+
+@media (min-width: 1000px) and (prefers-reduced-motion: no-preference) {
+  .notebook-today {
+    transition:
+      grid-template-columns 180ms ease,
+      column-gap 180ms ease;
+  }
+
+  .notebook-today__side {
+    transition: opacity 180ms ease;
+  }
+
+  .notebook-today--side-closed .notebook-today__side {
+    transition:
+      opacity 180ms ease,
+      visibility 0s 180ms;
+  }
+
+  /* A drag sets the width on every move; easing each one would lag. */
+  .notebook-today:has(.notebook-today__side-resize:active) {
+    transition: none;
+  }
+}
+
+/* On the panel's edge in the grid gap, so it never covers the cards. */
+.notebook-today__side-resize {
+  left: calc(-1 * var(--space-4) - 3px);
+}
+
+.notebook-today__side-edge {
+  left: calc(-1 * var(--space-4) - 11px);
+}
+
+@media (max-width: 999px) {
+  .notebook-today__side-resize {
+    display: none;
+  }
+}
+
+/* With no resize edge to hover, the overlay shows its close button. */
+.notebook-today--overlay .notebook-today__side-edge {
+  left: 0;
+}
+
+.notebook-today--overlay .notebook-today__side-edge > .ui-panel-edge {
+  opacity: 1;
+}
+
+/* Between the tab bar and the side-by-side width the panel slides in over
+   the note from the right, below the sticky day header. */
+.notebook-today.notebook-today--overlay {
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 0;
+}
+
+.notebook-today--overlay .notebook-today__side {
+  position: fixed;
+  top: var(--today-overlay-top, 0px);
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  display: block;
+  width: min(22rem, 100vw - var(--space-8));
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4);
+  border-left: 1px solid var(--neutral-200);
+  background: var(--neutral-50);
+  box-shadow: var(--shadow-lg);
+  visibility: visible;
+  opacity: 1;
+}
+
+.notebook-today--overlay .notebook-today__side:focus {
+  outline: none;
+}
+
+.notebook-today--overlay.notebook-today--side-closed .notebook-today__side {
+  visibility: hidden;
+  transform: translateX(100%);
+}
+
+/* Under the sticky header (z-index 20), so its controls stay clickable. */
+.notebook-today__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgb(18 25 38 / 0.16);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notebook-today--overlay .notebook-today__side {
+    transition: transform 180ms ease;
+  }
+
+  .notebook-today--overlay.notebook-today--side-closed .notebook-today__side {
+    transition:
+      transform 180ms ease,
+      visibility 0s 180ms;
+  }
+}
+
+.notebook-today__template {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--primary-50);
+  color: var(--primary-800);
+  font-size: var(--text-sm);
+}
+
+.notebook-today__template-actions {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.notebook-today__template-actions > * {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.notebook-today__template-action {
+  color: var(--color-link);
+  font-weight: 600;
+  text-underline-offset: 0.15em;
+}
+
+.notebook-today__calendar {
+  position: relative;
+}
+
+.notebook-today__calendar > summary {
+  cursor: pointer;
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--neutral-700);
+}
+
+.notebook-today__calendar[open] > .notebook-calendar {
+  position: absolute;
+  /* Over the sticky day header below it, which also sits at 20 and comes later. */
+  z-index: 21;
+  top: 100%;
+  left: 0;
+  width: min(18rem, 100vw - 2rem);
+  background: white;
+}
+
+.notebook-today__day-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.notebook-calendar {
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, white 70%, transparent);
+}
+
+.notebook-calendar__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.notebook-calendar__label {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+
+.notebook-calendar__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.notebook-calendar__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.notebook-calendar__weekday {
+  font-size: var(--text-xs);
+  color: var(--neutral-500);
+  text-align: center;
+}
+
+.notebook-calendar__cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 2.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.notebook-calendar__cell--empty {
+  cursor: default;
+}
+
+.notebook-calendar__cell:hover:not(.notebook-calendar__cell--empty) {
+  background: var(--primary-100);
+}
+
+.notebook-calendar__cell--selected {
+  background: var(--primary-200);
+  font-weight: 700;
+}
+
+.notebook-calendar__cell--today:not(.notebook-calendar__cell--selected) {
+  box-shadow: inset 0 0 0 1px var(--primary-400);
+}
+
+.notebook-calendar__dot {
+  position: absolute;
+  bottom: 0.2rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--primary-700);
+}
+
+.notebook-today__phone-tools,
+.notebook-today__strip,
+.notebook-today__calendar-icon {
+  display: none;
+}
+
+/* Phones: the note fills the page; the task lists live in a bottom sheet. */
+
+@media (max-width: 767px) {
+  .notebook-today__side,
+  .notebook-today__kicker,
+  .notebook-today__day-nav [aria-label='Jump to today']:disabled {
+    display: none;
+  }
+
+  .notebook-today__day-nav > .ui-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .notebook-today__calendar > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notebook-today__calendar > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .notebook-today__calendar-icon {
+    display: block;
+  }
+
+  .notebook-today__calendar-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .notebook-today__area {
+    min-width: 0;
+    max-width: 7.5rem;
+  }
+
+  .notebook-today__phone-tools {
+    display: flex;
+    gap: var(--space-2);
+    min-width: 0;
+    margin-left: auto;
+  }
+
+  .notebook-today__area {
+    width: auto;
+    min-height: 44px;
+  }
+
+  .notebook-today__strip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    min-height: 48px;
+    margin-bottom: var(--space-3);
+    padding: 0 14px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--primary-50);
+    color: var(--primary-800);
+    font: inherit;
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .notebook-today__strip strong {
+    font-weight: 600;
+  }
+
+  .notebook-today__strip-text {
+    flex: 1;
+  }
+}

@@ -36,7 +36,8 @@ describe('web stylesheets use the design tokens', () => {
         'public.css',
         'pages/PostPage.css',
         'kit/kit.css',
-        'workspace/workspace.css',
+        'workspace/shell.css',
+        'workspace/today.css',
         '@gagnechris/ui/button.css',
       ]),
     );

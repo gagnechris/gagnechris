@@ -9,15 +9,16 @@ import {
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  findBareUrls,
   NOTEBOOK_TITLE_MAX_LENGTH,
   oneLineTaskTitle,
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
-import { Button, Checkbox, Chip, IconButton } from '@gagnechris/ui';
+import { Button, Checkbox } from '@gagnechris/ui';
+import { SubtaskProgress } from './SubtaskProgress';
+import { TaskDetailsToggle } from './TaskDetailsToggle';
 import { TaskDuePill } from './TaskDuePill';
-import { TaskTitleLinks } from './TaskTitleLinks';
+import { TaskLinkedText, TaskTitleLinks } from './TaskTitleLinks';
 
 export type TaskEmbedView =
   | { kind: 'loading' }
@@ -105,42 +106,6 @@ const PRIORITY_LABEL: Record<Task['priority'], string | null> = {
   med: null,
   low: 'Low',
 };
-
-const ExternalLink = ({
-  href,
-  children,
-  className,
-}: {
-  href: string;
-  children: ReactNode;
-  className?: string;
-}) => (
-  <a
-    className={className}
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    title={href}
-  >
-    {children}
-  </a>
-);
-
-function LinkedText({ text }: { text: string }) {
-  const parts: ReactNode[] = [];
-  let at = 0;
-  for (const { from, to, href } of findBareUrls(text)) {
-    parts.push(text.slice(at, from));
-    parts.push(
-      <ExternalLink key={from} href={href} className="task-embed__link">
-        {text.slice(from, to)}
-      </ExternalLink>,
-    );
-    at = to;
-  }
-  parts.push(text.slice(at));
-  return <>{parts}</>;
-}
 
 function TaskEmbedTitle({
   title,
@@ -436,7 +401,7 @@ export function TaskEmbedRow({
         />
       ) : (
         <span className="task-embed__title">
-          <LinkedText text={task.title} />
+          <TaskLinkedText text={task.title} />
         </span>
       )}
       {onRename && !pending ? (
@@ -446,30 +411,12 @@ export function TaskEmbedRow({
         />
       ) : null}
       {details ? (
-        <IconButton
-          size="sm"
-          className="task-embed__details-toggle"
-          label={
-            open
-              ? `Hide details for ${task.title}`
-              : `Show details for ${task.title}`
-          }
-          title={open ? 'Hide details (⌘.)' : 'Show details (⌘.)'}
-          aria-expanded={open}
-          aria-controls={open ? panelId : undefined}
-          onClick={details.onToggle}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            <path
-              d="M6 4l4 4-4 4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </IconButton>
+        <TaskDetailsToggle
+          open={open}
+          title={task.title}
+          panelId={panelId}
+          onToggle={details.onToggle}
+        />
       ) : null}
       {to ? (
         <Link
@@ -606,35 +553,5 @@ export function TaskEmbedRow({
         </div>
       ) : null}
     </div>
-  );
-}
-
-const RING = 2 * Math.PI * 6;
-
-function SubtaskProgress({ subtasks }: { subtasks: TaskEmbedSubtasks }) {
-  const { done, total, folded, onToggleFold } = subtasks;
-  return (
-    <Chip
-      className="task-embed__progress"
-      aria-expanded={!folded}
-      aria-label={`${done} of ${total} subtasks done`}
-      title={folded ? 'Show subtasks' : 'Hide subtasks'}
-      onClick={onToggleFold}
-      icon={
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          <circle className="task-embed__ring-track" cx="8" cy="8" r="6" />
-          <circle
-            className="task-embed__ring"
-            cx="8"
-            cy="8"
-            r="6"
-            strokeDasharray={`${(RING * done) / total} ${RING}`}
-            transform="rotate(-90 8 8)"
-          />
-        </svg>
-      }
-    >
-      {done} of {total}
-    </Chip>
   );
 }
