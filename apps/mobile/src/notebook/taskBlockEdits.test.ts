@@ -21,6 +21,13 @@ describe('task block edits', () => {
     expect(indentTaskBlock(nested!, B_ID, 'out')).toBe(note);
   });
 
+  it('leaves a task with subtasks where it is, so they keep their parent', () => {
+    const C = '{{task:01HTASKCCCCCCCCCCCCCCCCCCC}}';
+    const note = [A, B, `  ${C}`].join('\n');
+    expect(indentTaskBlock(note, B_ID, 'in')).toBeNull();
+    expect(dropTaskBlock(note, B_ID, null, 'in')).toBeNull();
+  });
+
   it('only nests under a task at the same level', () => {
     expect(indentTaskBlock(['text', A].join('\n'), A_ID, 'in')).toBeNull();
     expect(indentTaskBlock(A, A_ID, 'in')).toBeNull();
