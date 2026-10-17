@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { keys } from '@gagnechris/data';
 import {
   MAX_SLUG_LENGTH,
@@ -524,6 +524,89 @@ describe('publish, unpublish, discard and delete', () => {
     expect(await act(discarded, 'discard')).toEqual(discarded);
     const draft = await create({ title: 'Never published' });
     expect(await act(draft, 'discard')).toEqual(draft);
+  });
+
+  it('keeps the live slug while a renamed draft is unpublished', async () => {
+    const live = await act(await create({ slug: 'hello' }), 'publish');
+    const renamed = await edit(live, { slug: 'hello-world' });
+    const res = await call('POST', '/api/admin/posts', {
+      body: { title: 'Hello' },
+    });
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({
+      error: 'slug_taken',
+      message: 'Slug "hello" is already taken',
+    });
+    expect((await row(keys.post.slugClaim('hello')))?.postId).toBe(live.id);
+    expect((await row(keys.post.slugClaim('hello-world')))?.postId).toBe(
+      live.id,
+    );
+
+    const moved = await edit(renamed, { slug: 'hello-there' });
+    expect(await row(keys.post.slugClaim('hello-world'))).toBeUndefined();
+    const back = await edit(moved, { slug: 'hello' });
+    expect((await row(keys.post.slugClaim('hello')))?.postId).toBe(live.id);
+    expect(await row(keys.post.slugClaim('hello-there'))).toBeUndefined();
+
+    const republished = await act(
+      await edit(back, { slug: 'hello-world' }),
+      'publish',
+    );
+    expect(republished.slug).toBe('hello-world');
+    expect(await row(keys.post.slugClaim('hello'))).toBeUndefined();
+    expect((await create({ title: 'Hello' })).slug).toBe('hello');
+  });
+
+  it('frees the live and draft slugs on unpublish and delete', async () => {
+    const live = await act(await create({ slug: 'was-live' }), 'publish');
+    const draft = await act(await edit(live, { slug: 'next' }), 'unpublish');
+    expect(await row(keys.post.slugClaim('was-live'))).toBeUndefined();
+    expect((await row(keys.post.slugClaim('next')))?.postId).toBe(live.id);
+
+    const again = await act(await edit(draft, { slug: 'again' }), 'publish');
+    const renamed = await edit(again, { slug: 'later' });
+    await ok('DELETE', `/api/admin/posts/${live.id}`, {
+      body: { version: renamed.version },
+    });
+    expect(await row(keys.post.slugClaim('again'))).toBeUndefined();
+    expect(await row(keys.post.slugClaim('later'))).toBeUndefined();
+  });
+
+  it('publishes and discards a rename whose live slug claim was lost or taken', async () => {
+    const live = await act(await create({ slug: 'lost' }), 'publish');
+    const renamed = await edit(live, { slug: 'found' });
+    await h.doc.send(
+      new DeleteCommand({
+        TableName: h.tableName,
+        Key: keys.post.slugClaim('lost'),
+      }),
+    );
+    const discarded = await act(renamed, 'discard');
+    expect((await row(keys.post.slugClaim('lost')))?.postId).toBe(live.id);
+
+    const other = await act(await create({ slug: 'shared' }), 'publish');
+    await h.doc.send(
+      new DeleteCommand({
+        TableName: h.tableName,
+        Key: keys.post.slugClaim('shared'),
+      }),
+    );
+    const moved = await edit(other, { slug: 'own' });
+    const thief = await create({ slug: 'thief' });
+    await h.doc.send(
+      new PutCommand({
+        TableName: h.tableName,
+        Item: {
+          ...keys.post.slugClaim('shared'),
+          entityType: 'slug',
+          postId: thief.id,
+        },
+      }),
+    );
+    const published = await act(moved, 'publish');
+    expect(published.slug).toBe('own');
+    expect((await row(keys.post.slugClaim('shared')))?.postId).toBe(thief.id);
+    expect(discarded.slug).toBe('lost');
   });
 
   it('delete leaves a tombstone and frees the slug', async () => {
