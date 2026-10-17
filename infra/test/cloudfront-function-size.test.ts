@@ -1,5 +1,5 @@
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { App, Stack } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { Topic } from 'aws-cdk-lib/aws-sns';
@@ -8,9 +8,10 @@ import { FUNCTION_CODE_BUDGET_BYTES } from '../lib/cloudfront/deployed-code.js';
 import { functionSource } from '../lib/cloudfront/harness.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
+import { testApp } from './helpers/test-app.js';
 
 function siteFunctions(): Record<string, string> {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', {
     CDK_ACCOUNT: '123456789012',
     ALERTS_EMAIL: 'alerts@example.com',
