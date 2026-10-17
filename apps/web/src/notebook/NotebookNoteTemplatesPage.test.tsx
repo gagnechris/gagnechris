@@ -135,7 +135,7 @@ describe('note templates settings', () => {
     expect(
       await screen.findByRole('link', { name: 'Note templates' }),
     ).toHaveAttribute('aria-current', 'page');
-    await screen.findByText('Create a template to start.');
+    await screen.findByText('No templates yet');
 
     await user.type(
       screen.getByRole('textbox', { name: 'New template' }),
@@ -210,6 +210,9 @@ describe('note templates settings', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['1:1', 'Retro']);
+    const [oneOnOne, retro] = within(list).getAllByRole('listitem');
+    expect(within(oneOnOne!).getByText('Wins')).toBeInTheDocument();
+    expect(within(retro!).getByText('Empty')).toBeInTheDocument();
 
     await user.click(within(list).getByRole('button', { name: '1:1' }));
     expect(
@@ -227,8 +230,6 @@ describe('note templates settings', () => {
           .map((b) => b.textContent),
       ).toEqual(['Retro']),
     );
-    expect(
-      screen.getByText('Choose a template to edit it.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Choose a template')).toBeInTheDocument();
   });
 });
