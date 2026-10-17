@@ -173,7 +173,7 @@ const server = createServer(async (req, res) => {
     }
     console.error(err);
     res.statusCode = 500;
-    res.end(String(err));
+    res.end('Internal Server Error');
   }
 });
 
