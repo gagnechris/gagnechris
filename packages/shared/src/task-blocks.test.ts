@@ -5,13 +5,19 @@ import {
   markdownItemBlock,
   noteHeadings,
   reindent,
+  removeTaskEmbedLines,
+  removeTaskLine,
   sectionEnd,
   taskDropNestIndent,
   taskNestIndent,
 } from './task-blocks.js';
 
-const P = '{{task:01JTASKAAAAAAAAAAAAAAAAAAA}}';
-const S = '{{task:01JTASKBBBBBBBBBBBBBBBBBBB}}';
+const ID = {
+  P: '01JTASKAAAAAAAAAAAAAAAAAAA',
+  S: '01JTASKBBBBBBBBBBBBBBBBBBB',
+};
+const P = `{{task:${ID.P}}}`;
+const S = `{{task:${ID.S}}}`;
 const T = '{{task:01JTASKCCCCCCCCCCCCCCCCCCC}}';
 
 describe('task blocks', () => {
@@ -92,5 +98,32 @@ describe('task blocks', () => {
       'two',
       'after',
     ]);
+  });
+
+  test('removing a parent’s line moves its subtasks and their lines out to its level', () => {
+    expect(removeTaskLine([T, P, `  ${S}`, '    why', 'after'], 1)).toEqual([
+      T,
+      S,
+      '  why',
+      'after',
+    ]);
+    expect(removeTaskLine([P, `  ${S}`, `  ${T}`], 1)).toEqual([P, `  ${T}`]);
+  });
+
+  test('a task deleted elsewhere leaves the note without re-parenting its subtasks', () => {
+    const md = ['Plan', T, P, `  ${S}`, 'end'].join('\n');
+    expect(removeTaskEmbedLines(md, new Set([ID.P]))).toBe(
+      ['Plan', T, S, 'end'].join('\n'),
+    );
+    expect(removeTaskEmbedLines(md, new Set([ID.P, ID.S]))).toBe(
+      ['Plan', T, 'end'].join('\n'),
+    );
+  });
+
+  test('a token inside a code fence is not a task line', () => {
+    const md = ['```', P, '```', P].join('\n');
+    expect(removeTaskEmbedLines(md, new Set([ID.P]))).toBe(
+      ['```', P, '```'].join('\n'),
+    );
   });
 });

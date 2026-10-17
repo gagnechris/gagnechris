@@ -1,7 +1,9 @@
 /** Values only the API, publisher, restore-test Lambda and infra read; never bundled for the apps. */
 export {
   API_METRICS,
+  API_ORIGIN_VERIFY_HEADER,
   API_SERVICE_NAME,
+  API_VIEWER_ADDRESS_HEADER,
   CONTACT_PER_IP_PER_HOUR,
   MIN_CONTACT_SUBMIT_MS,
   NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY,

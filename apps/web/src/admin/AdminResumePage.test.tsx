@@ -199,6 +199,22 @@ describe('AdminResumePage publish', () => {
     expect(screen.queryByText(/^Saved$/)).not.toBeInTheDocument();
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
   });
+
+  test('Unpublish warns that /resume stops showing the resume and its PDF', async () => {
+    const confirmSpy = answerConfirms(false);
+    renderResume();
+    await screen.findByDisplayValue('Summary');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unpublish' }));
+
+    await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+    const [message] = confirmSpy.mock.calls[0]!;
+    expect(message).toMatch(/^Unpublish the resume\? /);
+    expect(message).toContain('Resume available on request');
+    expect(message).toMatch(/PDF/);
+    expect(message).not.toMatch(/keeps/);
+    expect(post).not.toHaveBeenCalled();
+  });
 });
 
 describe('AdminResumePage structured dates', () => {

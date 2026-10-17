@@ -2,12 +2,16 @@ package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
+	"net/netip"
 	"strings"
 	"sync/atomic"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambdacontext"
+
+	"github.com/gagnechris/gagnechris/services/api/internal/contract"
 )
 
 var lambdaColdStart atomic.Bool
@@ -28,13 +32,15 @@ func (a *App) HandleLambda(ctx context.Context, event events.APIGatewayV2HTTPReq
 		)
 	}
 
+	headers := lowerKeys(event.Headers)
 	req := &Request{
 		Method:    event.RequestContext.HTTP.Method,
 		Query:     event.QueryStringParameters,
-		Headers:   lowerKeys(event.Headers),
+		Headers:   headers,
 		RequestID: event.RequestContext.RequestID,
-		SourceIP:  event.RequestContext.HTTP.SourceIP,
+		SourceIP:  a.clientIP(headers, event.RequestContext.HTTP.SourceIP),
 	}
+	delete(headers, contract.Data.API.OriginVerifyHeader)
 	if req.Query == nil {
 		req.Query = map[string]string{}
 	}
@@ -55,6 +61,22 @@ func (a *App) HandleLambda(ctx context.Context, event events.APIGatewayV2HTTPReq
 	}
 
 	return lambdaResponse(a.Serve(ctx, req, event.RawPath, log)), nil
+}
+
+// clientIP is the viewer's address when the request carries the origin
+// secret, which only CloudFront adds; API Gateway's sourceIp is then the
+// CloudFront edge. Anything else, including a direct execute-api call, keeps
+// sourceIp, so a caller can't choose the address its limits count against.
+func (a *App) clientIP(headers map[string]string, sourceIP string) string {
+	api := contract.Data.API
+	got, ok := headers[api.OriginVerifyHeader]
+	if a.originSecret == "" || !ok || subtle.ConstantTimeCompare([]byte(got), []byte(a.originSecret)) != 1 {
+		return sourceIP
+	}
+	if ip, err := netip.ParseAddr(strings.TrimSpace(headers[api.ViewerAddressHeader])); err == nil {
+		return ip.String()
+	}
+	return sourceIP
 }
 
 func lambdaResponse(r *Response) events.APIGatewayV2HTTPResponse {

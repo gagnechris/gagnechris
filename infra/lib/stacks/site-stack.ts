@@ -2,6 +2,7 @@ import {
   CfnOutput,
   Duration,
   RemovalPolicy,
+  SecretValue,
   Stack,
   type StackProps,
 } from 'aws-cdk-lib';
@@ -48,6 +49,8 @@ import { fileURLToPath } from 'node:url';
 import type { EnvironmentConfig } from '../config/environments.js';
 import {
   ADMIN_HOST,
+  API_ORIGIN_VERIFY_HEADER,
+  apiOriginSecretName,
   NOTEBOOK_HOST,
   ssmParameterName,
 } from '../config/constants.js';
@@ -262,6 +265,24 @@ export class SiteStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
+    const apiViewerRequestFn = new CloudFrontFunction(
+      this,
+      'ApiViewerRequestFn',
+      {
+        functionName: `gagnechris-${config.name}-api-viewer-request`,
+        comment: 'Viewer address header for the API rate limits',
+        runtime: FunctionRuntime.JS_2_0,
+        code: FunctionCode.fromInline(
+          deployedFunctionCode(
+            path.join(__dirname, '../cloudfront/api-viewer-request.js'),
+          ),
+        ),
+      },
+    );
+    const apiOriginSecret = SecretValue.secretsManager(
+      apiOriginSecretName(config.name),
+    ).unsafeUnwrap();
+
     // HTTP API id from SSM avoids Api→Site exports.
     const apiBehavior = (): BehaviorOptions => ({
       origin: new HttpOrigin(
@@ -271,6 +292,7 @@ export class SiteStack extends Stack {
         )}.execute-api.${Stack.of(this).region}.amazonaws.com`,
         {
           readTimeout: Duration.seconds(30),
+          customHeaders: { [API_ORIGIN_VERIFY_HEADER]: apiOriginSecret },
         },
       ),
       viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -278,6 +300,12 @@ export class SiteStack extends Stack {
       cachePolicy: CachePolicy.CACHING_DISABLED,
       originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
       responseHeadersPolicy: apiSecurityHeaders,
+      functionAssociations: [
+        {
+          function: apiViewerRequestFn,
+          eventType: FunctionEventType.VIEWER_REQUEST,
+        },
+      ],
     });
 
     const siteBehavior = (

@@ -22,6 +22,7 @@ import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import type { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket, type IBucket } from 'aws-cdk-lib/aws-s3';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { IEmailIdentity } from 'aws-cdk-lib/aws-ses';
 import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -31,6 +32,7 @@ import { API_LAMBDA_TIMEOUT_MS } from '@gagnechris/data';
 import {
   API_METRICS,
   API_SERVICE_NAME,
+  apiOriginSecretName,
   POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
   ssmParameterName,
@@ -108,6 +110,22 @@ export class ApiStack extends Stack {
       siteBucketName,
     );
 
+    // CloudFront and the Lambda read it at deploy time, so a new value takes
+    // a deploy of both stacks; no rotation.
+    const originSecret = new Secret(this, 'ApiOriginSecret', {
+      secretName: apiOriginSecretName(config.name),
+      description:
+        'Sent by CloudFront on /api/* so the API can trust the viewer address header',
+      generateSecretString: { excludePunctuation: true, passwordLength: 48 },
+    });
+    NagSuppressions.addResourceSuppressions(originSecret, [
+      {
+        id: 'AwsSolutions-SMG4',
+        reason:
+          'CloudFront origin header value resolved at deploy; rotating it means redeploying Api and Site. It only lets a caller choose the address rate limits count.',
+      },
+    ]);
+
     // Changing the construct id or function name would replace the function.
     this.apiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
@@ -141,6 +159,7 @@ export class ApiStack extends Stack {
         NOTEBOOK_WEB_CLIENT_ID: notebookWebClientId,
         IOS_CLIENT_ID: iosClientId,
         USER_POOL_ID: userPool.userPoolId,
+        API_ORIGIN_SECRET: originSecret.secretValue.unsafeUnwrap(),
       },
     });
     dataTable.grantReadWriteData(this.apiFunction);

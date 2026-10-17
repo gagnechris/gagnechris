@@ -29,6 +29,7 @@ func lambdaEnv() map[string]string {
 		"CONTACT_FROM_EMAIL":         "from@example.com",
 		"CONTACT_TO_EMAIL":           "to@example.com",
 		"USER_POOL_ID":               "us-east-1_pool",
+		"API_ORIGIN_SECRET":          "origin-secret",
 	}
 }
 
@@ -48,6 +49,9 @@ func TestLambdaConfig(t *testing.T) {
 	}
 	if c.images != (noteimages.Config{Bucket: "notebook-media"}) {
 		t.Errorf("images %+v", c.images)
+	}
+	if c.originSecret != "origin-secret" {
+		t.Errorf("origin secret %q", c.originSecret)
 	}
 }
 

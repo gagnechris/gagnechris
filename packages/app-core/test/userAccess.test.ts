@@ -62,9 +62,11 @@ describe('people', () => {
   });
 
   test('formats the added date, with the year only when it differs', () => {
-    const now = new Date('2026-10-06T12:00:00Z');
-    expect(formatAdded('2026-10-01T12:00:00Z', now)).toBe('Oct 1');
-    expect(formatAdded('2025-09-12T12:00:00Z', now)).toBe('Sep 12, 2025');
+    const now = new Date(2026, 9, 6, 12);
+    const at = (...ymd: [number, number, number]) =>
+      new Date(...ymd, 12).toISOString();
+    expect(formatAdded(at(2026, 9, 1), now)).toBe('Oct 1');
+    expect(formatAdded(at(2025, 8, 12), now)).toBe('Sep 12, 2025');
     expect(formatAdded(null, now)).toBe('—');
   });
 });

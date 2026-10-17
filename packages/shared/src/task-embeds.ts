@@ -103,23 +103,6 @@ export function replaceTaskEmbeds(
   return lines.join('\n');
 }
 
-/** Drops each line that embeds one of `ids`. */
-export function removeTaskEmbedLines(
-  markdown: string,
-  ids: ReadonlySet<string>,
-): string {
-  const drop = new Set(
-    findTaskEmbeds(markdown)
-      .filter((e) => ids.has(e.id))
-      .map((e) => e.line),
-  );
-  if (drop.size === 0) return markdown;
-  return markdown
-    .split('\n')
-    .filter((_, i) => !drop.has(i))
-    .join('\n');
-}
-
 export type TaskEmbedNesting = TaskEmbed & {
   /** The top-level task line this one sits directly under, if any. */
   parentId: string | null;
