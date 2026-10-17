@@ -23,11 +23,26 @@ export const LEVEL_DESCRIPTIONS: Record<AccessLevel, string> = {
   notebook: 'Their own private Notebook for notes and tasks. Can’t open Admin.',
 };
 
-export const STATUS_LABELS: Record<ManagedUserStatus, string> = {
+const STATUS_LABELS: Record<ManagedUserStatus, string> = {
   active: 'Active',
   invited: 'Invited',
   disabled: 'Disabled',
   removed: 'Removed · notes kept',
+};
+
+export const isRemovalUnfinished = (
+  user: Pick<ManagedUser, 'status' | 'removalUnfinished'>,
+) => user.status === 'removed' && user.removalUnfinished === true;
+
+export const statusLabel = (
+  user: Pick<ManagedUser, 'status' | 'removalUnfinished'>,
+) =>
+  isRemovalUnfinished(user) ? 'Removal unfinished' : STATUS_LABELS[user.status];
+
+/** What the edit panel says about a removal that stopped part-way. */
+export const REMOVAL_UNFINISHED = {
+  title: 'Removing them didn’t finish',
+  body: 'They may still be able to sign in. Finish removing takes away every app; their Notebook is kept.',
 };
 
 export const firstName = (user: Pick<ManagedUser, 'name' | 'email'>) =>

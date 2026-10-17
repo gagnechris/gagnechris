@@ -23,7 +23,8 @@ import {
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
   LEVEL_ORDER,
-  STATUS_LABELS,
+  isRemovalUnfinished,
+  statusLabel,
   userErrorMessage,
 } from '@gagnechris/app-core';
 import './users.css';
@@ -232,13 +233,13 @@ export default function AdminUsersPage() {
                     </td>
                     <td>
                       <span
-                        className={`users-status users-status--${user.status}`}
+                        className={`users-status users-status--${isRemovalUnfinished(user) ? 'unfinished' : user.status}`}
                       >
                         <span
                           className="users-status__dot"
                           aria-hidden="true"
                         />
-                        {STATUS_LABELS[user.status]}
+                        {statusLabel(user)}
                       </span>
                       {user.status === 'invited' ? (
                         <Button

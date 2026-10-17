@@ -10,7 +10,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `services/api` — the Go API and the Go module for every Go Lambda: `cmd/<name>` per function (`api`: the HTTP API, every route; `restore-test`: AWS Backup restore-test validator, plus the daily leftover restore-table and backup-freshness check), shared code under `internal/` (`api` router, auth and errors; `store` cursors and versioned/publishable writes; one package per route group); `internal/contract/contract.json` and `internal/apitypes` (API types, oapi-codegen) are generated from the TypeScript packages; `tools` pins golangci-lint and oapi-codegen; `test` is the black-box HTTP suite (`@gagnechris/api-tests` workspace, `test/http`)
 - `services/publisher` — DynamoDB Streams → prerender HTML/PDF/RSS/sitemap
 - `packages/shared` — types, schemas, HTML helpers shared by site, API, publisher; the domain entry is what iOS bundles, server-only values (service names, metric names, contact and SES caps, restore-test settings) live in `@gagnechris/shared/server`
-- `packages/data` — DynamoDB keys, item schemas and builders, table definition and DocumentClient. The Go API writes every row; this package serves the publisher, ops tools, infra, contract generation (`scripts/generate-go-contract.ts`) and tests, and exports only what they import (`packages/data/test/exports-used.test.ts`)
+- `packages/data` — DynamoDB keys, item schemas and builders, table definition and DocumentClient. The Go API writes every row; this package serves the publisher, ops tools, infra, contract generation (`scripts/generate-go-contract.ts`) and tests, and exports only what they import (`scripts/test/exports-used.test.ts`, which holds `shared`, `app-core` and `ui` to the same rule apart from the older names listed in `scripts/test/exports-unused.json`)
 - `packages/ops` — operator tools on the data table: note and task copy-back from a restore and row migrations; the CLIs are root `scripts/restore-copy-back.ts` and `scripts/migrate-*.ts`
 - `packages/api-client` — OpenAPI types + `createApiClient({ baseUrl, getToken? })`
 - `packages/app-core` — UI-free hooks shared by the admin and Notebook web apps and the iOS app (autosave, versioned entity editor, TanStack Query resources)
@@ -21,7 +21,7 @@ npm workspaces. Root scripts delegate across workspaces (see Commands).
 - `apps/mobile` — Expo app; **not a root workspace**, own lockfile — install with `npm ci --prefix apps/mobile`; see `docs/mobile.md`
 - `infra` — AWS CDK app; bootstrap/ops in `infra/RUNBOOK.md`
 - `e2e` — Playwright browser tests (`@gagnechris/e2e` workspace: config, stack global setup, fake-auth + API seeding fixtures)
-- `scripts/` — `@gagnechris/scripts` workspace (declares what the scripts import): local stack (`local/api.ts` builds and runs the Go API behind the local site hooks), web deploy, branch protection, CI guards, ops CLIs, and the repo-wide tests in `scripts/test` (CI workflows, ticket ids, case collisions, local and deploy scripts, lockfile parity)
+- `scripts/` — `@gagnechris/scripts` workspace (declares what the scripts import): local stack (`local/api.ts` builds and runs the Go API behind the local site hooks), web deploy, branch protection, CI guards, ops CLIs, and the repo-wide tests in `scripts/test` (CI workflows, ticket ids, case collisions, local and deploy scripts, lockfile parity, package exports in use)
 - `docs/` — architecture, development, data model, adding a Notebook or publishable entity (`docs/adding-an-entity.md`), local E2E, agent rules (`docs/agent-rules/`)
 
 ## Commands
