@@ -15,6 +15,5 @@
   "@gagnechris/shared/site-config: SITE_LINKEDIN_URL",
   "@gagnechris/shared/site-config: SITE_PROFILE_IMAGE_SRC",
   "@gagnechris/shared/site-config: SITE_PROJECTS_LIVE",
-  "@gagnechris/shared/site-config: projectPageTitle",
-  "@gagnechris/ui: useDismiss"
+  "@gagnechris/shared/site-config: projectPageTitle"
 ]
