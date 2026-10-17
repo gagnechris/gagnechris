@@ -74,9 +74,7 @@ export const Button = ({
       onClick={loading ? (e) => e.preventDefault() : onClick}
       {...buttonRest}
     >
-      {loading ? (
-        <span className="ui-btn__spinner" aria-hidden="true" />
-      ) : null}
+      {loading ? <span className="ui-btn__spinner" aria-hidden="true" /> : null}
       {children}
     </button>
   );
