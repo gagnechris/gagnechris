@@ -27,7 +27,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@tanstack/react-query": "^5.104.1",
+    "@tanstack/react-query": "^5.104.2",
     "@types/react": "^19.3.0",
     "react": "^19.3.0",
     "react-test-renderer": "^19.3.0",
