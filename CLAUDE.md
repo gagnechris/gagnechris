@@ -55,7 +55,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 ## Workflow
 
 - One Linear ticket → one git branch → one PR into `main`. Do not push commits directly to `main`.
-- Use the Linear issue `gitBranchName` for the branch. Use a separate `git worktree` per ticket when other agents or sessions share the checkout.
+- Use the Linear issue `gitBranchName` for the branch; CI fails a PR branch without a ticket id (Dependabot's excepted). Fill in `.github/pull_request_template.md`. Use a separate `git worktree` per ticket when other agents or sessions share the checkout.
 - Merge only after CI is green on the PR.
 - **Definition of done:** ticket is Done only after merge, deploy finished, and **each** acceptance criterion verified live, with evidence per AC in Linear (a 200 or 401 isn't evidence). Read your own diff before merging, and check that tests fail when the fix is reverted. See `docs/agent-rules/definition-of-done.md`.
 - **AWS changes:** never hand-edit production resources; use CDK / `cdk import`. Ask before break-glass admin changes. See `docs/agent-rules/aws-changes.md`.

@@ -53,7 +53,9 @@ describe('projects over HTTP (DynamoDB Local)', () => {
         body: { version: published.version, slug: 'my-notebook' },
       },
     );
-    expect(await get(keys.project.slugClaim('notebook'))).toBeUndefined();
+    expect(await get(keys.project.slugClaim('notebook'))).toMatchObject({
+      projectId: draft.id,
+    });
     expect(await get(keys.project.slugClaim('my-notebook'))).toMatchObject({
       projectId: draft.id,
     });
@@ -61,6 +63,7 @@ describe('projects over HTTP (DynamoDB Local)', () => {
     const unpublished = await action(draft.id, 'unpublish', renamed.version);
     expect(await get(keys.project.published(draft.id))).toBeUndefined();
     expect(await publishedIds()).toEqual([]);
+    expect(await get(keys.project.slugClaim('notebook'))).toBeUndefined();
 
     await ok('DELETE', `/api/admin/projects/${draft.id}`, {
       body: { version: unpublished.version },

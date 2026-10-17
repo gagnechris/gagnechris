@@ -151,10 +151,12 @@ export {
   type NoteHeading,
 } from './task-blocks.js';
 export {
+  bulletCheckboxAsTask,
   parseTaskLine,
   TASK_LINE_PREFIX,
   taskLineDraft,
   taskLineDraftKey,
+  typedBulletCheckboxAsTask,
   type TaskLineDraft,
 } from './task-line.js';
 export { byNewest } from './by-newest.js';
@@ -268,6 +270,8 @@ export {
   carryIntoDailyTemplate,
   dailyTemplateHasTasks,
   dailyTemplateHeadings,
+  dailyTemplateNamedWeekday,
+  dailyTemplateWeekdayMessage,
   defaultDailyTemplate,
   defaultDailyTemplateMarkdown,
   fillDailyTemplate,
