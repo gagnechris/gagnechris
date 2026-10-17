@@ -138,6 +138,8 @@ export function useQueuedAutosave<TDraft, TEntity>({
   const chainRef = useRef<Promise<FlushResult> | null>(null);
   const heldRef = useRef(false);
   const lastFailureRetryableRef = useRef(false);
+  const refusedRef = useRef(false);
+  const droppedRef = useRef(false);
   const unconfirmedRef = useRef<TDraft[]>([]);
   // A signal that lands before the retry loop is armed (mid-request, or
   // between the failure and the next commit) would otherwise be lost.
@@ -158,6 +160,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
 
   const bumpEdit = useCallback(() => {
     editGenRef.current += 1;
+    droppedRef.current = false;
     setSaveState('idle');
   }, []);
 
@@ -183,6 +186,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
       try {
         for (;;) {
           pendingRef.current = false;
+          refusedRef.current = false;
           signalledSinceSendRef.current = false;
           const genAtStart = editGenRef.current;
           const current = draftRef.current;
@@ -228,6 +232,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
               unconfirmedRef.current = [];
             }
             lastFailureRetryableRef.current = retryable;
+            refusedRef.current = !retryable;
             setSaveState('error');
             setRetryAttempt((n) => (retryable ? n + 1 : 0));
             const codeMessage = result.error
@@ -338,6 +343,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
   useEffect(
     () => () => {
       const unsaved = () => editGenRef.current !== lastSavedGenRef.current;
+      if (droppedRef.current) return;
       const heldAtUnmount = heldRef.current;
       if (!unsaved() && (heldAtUnmount || !dirtyRef.current)) return;
       // Edits typed during Publish, Unpublish or Discard go out once it
@@ -435,6 +441,11 @@ export function useQueuedAutosave<TDraft, TEntity>({
     setDirtyRef.current(false);
     setSaveState('saved');
   }, [setDirtyRef]);
+  const dropRefused = useCallback(() => {
+    if (!refusedRef.current) return;
+    droppedRef.current = true;
+    markClean();
+  }, [markClean]);
 
   return {
     save,
@@ -450,5 +461,7 @@ export function useQueuedAutosave<TDraft, TEntity>({
     getLastSavedGen,
     /** After Discard restores server content, so a following Publish does not see a stale lastSavedGen. */
     markClean,
+    /** Forgets edits the server refused for good (not a network failure), so unmount sends nothing. */
+    dropRefused,
   };
 }

@@ -285,9 +285,11 @@
   text-underline-offset: 2px;
 }
 
+/* Shrinks before the title does, so a long title keeps the row's width on a
+   phone instead of wrapping into a narrow column beside the link. */
 .task-embed__link--chip {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 100 auto;
+  min-width: 2.5em;
   overflow: hidden;
   font-size: var(--text-sm);
   text-overflow: ellipsis;

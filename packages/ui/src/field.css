@@ -157,8 +157,9 @@ select.kit-select {
 
 .kit-search-input__clear {
   position: absolute;
-  top: 50%;
+  inset-block: 0;
   right: var(--space-1);
+  margin-block: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -169,7 +170,6 @@ select.kit-select {
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--neutral-500);
-  transform: translateY(-50%);
   cursor: pointer;
 }
 

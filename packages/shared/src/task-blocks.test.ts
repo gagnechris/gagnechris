@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  addMovedTaskBlock,
   insertAfterTaskBlock,
   lineAfterOuterBlock,
   markdownItemBlock,
@@ -125,5 +126,40 @@ describe('task blocks', () => {
     expect(removeTaskEmbedLines(md, new Set([ID.P]))).toBe(
       ['```', P, '```'].join('\n'),
     );
+  });
+});
+
+describe('addMovedTaskBlock', () => {
+  const A = '01JTASKAAAAAAAAAAAAAAAAAAA';
+  const block = `${P}\n  ${S}\n  budget is 40k`;
+
+  test('appends the block after the note text', () => {
+    expect(addMovedTaskBlock('agenda\n', A, block)).toBe(
+      `agenda\n\n${block}\n\n`,
+    );
+  });
+
+  test('leaves out tasks the note already embeds', () => {
+    expect(addMovedTaskBlock(`${S}`, A, block)).toBe(
+      `${S}\n\n${P}\n  budget is 40k\n\n`,
+    );
+  });
+
+  test('puts the lines the note lacks under the task it already embeds', () => {
+    const day = `## Carried in\n\n${P}\n  older note\n\nend`;
+    expect(addMovedTaskBlock(day, A, block)).toBe(
+      `## Carried in\n\n${P}\n  older note\n  ${S}\n  budget is 40k\n\nend`,
+    );
+  });
+
+  test('matches the indent of the task line already in the note', () => {
+    expect(addMovedTaskBlock(`${T}\n  ${P}\nend`, A, `${P}\n  notes`)).toBe(
+      `${T}\n  ${P}\n    notes\nend`,
+    );
+  });
+
+  test('is null when the note already holds every line of the block', () => {
+    expect(addMovedTaskBlock(`agenda\n\n${block}\n\n`, A, block)).toBeNull();
+    expect(addMovedTaskBlock(`${P}\n  x`, A, P)).toBeNull();
   });
 });

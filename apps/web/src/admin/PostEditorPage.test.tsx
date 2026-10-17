@@ -16,7 +16,7 @@ import {
   QueryClientTestProvider,
 } from '../test-utils';
 import PostEditorPage from './PostEditorPage';
-import { queryKeys } from '@gagnechris/app-core';
+import { hasPendingFlushes, queryKeys } from '@gagnechris/app-core';
 import { EVERY_MARKDOWN_ELEMENT } from '@gagnechris/shared/fixtures/every-markdown-element';
 import { renderPostPageBodyHtml } from '@gagnechris/public-ui/server';
 import { adminApi } from '../mockAdminApi';
@@ -723,6 +723,34 @@ describe('PostEditorPage navigation', () => {
     expect(screen.getByLabelText('Markdown')).toHaveValue('line one dirty');
   });
 
+  test('leaving after a too-large save drops the edits instead of sending them again', async () => {
+    const user = userEvent.setup();
+    answerConfirms(true);
+    put.mockResolvedValue({
+      data: undefined,
+      error: { error: 'payload_too_large', message: 'Too large' },
+      response: { status: 413 },
+    });
+    const router = renderWithRoutes();
+
+    await screen.findByDisplayValue('Hello');
+    await user.type(screen.getByLabelText('Markdown'), ' dirty');
+    await act(async () => {
+      await router.navigate('/');
+    });
+    await screen.findByText('Posts list');
+    const putsAtLeave = put.mock.calls.length;
+    expect(hasPendingFlushes()).toBe(false);
+
+    await act(async () => {
+      await router.navigate(`/posts/${basePost.id}`);
+    });
+    await screen.findByDisplayValue('Hello');
+    expect(screen.getByLabelText('Markdown')).toHaveValue('line one');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(put).toHaveBeenCalledTimes(putsAtLeave);
+  });
+
   test('switching posts remounts the editor so A state does not leak into B', async () => {
     const user = userEvent.setup();
     answerConfirms(true);
@@ -858,6 +886,23 @@ describe('PostEditorPage View live', () => {
     expect(
       await screen.findByRole('link', { name: 'View live' }),
     ).toHaveAttribute('href', 'https://gagnechris.com/posts/hello');
+  });
+
+  test('opens the live slug while the draft is renamed', async () => {
+    get.mockResolvedValue({
+      data: {
+        ...basePost,
+        status: 'published',
+        slug: 'renamed',
+        publishedSlug: 'hello',
+      },
+      error: undefined,
+      response: { status: 200 },
+    });
+    renderEditor();
+    expect(
+      await screen.findByRole('link', { name: 'View live' }),
+    ).toHaveAttribute('href', 'http://localhost:5173/posts/hello');
   });
 });
 

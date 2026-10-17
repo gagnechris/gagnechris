@@ -102,6 +102,7 @@ export {
 } from './task-embeds.js';
 export { indentWidth } from './indent-width.js';
 export {
+  addMovedTaskBlock,
   insertAfterTaskBlock,
   isMarkdownItem,
   lineAfterOuterBlock,
@@ -226,10 +227,12 @@ export {
   compareNoteTemplates,
   fillNoteTemplate,
   filterNoteTemplates,
+  NOTE_TEMPLATE_EMBED_MESSAGE,
   NOTE_TEMPLATE_LIMIT_MESSAGE,
   NOTE_TEMPLATE_MAX_BYTES,
   NOTE_TEMPLATE_MAX_COUNT,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
+  noteTemplateHasEmbeds,
   NoteTemplateSchema,
   type NoteTemplate,
 } from './note-templates.js';
@@ -269,6 +272,7 @@ export {
   PROJECTS_PATH,
   POST_PART_OF_LABEL,
   postPartOfSeparator,
+  postLivePath,
   postPartOfSuffix,
   postProjectLinks,
   PROJECT_BUILD_LOG_HEADING,
@@ -279,6 +283,7 @@ export {
   projectBuildLogEmptyText,
   projectBuildLogPosts,
   projectCardHref,
+  projectLiveHref,
   projectCardViews,
   projectHasPage,
   projectPagePath,

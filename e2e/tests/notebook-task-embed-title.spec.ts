@@ -78,3 +78,38 @@ for (const width of [1440, 390]) {
     expect(await taskTitle()).toBe(renamed);
   });
 }
+
+test('at 390px a title with a URL keeps the row’s width beside its link', async ({
+  page,
+  apps,
+  signIn,
+  seed,
+  prefix,
+}) => {
+  const note = await seed.daily('2026-10-02', 'Standup');
+  const title = `${prefix} read https://example.com/2026/planning/offsite-agenda before the call on Friday`;
+  const task = await seed.task({ title, noteId: note.id });
+  await seed.daily('2026-10-02', `Standup\n{{task:${task.id}}}`, {
+    id: note.id,
+    version: note.version,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.setFixedTime(FRIDAY_MORNING);
+  await signIn();
+  await page.goto(`${apps.notebook}/today`);
+
+  const row = page.locator('.markdown-editor .task-embed');
+  await expect(row.getByRole('textbox', { name: 'Task title' })).toHaveValue(
+    title,
+  );
+  const widths = await row.evaluate((el) => ({
+    row: el.getBoundingClientRect().width,
+    title: el.querySelector('.task-embed__title-wrap')!.getBoundingClientRect()
+      .width,
+    link: el.querySelector('.task-embed__link--chip')!.getBoundingClientRect()
+      .width,
+  }));
+  expect(widths.title).toBeGreaterThan(widths.row * 0.5);
+  expect(widths.link).toBeLessThan(widths.title / 3);
+});

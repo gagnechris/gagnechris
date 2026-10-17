@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, matchesGlob } from 'node:path';
+import { basename, dirname, join, matchesGlob } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -202,6 +202,61 @@ describe('GitHub Actions supply chain', () => {
       if (setup === -1 || creds === -1) continue;
       expect(setup, jobId).toBeLessThan(creds);
     }
+  });
+
+  it('builds web and the catalog only in jobs that can mint no OIDC token and read no secret', () => {
+    const builds =
+      /\bnpm run (build|storybook:build)\b|\bvite build\b|deploy-web\.sh(?! (upload|cognito-env)\b)|deploy-components\.sh(?! upload\b)/;
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
+        for (const step of job.steps ?? []) {
+          if (builds.test(step.run ?? '')) {
+            offenders.push(`${path}#${jobId}/${step.name}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+
+    const build = cdk.jobs.build! as Job & { environment?: string };
+    expect(hasIdToken(build, cdk)).toBe(false);
+    expect(readsSecret(build)).toBe(false);
+    expect(build.environment).toBeUndefined();
+    const runs = (build.steps ?? []).map((s) => s.run ?? '');
+    expect(runs).toContain('bash scripts/deploy-web.sh build');
+    expect(runs).toContain('bash scripts/deploy-components.sh build');
+    expect((cdk.jobs.deploy as Job & { needs?: string[] }).needs).toEqual([
+      'plan',
+      'build',
+    ]);
+  });
+
+  it('never restores the Go build cache in a job that can mint an OIDC token or reads a secret', () => {
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
+        for (const step of job.steps ?? []) {
+          if (
+            step.uses === SETUP_ACTION &&
+            step.with?.go !== 'false' &&
+            step.with?.['go-cache'] !== 'false'
+          ) {
+            offenders.push(`${path}#${jobId}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    const action = loadYaml<{ runs: { steps: Step[] } }>(
+      join(ACTIONS_DIR, 'setup', 'action.yml'),
+    );
+    const setupGo = action.runs.steps.find((s) =>
+      s.uses?.startsWith('actions/setup-go@'),
+    );
+    expect(setupGo?.with?.cache).toBe("${{ inputs.go-cache != 'false' }}");
   });
 
   it('plan job runs only official actions, git, bash and the AWS CLI', () => {
@@ -533,6 +588,109 @@ describe('deploy lag alert workflow', () => {
 describe('deploy job guards', () => {
   const deploy = cdk.jobs.deploy!;
 
+  // A checkout ref taken from the event or a job output can name a commit
+  // other than the one the run's checks were made against.
+  it('checks out only the run’s own commit in every workflow', () => {
+    const offenders = workflows.flatMap(({ path, doc }) =>
+      Object.entries(doc.jobs).flatMap(([jobName, job]) =>
+        (job.steps ?? [])
+          .filter(
+            (s) =>
+              s.uses?.startsWith('actions/checkout@') &&
+              /\$\{\{.*(github\.event|needs\.)/.test(String(s.with?.ref ?? '')),
+          )
+          .map(() => `${basename(path)}#${jobName}`),
+      ),
+    );
+    expect(offenders).toEqual([]);
+    for (const jobName of ['plan', 'build', 'deploy']) {
+      const checkout = cdk.jobs[jobName]!.steps!.find((s) =>
+        s.uses?.startsWith('actions/checkout@'),
+      )!;
+      expect(checkout.with?.ref, jobName).toBeUndefined();
+    }
+  });
+
+  describe('plan path filter', () => {
+    const step = cdk.jobs.plan!.steps!.find((s) => s.id === 'filter')!;
+
+    function runFilter(env: Record<string, string>) {
+      const dir = tempDir();
+      mkdirSync(join(dir, 'scripts', 'ci'), { recursive: true });
+      writeFileSync(
+        join(dir, 'scripts', 'ci', 'deploy-paths.sh'),
+        "printf 'cdk=true\\nweb=true\\ncomponents=true\\n'\n",
+      );
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      const result = spawnSync('bash', ['-eo', 'pipefail', '-c', step.run!], {
+        cwd: dir,
+        env: {
+          ...process.env,
+          GITHUB_OUTPUT: output,
+          BASE: 'b'.repeat(40),
+          ...env,
+        },
+        encoding: 'utf8',
+      });
+      expect(result.status, result.stderr).toBe(0);
+      return readFileSync(output, 'utf8');
+    }
+
+    it('deploys nothing when main moved on after CI validated the commit', () => {
+      expect(
+        runFilter({
+          GITHUB_EVENT_NAME: 'workflow_run',
+          VALIDATED_SHA: '1'.repeat(40),
+          HEAD_SHA: '2'.repeat(40),
+        }),
+      ).toBe('cdk=false\nweb=false\ncomponents=false\n');
+    });
+
+    it('filters paths when the run’s commit is the one CI validated', () => {
+      expect(
+        runFilter({
+          GITHUB_EVENT_NAME: 'workflow_run',
+          VALIDATED_SHA: '1'.repeat(40),
+          HEAD_SHA: '1'.repeat(40),
+        }),
+      ).toBe('cdk=true\nweb=true\ncomponents=true\n');
+    });
+  });
+
+  it('deploys only the commit plan approved, checked before credentials', () => {
+    const guard = stepIndex(
+      deploy,
+      (s) => s.run?.includes('git rev-parse HEAD') ?? false,
+    );
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(stepIndex(deploy, isCredentialStep));
+
+    const dir = tempDir();
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: dir, encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git(
+      '-c',
+      'user.name=t',
+      '-c',
+      'user.email=t@t',
+      'commit',
+      '-q',
+      '--allow-empty',
+      '-m',
+      'x',
+    );
+    const run = (sha: string) =>
+      spawnSync('bash', ['-eo', 'pipefail', '-c', deploy.steps![guard]!.run!], {
+        cwd: dir,
+        env: { ...process.env, HEAD_SHA: sha },
+        encoding: 'utf8',
+      }).status;
+    expect(run(git('rev-parse', 'HEAD'))).toBe(0);
+    expect(run('0'.repeat(40))).not.toBe(0);
+  });
+
   it('runs check:deployed-gsi after credentials and before cdk deploy', () => {
     const creds = stepIndex(deploy, isCredentialStep);
     const gsi = stepIndex(
@@ -564,7 +722,7 @@ describe('deploy job guards', () => {
 
   it('runs the web deploy only when plan says web, and records every deploy', () => {
     expect(deploy.if).toBe(
-      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'",
+      "always() && needs.plan.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true')",
     );
     const web = stepIndex(
       deploy,

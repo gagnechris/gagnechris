@@ -6,6 +6,7 @@ import { AppApiProvider } from '../src/AppApiProvider.js';
 import { queryKeys } from '../src/query/keys.js';
 import { useTaskDescriptionEditor } from '../src/query/useTaskDescriptionEditor.js';
 import type { Task } from '../src/query/api.js';
+import { clearPendingFlushes } from '../src/pendingFlushes.js';
 import { AUTOSAVE_DEBOUNCE_MS } from '../src/useQueuedAutosave.js';
 import { act, renderHook } from './renderHook.js';
 
@@ -55,10 +56,16 @@ function setup(put: Put) {
       getClient: () => client,
       children: createElement(QueryClientProvider, { client: qc, children }),
     });
-  const { result } = renderHook(() => useTaskDescriptionEditor(stored), {
-    wrapper,
-  });
-  return { qc, result, bodies, stored };
+  const mount = () =>
+    renderHook(
+      () =>
+        useTaskDescriptionEditor(
+          qc.getQueryData<Task>(queryKeys.tasks.detail(stored.id)) ?? stored,
+        ),
+      { wrapper },
+    );
+  const { result, unmount } = mount();
+  return { qc, result, unmount, mount, bodies, stored };
 }
 
 const settle = async () => {
@@ -72,6 +79,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  clearPendingFlushes();
   vi.useRealTimers();
 });
 
@@ -134,5 +142,40 @@ describe('useTaskDescriptionEditor', () => {
     expect(bodies.map((b) => b.version)).toEqual([3]);
     expect(result.current.saveError).toMatch(/another device/);
     expect(result.current.dirty).toBe(true);
+  });
+
+  test('closing the details offline keeps sending the last edit, and reopening shows it', async () => {
+    let online = false;
+    const { result, bodies, unmount, mount, qc, stored } = setup((body) => {
+      if (!online) throw new TypeError('Failed to fetch');
+      return {
+        data: task({ description: String(body.description), version: 4 }),
+        response: { status: 200 },
+      };
+    });
+    act(() => result.current.onChange('Bring the numbers'));
+    unmount();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(bodies).toHaveLength(1);
+
+    const reopened = mount();
+    expect(reopened.result.current.value).toBe('Bring the numbers');
+    expect(reopened.result.current.dirty).toBe(true);
+
+    online = true;
+    // The in-flight send settles first, then this editor's autosave sends.
+    await settle();
+    await settle();
+    expect(bodies.at(-1)).toEqual({
+      version: 3,
+      description: 'Bring the numbers',
+    });
+    expect(
+      qc.getQueryData<Task>(queryKeys.tasks.detail(stored.id))?.description,
+    ).toBe('Bring the numbers');
+    expect(reopened.result.current.dirty).toBe(false);
+    expect(reopened.result.current.value).toBe('Bring the numbers');
   });
 });

@@ -1928,6 +1928,22 @@ describe('subtasks in a note', () => {
     });
     press(view, 'Backspace');
     expect(body()).toBe(note);
+  });
+
+  test('select all then Delete in a note with a folded parent empties the note', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`before\n${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: '0 of 2 subtasks done' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('Book venue')).toBeNull(),
+    );
+    const view = await editorView(document.body);
 
     act(() => {
       view.dispatch({
@@ -1935,7 +1951,7 @@ describe('subtasks in a note', () => {
       });
     });
     press(view, 'Delete');
-    expect(body()).toBe(note);
+    expect(body()).toBe('');
   });
 
   test('a folded parent’s line can still be deleted, keeping its subtasks', async () => {

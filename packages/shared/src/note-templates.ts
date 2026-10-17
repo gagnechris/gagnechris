@@ -1,12 +1,19 @@
 import * as z from 'zod';
 import { formatCalendarDay, weekdayName } from './calendar.js';
 import { UlidSchema, VersionSchema, utf8ByteLength } from './schemas.js';
+import { findTaskEmbeds } from './task-embeds.js';
 
 export const NOTE_TEMPLATE_MAX_BYTES = 10_000;
 export const NOTE_TEMPLATE_NAME_MAX_LENGTH = 100;
 /** The list is one response with no paging, so the count is capped. */
 export const NOTE_TEMPLATE_MAX_COUNT = 100;
 export const NOTE_TEMPLATE_LIMIT_MESSAGE = `You can keep up to ${NOTE_TEMPLATE_MAX_COUNT} templates. Delete one to add another.`;
+export const NOTE_TEMPLATE_EMBED_MESSAGE =
+  'Templates can’t hold task rows, or every note it goes into would show the same task. Write tasks as [ ] lines instead.';
+
+/** An embed would put the same task in every note the template goes into. */
+export const noteTemplateHasEmbeds = (markdown: string): boolean =>
+  findTaskEmbeds(markdown).length > 0;
 
 const NoteTemplateNameSchema = z
   .string()
@@ -26,10 +33,12 @@ const NoteTemplateBodySchema = z
         input: value,
         message: `Template is over the ${NOTE_TEMPLATE_MAX_BYTES / 1000} KB limit`,
       });
+    } else if (noteTemplateHasEmbeds(value)) {
+      ctx.addIssue({ code: 'custom', message: NOTE_TEMPLATE_EMBED_MESSAGE });
     }
   })
   .describe(
-    `Up to ${NOTE_TEMPLATE_MAX_BYTES / 1000} KB (UTF-8; larger → 413); task lines allowed`,
+    `Up to ${NOTE_TEMPLATE_MAX_BYTES / 1000} KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not`,
   );
 
 export const NoteTemplateSchema = z.object({

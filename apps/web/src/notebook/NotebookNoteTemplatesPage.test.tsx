@@ -232,4 +232,40 @@ describe('note templates settings', () => {
     );
     expect(screen.getByText('Choose a template')).toBeInTheDocument();
   });
+
+  test('text with a task embed shows why and is not saved until the embed goes', async () => {
+    state.templates = [
+      {
+        id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
+        name: 'Retro',
+        bodyMarkdown: '- Wins',
+        version: 1,
+        createdAt: TS,
+        updatedAt: TS,
+      },
+    ];
+    const user = userEvent.setup();
+    renderAt('/settings/note-templates?template=01JTMPAAAAAAAAAAAAAAAAAAA1');
+    const body = await screen.findByRole('textbox', { name: 'Template text' });
+
+    await user.clear(body);
+    await user.paste('- Wins\n{{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Templates can’t hold task rows',
+    );
+    expect(body).toHaveValue('- Wins\n{{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(
+      state.puts.some((put) => String(put.bodyMarkdown).includes('{{task:')),
+    ).toBe(false);
+
+    await user.clear(body);
+    await user.type(body, '- Wins and blockers');
+    await waitFor(() =>
+      expect(state.puts.at(-1)).toMatchObject({
+        bodyMarkdown: '- Wins and blockers',
+      }),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

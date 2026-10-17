@@ -28,7 +28,7 @@ function rulesFor(css: string, selector: string): string {
 
 describe('task row drag handle', () => {
   test('the app-wide button hover resets transform', () => {
-    expect(rulesFor(workspaceCss, ':root button:hover')).toMatch(
+    expect(rulesFor(workspaceCss, 'button:where(:hover)')).toMatch(
       /transform:\s*none/,
     );
   });

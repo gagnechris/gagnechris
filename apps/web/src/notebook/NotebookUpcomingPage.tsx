@@ -22,6 +22,7 @@ import {
 import { Button } from '@gagnechris/ui';
 import { TaskDuePill } from '../kit/tasks/TaskDuePill';
 import { TaskCheckbox } from '../kit/tasks/TaskRow';
+import { TaskTitleLinks } from '../kit/tasks/TaskTitleLinks';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import type { NotebookOutletContext } from './NotebookLayout';
@@ -198,6 +199,7 @@ export default function NotebookUpcomingPage() {
                           <TaskParentLabel parentId={task.parentId} />
                           {task.title}
                         </Link>
+                        <TaskTitleLinks title={task.title} />
                         {group.datedRows && task.startDate ? (
                           <span className="notebook-upcoming__chip">
                             {formatTaskDay(task.startDate)}

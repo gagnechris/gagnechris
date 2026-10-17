@@ -953,8 +953,13 @@ func noteTemplateName(v *api.Validator, required bool) (string, bool) {
 
 func noteTemplateBody(v *api.Validator) (string, bool) {
 	s, ok := v.String("bodyMarkdown", false, false)
-	if ok && len(s) > contract.Data.Notebook.NoteTemplateMaxBytes {
-		v.FailWith("bodyMarkdown", api.CodeTooBig, "Template is over the "+strconv.Itoa(contract.Data.Notebook.NoteTemplateMaxBytes/1000)+" KB limit")
+	nb := contract.Data.Notebook
+	switch {
+	case !ok:
+	case len(s) > nb.NoteTemplateMaxBytes:
+		v.FailWith("bodyMarkdown", api.CodeTooBig, "Template is over the "+strconv.Itoa(nb.NoteTemplateMaxBytes/1000)+" KB limit")
+	case len(FindTaskEmbeds(s)) > 0:
+		v.FailWith("bodyMarkdown", api.CodeCustom, nb.NoteTemplateEmbedMessage)
 	}
 	return s, ok
 }

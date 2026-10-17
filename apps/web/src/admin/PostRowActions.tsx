@@ -5,7 +5,9 @@ import {
   type PostSummary,
 } from '@gagnechris/app-core';
 import { IconButton, Menu, MenuItem } from '@gagnechris/ui';
+import { appConfirm } from '../workspace/confirmDialog';
 import ShellIcon from '../workspace/ui/ShellIcon';
+import { POST_UNPUBLISH_CONFIRM } from './postConfirms';
 
 type Props = {
   post: PostSummary;
@@ -28,6 +30,11 @@ export function PostRowActions({ post, onError }: Props) {
     const result = await action({ version: post.version });
     setBusy(false);
     if (result.error) onError(errorMessage(result.error, fallback));
+  };
+
+  const confirmUnpublish = async () => {
+    if (!(await appConfirm(POST_UNPUBLISH_CONFIRM, 'Unpublish'))) return;
+    await run(unpublish, 'Could not unpublish.');
   };
 
   const canPublish = post.status === 'draft' || post.hasUnpublishedChanges;
@@ -53,9 +60,7 @@ export function PostRowActions({ post, onError }: Props) {
         </MenuItem>
       ) : null}
       {post.status === 'published' ? (
-        <MenuItem onSelect={() => void run(unpublish, 'Could not unpublish.')}>
-          Unpublish
-        </MenuItem>
+        <MenuItem onSelect={() => void confirmUnpublish()}>Unpublish</MenuItem>
       ) : null}
     </Menu>
   );

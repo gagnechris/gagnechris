@@ -215,6 +215,7 @@ export interface paths {
                                 title: string;
                                 tags: string[];
                                 projectIds: string[];
+                                publishedSlug?: string;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "deleted";
                                 /** Format: date-time */
@@ -364,6 +365,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -531,6 +533,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -685,6 +688,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -861,6 +865,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -1035,6 +1040,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -1210,6 +1216,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -1385,6 +1392,7 @@ export interface paths {
                                 description?: string;
                                 ogImage?: string;
                             } | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -1558,6 +1566,7 @@ export interface paths {
                                 demo: "posts" | "notebook" | null;
                                 order: number;
                                 href: string | null;
+                                publishedSlug?: string;
                                 /** @enum {string} */
                                 status: "draft" | "published" | "deleted";
                                 /** Format: date-time */
@@ -1714,6 +1723,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -1886,6 +1896,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -2050,6 +2061,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -2231,6 +2243,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -2410,6 +2423,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -2599,6 +2613,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -2779,6 +2794,7 @@ export interface paths {
                             demo: "posts" | "notebook" | null;
                             order: number;
                             href: string | null;
+                            publishedSlug?: string;
                             /** @enum {string} */
                             status: "draft" | "published" | "deleted";
                             /** Format: date-time */
@@ -10584,7 +10600,7 @@ export interface paths {
                         id: string;
                         name: string;
                         /**
-                         * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed
+                         * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
                          * @default
                          */
                         bodyMarkdown?: string;
@@ -10879,7 +10895,7 @@ export interface paths {
                     "application/json": {
                         version?: number;
                         name?: string;
-                        /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed */
+                        /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
                         bodyMarkdown?: string;
                     };
                 };
@@ -11640,6 +11656,7 @@ export interface components {
                 description?: string;
                 ogImage?: string;
             } | null;
+            publishedSlug?: string;
             /** @enum {string} */
             status: "draft" | "published" | "deleted";
             /** Format: date-time */
@@ -11655,6 +11672,7 @@ export interface components {
             title: string;
             tags: string[];
             projectIds: string[];
+            publishedSlug?: string;
             /** @enum {string} */
             status: "draft" | "published" | "deleted";
             /** Format: date-time */
@@ -11671,6 +11689,7 @@ export interface components {
                 title: string;
                 tags: string[];
                 projectIds: string[];
+                publishedSlug?: string;
                 /** @enum {string} */
                 status: "draft" | "published" | "deleted";
                 /** Format: date-time */
@@ -11741,6 +11760,7 @@ export interface components {
             demo: "posts" | "notebook" | null;
             order: number;
             href: string | null;
+            publishedSlug?: string;
             /** @enum {string} */
             status: "draft" | "published" | "deleted";
             /** Format: date-time */
@@ -11774,6 +11794,7 @@ export interface components {
                 demo: "posts" | "notebook" | null;
                 order: number;
                 href: string | null;
+                publishedSlug?: string;
                 /** @enum {string} */
                 status: "draft" | "published" | "deleted";
                 /** Format: date-time */
@@ -12296,7 +12317,7 @@ export interface components {
             id: string;
             name: string;
             /**
-             * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed
+             * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
              * @default
              */
             bodyMarkdown: string;
@@ -12304,7 +12325,7 @@ export interface components {
         UpdateNoteTemplateRequest: {
             version?: number;
             name?: string;
-            /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed */
+            /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
             bodyMarkdown?: string;
         };
         Task: {
