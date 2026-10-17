@@ -23,8 +23,7 @@ import {
   StyleSheet,
   Text,
   View,
-  type NativeSyntheticEvent,
-  type TextInputSelectionChangeEventData,
+  type TextInputSelectionChangeEvent,
 } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import {
@@ -273,7 +272,7 @@ export const NoteBodyEditor = ({
 
   const onSelectionChange = (
     key: string,
-    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
+    event: TextInputSelectionChangeEvent,
   ) => {
     const { start, end } = event.nativeEvent.selection;
     caretStale.current = false;
