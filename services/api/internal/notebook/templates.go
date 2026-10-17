@@ -165,7 +165,7 @@ func (r *templatesRepo) write(ctx context.Context, userID, area string, edit tem
 		if data.ClassifyWriteError(err) == data.WriteConflict {
 			return DailyTemplate{}, r.conflict(ctx, userID, area, base)
 		}
-		return DailyTemplate{}, err
+		return DailyTemplate{}, mapWriteError(err)
 	}
 	saved := DailyTemplate{Area: area, BodyMarkdown: bodyMarkdown, CarryOverSection: section, IsDefault: reset, Version: base + 1, UpdatedAt: &now}
 	if reset {

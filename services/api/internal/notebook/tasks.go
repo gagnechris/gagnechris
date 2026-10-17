@@ -62,6 +62,7 @@ func newTasksRepo(table *data.Table, now func() time.Time) *tasksRepo {
 	return &tasksRepo{table: table, base: &versioned[Task, *Task]{
 		table: table, now: now, label: "task", changeType: taskChangeType,
 		key: taskKey, parse: ParseTask, item: taskItem, createHash: taskCreateHash,
+		area: func(t Task) string { return t.Area },
 	}}
 }
 

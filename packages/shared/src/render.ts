@@ -5,16 +5,9 @@ export {
   renderMarkdownToHtml,
   renderPostMarkdownToHtml,
   renderProjectMarkdownToHtml,
-  sanitizeRenderedHtml,
 } from './markdown.js';
-export {
-  escapeHtml,
-  escapeRegExp,
-  replaceMeta,
-  upsertCanonical,
-  upsertMeta,
-} from './html.js';
-export { applyPageMeta, type PageMetaInput } from './page-meta-html.js';
+export { escapeHtml } from './html.js';
+export { applyPageMeta } from './page-meta-html.js';
 export { pageTitle, RESUME_PDF_PATH } from './site-config.js';
 export {
   HOME_ALL_POSTS_LABEL,
@@ -24,13 +17,11 @@ export {
   HOME_PROJECTS_HEADING_ID,
   HOME_RECENT_POSTS_HEADING,
   HOME_RECENT_POSTS_HEADING_ID,
-  HOME_RECENT_POSTS_LIMIT,
   homeAboutExcerpt,
   homePostHref,
   renderHomeAboutHtml,
   selectHomeRecentPosts,
   type HomeLink,
-  type HomeLinksSegment,
   type HomeRecentPost,
 } from './home-page.js';
 export {
@@ -47,27 +38,7 @@ export {
   RESUME_UNAVAILABLE_TEXT,
   resumeIntro,
   resumeSummaryExcerpt,
-  type ResumeActionLink,
   type ResumeIntro,
 } from './resume-page.js';
-export {
-  SITE_FOOTER_LINKS,
-  SITE_HEADER_PHOTO_SIZE,
-  SITE_NAV_LINKS,
-  siteFooterCopy,
-  siteNavCurrent,
-  type SiteFooterLink,
-  type SiteNavHref,
-} from './site-chrome.js';
-export type {
-  Home,
-  Resume,
-  ResumeContent,
-  ResumeEducation,
-  ResumeExperience,
-} from './schemas.js';
-export {
-  PROJECTS_INDEX_TITLE,
-  projectPageView,
-  type ProjectsIndexItem,
-} from './project-page.js';
+export type { Home, Resume } from './schemas.js';
+export { projectPageView, type ProjectsIndexItem } from './project-page.js';

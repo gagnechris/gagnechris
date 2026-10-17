@@ -4,6 +4,7 @@ import {
   isSafeLinkHref,
   isSitePath,
   linkHref,
+  linkLabel,
   POST_LINK_SCHEMES,
   PROJECT_HREF_SCHEMES,
 } from './links.js';
@@ -139,5 +140,16 @@ describe('linkHref', () => {
     expect(linkHref('www.a.io/x')).toBe('https://www.a.io/x');
     expect(linkHref('https://a.io')).toBe('https://a.io');
     expect(linkHref('/notes/1')).toBe('/notes/1');
+  });
+});
+
+describe('linkLabel', () => {
+  it('drops http(s):// and shortens a long URL to its host', () => {
+    expect(linkLabel('https://a.io/x')).toBe('a.io/x');
+    expect(linkLabel('HTTP://a.io')).toBe('a.io');
+    expect(linkLabel('https://example.com/a-long/path/to/somewhere')).toBe(
+      'example.com/…',
+    );
+    expect(linkLabel('mailto:me@a.io')).toBe('mailto:me@a.io');
   });
 });

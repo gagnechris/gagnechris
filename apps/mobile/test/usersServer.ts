@@ -78,10 +78,11 @@ export function usersServer(users: ManagedUser[]) {
         case 'enable':
           return { ...user, status: 'active' };
         case 'remove':
-          return { ...user, status: 'removed' };
+          return { ...user, status: 'removed', removalUnfinished: undefined };
         case 'restore':
           return {
             ...user,
+            removalUnfinished: undefined,
             status: 'active',
             level: (body as { level?: AccessLevel }).level ?? user.level,
           };
