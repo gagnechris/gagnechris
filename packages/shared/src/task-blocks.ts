@@ -132,14 +132,26 @@ const taskLineAt = (
   taskEmbedNesting(lines.join('\n')).find((e) => e.line === n);
 
 /**
+ * Whether the block of the line at `n` holds task lines of its own: nesting
+ * it would put them two levels down, where they have no parent.
+ */
+const holdsTasks = (lines: readonly string[], n: number) => {
+  const { last } = markdownItemBlock(lines, n);
+  return findTaskEmbeds(lines.join('\n')).some(
+    (e) => e.line > n && e.line <= last,
+  );
+};
+
+/**
  * The indent that makes the task at `n` a subtask of the task above it at
  * its level. Null unless that line is a task not under another task, since
- * subtasks are one level deep.
+ * subtasks are one level deep, and null when the task has subtasks.
  */
 export function taskNestIndent(
   lines: readonly string[],
   n: number,
 ): number | null {
+  if (holdsTasks(lines, n)) return null;
   const indent = indentWidth(lines[n]!);
   let above = n - 1;
   while (above >= 0 && indentWidth(lines[above]!) > indent) {
@@ -152,14 +164,16 @@ export function taskNestIndent(
 }
 
 /**
- * The indent a task dropped right under line `above` takes when nested: a
- * subtask of a top-level task, or a sibling of a subtask. Null when `above`
- * is not a task line.
+ * The indent the task at `moved`, dropped right under line `above`, takes
+ * when nested: a subtask of a top-level task, or a sibling of a subtask. Null
+ * when `above` is not a task line, or when the moved task has subtasks.
  */
 export function taskDropNestIndent(
   lines: readonly string[],
   above: number,
+  moved: number,
 ): number | null {
+  if (holdsTasks(lines, moved)) return null;
   const task = above >= 0 ? taskLineAt(lines, above) : undefined;
   if (!task) return null;
   const indent = indentWidth(lines[above]!);

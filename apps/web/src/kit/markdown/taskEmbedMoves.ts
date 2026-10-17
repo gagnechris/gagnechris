@@ -298,7 +298,11 @@ export function dragTaskEmbed(
     if (dx <= SIDEWAYS) return 0;
     const above = before - 1;
     if (above < 1 || (above >= block.first && above <= block.last)) return 0;
-    const target = taskDropNestIndent(view.state.doc.toJSON(), above - 1);
+    const target = taskDropNestIndent(
+      view.state.doc.toJSON(),
+      above - 1,
+      block.first - 1,
+    );
     return target !== null && target > ownIndent ? target - ownIndent : 0;
   };
 

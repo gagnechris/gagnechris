@@ -67,11 +67,11 @@ describe('task blocks', () => {
   });
 
   test('a drop under a top-level task makes a subtask; under a subtask, a sibling', () => {
-    expect(taskDropNestIndent([P, T], 0)).toBe(2);
-    expect(taskDropNestIndent([P, `  ${S}`, T], 1)).toBe(2);
-    expect(taskDropNestIndent(['text', T], 0)).toBeNull();
-    expect(taskDropNestIndent([T], -1)).toBeNull();
-    expect(taskDropNestIndent(['```', P, '```', T], 1)).toBeNull();
+    expect(taskDropNestIndent([P, T], 0, 1)).toBe(2);
+    expect(taskDropNestIndent([P, `  ${S}`, T], 1, 2)).toBe(2);
+    expect(taskDropNestIndent(['text', T], 0, 1)).toBeNull();
+    expect(taskDropNestIndent([T], -1, 0)).toBeNull();
+    expect(taskDropNestIndent(['```', P, '```', T], 1, 3)).toBeNull();
   });
 
   test('the line after a subtask’s outer block is after its parent’s block, which a blank line ends', () => {
@@ -125,5 +125,12 @@ describe('task blocks', () => {
     expect(removeTaskEmbedLines(md, new Set([ID.P]))).toBe(
       ['```', P, '```'].join('\n'),
     );
+  });
+
+  test('a task with subtasks does not nest, by Tab or by a drop, so they keep their parent', () => {
+    expect(taskNestIndent([P, T, `  ${S}`], 1)).toBeNull();
+    expect(taskDropNestIndent([P, T, `  ${S}`], 0, 1)).toBeNull();
+    expect(taskNestIndent([P, T, '  why'], 1)).toBe(2);
+    expect(taskDropNestIndent([P, T, '  why'], 0, 1)).toBe(2);
   });
 });
