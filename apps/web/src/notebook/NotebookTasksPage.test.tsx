@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -267,6 +267,44 @@ describe('NotebookTasksPage', () => {
       ).toHaveTextContent('Old plan'),
     );
     expect(row('Launch').querySelector('.task-parent-label')).toBeNull();
+  });
+
+  test('a URL in a title is a link after the title', async () => {
+    state.tasks = [
+      {
+        id: 't1',
+        userId: 'u1',
+        area: 'work',
+        title: 'Read https://example.com/very/long/path before standup',
+        description: '',
+        priority: 'med',
+        status: 'todo',
+        dueDate: null,
+        startDate: null,
+        someday: false,
+        completedAt: null,
+        noteId: null,
+        parentId: null,
+        tags: [],
+        version: 1,
+        createdAt: '2026-10-02T12:00:00.000Z',
+        updatedAt: '2026-10-02T12:00:00.000Z',
+        deleted: false,
+      },
+    ];
+    renderTasks();
+
+    const row = (
+      await screen.findByRole('checkbox', {
+        name: 'Complete Read https://example.com/very/long/path before standup',
+      })
+    ).closest('li')!;
+    const link = within(row).getByRole('link', {
+      name: /^example\.com/,
+    });
+    expect(link).toHaveAttribute('href', 'https://example.com/very/long/path');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link.closest('a[href="/tasks/t1"]')).toBeNull();
   });
 
   test('a failed quick add shows an error and keeps the text', async () => {

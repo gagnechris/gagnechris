@@ -228,10 +228,12 @@ export {
   compareNoteTemplates,
   fillNoteTemplate,
   filterNoteTemplates,
+  NOTE_TEMPLATE_EMBED_MESSAGE,
   NOTE_TEMPLATE_LIMIT_MESSAGE,
   NOTE_TEMPLATE_MAX_BYTES,
   NOTE_TEMPLATE_MAX_COUNT,
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
+  noteTemplateHasEmbeds,
   NoteTemplateSchema,
   type NoteTemplate,
 } from './note-templates.js';

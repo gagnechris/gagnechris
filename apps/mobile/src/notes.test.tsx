@@ -69,7 +69,7 @@ describe('Notes list', () => {
         makeNote('01PINNED00000000000000000A', 'Pinned body', {
           title: 'Reading list',
           pinned: true,
-          updatedAt: '2026-08-01T10:00:00.000Z',
+          updatedAt: new Date(2026, 7, 1, 10).toISOString(),
         }),
         makeNote(
           '01DAILY000000000000000000A',
@@ -82,7 +82,7 @@ describe('Notes list', () => {
         ),
         makeNote('01OLD00000000000000000000A', '# Plan\nShip it', {
           title: 'Q3 plan',
-          updatedAt: '2026-09-01T10:00:00.000Z',
+          updatedAt: new Date(2026, 8, 1, 10).toISOString(),
         }),
         makeNote('01OTHER0000000000000000000', 'Personal stuff', {
           area: 'personal',

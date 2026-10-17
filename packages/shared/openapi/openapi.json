@@ -2696,7 +2696,7 @@
           "bodyMarkdown": {
             "type": "string",
             "default": "",
-            "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed"
+            "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not"
           }
         },
         "required": [
@@ -2718,7 +2718,7 @@
           },
           "bodyMarkdown": {
             "type": "string",
-            "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed"
+            "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not"
           }
         }
       },
@@ -25956,7 +25956,7 @@
                   "bodyMarkdown": {
                     "type": "string",
                     "default": "",
-                    "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed"
+                    "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not"
                   }
                 },
                 "required": [
@@ -26519,7 +26519,7 @@
                   },
                   "bodyMarkdown": {
                     "type": "string",
-                    "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed"
+                    "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not"
                   }
                 }
               }

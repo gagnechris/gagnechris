@@ -81,6 +81,9 @@ jobs:
 
       - name: Test
         run: npm test
+        # TEST_TZ in scripts/verify.ts: a day ahead of UTC most of the day.
+        env:
+          TZ: Pacific/Kiritimati
 
       - name: Go test
         run: npm run go:test

@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
   CreateNoteTemplateRequestSchema,
+  NOTE_TEMPLATE_EMBED_MESSAGE,
   NOTE_TEMPLATE_MAX_BYTES,
+  UpdateNoteTemplateRequestSchema,
   fillNoteTemplate,
   filterNoteTemplates,
 } from './note-templates.js';
@@ -50,6 +52,28 @@ describe('CreateNoteTemplateRequestSchema', () => {
     expect(
       CreateNoteTemplateRequestSchema.safeParse({ id, name: '  ' }).success,
     ).toBe(false);
+  });
+
+  test('refuses task embeds outside code, on create and edit', () => {
+    const embed = '## Agenda\n  {{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}\n';
+    const created = CreateNoteTemplateRequestSchema.safeParse({
+      id,
+      name: 'x',
+      bodyMarkdown: embed,
+    });
+    expect(created.success).toBe(false);
+    expect(created.error?.issues[0]?.message).toBe(NOTE_TEMPLATE_EMBED_MESSAGE);
+    expect(
+      UpdateNoteTemplateRequestSchema.safeParse({ bodyMarkdown: embed })
+        .success,
+    ).toBe(false);
+    expect(
+      CreateNoteTemplateRequestSchema.safeParse({
+        id,
+        name: 'x',
+        bodyMarkdown: '```\n{{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}\n```\n',
+      }).success,
+    ).toBe(true);
   });
 
   test('limits the text by UTF-8 size', () => {

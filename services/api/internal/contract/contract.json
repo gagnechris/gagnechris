@@ -7,6 +7,8 @@
     "sesGlobalDailyCap": 100,
     "resumeNotifySesDailyCap": 50,
     "minContactSubmitMs": 2000,
+    "originVerifyHeader": "x-origin-verify",
+    "viewerAddressHeader": "x-viewer-address",
     "notebookImageUploadsPerUserPerDay": 200,
     "metrics": {
       "handlerError": "HandlerError",
@@ -366,6 +368,7 @@
     "noteTemplateNameMaxLength": 100,
     "noteTemplateMaxCount": 100,
     "noteTemplateLimitMessage": "You can keep up to 100 templates. Delete one to add another.",
+    "noteTemplateEmbedMessage": "Templates can’t hold task rows, or every note it goes into would show the same task. Write tasks as [ ] lines instead.",
     "areaIdPattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
     "areaIdMaxLength": 24,
     "areaNameMaxLength": 30,
