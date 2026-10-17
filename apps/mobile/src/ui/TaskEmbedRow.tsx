@@ -18,7 +18,14 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import { openMarkdownLink } from '../markdown/links';
 import { color, font, MIN_TARGET } from '../theme';
 import type { Subtasks } from '../notebook/useNoteSubtasks';
@@ -115,7 +122,7 @@ type TitleProps = {
   onRename: (title: string) => void;
   onSubmit?: () => void;
   onDelete?: () => void;
-  inputRef: RefObject<TextInput | null>;
+  inputRef: RefObject<TextInputInstance | null>;
   a11yActions: object;
   onEditing: (editing: boolean) => void;
 };
@@ -218,7 +225,7 @@ export const TaskEmbedRow = ({
   subtasks,
   grip,
 }: Props) => {
-  const titleInput = useRef<TextInput>(null);
+  const titleInput = useRef<TextInputInstance>(null);
   // A long press in a title being edited is the text loupe, not the menu.
   const [editingTitle, setEditingTitle] = useState(false);
   const onLongPress = onMenu ?? onRemove;

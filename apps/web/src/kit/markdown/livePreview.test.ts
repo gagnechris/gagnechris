@@ -180,6 +180,17 @@ describe('livePreview', () => {
     expect(lineText(v, 4)).toBe('```');
   });
 
+  test('code spans and code blocks are kept out of the spellchecker; prose is not', () => {
+    const v = setup('Teh `cosnt x`\n```\nfucntion\n```\nend', 0);
+    expect(v.contentDOM.querySelector('.cm-md-code')).toHaveAttribute(
+      'spellcheck',
+      'false',
+    );
+    expect(lineEl(v, 3)).toHaveAttribute('spellcheck', 'false');
+    expect(lineEl(v, 1)).not.toHaveAttribute('spellcheck');
+    expect(lineEl(v, 5)).not.toHaveAttribute('spellcheck');
+  });
+
   test('snake_case is left alone and checklist items render as checkboxes off the caret line', () => {
     const doc = 'call my_fn_name\n- [ ] buy milk\n- [x] eggs\nend';
     const v = setup(doc);

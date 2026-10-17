@@ -1319,3 +1319,46 @@ describe('alert notifications', () => {
     expect(r.status).not.toBe(0);
   });
 });
+
+describe('check-branch-name.sh', () => {
+  const check = (branch: string) =>
+    runScript('check-branch-name.sh', [branch], {}).status;
+
+  it.each([
+    'gagnechris/chr-595-add-a-pr-template',
+    'gagnechris/chr-7',
+    'chr-12-fix-it',
+    'dependabot/npm_and_yarn/vite-7.1.0',
+    'dependabot/github_actions/actions/checkout-7.0.1',
+  ])('accepts %s', (branch) => {
+    expect(check(branch)).toBe(0);
+  });
+
+  it.each([
+    'claude/project-thread-abc123',
+    'gagnechris/fix-the-thing',
+    'feature/chr-notes',
+    'gagnechris/xchr-12-typo',
+    'main',
+  ])('refuses %s', (branch) => {
+    expect(check(branch)).toBe(1);
+  });
+
+  it('runs on every pull request before setup, with the ref in env', () => {
+    const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+    const build = ci.jobs.build!;
+    const guard = stepIndex(build, (s) =>
+      (s.run ?? '').includes('scripts/ci/check-branch-name.sh'),
+    );
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(
+      stepIndex(build, (s) => s.uses === SETUP_ACTION),
+    );
+    const step = build.steps![guard]! as Step & {
+      env?: Record<string, string>;
+    };
+    expect(step.if).toBe("github.event_name == 'pull_request'");
+    expect(step.env?.HEAD_REF).toBe('${{ github.head_ref }}');
+    expect(step.run).not.toContain('${{');
+  });
+});
