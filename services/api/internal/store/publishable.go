@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -201,6 +202,14 @@ func (s *PublishableStore[T]) slugClaimPut(slug, id string) types.TransactWriteI
 	return types.TransactWriteItem{Put: s.put(item, "attribute_not_exists(pk)", nil)}
 }
 
+// slugReclaimPut claims a slug that is free or already this entity's.
+func (s *PublishableStore[T]) slugReclaimPut(slug, id string) types.TransactWriteItem {
+	w := s.slugClaimPut(slug, id)
+	w.Put.ConditionExpression = aws.String("attribute_not_exists(pk) OR " + s.cfg.SlugClaims.OwnerAttr + " = :id")
+	w.Put.ExpressionAttributeValues = map[string]types.AttributeValue{":id": data.S(id)}
+	return w
+}
+
 func slugTaken(slug string) string { return `Slug "` + slug + `" is already taken` }
 
 // InsertDraft writes a new draft, claiming its slug in the same transaction.
@@ -247,7 +256,7 @@ func (s *PublishableStore[T]) MutateLoaded(ctx context.Context, pair *Pair[T], e
 	st.UpdatedAt = s.nowISO()
 	st.Version = s.cfg.State(&existing).Version + 1
 	next = s.Flag(next, pair.Published)
-	return next, s.persist(ctx, existing, next, PersistOptions{})
+	return next, s.persist(ctx, existing, next, pair.Published, PersistOptions{})
 }
 
 func (s *PublishableStore[T]) SoftDelete(ctx context.Context, id string, expected int) (T, error) {
@@ -266,7 +275,7 @@ func (s *PublishableStore[T]) SoftDelete(ctx context.Context, id string, expecte
 	st.UpdatedAt = s.nowISO()
 	st.Version++
 	st.HasUnpublishedChanges = false
-	return next, s.persist(ctx, existing, next, PersistOptions{DeletePublished: pair.Published != nil})
+	return next, s.persist(ctx, existing, next, pair.Published, PersistOptions{DeletePublished: pair.Published != nil})
 }
 
 func (s *PublishableStore[T]) Publish(ctx context.Context, id string, expected int) (T, error) {
@@ -307,7 +316,7 @@ func (s *PublishableStore[T]) PublishLoaded(ctx context.Context, pair *Pair[T], 
 	st.UpdatedAt = updatedAt
 	st.Version++
 	st.HasUnpublishedChanges = false
-	if err := s.persist(ctx, existing, next, PersistOptions{SyncPublished: true}); err != nil {
+	if err := s.persist(ctx, existing, next, pair.Published, PersistOptions{SyncPublished: true}); err != nil {
 		return next, err
 	}
 	return s.Flag(next, &next), nil
@@ -336,7 +345,7 @@ func (s *PublishableStore[T]) UnpublishLoaded(ctx context.Context, pair *Pair[T]
 	st.UpdatedAt = s.nowISO()
 	st.Version++
 	st.HasUnpublishedChanges = false
-	return next, s.persist(ctx, existing, next, PersistOptions{DeletePublished: true})
+	return next, s.persist(ctx, existing, next, pair.Published, PersistOptions{DeletePublished: true})
 }
 
 func (s *PublishableStore[T]) Discard(ctx context.Context, id string, expected int) (T, error) {
@@ -367,7 +376,7 @@ func (s *PublishableStore[T]) DiscardLoaded(ctx context.Context, pair *Pair[T], 
 	st.UpdatedAt = s.nowISO()
 	st.Version = cur.Version + 1
 	st.HasUnpublishedChanges = false
-	if err := s.persist(ctx, existing, next, PersistOptions{}); err != nil {
+	if err := s.persist(ctx, existing, next, pair.Published, PersistOptions{}); err != nil {
 		return next, err
 	}
 	return s.Flag(next, pair.Published), nil
@@ -395,9 +404,53 @@ func (s *PublishableStore[T]) sitePublishUpdate(id string, published bool) types
 	}}
 }
 
+// heldSlugs are the slugs an entity claims: its draft slug, and while a
+// PUBLISHED row exists, the live slug too, so no other entity can take a
+// URL that is still served.
+func (s *PublishableStore[T]) heldSlugs(draft T, published *T) []string {
+	if s.isDeleted(&draft) {
+		return nil
+	}
+	held := []string{s.cfg.Slug(draft)}
+	if published != nil {
+		if live := s.cfg.Slug(*published); live != held[0] {
+			held = append(held, live)
+		}
+	}
+	return held
+}
+
+// releaseLiveClaim deletes the claim on a slug only the PUBLISHED row held.
+// Rows written before live slugs were held may have lost that claim, or seen
+// it taken, so the delete is skipped unless this entity still owns it.
+func (s *PublishableStore[T]) releaseLiveClaim(ctx context.Context, slug, id string) (*types.TransactWriteItem, error) {
+	claims := s.cfg.SlugClaims
+	out, err := s.table.DB.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(s.table.Name), Key: claims.ClaimKey(slug), ConsistentRead: aws.Bool(true),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if owner, ok := out.Item[claims.OwnerAttr].(*types.AttributeValueMemberS); !ok || owner.Value != id {
+		return nil, nil
+	}
+	return s.releaseClaim(slug, id), nil
+}
+
+func (s *PublishableStore[T]) releaseClaim(slug, id string) *types.TransactWriteItem {
+	claims := s.cfg.SlugClaims
+	return &types.TransactWriteItem{Delete: &types.Delete{
+		TableName:                 aws.String(s.table.Name),
+		Key:                       claims.ClaimKey(slug),
+		ConditionExpression:       aws.String(claims.OwnerAttr + " = :id"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{":id": data.S(id)},
+	}}
+}
+
 // persist writes the versioned META Put as item 0, joined in one
 // transaction by slug rows and the PUBLISHED row; alone it is a plain Put.
-func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts PersistOptions) error {
+// published is the PUBLISHED row before this write.
+func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, published *T, opts PersistOptions) error {
 	id := s.cfg.ID(&after)
 	beforeState := s.cfg.State(&before)
 	meta := s.put(s.cfg.MetaItem(after), VersionMatchCondition, VersionMatchValues(beforeState.Version))
@@ -408,22 +461,45 @@ func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts
 	if claims != nil {
 		beforeSlug := s.cfg.Slug(before)
 		afterSlug = s.cfg.Slug(after)
-		if beforeSlug != afterSlug {
+		publishedAfter := published
+		switch {
+		case opts.SyncPublished:
+			publishedAfter = &after
+		case opts.DeletePublished:
+			publishedAfter = nil
+		}
+		beforeHeld := s.heldSlugs(before, published)
+		afterHeld := s.heldSlugs(after, publishedAfter)
+		if beforeSlug != afterSlug && !s.isDeleted(&after) {
 			redirect := claims.RedirectKey(beforeSlug)
 			redirect["entityType"] = data.S(claims.RedirectEntityType)
 			redirect[claims.OwnerAttr] = data.S(s.cfg.ID(&before))
 			redirect["targetSlug"] = data.S(afterSlug)
-			items = append(items,
-				types.TransactWriteItem{Delete: &types.Delete{
-					TableName:                 aws.String(s.table.Name),
-					Key:                       claims.ClaimKey(beforeSlug),
-					ConditionExpression:       aws.String(claims.OwnerAttr + " = :id"),
-					ExpressionAttributeValues: map[string]types.AttributeValue{":id": data.S(s.cfg.ID(&before))},
-				}},
-				types.TransactWriteItem{Put: s.put(redirect, "", nil)},
-			)
-			claimIndexes = append(claimIndexes, len(items))
-			items = append(items, s.slugClaimPut(afterSlug, id))
+			items = append(items, types.TransactWriteItem{Put: s.put(redirect, "", nil)})
+		}
+		for _, slug := range beforeHeld {
+			if slices.Contains(afterHeld, slug) {
+				continue
+			}
+			if slug == beforeSlug {
+				items = append(items, *s.releaseClaim(slug, id))
+				continue
+			}
+			release, err := s.releaseLiveClaim(ctx, slug, id)
+			if err != nil {
+				return err
+			}
+			if release != nil {
+				items = append(items, *release)
+			}
+		}
+		for _, slug := range afterHeld {
+			// A draft that moves back onto its live slug claims it again, which
+			// restores a claim older rows may have lost.
+			if !slices.Contains(beforeHeld, slug) || (slug == afterSlug && afterSlug != beforeSlug) {
+				claimIndexes = append(claimIndexes, len(items))
+				items = append(items, s.slugReclaimPut(slug, id))
+			}
 		}
 	}
 	if opts.SyncPublished {
@@ -436,11 +512,6 @@ func (s *PublishableStore[T]) persist(ctx context.Context, before, after T, opts
 	}
 	if opts.SyncPublished || opts.DeletePublished {
 		items = append(items, s.sitePublishUpdate(id, opts.SyncPublished))
-	}
-	if claims != nil && s.cfg.State(&after).Status == StatusDeleted && beforeState.Status != StatusDeleted {
-		items = append(items, types.TransactWriteItem{Delete: &types.Delete{
-			TableName: aws.String(s.table.Name), Key: claims.ClaimKey(afterSlug),
-		}})
 	}
 
 	action := "Update"

@@ -1,7 +1,7 @@
 # Git workflow
 
 - One Linear ticket → one branch → one PR into `main`. Do not commit or push directly to `main`.
-- Use the branch name from the Linear issue (`gitBranchName`), e.g. `gagnechris/chr-57-…`, not a tool-generated name, so Linear links the PR.
+- Use the branch name from the Linear issue (`gitBranchName`), e.g. `gagnechris/chr-57-…`, not a tool-generated name, so Linear links the PR. CI (`scripts/ci/check-branch-name.sh`) fails a PR whose branch carries no ticket id, except a Dependabot branch.
 - Work in a separate `git worktree` per ticket when more than one agent or session shares this machine. Never stash or switch branches in a checkout that another session is using.
 - `npm install` installs a `pre-push` hook that runs `npm run verify`, the CI checks your changes can affect. Don't bypass it with `--no-verify`; fix what it reports.
 - Open a PR and wait for every required check to pass before merging: **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**.

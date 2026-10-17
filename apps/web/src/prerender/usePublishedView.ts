@@ -44,7 +44,7 @@ export function usePublishedView<T>(
         });
       },
       (err: unknown) => {
-        console.error(`Error loading ${key}:`, err);
+        console.error('Error loading %s:', key, err);
         if (!cancelled) setSettled({ key, result: ERROR });
       },
     );

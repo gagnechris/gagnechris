@@ -100,6 +100,10 @@ describe('posts transactions over HTTP (DynamoDB Local)', () => {
     const fetched = await ok('GET', `/api/admin/posts/${post.id}`);
     expect(fetched.slug).toBe('renamed-published-slug');
 
+    expect((await row(keys.post.slugClaim(originalSlug)))?.postId).toBe(
+      post.id,
+    );
+    await action(renamed, 'publish');
     expect(await row(keys.post.slugClaim(originalSlug))).toBeUndefined();
   });
 

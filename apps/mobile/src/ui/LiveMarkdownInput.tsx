@@ -9,9 +9,9 @@ import {
 import {
   StyleSheet,
   TextInput,
-  type NativeSyntheticEvent,
   type StyleProp,
-  type TextInputSelectionChangeEventData,
+  type TextInputInstance,
+  type TextInputSelectionChangeEvent,
   type ViewStyle,
 } from 'react-native';
 import { LiveMarkdownNativeView } from '../../modules/live-markdown';
@@ -37,9 +37,7 @@ type Props = {
     text: string,
     selection?: { start: number; end: number },
   ) => void;
-  onSelectionChange?: (
-    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>,
-  ) => void;
+  onSelectionChange?: (event: TextInputSelectionChangeEvent) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   variant: LiveMarkdownVariant;
@@ -146,7 +144,7 @@ const FallbackInput = ({
   ...props
 }: Props) => (
   <TextInput
-    ref={ref as Ref<TextInput>}
+    ref={ref as Ref<TextInputInstance>}
     {...props}
     placeholderTextColor={color.muted}
     multiline
@@ -214,9 +212,7 @@ const NativeInput = ({
         onChangeText(event.nativeEvent.text, event.nativeEvent.selection);
       }}
       onSelectionChange={(event) =>
-        onSelectionChange?.(
-          event as NativeSyntheticEvent<TextInputSelectionChangeEventData>,
-        )
+        onSelectionChange?.(event as TextInputSelectionChangeEvent)
       }
       onFocusChange={(event) => {
         focused.current = event.nativeEvent.focused;
