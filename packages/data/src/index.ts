@@ -1,4 +1,4 @@
-// Every export needs an importer outside this package (test/exports-used.test.ts).
+// Every export needs an importer outside this package (scripts/test/exports-used.test.ts).
 
 export { getDocClient } from './client.js';
 

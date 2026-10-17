@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -28,6 +29,14 @@ func (m memRemoved) get(_ context.Context, id string) (*removedUser, error) {
 
 func (m memRemoved) put(_ context.Context, r removedUser, _ string) error {
 	m[r.UserID] = r
+	return nil
+}
+
+func (m memRemoved) finish(_ context.Context, id string) error {
+	if r, ok := m[id]; ok {
+		r.Pending = false
+		m[id] = r
+	}
 	return nil
 }
 
@@ -131,5 +140,119 @@ func TestInviteAgainFinishesAnInviteThatFailedBeforeItsGroups(t *testing.T) {
 				t.Errorf("%+v: inviting a finished invite at %s: %v", tc, level, err)
 			}
 		}
+	}
+}
+
+// flakyDirectory fails the named operation while fail is set.
+type flakyDirectory struct {
+	*MemoryDirectory
+	fail string
+}
+
+func (d *flakyDirectory) err(op string) error {
+	if d.fail == op {
+		return errors.New("cognito down")
+	}
+	return nil
+}
+
+func (d *flakyDirectory) RemoveFromGroup(ctx context.Context, id, group string) error {
+	if err := d.err("RemoveFromGroup"); err != nil {
+		return err
+	}
+	return d.MemoryDirectory.RemoveFromGroup(ctx, id, group)
+}
+
+func (d *flakyDirectory) DisableUser(ctx context.Context, id string) error {
+	if err := d.err("DisableUser"); err != nil {
+		return err
+	}
+	return d.MemoryDirectory.DisableUser(ctx, id)
+}
+
+func (d *flakyDirectory) SignOutEverywhere(ctx context.Context, id string) error {
+	if err := d.err("SignOutEverywhere"); err != nil {
+		return err
+	}
+	return d.MemoryDirectory.SignOutEverywhere(ctx, id)
+}
+
+func TestARemovalThatStopsPartWayIsUnfinishedUntilRemoveRunsAgain(t *testing.T) {
+	ctx := context.Background()
+	for _, op := range []string{"RemoveFromGroup", "DisableUser", "SignOutEverywhere"} {
+		dir := &flakyDirectory{MemoryDirectory: NewMemoryDirectory(localSeed(), time.Now)}
+		a := admin{dir: dir, removed: memRemoved{}, sessions: &memSessions{}, actor: "owner"}
+		invited, err := a.invite(ctx, "half@example.com", nil, "full")
+		if err != nil {
+			t.Fatal(err)
+		}
+		id := invited.User.ID
+		dir.fail = op
+		if _, err := a.remove(ctx, id); err == nil {
+			t.Fatalf("%s: remove with a failing directory succeeded", op)
+		}
+		u, err := a.managedUser(ctx, id)
+		if err != nil || u.Status != "removed" || !u.RemovalUnfinished || deref(u.Level) != "full" {
+			t.Fatalf("%s: after a failed remove: %+v %v", op, u, err)
+		}
+		dir.fail = ""
+		u, err = a.remove(ctx, id)
+		if err != nil || u.Status != "removed" || u.RemovalUnfinished || deref(u.Level) != "full" {
+			t.Fatalf("%s: remove again: %+v %v", op, u, err)
+		}
+		got, _ := dir.GetUser(ctx, id)
+		if got.Enabled || holdsAccessGroup(*got) {
+			t.Errorf("%s: still enabled or in a group: %+v", op, got)
+		}
+	}
+}
+
+func TestRestoreGivesExactlyTheChosenLevel(t *testing.T) {
+	ctx := context.Background()
+	dir := &flakyDirectory{MemoryDirectory: NewMemoryDirectory(localSeed(), time.Now)}
+	sessions := &memSessions{}
+	a := admin{dir: dir, removed: memRemoved{}, sessions: sessions, actor: "owner"}
+	invited, err := a.invite(ctx, "half@example.com", nil, "full")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := invited.User.ID
+	dir.fail = "RemoveFromGroup"
+	if _, err := a.remove(ctx, id); err == nil {
+		t.Fatal("remove with a failing directory succeeded")
+	}
+	dir.fail = ""
+	sessions.revoked = nil
+	cms := "cms"
+	u, err := a.restore(ctx, id, &cms)
+	if err != nil || u.Status != "invited" || deref(u.Level) != "cms" || u.RemovalUnfinished {
+		t.Fatalf("restore: %+v %v", u, err)
+	}
+	got, _ := dir.GetUser(ctx, id)
+	if !slices.Equal(got.Groups, accessLevelGroups["cms"]) {
+		t.Errorf("groups after restore at cms: %v", got.Groups)
+	}
+	if !slices.Contains(sessions.revoked, id) {
+		t.Error("restore that drops groups kept their sessions")
+	}
+}
+
+func TestInviteAgainAtAnotherLevelLeavesAPendingInviteAlone(t *testing.T) {
+	ctx := context.Background()
+	dir := NewMemoryDirectory(localSeed(), time.Now)
+	a := admin{dir: dir, removed: memRemoved{}, sessions: &memSessions{}, actor: "owner"}
+	invited, err := a.invite(ctx, "pending@example.com", nil, "notebook")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, level := range []string{"full", "cms"} {
+		var conflict *conflictError
+		if _, err := a.invite(ctx, "pending@example.com", nil, level); !errors.As(err, &conflict) || conflict.code != "user_exists" {
+			t.Errorf("inviting a pending notebook invite at %s: %v", level, err)
+		}
+	}
+	got, _ := dir.GetUser(ctx, invited.User.ID)
+	if deref(levelFromGroups(got.Groups)) != "notebook" {
+		t.Errorf("level after inviting again: %v", got.Groups)
 	}
 }

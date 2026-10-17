@@ -39,6 +39,48 @@ export function markdownItemBlock(
   return { first: n, last };
 }
 
+/**
+ * The line after the outermost item block holding line `n`. A line added
+ * inside that block would take the lines below from the task they sit under;
+ * a blank line ends a block, so the walk up stops at one.
+ */
+export function lineAfterOuterBlock(
+  lines: readonly string[],
+  n: number,
+): number {
+  let top = n;
+  for (let k = n - 1; k >= 0 && indentWidth(lines[top]!) > 0; k -= 1) {
+    const text = lines[k]!;
+    if (blank(text)) break;
+    if (
+      indentWidth(text) < indentWidth(lines[top]!) &&
+      markdownItemBlock(lines, k).last >= n
+    ) {
+      top = k;
+    }
+  }
+  return markdownItemBlock(lines, top).last + 1;
+}
+
+/**
+ * Text that starts a new line at the end of the task row at `n` goes on new
+ * lines after the row's outer block (one leading line break is the one that
+ * starts it). Returns the lines and where the inserted text ends.
+ */
+export function insertAfterTaskBlock(
+  lines: readonly string[],
+  n: number,
+  text: string,
+): { lines: string[]; line: number; column: number } {
+  const added = text.replace(/^\r?\n/, '').split(/\r?\n/);
+  const at = lineAfterOuterBlock(lines, n);
+  return {
+    lines: [...lines.slice(0, at), ...added, ...lines.slice(at)],
+    line: at + added.length - 1,
+    column: added[added.length - 1]!.length,
+  };
+}
+
 /** The note's `##` headings outside code fences. */
 export function noteHeadings(lines: readonly string[]): NoteHeading[] {
   const fences = scanFences(lines);
@@ -122,6 +164,37 @@ export function taskDropNestIndent(
   if (!task) return null;
   const indent = indentWidth(lines[above]!);
   return task.nested ? indent : indent + TASK_NEST_WIDTH;
+}
+
+/**
+ * Takes out the line at `n`. The lines under it move out to its level, so a
+ * removed parent's subtasks don't nest under the task above instead.
+ */
+export function removeTaskLine(lines: readonly string[], n: number): string[] {
+  const { last } = markdownItemBlock(lines, n);
+  const under = lines.slice(n + 1, last + 1);
+  const step =
+    under.length > 0 ? indentWidth(under[0]!) - indentWidth(lines[n]!) : 0;
+  return [
+    ...lines.slice(0, n),
+    ...under.map((line) => reindent(line, -step)),
+    ...lines.slice(last + 1),
+  ];
+}
+
+/** Takes out each line that embeds one of `ids`, as `removeTaskLine` does. */
+export function removeTaskEmbedLines(
+  markdown: string,
+  ids: ReadonlySet<string>,
+): string {
+  const drop = findTaskEmbeds(markdown)
+    .filter((e) => ids.has(e.id))
+    .map((e) => e.line);
+  if (drop.length === 0) return markdown;
+  let lines = markdown.split('\n');
+  // Bottom up, so each line number still points at its line.
+  for (const n of drop.reverse()) lines = removeTaskLine(lines, n);
+  return lines.join('\n');
 }
 
 /** The line of the embed for `taskId`; null when the note no longer has it. */

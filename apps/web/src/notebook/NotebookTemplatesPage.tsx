@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useOutletContext, useSearchParams } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
   dailyTemplateResource,
   errorMessage,
@@ -16,10 +16,8 @@ import {
   dailyTemplateHeadings,
   fillDailyTemplate,
   formatCalendarDay,
-  notebookAreaName,
-  resolveNotebookArea,
 } from '@gagnechris/shared';
-import { Button, Field, SegmentedRadio, Select } from '@gagnechris/ui';
+import { Button, Field, Select } from '@gagnechris/ui';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { LazyMarkdownPreview } from '../kit/markdown/LazyMarkdownPreview';
 import { SaveIndicator } from '../workspace/ui/SaveIndicator';
@@ -240,12 +238,7 @@ function TemplateEditor({
 }
 
 export default function NotebookTemplatesPage() {
-  const { area: current, areas } = useOutletContext<NotebookOutletContext>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const area = resolveNotebookArea(
-    searchParams.get('template') ?? current,
-    areas,
-  );
+  const { area, areaName } = useOutletContext<NotebookOutletContext>();
 
   return (
     <section className="workspace-panel workspace-panel--editor">
@@ -256,28 +249,11 @@ export default function NotebookTemplatesPage() {
         </div>
       </div>
       <p className="workspace-panel__lede">
-        Each new daily note starts from its area’s template. Notes you’ve
-        already started never change.
+        Each new {areaName} daily note starts from this template. Notes you’ve
+        already started never change. Switch areas in the sidebar to edit
+        another area’s template.
       </p>
-      <SegmentedRadio
-        label="Template"
-        options={areas.map((a) => ({ value: a.id, label: a.name }))}
-        value={area}
-        onChange={(next) =>
-          setSearchParams(
-            (params) => {
-              params.set('template', next);
-              return params;
-            },
-            { replace: true },
-          )
-        }
-      />
-      <TemplateEditor
-        key={area}
-        area={area}
-        areaName={notebookAreaName(areas, area)}
-      />
+      <TemplateEditor key={area} area={area} areaName={areaName} />
     </section>
   );
 }

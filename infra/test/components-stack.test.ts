@@ -1,14 +1,15 @@
 import { Annotations, Match, Template } from 'aws-cdk-lib/assertions';
-import { App, Aspects, Stack } from 'aws-cdk-lib';
+import { Aspects, Stack } from 'aws-cdk-lib';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { AwsSolutionsChecks } from 'cdk-nag';
 import { describe, expect, it } from 'vitest';
 import { getEnvironment } from '../lib/config/environments.js';
 import { ComponentsStack } from '../lib/stacks/components-stack.js';
+import { testApp } from './helpers/test-app.js';
 
 function build() {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', {
     CDK_ACCOUNT: '123456789012',
     ALERTS_EMAIL: 'alerts@example.com',

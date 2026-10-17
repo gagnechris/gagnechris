@@ -901,6 +901,10 @@
             }
           ]
         },
+        "pending": {
+          "type": "boolean",
+          "const": true
+        },
         "createdAt": {
           "type": "string",
           "minLength": 1
@@ -1756,6 +1760,19 @@
             ]
           }
         },
+        "areaIndex": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "An area id from the user's area list, such as work or personal"
+          },
+          "additionalProperties": {
+            "type": "boolean",
+            "const": true
+          }
+        },
         "version": {
           "type": "integer",
           "exclusiveMinimum": 0,
@@ -2509,6 +2526,11 @@
           "name": "Home"
         }
       ],
+      "areaIndex": {
+        "work": true,
+        "family": true,
+        "personal": true
+      },
       "version": 4,
       "createdAt": "2026-10-01T12:00:00.000Z",
       "updatedAt": "2026-10-02T09:30:00.000Z"

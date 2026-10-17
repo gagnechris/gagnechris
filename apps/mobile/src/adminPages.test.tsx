@@ -1,4 +1,5 @@
-import { clearPendingFlushes } from '@gagnechris/app-core';
+import { clearPendingFlushes, type Resume } from '@gagnechris/app-core';
+import { DEFAULT_RESUME } from '@gagnechris/shared';
 import { openBrowserAsync } from 'expo-web-browser';
 import { ActionSheetIOS, Alert } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
@@ -134,6 +135,31 @@ const resumeRole = (index: number) =>
   server.state.pages.resume.content.experience[index]!;
 
 describe('Resume editor', () => {
+  it('Unpublish warns that /resume stops showing the resume and its PDF', async () => {
+    server = adminServer([], [], {
+      resume: {
+        ...DEFAULT_RESUME,
+        status: 'published',
+        publishedAt: '2026-10-01T09:00:00.000Z',
+        version: 1,
+      } as Resume,
+    });
+    vi.stubGlobal('fetch', server.fetch);
+    const renderer = await show(<ResumeScreen />);
+    vi.mocked(ActionSheetIOS.showActionSheetWithOptions).mockClear();
+    act(() => byLabel(renderer, 'Resume actions').props.onPress());
+    pickAction('Unpublish');
+    await settle(10);
+
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    const [title, message] = vi.mocked(Alert.alert).mock.calls[0]!;
+    expect(title).toBe('Unpublish this resume?');
+    expect(message).toContain('Resume available on request');
+    expect(message).toMatch(/PDF/);
+    expect(message).not.toMatch(/keeps/);
+    expect(server.state.pages.resume.status).toBe('published');
+  });
+
   it('saves the profile, skills and education', async () => {
     serve();
     const renderer = await show(<ResumeScreen />);

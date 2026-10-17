@@ -5,6 +5,7 @@ import {
   emptyResumeDraft,
   experienceRangeError,
   hasExperienceRangeError,
+  RESUME_UNPUBLISH_NOTE,
   resumeDraftFromResume,
   resumePayload,
   resumeResource,
@@ -49,10 +50,7 @@ import { Icon } from '../../../src/ui/Icon';
 import { ListRow } from '../../../src/ui/ListRow';
 import { Section } from '../../../src/ui/Section';
 
-const confirm = publishableConfirm(
-  'resume',
-  'The live page keeps the last published version.',
-);
+const confirm = publishableConfirm('resume', RESUME_UNPUBLISH_NOTE);
 
 const monthLabel = (month: string) =>
   RESUME_MONTH_PATTERN.test(month) ? formatResumeShortMonth(month) : '';

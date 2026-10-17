@@ -921,10 +921,20 @@
   margin-top: var(--space-4);
 }
 
+/* Side column on the left on wide screens; narrow ones keep source order. */
 @media (min-width: 1000px) {
   .notebook-templates {
-    grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+    grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+    grid-template-areas: 'side main';
     align-items: start;
+  }
+
+  .notebook-templates__editor {
+    grid-area: main;
+  }
+
+  .notebook-templates__side {
+    grid-area: side;
   }
 }
 
@@ -933,13 +943,18 @@
   min-width: 0;
 }
 
+.notebook-templates__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .notebook-templates__bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
 }
 
 .notebook-templates__bar h2 {
@@ -960,32 +975,21 @@
   gap: var(--space-2);
 }
 
-.note-templates {
-  display: grid;
-  gap: var(--space-6);
-  margin-top: var(--space-4);
-}
-
-@media (min-width: 1000px) {
-  .note-templates {
-    grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
-    align-items: start;
-  }
-}
-
-.note-templates__side,
-.note-templates__editor {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
 .note-templates__new {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
+}
+
+/* .notebook-card ul is for prose lists. */
+.note-templates__picker .ui-list {
+  display: block;
+  padding: 0;
+}
+
+.note-templates__picker .note-templates__new {
+  margin-top: var(--space-3);
 }
 
 .note-templates__new .kit-field {
@@ -1096,6 +1100,7 @@
 
 /* The card is the preview's only frame. */
 .notebook-card__preview .markdown-preview {
+  height: auto;
   min-height: 0;
   padding: 0;
   border: 0;

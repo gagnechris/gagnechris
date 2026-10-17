@@ -7,7 +7,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { App, Duration, Stack } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -18,6 +18,7 @@ import {
   localGoBundling,
 } from '../lib/constructs/go-lambda.js';
 import { REPO_ROOT } from '../lib/constructs/lambda-common.js';
+import { testApp } from './helpers/test-app.js';
 
 const FIXTURE_MODULE = join(REPO_ROOT, 'infra/test/fixtures/go-lambda');
 
@@ -25,7 +26,7 @@ let template: Template;
 let assetDir: string;
 
 beforeAll(() => {
-  const app = new App({
+  const app = testApp({
     context: { 'aws:cdk:enable-asset-metadata': true },
   });
   const stack = new Stack(app, 'GoLambdaTest', {

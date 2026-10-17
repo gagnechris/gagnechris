@@ -1,4 +1,4 @@
-import { findBareUrls, shortenUrl } from '@gagnechris/shared';
+import { findBareUrls, linkLabel } from '@gagnechris/shared';
 import './taskTitleLinks.css';
 
 /**
@@ -25,7 +25,7 @@ export function TaskTitleLinks({
           rel="noopener noreferrer"
           title={href}
         >
-          {shortenUrl(href.replace(/^https?:\/\//i, ''))}
+          {linkLabel(href)}
         </a>
       ))}
     </>

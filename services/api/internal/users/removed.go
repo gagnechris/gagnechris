@@ -18,6 +18,8 @@ type removedUser struct {
 	UserID        string
 	Email         string
 	PreviousLevel *string
+	// Pending until every removal step has run.
+	Pending bool
 }
 
 // removedStore keeps removal out of Cognito: the Cognito user stays
@@ -27,6 +29,7 @@ type removedStore interface {
 	list(ctx context.Context) ([]removedUser, error)
 	get(ctx context.Context, userID string) (*removedUser, error)
 	put(ctx context.Context, r removedUser, removedBy string) error
+	finish(ctx context.Context, userID string) error
 	delete(ctx context.Context, userID string) error
 }
 
@@ -44,6 +47,9 @@ func parseRemoved(item data.Item) (removedUser, error) {
 		UserID:        r.Str("userId", 1),
 		Email:         r.Str("email", 0),
 		PreviousLevel: r.NullEnum("previousLevel", accessLevels...),
+	}
+	if pending := r.OptBool("pending"); pending != nil {
+		u.Pending = *pending
 	}
 	r.Str("createdAt", 1)
 	r.Str("removedBy", 1)
@@ -101,11 +107,24 @@ func (s removedRepo) put(ctx context.Context, r removedUser, removedBy string) e
 	item["previousLevel"] = data.OptS(r.PreviousLevel)
 	item["createdAt"] = data.S(jstime.ISO(s.now()))
 	item["removedBy"] = data.S(removedBy)
+	if r.Pending {
+		item["pending"] = &types.AttributeValueMemberBOOL{Value: true}
+	}
 	_, err := s.table.DB.PutItem(ctx, &dynamodb.PutItemInput{TableName: &s.table.Name, Item: item})
 	return err
 }
 
 func (s removedRepo) delete(ctx context.Context, userID string) error {
 	_, err := s.table.DB.DeleteItem(ctx, &dynamodb.DeleteItemInput{TableName: &s.table.Name, Key: removedKey(userID)})
+	return err
+}
+
+func (s removedRepo) finish(ctx context.Context, userID string) error {
+	_, err := s.table.DB.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName:           &s.table.Name,
+		Key:                 removedKey(userID),
+		UpdateExpression:    aws.String("REMOVE pending"),
+		ConditionExpression: aws.String("attribute_exists(pk)"),
+	})
 	return err
 }

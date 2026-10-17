@@ -751,10 +751,15 @@ describe('one task embedded in two notes', () => {
 
 describe('deleting an embedded task', () => {
   let body = '';
+  let setExternal: (value: string) => void = () => {};
   function renderNote(initial: string) {
     body = initial;
     const Note = () => {
       const [value, setValue] = useState(initial);
+      setExternal = (next) => {
+        body = next;
+        setValue(next);
+      };
       return (
         <NotebookMarkdownBody
           note={{ id: NOTE_A, area: 'work' }}
@@ -831,6 +836,32 @@ describe('deleting an embedded task', () => {
     expect(api.taskDeletes).toEqual([]);
   });
 
+  test('undo after a task is added from another list keeps the task and its line', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask({ noteId: NOTE_B });
+    const { container } = renderNote('Standup');
+    const view = await editorView(container);
+    act(() => view.dispatch({ selection: { anchor: 'Standup'.length } }));
+    typeInto(view, '!');
+    expect(body).toBe('Standup!');
+
+    // What Still open's Add to today's note does to the open note.
+    act(() => setExternal(`Standup!\n\n${tokenLine(TASK_ID)}\n\n`));
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    act(() => {
+      undo(view);
+    });
+    expect(body).toBe(`Standup\n\n${tokenLine(TASK_ID)}\n\n`);
+    act(() => {
+      undo(view);
+    });
+    expect(body).toContain(tokenLine(TASK_ID));
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(false);
+  });
+
   test('cutting the line keeps the task, since it is being moved', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     seedTask();
@@ -881,6 +912,26 @@ describe('deleting an embedded task', () => {
     await waitFor(() => expect(body).toBe('Standup\nnotes'));
     expect(within(container).queryByText('Deleted task')).toBeNull();
     expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('a parent deleted elsewhere leaves its subtasks at its level, not under the task above', async () => {
+    const above = '01JTASKCCCCCCCCCCCCCCCCCCC';
+    const sub = '01JTASKDDDDDDDDDDDDDDDDDDD';
+    for (const task of [
+      { id: above, title: 'Above' },
+      { id: sub, title: 'Sub', parentId: TASK_ID },
+    ]) {
+      seedTask(task);
+      api.tasks.set(task.id, api.tasks.get(TASK_ID)!);
+    }
+    seedTask({ deleted: true });
+    renderNote(
+      `${tokenLine(above)}\n${tokenLine(TASK_ID)}\n  ${tokenLine(sub)}\nnotes`,
+    );
+
+    await waitFor(() =>
+      expect(body).toBe(`${tokenLine(above)}\n${tokenLine(sub)}\nnotes`),
+    );
   });
 });
 
@@ -1599,19 +1650,46 @@ describe('moving tasks in a note', () => {
     const user = userEvent.setup();
     const row = (await handle()).closest('.task-embed')!;
 
-    fireEvent.contextMenu(row);
-    const menu = screen.getByRole('menu', { name: 'Move to' });
-    await user.click(within(menu).getByRole('menuitem', { name: 'Today' }));
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
-
-    expect(current()).toBe(body);
-    expect(
+    const liveText = () =>
       document.querySelector(
         '[role="status"][aria-live="polite"].kit-visually-hidden',
-      )?.textContent ?? '',
-    ).not.toContain('Moved to Today');
+      )?.textContent ?? '';
+    const announced: string[] = [];
+    let last = liveText();
+    const observer = new MutationObserver(() => {
+      const text = liveText();
+      if (text && text !== last) announced.push(text);
+      last = text;
+    });
+    observer.observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Today' },
+      ),
+    );
+    expect(current()).toBe(body);
+
+    // A real move afterwards: its announcement lands after any the no-op made.
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Meetings' },
+      ),
+    );
+    await waitFor(() => expect(announced).toContain('Moved to Meetings'));
+    observer.disconnect();
+    expect(announced).toEqual(['Moved to Meetings']);
+    expect(current()).toBe(
+      `## Today\nnotes\n\n## Meetings\nagenda\n${tokenLine(TASK_ID)}`,
+    );
   });
 
   test('Move to → another day’s note → tomorrow moves the lines to that day and points the tasks at it', async () => {
