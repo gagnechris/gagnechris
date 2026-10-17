@@ -22,13 +22,20 @@ const hide = Decoration.replace({});
 const lineClass = (cls: string) => Decoration.line({ class: cls });
 const headingLines = [1, 2, 3, 4, 5, 6].map((n) => lineClass(`cm-md-h${n}`));
 const quoteLine = lineClass('cm-md-quote');
-const fenceLine = lineClass('cm-md-fence');
-const idleFenceLine = lineClass('cm-md-fence cm-md-fence--idle');
-const codeLine = lineClass('cm-md-code-block');
+// Code is not prose: the browser spellchecker would underline every identifier.
+const noSpellcheck = { spellcheck: 'false' };
+const codeLineClass = (cls: string) =>
+  Decoration.line({ class: cls, attributes: noSpellcheck });
+const fenceLine = codeLineClass('cm-md-fence');
+const idleFenceLine = codeLineClass('cm-md-fence cm-md-fence--idle');
+const codeLine = codeLineClass('cm-md-code-block');
 const doneLine = lineClass('cm-md-check-done');
 const strongMark = Decoration.mark({ class: 'cm-md-strong' });
 const emphasisMark = Decoration.mark({ class: 'cm-md-em' });
-const codeMark = Decoration.mark({ class: 'cm-md-code' });
+const codeMark = Decoration.mark({
+  class: 'cm-md-code',
+  attributes: noSpellcheck,
+});
 const syntaxMark = Decoration.mark({ class: 'cm-md-syntax' });
 
 const CHECKLIST = /^([ \t]*)[-*+][ \t]+\[([ xX])\](?!\()[ \t]?/;
