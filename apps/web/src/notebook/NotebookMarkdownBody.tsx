@@ -27,6 +27,7 @@ import MarkdownEditor, {
 } from '../kit/markdown/MarkdownEditor';
 import { useTaskDateMenuEditor } from '../kit/markdown/taskDateMenuEditor';
 import { taskListToggle } from '../kit/markdown/taskListToggle';
+import { bulletCheckboxTasks } from '../kit/markdown/bulletCheckboxTasks';
 import { markdownImages } from '../kit/markdown/imageWidgets';
 import { livePreview } from '../kit/markdown/livePreview';
 import '../kit/markdown/markdown.css';
@@ -174,7 +175,9 @@ export function NotebookMarkdownBody({
       writingChecks,
       markdownImages({ resolveSrc: resolveImageSrc }),
       taskListToggle(),
-      ...(withTasks ? [...dateMenu.extensions, toggleDetailsKey] : []),
+      ...(withTasks
+        ? [...dateMenu.extensions, toggleDetailsKey, bulletCheckboxTasks()]
+        : []),
       ...embeds.extensions,
       EditorView.updateListener.of((update) => {
         if (update.focusChanged) setFocused(update.view.hasFocus);
