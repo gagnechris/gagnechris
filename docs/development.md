@@ -123,6 +123,7 @@ them).
 
 ```bash
 npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile
+# infra tests make Apps with testApp() (infra/test/helpers/test-app.ts): each synthesizes under one temp root that the run's global teardown deletes; a plain new App() would leave a /tmp/cdk.out* of tens of MB per App, and test/test-app.test.ts fails on one
 npm run test:integration -w @gagnechris/api-tests   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace
