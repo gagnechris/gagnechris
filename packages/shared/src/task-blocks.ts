@@ -194,7 +194,7 @@ export function addMovedTaskBlock(
   const present = new Set(findTaskEmbeds(markdown).map((e) => e.id));
   const at = taskEmbedLineOf(markdown, taskId);
   if (at === null) {
-    const body = markdown.replace(/\s+$/, '');
+    const body = markdown.trimEnd();
     const moved = removeTaskEmbedLines(block, present);
     return `${body}${body ? '\n\n' : ''}${moved}\n\n`;
   }
