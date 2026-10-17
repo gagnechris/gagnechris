@@ -1,5 +1,12 @@
 /** @jsxRuntime automatic */
-import { useId, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from 'react';
 import { Button } from './Button.js';
 import { cx } from './cx.js';
 import { useFieldControl } from './fieldContext.js';
@@ -17,6 +24,8 @@ type Props = {
   'aria-label'?: string;
   /** Describes it further, such as an error shown outside a Field. */
   'aria-describedby'?: string;
+  /** Marks it invalid when its error is shown outside a Field. */
+  'aria-invalid'?: boolean;
   className?: string;
 };
 
@@ -31,25 +40,35 @@ export const FileInput = ({
   uploading,
   className,
   'aria-describedby': describedBy,
+  'aria-invalid': ariaInvalid,
   ...aria
 }: Props) => {
   const input = useRef<HTMLInputElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const progress = useRef<HTMLDivElement>(null);
+  // Swapping the button for the progress bar (and back) removes the focused
+  // element; this carries focus across instead of dropping it to the page.
+  const hadFocus = useRef(false);
   const [over, setOver] = useState(false);
   const hintId = useId();
   const buttonId = useId();
-  const field = useFieldControl(
-    {
-      'aria-describedby':
-        cx(hint ? hintId : undefined, describedBy) || undefined,
-    },
-    false,
-  );
+  const field = useFieldControl({
+    'aria-describedby': cx(hint ? hintId : undefined, describedBy) || undefined,
+    'aria-invalid': ariaInvalid,
+  });
   const name = aria['aria-label'];
   const labelledBy = name
     ? undefined
     : field.labelId
       ? `${field.labelId} ${buttonId}`
       : undefined;
+
+  const isUploading = Boolean(uploading);
+  useLayoutEffect(() => {
+    const active = document.activeElement;
+    if (!hadFocus.current || (active && active !== document.body)) return;
+    (isUploading ? progress : button).current?.focus();
+  }, [isUploading]);
 
   const accepts = (e: DragEvent) =>
     !disabled && !uploading && e.dataTransfer.types.includes('Files');
@@ -87,6 +106,12 @@ export const FileInput = ({
         className,
       )}
       {...dragProps}
+      onFocus={() => {
+        hadFocus.current = true;
+      }}
+      onBlur={(e) => {
+        if (e.relatedTarget) hadFocus.current = false;
+      }}
     >
       <input
         ref={input}
@@ -104,7 +129,7 @@ export const FileInput = ({
         }}
       />
       {uploading ? (
-        <div className="ui-file__progress">
+        <div ref={progress} className="ui-file__progress" tabIndex={-1}>
           <span className="ui-file__name">{uploading.name}</span>
           <progress
             aria-label={`Uploading ${uploading.name}`}
@@ -115,12 +140,14 @@ export const FileInput = ({
       ) : (
         <>
           <Button
+            ref={button}
             id={buttonId}
             size="sm"
             disabled={disabled}
             aria-label={name ? `${name}: ${buttonLabel}` : undefined}
             aria-labelledby={labelledBy}
             aria-describedby={field.aria['aria-describedby']}
+            aria-invalid={field.aria['aria-invalid']}
             onClick={() => input.current?.click()}
           >
             {buttonLabel}

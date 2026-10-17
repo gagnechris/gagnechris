@@ -35,7 +35,11 @@ test('the post body is one pane: an inserted image shows inline and survives rel
   await editor.locator('.cm-content').click();
   await page.keyboard.press('ControlOrMeta+End');
   await expect(editor.locator('.cm-md-h2')).toHaveText('Intro');
-  await page.getByLabel('Insert image').setInputFiles({
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Insert image' }).click();
+  await (
+    await chooser
+  ).setFiles({
     name: 'chart.png',
     mimeType: 'image/png',
     buffer: PNG_1X1,

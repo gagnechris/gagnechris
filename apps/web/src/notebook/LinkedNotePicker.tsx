@@ -69,6 +69,8 @@ export function LinkedNotePicker({ value, onChange }: Props) {
         onKeyDown={(e) => {
           if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !searching) {
             setQuery('');
+          } else if (e.key === 'Escape' && searching) {
+            setQuery(null);
           }
         }}
       />

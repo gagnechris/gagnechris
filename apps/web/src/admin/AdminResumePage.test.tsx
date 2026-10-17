@@ -631,6 +631,14 @@ describe('AdminResumePage public links', () => {
     vi.unstubAllEnvs();
   });
 
+  test('the scrolling preview pane is a named region a keyboard can reach', async () => {
+    renderResume();
+    await screen.findByRole('link', { name: 'View live' });
+    const pane = screen.getByRole('region', { name: 'Resume preview' });
+    expect(pane).toHaveAttribute('tabindex', '0');
+    expect(pane).toContainElement(previewFrame());
+  });
+
   test('preview renders in a frame with the public site and Resume styles', async () => {
     renderResume();
     await screen.findByRole('link', { name: 'View live' });

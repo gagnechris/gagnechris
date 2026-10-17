@@ -25,11 +25,16 @@ export function ImageUploadField({
   hint,
 }: Props) {
   const requiredErrorId = useId();
+  const errorId = useId();
   const [uploading, setUploading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const upload = async (file: File | undefined) => {
-    if (!file?.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError(`${file.name} is not an image.`);
+      return;
+    }
     setUploading(file.name);
     setError(null);
     try {
@@ -58,7 +63,12 @@ export function ImageUploadField({
       className="admin-image-drop"
       accept={MEDIA_CONTENT_TYPES.join(',')}
       aria-label={label}
-      aria-describedby={requiredError ? requiredErrorId : undefined}
+      aria-describedby={
+        [error ? errorId : null, requiredError ? requiredErrorId : null]
+          .filter(Boolean)
+          .join(' ') || undefined
+      }
+      aria-invalid={Boolean(error || requiredError) || undefined}
       buttonLabel={value ? 'Replace image' : 'Upload image'}
       hint={layout === 'dropzone' ? 'Or drop an image here' : undefined}
       uploading={uploading ? { name: uploading } : undefined}
@@ -103,7 +113,7 @@ export function ImageUploadField({
         </div>
       )}
       {error ? (
-        <span className="kit-field-error" role="alert">
+        <span id={errorId} className="kit-field-error" role="alert">
           {error}
         </span>
       ) : null}

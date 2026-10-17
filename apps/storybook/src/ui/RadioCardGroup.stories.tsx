@@ -69,3 +69,8 @@ export const Default: Story = {
 export const NoneSelected: Story = {
   render: () => <AccessLevel initial={null} />,
 };
+
+/** A disabled selection: the first enabled card takes the tab stop. */
+export const DisabledSelection: Story = {
+  render: () => <AccessLevel initial="owner" />,
+};

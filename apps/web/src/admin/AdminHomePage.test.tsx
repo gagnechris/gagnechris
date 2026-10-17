@@ -66,6 +66,15 @@ describe('AdminHomePage autosave', () => {
     vi.useRealTimers();
   });
 
+  test('the scrolling preview pane is a named region a keyboard can reach', async () => {
+    renderHome();
+    const pane = await screen.findByRole('region', {
+      name: 'Home page preview',
+    });
+    expect(pane).toHaveAttribute('tabindex', '0');
+    expect(pane).toContainElement(screen.getByTitle('Home preview'));
+  });
+
   test('keeps in-progress typing and trailing spaces across a save boundary', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     let resolvePut!: (value: unknown) => void;

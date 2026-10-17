@@ -34,7 +34,7 @@ export const RadioCardGroup = <T extends string>({
     .map((o, i) => (o.disabled ? -1 : i))
     .filter((i) => i >= 0);
   const selected = options.findIndex((o) => o.value === value);
-  const tabStop = selected >= 0 ? selected : (enabled[0] ?? -1);
+  const tabStop = enabled.includes(selected) ? selected : (enabled[0] ?? -1);
 
   const onKeyDown = (e: KeyboardEvent, index: number) => {
     const forward = e.key === 'ArrowDown' || e.key === 'ArrowRight';

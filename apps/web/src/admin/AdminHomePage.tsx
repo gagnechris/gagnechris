@@ -142,7 +142,12 @@ const AdminHomePage = () => {
               </section>
             </form>
 
-            <div className="admin-editor-split__preview">
+            <div
+              className="admin-editor-split__preview"
+              role="region"
+              aria-label="Home page preview"
+              tabIndex={0}
+            >
               <h2 className="admin-preview-title">Preview</h2>
               <HomePreview home={home} draft={draft} />
             </div>

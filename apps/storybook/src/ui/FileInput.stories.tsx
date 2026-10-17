@@ -8,7 +8,7 @@ const meta = {
   component: FileInput,
   parameters: catalog(
     'none: photos come from the system picker',
-    'A dashed drop zone with a `sm` Button and a hint. Dragging a file over it turns it `--primary-600` on `--primary-50`; `uploading` shows the file name and a progress bar.',
+    'A dashed drop zone with a `sm` Button and a hint. Dragging a file over it turns it `--primary-600` on `--primary-50`; `uploading` shows the file name and a progress bar, and focus moves to it and back. A Field error marks the button `aria-invalid`.',
   ),
   args: {
     'aria-label': 'Cover image',
@@ -42,3 +42,11 @@ export const UploadingIndeterminate: Story = {
 export const Disabled: Story = { args: { disabled: true } };
 
 export const DragOver: Story = { args: { className: 'ui-file--over' } };
+
+export const InvalidInField: Story = {
+  render: (args) => (
+    <Field label="Cover image" error="notes.txt is not an image." fullWidth>
+      <FileInput {...args} aria-label={undefined} />
+    </Field>
+  ),
+};

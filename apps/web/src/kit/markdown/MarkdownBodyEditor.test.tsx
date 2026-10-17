@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import { MarkdownBodyEditor } from './MarkdownBodyEditor';
@@ -30,5 +30,27 @@ describe('MarkdownBodyEditor', () => {
     expect(link).toHaveAccessibleName(/^Preview page ?\(opens in a new tab\)$/);
     await userEvent.click(link);
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  test('the Insert toolbar is one tab stop, the image picker included', async () => {
+    const user = userEvent.setup();
+    render(
+      <MarkdownBodyEditor
+        value=""
+        onChange={() => {}}
+        onUploadImages={() => Promise.resolve([])}
+      />,
+    );
+    await screen.findByLabelText('Markdown');
+    const toolbar = screen.getByRole('toolbar', { name: 'Insert' });
+    const image = within(toolbar).getByRole('button', { name: 'Insert image' });
+    image.focus();
+    await user.tab();
+    expect(toolbar).not.toContainElement(document.activeElement as HTMLElement);
+    image.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(
+      within(toolbar).getByRole('button', { name: 'Insert link' }),
+    ).toHaveFocus();
   });
 });

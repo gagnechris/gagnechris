@@ -97,17 +97,7 @@ export const TextInput = ({
   className,
   ...rest
 }: TextInputProps) => {
-  const prefixId = useId();
-  const field = useFieldControl(
-    {
-      ...rest,
-      'aria-describedby': prefix
-        ? cx(prefixId, rest['aria-describedby'])
-        : rest['aria-describedby'],
-    },
-    invalid,
-    tone,
-  );
+  const field = useFieldControl(rest, invalid, tone);
   const box = { size, invalid: field.invalid, tone: field.tone };
   if (prefix === undefined || prefix === null) {
     return (
@@ -120,7 +110,7 @@ export const TextInput = ({
   }
   return (
     <span className={inputClasses(box, 'kit-input-group', className)}>
-      <span id={prefixId} className="kit-input-group__prefix">
+      <span className="kit-input-group__prefix" aria-hidden="true">
         {prefix}
       </span>
       <input {...rest} {...field.aria} className="kit-input-group__control" />

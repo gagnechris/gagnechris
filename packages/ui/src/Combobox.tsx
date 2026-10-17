@@ -51,6 +51,7 @@ export const Combobox = <O extends ComboboxOption>({
   onKeyDown,
   onFocus,
   onBlur,
+  onClick,
   ...rest
 }: Props<O>) => {
   const id = useId();
@@ -144,7 +145,10 @@ export const Combobox = <O extends ComboboxOption>({
           setOpen(false);
           onBlur?.(e);
         }}
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          setOpen(true);
+          onClick?.(e);
+        }}
       />
       <div className="ui-menu ui-combobox__popup" hidden={!open}>
         <ul

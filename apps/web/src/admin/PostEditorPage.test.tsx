@@ -1,4 +1,11 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -1051,6 +1058,25 @@ describe('PostEditorPage Details panel', () => {
       '/media/cover.png',
     );
   });
+  test('a dropped file that is not an image says so and marks the field invalid', async () => {
+    renderEditor();
+    await screen.findByDisplayValue('Hello');
+    const zone = imageButton('Cover image').closest<HTMLElement>('.ui-file')!;
+    const notes = new File(['x'], 'notes.txt', { type: 'text/plain' });
+    fireEvent.drop(zone, {
+      dataTransfer: { types: ['Files'], files: [notes] },
+    });
+    const panel = screen.getByRole('complementary', { name: 'Post details' });
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'notes.txt is not an image.',
+    );
+    expect(imageButton('Cover image')).toHaveAttribute('aria-invalid', 'true');
+    expect(imageButton('Cover image')).toHaveAccessibleDescription(
+      /notes\.txt is not an image\./,
+    );
+    expect(post).not.toHaveBeenCalled();
+  });
+
   test('a rejected cover upload shows the error under the field', async () => {
     const user = userEvent.setup();
     post.mockResolvedValue({

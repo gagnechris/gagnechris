@@ -264,6 +264,18 @@ describe('NotebookTaskPage notes', () => {
     expect(api.noteQueries.every((q) => q.taskId === TASK_ID)).toBe(true);
   });
 
+  test('Escape drops the typed search and shows the linked note again', async () => {
+    const user = userEvent.setup();
+    seedTask();
+    renderPage();
+    const picker = await screen.findByRole('combobox', { name: 'Linked note' });
+    await user.type(picker, 'Plan');
+    await screen.findByRole('option', { name: /Planning/ });
+    await user.keyboard('{Escape}');
+    expect(picker).toHaveValue('');
+    expect(picker).toHaveAttribute('aria-expanded', 'false');
+  });
+
   test('links a note found by search', async () => {
     const user = userEvent.setup();
     seedTask();

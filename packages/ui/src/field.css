@@ -191,6 +191,13 @@ select.kit-select {
   color: var(--neutral-600);
 }
 
+/* Spans a form grid's row, or a flex row's width. */
+.kit-field--full {
+  grid-column: 1 / -1;
+  flex-basis: 100%;
+  width: 100%;
+}
+
 .kit-field .kit-input {
   font-weight: 400;
   color: var(--neutral-800);
