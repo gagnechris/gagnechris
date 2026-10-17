@@ -64,6 +64,15 @@ type Stub = {
   prebuilt?: boolean;
 };
 
+// CI sets placeholder VITE_COGNITO_* values for the whole job; each test
+// supplies its own.
+const inheritedEnv = (): NodeJS.ProcessEnv =>
+  Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.startsWith('VITE_COGNITO_'),
+    ),
+  );
+
 function runDeploy(stub: Stub = {}) {
   const root = tempDir('deploy-web-');
   mkdirSync(join(root, 'scripts'));
@@ -141,7 +150,7 @@ fi
       cwd: root,
       encoding: 'utf8',
       env: {
-        ...process.env,
+        ...inheritedEnv(),
         PATH: `${bin}:${process.env.PATH}`,
         ENV_NAME: 'prod',
         ...stub.env,

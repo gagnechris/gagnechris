@@ -147,11 +147,12 @@ jobs:
       VITE_COGNITO_NOTEBOOK_CLIENT_ID: ${{ steps.cognito.outputs.VITE_COGNITO_NOTEBOOK_CLIENT_ID }}
       VITE_COGNITO_AUTH_DOMAIN: ${{ steps.cognito.outputs.VITE_COGNITO_AUTH_DOMAIN }}
     steps:
+      # Every job checks out github.sha, fixed for the run. For workflow_run it
+      # is main's tip when CI finished, so the superseded check below deploys
+      # it only when it is the commit CI validated.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Deploy the commit CI validated (workflow_run), not a floating main tip.
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
       - name: Configure AWS credentials (planning role)
@@ -165,27 +166,33 @@ jobs:
       - name: Resolve deployed SHA
         id: base
         env:
-          HEAD_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           BASE="$(bash scripts/ci/read-deployed-sha.sh prod)"
           echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
           echo "base_sha=${BASE}" >> "$GITHUB_OUTPUT"
           echo "Deploy head ${HEAD_SHA}; last deployed ${BASE:-(none)}"
 
-      # The checkout follows the triggering run's head_sha, so a head that is
-      # not on main never deploys, whatever triggered the run.
       - name: Refuse a head off main or a rollback deploy
         env:
           BASE: ${{ steps.base.outputs.base_sha }}
           HEAD_SHA: ${{ steps.base.outputs.head_sha }}
         run: bash scripts/ci/check-deploy-ancestry.sh "${BASE}" "${HEAD_SHA}"
 
+      # main moved on after CI finished: the newer commit's own CI run
+      # triggers the deploy that includes this one.
       - name: Path filter
         id: filter
         env:
           BASE: ${{ steps.base.outputs.base_sha }}
           HEAD_SHA: ${{ steps.base.outputs.head_sha }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          if [ "${GITHUB_EVENT_NAME}" = 'workflow_run' ] && [ "${VALIDATED_SHA}" != "${HEAD_SHA}" ]; then
+            echo "Superseded: CI validated ${VALIDATED_SHA}, main is now ${HEAD_SHA}. Not deploying."
+            printf 'cdk=false\nweb=false\ncomponents=false\n' | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if [ "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ] || [ -z "${BASE}" ]; then
             echo "Manual deploy or no deployed-sha: deploying everything."
             printf 'cdk=true\nweb=true\ncomponents=true\n' | tee -a "$GITHUB_OUTPUT"
@@ -215,7 +222,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.plan.outputs.head_sha }}
           persist-credentials: false
 
       - name: Setup
@@ -284,8 +290,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.plan.outputs.head_sha }}
           persist-credentials: false
+
+      - name: Require the planned commit
+        env:
+          HEAD_SHA: ${{ needs.plan.outputs.head_sha }}
+        run: |
+          if [ "$(git rev-parse HEAD)" != "${HEAD_SHA}" ]; then
+            echo "Refusing deploy: checked out $(git rev-parse HEAD), plan approved ${HEAD_SHA}." >&2
+            exit 1
+          fi
 
       # Install before any credential step, with install scripts off and no Go
       # cache. esbuild gets its platform binary from optionalDependencies, so
