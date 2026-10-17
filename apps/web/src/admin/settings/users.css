@@ -262,6 +262,14 @@
   background: var(--neutral-300);
 }
 
+.users-status--unfinished {
+  color: var(--color-warning);
+}
+
+.users-status--unfinished .users-status__dot {
+  background: var(--color-warning-dot);
+}
+
 .users-drawer__content,
 .users-dialog-form {
   display: flex;

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # `eas build --local` in two steps, so EXPO_TOKEN never shares a process with
-# the build's dependency install scripts, config plugins or `pod install`.
+# the build's dependency install scripts, `expo prebuild` or `pod install`.
+# `prepare` still runs dependency code with it: eas-cli reads the app config
+# through `expo config`, which loads the config plugins.
 #
 #   prepare <state-dir>      With EXPO_TOKEN: eas-cli bumps the build number,
 #                            fetches the signing credentials and packs the

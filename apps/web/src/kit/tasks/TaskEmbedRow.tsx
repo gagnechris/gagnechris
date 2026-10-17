@@ -10,8 +10,8 @@ import {
 import { Link } from 'react-router-dom';
 import {
   findBareUrls,
+  linkLabel,
   NOTEBOOK_TITLE_MAX_LENGTH,
-  shortenUrl,
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
@@ -153,7 +153,7 @@ function TitleLinks({ title }: { title: string }) {
           href={href}
           className="task-embed__link task-embed__link--chip"
         >
-          {shortenUrl(href.replace(/^https?:\/\//i, ''))}
+          {linkLabel(href)}
         </ExternalLink>
       ))}
     </>

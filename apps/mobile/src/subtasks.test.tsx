@@ -12,6 +12,7 @@ const NOTE = '01NOTE0000000000000000000A';
 const P = '01HTASKPPPPPPPPPPPPPPPPPPP';
 const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
 const B = '01HTASKBBBBBBBBBBBBBBBBBBB';
+const T = '01HTASKTTTTTTTTTTTTTTTTTTT';
 
 let server: ReturnType<typeof notebookServer>;
 let mounted: ReactTestRenderer | null = null;
@@ -52,6 +53,26 @@ const titled = (renderer: ReactTestRenderer, title: string) =>
       typeof node.type === 'string' &&
       node.props.accessibilityLabel === `Open task ${title}`,
   ).length;
+
+const bodies = (renderer: ReactTestRenderer) =>
+  renderer.root.findAll(
+    (node) =>
+      (node.type as string) === 'TextInput' &&
+      node.props.accessibilityLabel === 'Note body',
+  );
+
+const titleFields = (renderer: ReactTestRenderer) =>
+  renderer.root.findAll(
+    (node) =>
+      typeof node.type === 'string' &&
+      node.props.accessibilityLabel === 'Task title',
+  );
+
+const savedBody = (body: string) =>
+  vi.waitFor(
+    () => expect(server.state.store.get(NOTE)!.bodyMarkdown).toBe(body),
+    { timeout: 3_000 },
+  );
 
 const family = () =>
   serve(
@@ -198,5 +219,76 @@ describe('subtasks in a note', () => {
     const renderer = await renderNote();
     await settle(10);
     expect(byLabel(renderer, 'Subtask of Trip, finished')).toBeTruthy();
+  });
+
+  it.each([
+    ['a parent', 0],
+    ['a subtask with a sibling below', 1],
+  ])(
+    'Return in the title of %s opens a line after the whole block',
+    async (_, row) => {
+      family();
+      const renderer = await renderNote();
+      act(() => titleFields(renderer)[row]!.props.onSubmitEditing());
+      await settle(2);
+      const opened = bodies(renderer).find((b) => b.props.value === '\nafter')!;
+      act(() => opened.props.onChangeText('Call hotel\nafter'));
+      await savedBody(
+        `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nCall hotel\nafter`,
+      );
+    },
+  );
+
+  it('puts a paste that starts with a line break under a row after its block', async () => {
+    family();
+    const renderer = await renderNote();
+    const [, underParent] = bodies(renderer);
+    expect(underParent!.props.value).toBe('');
+    act(() =>
+      underParent!.props.onChangeText('\nCall hotel', { start: 11, end: 11 }),
+    );
+    await savedBody(
+      `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nCall hotel\nafter`,
+    );
+    const why = bodies(renderer).find((b) => b.props.value === '    why')!;
+    act(() => why.props.onChangeText('\nPack    why', { start: 5, end: 5 }));
+    await savedBody(
+      `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nPack\nCall hotel\nafter`,
+    );
+  });
+
+  const parentBelowTask = () =>
+    serve(
+      [
+        makeNote(
+          NOTE,
+          `{{task:${T}}}\n{{task:${P}}}\n  {{task:${A}}}\n    why`,
+        ),
+      ],
+      [
+        makeTask(T, 'Errands', { noteId: NOTE }),
+        makeTask(P, 'Trip', { noteId: NOTE }),
+        makeTask(A, 'Book hotel', { noteId: NOTE, parentId: P }),
+      ],
+    );
+
+  it('deleting a parent moves its subtasks out to its level, not under the task above', async () => {
+    parentBelowTask();
+    const renderer = await renderNote();
+    const field = () => titleFields(renderer)[1]!;
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText(''));
+    vi.setSystemTime(Date.now() + 1_000);
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    vi.setSystemTime(Date.now() + 1_000);
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    await savedBody(`{{task:${T}}}\n{{task:${A}}}\n  why`);
+  });
+
+  it('a parent deleted elsewhere leaves its subtasks at its level', async () => {
+    parentBelowTask();
+    server.deleteTask(P);
+    await renderNote();
+    await savedBody(`{{task:${T}}}\n{{task:${A}}}\n  why`);
   });
 });
