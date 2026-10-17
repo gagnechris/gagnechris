@@ -2,7 +2,6 @@ import { indentWidth } from './indent-width.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
 import {
   findTaskEmbeds,
-  removeTaskEmbedLines,
   taskEmbedNesting,
   type TaskEmbedNesting,
 } from './task-embeds.js';
