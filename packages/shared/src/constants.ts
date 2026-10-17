@@ -15,6 +15,14 @@ export const RESUME_NOTIFY_SES_DAILY_CAP = 50;
 /** Contact submits faster than this are treated as bots. */
 export const MIN_CONTACT_SUBMIT_MS = 2_000;
 
+/**
+ * CloudFront sends the API origin secret in this header, so the API knows a
+ * request came through the distribution and not straight to execute-api.
+ */
+export const API_ORIGIN_VERIFY_HEADER = 'x-origin-verify';
+/** The viewer's address, set by the /api/* viewer-request function; trusted only with the origin secret. */
+export const API_VIEWER_ADDRESS_HEADER = 'x-viewer-address';
+
 /** EMF metric names the API Lambda emits under API_SERVICE_NAME; the API stack alarms on some. */
 export const API_METRICS = {
   handlerError: 'HandlerError',

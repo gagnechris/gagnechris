@@ -6,6 +6,7 @@ import {
 } from '@gagnechris/shared';
 import {
   API_METRICS,
+  API_ORIGIN_VERIFY_HEADER,
   API_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
   PUBLISHER_SERVICE_NAME,
@@ -17,6 +18,7 @@ import ssmParams from './ssm-params.json' with { type: 'json' };
 
 export {
   API_METRICS,
+  API_ORIGIN_VERIFY_HEADER,
   API_SERVICE_NAME,
   APEX_DOMAIN,
   NOTEBOOK_GROUP,
@@ -56,4 +58,9 @@ export type SsmParamKey = keyof typeof SSM_PARAM_KEYS;
 export function ssmParameterName(envName: string, key: SsmParamKey): string {
   const prefix = ssmParams.prefixTemplate.replaceAll('${ENV_NAME}', envName);
   return `${prefix}/${SSM_PARAM_KEYS[key]}`;
+}
+
+/** CloudFront reads it by name, so Site needs no export from Api. */
+export function apiOriginSecretName(envName: string): string {
+  return `gagnechris-${envName}-api-origin-verify`;
 }
