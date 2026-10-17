@@ -1,6 +1,6 @@
 # Mobile (Expo)
 
-`apps/mobile` is an Expo (SDK 57, `expo ~57.0.25`; React Native 0.86.3; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`.
+`apps/mobile` is an Expo (SDK 58, `expo ~58.0.14`; React Native 0.88.0; React 19.3.0) app that runs the monorepo's client packages under Metro, built as an EAS dev client. Navigation is expo-router: routes live in `apps/mobile/app/`.
 
 ## App shell
 
@@ -285,7 +285,7 @@ Consequences:
 
 ## React versions
 
-Root and `apps/mobile` are both on React **19.3.0**. React Native 0.86.3 declares `react: ^19.2.3`, so the root version satisfies it.
+Root and `apps/mobile` are both on React **19.3.0**. React Native 0.88.0 declares `react: ^19.3.0`, so the root version satisfies it.
 
 The two lockfiles produce two copies on disk, which is harmless at runtime (Metro resolves only from `apps/mobile/node_modules`) but not in tests: a bare `react` or `@tanstack/react-query` import from app-core resolves to the root copy, and two instances break hooks. `apps/mobile/vitest.config.mts` sets `resolve.dedupe: ['react', '@tanstack/react-query']`, and `src/app-core.test.ts` renders an app-core autosave hook (`useQueuedAutosave`) plus a versioned-resource query hook (`createVersionedResource`) so a duplicate fails the suite rather than surfacing as a confusing "invalid hook call" / "Cannot read properties of null (reading 'useContext')".
 
