@@ -13,7 +13,7 @@ describe('Button', () => {
       </Button>,
     );
     const btn = screen.getByRole('button', { name: 'Publish' });
-    expect(btn).toHaveClass('kit-btn', 'kit-btn--primary');
+    expect(btn).toHaveClass('ui-btn', 'ui-btn--primary');
     await user.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
@@ -51,16 +51,16 @@ describe('Button', () => {
       </>,
     );
     expect(screen.getByRole('button', { name: 'Small' })).toHaveClass(
-      'kit-btn--sm',
-      'kit-btn--ghost',
+      'ui-btn--sm',
+      'ui-btn--ghost',
     );
     expect(screen.getByRole('button', { name: 'Large' })).toHaveClass(
-      'kit-btn--lg',
-      'kit-btn--link',
+      'ui-btn--lg',
+      'ui-btn--link',
     );
     expect(screen.getByRole('button', { name: 'Send' })).toHaveClass(
-      'kit-btn--editorial',
-      'kit-btn--primary',
+      'ui-btn--editorial',
+      'ui-btn--primary',
     );
   });
 

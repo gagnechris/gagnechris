@@ -111,6 +111,7 @@
 }
 
 @media (max-width: 767px) {
+  .ui-icon-btn--sm,
   .ui-icon-btn--md {
     width: 44px;
     height: 44px;

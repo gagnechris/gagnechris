@@ -151,13 +151,6 @@ a.today-row__chip:hover {
   gap: 2px;
 }
 
-@media (max-width: 767px) {
-  .task-row__actions .ui-icon-btn--sm {
-    width: 44px;
-    height: 44px;
-  }
-}
-
 /* Once the title would be under 6rem (200% zoom), the actions wrap under it. */
 .kit-list__link:has(> .task-row__actions) {
   flex-wrap: wrap;

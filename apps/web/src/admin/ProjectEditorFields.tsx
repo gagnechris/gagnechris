@@ -146,6 +146,7 @@ export function ProjectEditorFields({
       addLabel="Add link"
       removeLabel="Remove link"
       reorderable
+      itemName={(link, position) => link.label.trim() || `link ${position}`}
       renderItem={(link, { update }) => {
         const errors = projectLinkErrors(link);
         return (

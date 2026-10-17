@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import {
   errorMessage,
   useNotebookAreasQuery,
@@ -10,7 +10,14 @@ import {
   NOTEBOOK_AREAS_MAX,
   notebookAreaIdFromName,
 } from '@gagnechris/shared';
-import { Button, Field, IconButton, TextInput } from '@gagnechris/ui';
+import {
+  Button,
+  DragHandle,
+  Field,
+  IconButton,
+  TextInput,
+  useDragReorder,
+} from '@gagnechris/ui';
 import { appConfirm } from '../workspace/confirmDialog';
 import ShellIcon from '../workspace/ui/ShellIcon';
 
@@ -25,6 +32,8 @@ function AreaRow({
   busy,
   onRename,
   onMove,
+  onDrop,
+  onDragStart,
   onRemove,
 }: {
   area: NotebookAreaEntry;
@@ -33,7 +42,9 @@ function AreaRow({
   taken: (name: string) => boolean;
   busy: boolean;
   onRename: (name: string) => void;
-  onMove: (to: number) => void;
+  onMove: (by: -1 | 1) => void;
+  onDrop: () => void;
+  onDragStart: (e: PointerEvent<HTMLButtonElement>) => void;
   onRemove: () => void;
 }) {
   const [name, setName] = useState(area.name);
@@ -74,22 +85,14 @@ function AreaRow({
         />
       </Field>
       <div className="notebook-areas__actions">
-        <IconButton
-          variant="outline"
-          label={`Move ${area.name} up`}
-          disabled={busy || index === 0}
-          onClick={() => onMove(index - 1)}
-        >
-          <ShellIcon name="arrowUp" />
-        </IconButton>
-        <IconButton
-          variant="outline"
-          label={`Move ${area.name} down`}
-          disabled={busy || index === count - 1}
-          onClick={() => onMove(index + 1)}
-        >
-          <ShellIcon name="arrowDown" />
-        </IconButton>
+        <DragHandle
+          item={area.name}
+          position={index + 1}
+          count={count}
+          onMove={onMove}
+          onDrop={onDrop}
+          onPointerDown={onDragStart}
+        />
         <IconButton
           variant="danger"
           label={`Remove ${area.name}`}
@@ -174,12 +177,29 @@ export default function NotebookAreasPage() {
     }
   };
 
+  // A drag or a keyboard pick-up reorders locally; the drop saves once.
+  const [order, setOrder] = useState<NotebookAreaEntry[] | null>(null);
+  const shown = order ?? areas;
+  const list = useRef<HTMLOListElement>(null);
+
   const move = (from: number, to: number) => {
-    const next = [...areas];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved!);
-    void write(next);
+    if (save.isPending || to < 0 || to >= shown.length || to === from) return;
+    const next = [...shown];
+    next.splice(to, 0, ...next.splice(from, 1));
+    setOrder(next);
   };
+
+  const drop = async (next: NotebookAreaEntry[] | null) => {
+    if (next?.some((a, i) => a.id !== areas[i]?.id)) await write(next);
+    setOrder(null);
+  };
+
+  const drag = useDragReorder({
+    ids: shown.map((a) => a.id),
+    list,
+    onMove: move,
+    onDrop: () => void drop(order),
+  });
 
   const remove = async (area: NotebookAreaEntry) => {
     const ok = await appConfirm(
@@ -209,13 +229,13 @@ export default function NotebookAreasPage() {
         <p>Loading areas…</p>
       ) : (
         <div className="notebook-areas">
-          <ol className="notebook-areas__list" aria-label="Areas">
-            {areas.map((area, index) => (
+          <ol ref={list} className="notebook-areas__list" aria-label="Areas">
+            {shown.map((area, index) => (
               <AreaRow
                 key={area.id}
                 area={area}
                 index={index}
-                count={areas.length}
+                count={shown.length}
                 busy={save.isPending}
                 taken={(name) =>
                   areas.some((a) => a.id !== area.id && sameName(a.name, name))
@@ -225,7 +245,9 @@ export default function NotebookAreasPage() {
                     areas.map((a) => (a.id === area.id ? { ...a, name } : a)),
                   )
                 }
-                onMove={(to) => move(index, to)}
+                onMove={(by) => move(index, index + by)}
+                onDrop={() => void drop(order)}
+                onDragStart={drag.start(area.id)}
                 onRemove={() => void remove(area)}
               />
             ))}

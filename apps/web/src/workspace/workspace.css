@@ -1345,15 +1345,6 @@ button:where(:hover) {
   background: var(--primary-700);
 }
 
-.kit-check {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-
 .workspace-panel h1 {
   margin: 0 0 var(--space-2);
   font-size: var(--text-3xl);
@@ -1579,7 +1570,7 @@ button:where(:hover) {
     box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
   }
 
-  .workspace-actions__more .kit-btn {
+  .workspace-actions__more .ui-btn {
     justify-content: flex-start;
     min-height: 44px;
     border: 0;
@@ -1587,7 +1578,7 @@ button:where(:hover) {
     font-weight: 500;
   }
 
-  .workspace-action-bar .kit-btn--primary {
+  .workspace-action-bar .ui-btn--primary {
     min-height: 44px;
     padding: 0 1.125rem;
     border-radius: var(--radius-full);
@@ -1596,15 +1587,6 @@ button:where(:hover) {
   .workspace-action-bar .workspace-action-kbd {
     display: none;
   }
-}
-
-.workspace-panel__meta-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: var(--space-2) 0 0;
-  color: var(--neutral-500);
-  font-size: var(--text-sm);
 }
 
 .workspace-save-indicator[data-state='saving'] {
@@ -1661,8 +1643,26 @@ button:where(:hover) {
   background: color-mix(in srgb, white 70%, transparent);
 }
 
-.workspace-repeat__item .kit-btn {
+.workspace-repeat__items {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.workspace-repeat__item .ui-btn {
   justify-self: start;
+}
+
+.workspace-repeat__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workspace-repeat__item--dragging {
+  border-color: var(--primary-300);
+  box-shadow: var(--shadow-md);
 }
 
 .notebook-upcoming__add {
@@ -1745,11 +1745,11 @@ button:where(:hover) {
   }
 
   .notebook-task__bottom-bar .today-snooze,
-  .notebook-task__bottom-bar .kit-btn {
+  .notebook-task__bottom-bar .ui-btn {
     width: 100%;
   }
 
-  .notebook-task__bottom-bar .today-snooze .kit-btn {
+  .notebook-task__bottom-bar .today-snooze .ui-btn {
     gap: var(--space-2);
   }
 
@@ -1822,7 +1822,7 @@ button:where(:hover) {
     display: none;
   }
 
-  .notebook-today__day-nav > .kit-btn {
+  .notebook-today__day-nav > .ui-btn {
     min-width: 44px;
     min-height: 44px;
   }
@@ -1984,29 +1984,20 @@ button:where(:hover) {
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
+  width: max-content;
 }
 
-.notebook-new-note__day > .kit-btn {
+.notebook-new-note__day > .ui-btn {
   flex: none;
-}
-
-.notebook-new-note__label .kit-date {
-  flex: none;
-  min-width: 0;
 }
 
 .notebook-new-note__standing {
   justify-content: flex-start;
 }
 
-.notebook-new-note__label {
+.notebook-new-note__day > .kit-field {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--neutral-600);
 }
 
 .notebook-sidebar-note__label {
@@ -2152,7 +2143,7 @@ button:where(:hover) {
   width: 100%;
 }
 
-.no-access__row > .kit-btn {
+.no-access__row > .ui-btn {
   flex: 1 1 10rem;
 }
 

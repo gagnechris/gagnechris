@@ -215,7 +215,7 @@ describe('publisher render', () => {
       pdfPath: '/old/resume.pdf',
     });
     expect(html).toContain(
-      '<a class="kit-btn resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf">',
+      '<a class="ui-btn resume-download" href="/resume.pdf" download="Chris-Gagne-Resume.pdf">',
     );
     expect(html).not.toContain('/old/resume.pdf');
   });

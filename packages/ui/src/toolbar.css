@@ -8,10 +8,3 @@
   border-radius: var(--radius-md);
   background: white;
 }
-
-.ui-toolbar__separator {
-  align-self: stretch;
-  width: 1px;
-  margin: 4px 2px;
-  background: var(--neutral-200);
-}

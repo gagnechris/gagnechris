@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { IconButton, Toolbar, ToolbarSeparator } from '@gagnechris/ui';
+import { IconButton, Toolbar } from '@gagnechris/ui';
 import ShellIcon from '@web/workspace/ui/ShellIcon';
 import { catalog } from '../catalog';
 
@@ -30,7 +30,6 @@ const Formatting = ({ size }: { size: 'md' | 'lg' }) => {
       <IconButton size={size} label="Insert image">
         <ShellIcon name="projects" />
       </IconButton>
-      <ToolbarSeparator />
       <IconButton
         size={size}
         label="Preview"

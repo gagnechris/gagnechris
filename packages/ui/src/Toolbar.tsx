@@ -79,11 +79,3 @@ export const Toolbar = ({
     </div>
   );
 };
-
-export const ToolbarSeparator = () => (
-  <span
-    role="separator"
-    aria-orientation="vertical"
-    className="ui-toolbar__separator"
-  />
-);
