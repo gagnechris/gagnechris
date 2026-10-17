@@ -2094,6 +2094,22 @@ describe('subtasks in a note', () => {
     );
   });
 
+  test('Tab in a parent title leaves it where it is, so its subtasks keep their parent', async () => {
+    seed([{ id: SUB_1, title: 'Pick dates' }]);
+    api.tasks.set(OTHER, {
+      ...api.tasks.get(PARENT)!,
+      id: OTHER,
+      title: 'Book venue',
+    });
+    const note = `${tokenLine(OTHER)}\n${nested(SUB_1)}`;
+    const { body } = renderNote(note);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByDisplayValue('Plan offsite'));
+    await user.keyboard('{Tab}');
+    expect(body()).toBe(note);
+  });
+
   test('Tab in a subtask title leaves it a subtask instead of nesting it under the one above', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates' },

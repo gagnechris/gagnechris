@@ -58,7 +58,7 @@ function nestTaskBlock(markdown: string, taskId: string): string | null {
   const line = embedLine(markdown, taskId);
   if (line === null) return null;
   const indent = indentWidth(lines[line]!);
-  const target = taskDropNestIndent(lines, line - 1);
+  const target = taskDropNestIndent(lines, line - 1, line);
   if (target === null || target <= indent) return null;
   return reindentBlock(lines, blockAt(lines, line), target - indent);
 }
