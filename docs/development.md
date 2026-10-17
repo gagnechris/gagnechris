@@ -121,6 +121,7 @@ npm run lint          # ESLint for every workspace
 npm run format:check  # Prettier check (CI)
 npm run go:lint       # golangci-lint on services/api/ (gofmt, goimports, vet, staticcheck, revive...; config in services/api/.golangci.yml) (CI)
 npm run go:test       # go test ./... in services/api/; failures DynamoDB Local never produces (cancellation reasons, throttles, UnprocessedKeys) are faked through data.Client with internal/data/datatest (CI)
+npm run go:vulncheck  # govulncheck on services/api/: fails on Go advisories the code can reach; needs network for vuln.go.dev (CI)
 npm run go:generate:check # services/api/internal/contract/contract.json and services/api/internal/apitypes drift from packages/shared, packages/data and the OpenAPI file (CI)
 npm run go:fmt        # gofmt + goimports on services/api/
 npm run openapi:check # OpenAPI + generated client drift; npm run openapi also regenerates the Go types (CI)
