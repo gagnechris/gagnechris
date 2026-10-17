@@ -359,6 +359,7 @@ export function useVersionedDocController<
     isLoading,
     runDelete,
     suppressLeaveGuardRef,
+    dropRefusedEdits: autosave.dropRefused,
     /** Shows `entity` as the clean, saved state (it is also cached). */
     replaceFromEntity: onReplaceDraft,
   };

@@ -33,6 +33,7 @@ export function useVersionedEntityEditor<
     unsavedFields,
     busy: editor.busy,
     save: editor.save,
+    dropRefusedEdits: editor.dropRefusedEdits,
     suppressLeaveGuardRef: editor.suppressLeaveGuardRef,
     publish: editor.runPublish,
   });

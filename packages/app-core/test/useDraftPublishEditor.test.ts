@@ -491,6 +491,8 @@ describe('useDraftPublishEditor publish errors', () => {
           discard: publish,
         },
         confirmMessages: { unpublish: 'unpublish?', discard: 'discard?' },
+        conflictMessage: 'Conflict, reload and try again.',
+        conflictMessages: { slug_taken: 'That slug is taken.' },
         confirm: async () => true,
         hold: {
           withHold: async (fn) => {
@@ -513,6 +515,34 @@ describe('useDraftPublishEditor publish errors', () => {
       await result.current.runPublish();
     });
     expect(setSaveError).toHaveBeenCalledWith(message);
+  });
+
+  test('a conflict on Publish or Discard says what happened, not just the status', async () => {
+    const stale = renderPublishing(async () => ({
+      error: new ApiError('Version conflict', 409, 'version_conflict'),
+      response: { status: 409 },
+    }));
+    await act(async () => {
+      await stale.result.current.runPublish();
+    });
+    expect(stale.setSaveError).toHaveBeenCalledWith(
+      'Conflict, reload and try again.',
+    );
+    await act(async () => {
+      await stale.result.current.runDiscard();
+    });
+    expect(stale.setSaveError).toHaveBeenLastCalledWith(
+      'Conflict, reload and try again.',
+    );
+
+    const taken = renderPublishing(async () => ({
+      error: new ApiError('Slug taken', 409, 'slug_taken'),
+      response: { status: 409 },
+    }));
+    await act(async () => {
+      await taken.result.current.runPublish();
+    });
+    expect(taken.setSaveError).toHaveBeenCalledWith('That slug is taken.');
   });
 
   test('keeps the status text for a 5xx or a network error', async () => {

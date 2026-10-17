@@ -9,6 +9,8 @@ export type VersionedDocShellOptions = {
   unsavedFields?: boolean;
   busy: boolean;
   save: () => unknown;
+  /** Called when the person leaves without saving, so refused edits are not flushed again. */
+  dropRefusedEdits?: () => void;
   suppressLeaveGuardRef: { current: boolean };
   /** Omit for non-publishable docs such as Notebook notes (no ⌘⏎ publish). */
   publish?: () => unknown;
@@ -19,10 +21,12 @@ export function useVersionedDocShell({
   unsavedFields = false,
   busy,
   save,
+  dropRefusedEdits,
   suppressLeaveGuardRef,
   publish,
 }: VersionedDocShellOptions) {
   const saveRef = useLatest(save);
+  const dropRefusedRef = useLatest(dropRefusedEdits);
   const publishRef = useLatest(publish);
   const unsavedFieldsRef = useLatest(unsavedFields);
   const dirty = savePending || unsavedFields;
@@ -61,12 +65,13 @@ export function useVersionedDocShell({
         ));
       handlingRef.current = false;
       if (leave) {
+        if (!saved) dropRefusedRef.current?.();
         blocker.proceed();
       } else {
         blocker.reset();
       }
     })();
-  }, [blocker, saveRef, unsavedFieldsRef]);
+  }, [blocker, dropRefusedRef, saveRef, unsavedFieldsRef]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

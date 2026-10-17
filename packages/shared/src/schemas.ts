@@ -120,6 +120,8 @@ export const PostSchema = z
     projectIds: z.array(z.string()),
     coverImage: z.string().nullable(),
     seo: PostSeoSchema.nullable(),
+    /** The live page's slug, present only while it differs from the draft's. */
+    publishedSlug: z.string().min(1).optional(),
   })
   .merge(PublishableFieldsSchema);
 
@@ -534,6 +536,8 @@ export const ProjectSchema = z
     order: z.number().int().nonnegative(),
     /** When set, the project card links here and no `/projects/<slug>` page is generated. */
     href: z.string().nullable(),
+    /** The live page's slug, present only while it differs from the draft's. */
+    publishedSlug: z.string().min(1).optional(),
   })
   .merge(PublishableFieldsSchema);
 

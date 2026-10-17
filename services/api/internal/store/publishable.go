@@ -22,6 +22,9 @@ type Publishable struct {
 	UpdatedAt             string  `json:"updatedAt"`
 	Version               int     `json:"version"`
 	HasUnpublishedChanges bool    `json:"hasUnpublishedChanges"`
+	// PublishedSlug is the live slug when it differs from the draft's; it is
+	// derived on read and never stored.
+	PublishedSlug *string `json:"publishedSlug,omitempty"`
 }
 
 const (
@@ -102,6 +105,12 @@ func (s *PublishableStore[T]) isDeleted(e *T) bool { return s.cfg.State(e).Statu
 func (s *PublishableStore[T]) Flag(draft T, published *T) T {
 	st := s.cfg.State(&draft)
 	st.HasUnpublishedChanges = st.Status == StatusPublished && published != nil && !s.cfg.ContentEqual(draft, *published)
+	st.PublishedSlug = nil
+	if published != nil && s.cfg.Slug != nil {
+		if slug := s.cfg.Slug(*published); slug != s.cfg.Slug(draft) {
+			st.PublishedSlug = &slug
+		}
+	}
 	return draft
 }
 

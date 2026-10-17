@@ -1,6 +1,6 @@
 import {
+  addMovedTaskBlock,
   removeTaskBlock,
-  removeTaskEmbedLines,
   taskEmbedIds,
 } from '@gagnechris/shared';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,22 +21,6 @@ import {
   usePatchTaskMutation,
   type TaskPatch,
 } from './tasks.js';
-
-/**
- * The note with the block's lines after its text, leaving out tasks it
- * already embeds; null when it already holds the moved task.
- */
-function appendMovedLines(
-  markdown: string,
-  taskId: string,
-  lines: string,
-): string | null {
-  const present = new Set(taskEmbedIds(markdown));
-  if (present.has(taskId)) return null;
-  const body = markdown.replace(/\s+$/, '');
-  const moved = removeTaskEmbedLines(lines, present);
-  return `${body}${body ? '\n\n' : ''}${moved}\n\n`;
-}
 
 const isStale = (err: unknown) =>
   err instanceof ApiError && (err.status === 409 || err.status === 412);
@@ -111,7 +95,7 @@ export function useMoveTaskToDay() {
       for (let attempt = 0; note === null; attempt += 1) {
         const current = await fetchDailyNoteEntity(client, area, date);
         lines = readLines() ?? lines;
-        const bodyMarkdown = appendMovedLines(
+        const bodyMarkdown = addMovedTaskBlock(
           current.bodyMarkdown,
           task.id,
           lines,

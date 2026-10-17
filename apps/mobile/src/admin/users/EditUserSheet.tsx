@@ -1,4 +1,5 @@
 import {
+  ACCOUNT_ACTION_CONFIRMS,
   accessChange,
   formatAdded,
   isRemovalUnfinished,
@@ -34,25 +35,6 @@ type Props = {
 
 type AccountAction = Exclude<UserChange['kind'], 'access' | 'invite'>;
 
-/** Asked first, since they act on the person straight away. */
-const CONFIRMS: Partial<Record<AccountAction, [string, string, string]>> = {
-  'sign-out': [
-    'Sign out everywhere?',
-    'Ends their sessions in Admin and Notebook now.',
-    'Sign out',
-  ],
-  disable: [
-    'Disable sign-in?',
-    'Keeps the account and Notebook, but blocks sign-in.',
-    'Disable',
-  ],
-  remove: [
-    'Remove access?',
-    'Takes away every app. Their Notebook is kept, so if they come back their notes come back too.',
-    'Remove',
-  ],
-};
-
 export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
   const { perform, isPending } = useUserChange();
   const resend = useUserActionMutation();
@@ -79,8 +61,13 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
   };
 
   const run = async (kind: AccountAction) => {
-    const prompt = CONFIRMS[kind];
-    if (prompt && !(await confirmAction(...prompt))) return;
+    const prompt = ACCOUNT_ACTION_CONFIRMS[kind];
+    if (
+      prompt &&
+      !(await confirmAction(prompt.title, prompt.body, prompt.action))
+    ) {
+      return;
+    }
     await submit(
       {
         id: user.id,

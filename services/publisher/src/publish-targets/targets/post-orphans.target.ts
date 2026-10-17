@@ -21,10 +21,14 @@ const target: PublishTarget = {
     const publishedSlugs = new Set(published.map((p) => p.slug));
     const slugById = new Map(published.map((p) => [p.id, p.slug]));
 
-    const candidates: Iterable<string> =
-      scope.allPosts && scope.slugsToRemove.size === 0
-        ? postSlugsFromKeys(await storage.list('blog/'))
-        : scope.slugsToRemove;
+    // A post that leaves may own redirect pages at its earlier slugs, which
+    // only a scan of every page finds.
+    const candidates = new Set(scope.slugsToRemove);
+    if (scope.allPosts || scope.slugsToRemove.size > 0) {
+      for (const slug of postSlugsFromKeys(await storage.list('blog/'))) {
+        candidates.add(slug);
+      }
+    }
 
     const artifacts: PublishArtifact[] = [];
     const deleteKeys: string[] = [];
