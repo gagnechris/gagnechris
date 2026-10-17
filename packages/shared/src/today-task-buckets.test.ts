@@ -210,7 +210,7 @@ test('snoozeBaseDay counts from the later of the page day and today', () => {
 });
 
 describe('comingUpWindow', () => {
-  test('names the default horizon as before, and others by their length', () => {
+  test('names the default horizon two weeks, and others by their length', () => {
     expect(comingUpWindow()).toBe('the next two weeks');
     expect(comingUpWindow(7)).toBe('the next week');
     expect(comingUpWindow(1)).toBe('the next day');

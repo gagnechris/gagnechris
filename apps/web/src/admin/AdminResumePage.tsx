@@ -9,6 +9,7 @@ import {
   emptyResumeDraft,
   hasExperienceRangeError,
   RESUME_PDF_PATH,
+  RESUME_UNPUBLISH_NOTE,
   resumeDraftFromResume,
   resumePayload,
   resumeRoleEndId,
@@ -81,8 +82,7 @@ const AdminResumePage = () => {
     toPayload: (current, saved) => resumePayload(current, content, saved),
     subject: 'the resume',
     loadErrorFallback: 'Could not load resume.',
-    unpublishConfirm:
-      'Unpublish the resume? The live page keeps the last published HTML.',
+    unpublishConfirm: `Unpublish the resume? ${RESUME_UNPUBLISH_NOTE}`,
     discardConfirm:
       'Discard unpublished edits and restore the last published resume?',
     hasUnsavedFields: hasExperienceRangeError,

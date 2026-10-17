@@ -3,9 +3,19 @@
 # `git push --no-verify`.
 set -euo pipefail
 
-# A branch deletion pushes nothing to check.
+zero=0000000000000000000000000000000000000000
+pushed=''
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
-  if [ "${local_sha}" != 0000000000000000000000000000000000000000 ]; then
-    exec npm run --silent verify
+  # A branch deletion pushes nothing to check.
+  [ "${local_sha}" = "${zero}" ] && continue
+  commit="$(git rev-parse "${local_sha}^{commit}")"
+  if [ -n "${pushed}" ] && [ "${pushed}" != "${commit}" ]; then
+    echo "pre-push: verify checks one commit; push one branch at a time." >&2
+    exit 1
   fi
+  pushed="${commit}"
 done
+
+if [ -n "${pushed}" ]; then
+  exec npm run --silent verify -- --pushed "${pushed}"
+fi

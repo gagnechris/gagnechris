@@ -44,6 +44,11 @@ export const PRIVATE_DATA_READ_DENY_ACTIONS = [
   's3:GetObject',
   's3:GetObjectVersion',
   's3:GetObject*',
+  // ReadOnlyAccess lists the user pool's users: emails and access groups.
+  'cognito-idp:ListUsers',
+  'cognito-idp:ListUsersInGroup',
+  'cognito-idp:AdminGetUser',
+  'cognito-idp:AdminListGroupsForUser',
   ...LOG_TRACE_READ_DENY_ACTIONS,
 ] as const;
 
@@ -87,15 +92,12 @@ export class CiDeployRoleStack extends Stack {
 
     this.deployRole = new Role(this, 'DeployRole', {
       roleName: `gagnechris-${props.config.name}-gha-deploy`,
-      description: `CDK deploy from GitHub Actions (${repoPath} main/prod).`,
+      description: `CDK deploy from GitHub Actions (${repoPath} prod environment).`,
       maxSessionDuration: Duration.hours(1),
       assumedBy: new WebIdentityPrincipal(provider.openIdConnectProviderArn, {
-        StringEquals: audienceCondition,
-        StringLike: {
-          'token.actions.githubusercontent.com:sub': [
-            `repo:${repoPath}:ref:refs/heads/main`,
-            `repo:${repoPath}:environment:prod`,
-          ],
+        StringEquals: {
+          ...audienceCondition,
+          'token.actions.githubusercontent.com:sub': `repo:${repoPath}:environment:prod`,
         },
       }),
     });
@@ -250,7 +252,7 @@ export class CiDeployRoleStack extends Stack {
         {
           id: 'AwsSolutions-IAM4',
           reason:
-            'Personal-account CI deploy role uses AdministratorAccess so CDK can manage all stacks and bootstrap roles; trust is locked to this repo main/prod via OIDC.',
+            'Personal-account CI deploy role uses AdministratorAccess so CDK can manage all stacks and bootstrap roles; trust is locked to the prod environment of this repo via OIDC.',
           appliesTo: [
             'Policy::arn:<AWS::Partition>:iam::aws:policy/AdministratorAccess',
           ],

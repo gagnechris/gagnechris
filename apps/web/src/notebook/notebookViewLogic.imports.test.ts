@@ -41,6 +41,8 @@ const VIEW_LOGIC = [
   'byNewest',
   'lineAfterOuterBlock',
   'insertAfterTaskBlock',
+  'removeTaskLine',
+  'removeTaskEmbedLines',
 ] as const;
 
 /** Names an editor's own copy of the outer-block rule would go by. */
@@ -94,6 +96,8 @@ describe('Notebook view logic', () => {
       ['kit/markdown/taskDateMenuEditor.tsx', 'tokenInsertion'],
       ['kit/tasks/TaskDateButton.tsx', 'taskDateMenuItems'],
       ['kit/markdown/taskEmbeds.tsx', 'lineAfterOuterBlock'],
+      ['kit/markdown/taskEmbeds.tsx', 'removeTaskLine'],
+      ['notebook/NotebookMarkdownBody.tsx', 'removeTaskEmbedLines'],
     ];
     for (const [file, name] of uses) {
       expect({ file, name, from: importOf(file, name) }).toEqual({

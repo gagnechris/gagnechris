@@ -6,7 +6,6 @@ import {
   joinSegments,
   noteSegments,
   rebaseText,
-  removeSegment,
   replaceSegmentText,
 } from './noteSegments';
 
@@ -48,7 +47,6 @@ describe('note segments', () => {
     expect(replaceSegmentText(segments, `before:${A}`, '')).toBe(
       `{{task:${A}}}\n`,
     );
-    expect(removeSegment(segments, A)).toBe('Intro\n');
   });
 
   it('turns a task line into an embed with the task syntax parsed', () => {

@@ -75,9 +75,6 @@ export const replaceSegmentText = (
     ),
   );
 
-export const removeSegment = (segments: readonly NoteSegment[], key: string) =>
-  joinSegments(segments.filter((s) => s.key !== key));
-
 /** The line and column of `offset` within `text`. */
 export const lineAt = (text: string, offset: number) => {
   const before = text.slice(0, Math.min(offset, text.length));

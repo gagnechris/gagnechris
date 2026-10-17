@@ -5,6 +5,7 @@ import {
   accessChange,
   formatAdded,
   hasApp,
+  statusLabel,
   userErrorMessage,
 } from '../src/index.js';
 
@@ -48,6 +49,16 @@ describe('people', () => {
     expect(hasApp(user({ level: 'cms' }), 'Notebook')).toBe(false);
     expect(hasApp(user({ status: 'disabled' }), 'Admin')).toBe(false);
     expect(hasApp(user({ status: 'removed' }), 'Admin')).toBe(false);
+  });
+
+  test('labels a removal that stopped part-way as unfinished', () => {
+    expect(statusLabel(user({ status: 'removed' }))).toBe(
+      'Removed · notes kept',
+    );
+    expect(
+      statusLabel(user({ status: 'removed', removalUnfinished: true })),
+    ).toBe('Removal unfinished');
+    expect(statusLabel(user({ status: 'invited' }))).toBe('Invited');
   });
 
   test('formats the added date, with the year only when it differs', () => {

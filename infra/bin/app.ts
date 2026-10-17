@@ -10,7 +10,6 @@ import { AuthStack } from '../lib/stacks/auth-stack.js';
 import { CertificateStack } from '../lib/stacks/certificate-stack.js';
 import { CiDeployRoleStack } from '../lib/stacks/ci-deploy-role-stack.js';
 import { ComponentsStack } from '../lib/stacks/components-stack.js';
-// from '../lib/stacks/ci-deploy-role-stack.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';

@@ -1,5 +1,5 @@
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Aspects, App, Stack } from 'aws-cdk-lib';
+import { Aspects, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { HostedZone } from 'aws-cdk-lib/aws-route53';
@@ -20,6 +20,7 @@ import { EmailStack } from '../lib/stacks/email-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
+import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -27,7 +28,7 @@ const testEnv = {
 };
 
 function siteTemplate(): Template {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', testEnv);
   const deps = new Stack(app, 'SiteAssertDeps', {
     env: { account: config.account, region: config.region },
@@ -57,7 +58,7 @@ function siteTemplate(): Template {
 
 describe('stack Template assertions', () => {
   it('DataStack keeps Notebook images in a private, versioned bucket the notebook host can PUT to and read', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'DataMediaDeps', {
       env: { account: config.account, region: config.region },
@@ -91,7 +92,7 @@ describe('stack Template assertions', () => {
   });
 
   it('DataStack matches APP_TABLE keys and GSIs', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'DataAssertDeps', {
       env: { account: config.account, region: config.region },
@@ -178,7 +179,7 @@ describe('stack Template assertions', () => {
   });
 
   it('DataStack passes GSI projectionType and nonKeyAttributes through', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ProjectionAssertDeps', {
       env: { account: config.account, region: config.region },
@@ -216,7 +217,7 @@ describe('stack Template assertions', () => {
       });
     }
 
-    const includeApp = new App();
+    const includeApp = testApp();
     const includeDeps = new Stack(includeApp, 'IncludeAssertDeps', {
       env: { account: config.account, region: config.region },
     });
@@ -351,7 +352,7 @@ describe('stack Template assertions', () => {
   });
 
   it('PublisherStack stream filter uses PUBLISH_STREAM_SK and has DLQ + alarms', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'PubAssertDeps', {
       env: { account: config.account, region: config.region },
@@ -505,7 +506,7 @@ describe('stack Template assertions', () => {
   });
 
   it('ApiStack Lambda is arm64 Go with powertools env and active tracing', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ApiAssertDeps', {
       env: { account: config.account, region: config.region },

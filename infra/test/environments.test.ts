@@ -1,4 +1,4 @@
-import { Aspects, App, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Aspects, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { AwsSolutionsChecks, NagSuppressions } from 'cdk-nag';
@@ -33,6 +33,7 @@ import {
 } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
+import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
   CDK_ACCOUNT: '123456789012',
@@ -81,7 +82,7 @@ describe('environments', () => {
 
 describe('standard tags and removal policy', () => {
   it('applies project, env, and managed-by tags', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const stack = new Stack(app, 'TagStack', {
       env: { account: config.account, region: config.region },
@@ -121,7 +122,7 @@ describe('standard tags and removal policy', () => {
   });
 
   it('retains prod stateful buckets', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const stack = new Stack(app, 'Probe');
     applyStandardTags(stack, config);
@@ -147,7 +148,7 @@ describe('standard tags and removal policy', () => {
 
 describe('GuardrailsStack', () => {
   it('defines budget, CloudTrail, SNS, account BPA, and Access Analyzer', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const stack = new GuardrailsStack(app, 'Guardrails-prod', {
       env: { account: config.account, region: config.region },
@@ -216,7 +217,7 @@ describe('GuardrailsStack', () => {
 
 describe('CiDeployRoleStack', () => {
   it('creates GitHub OIDC provider plus deploy, diff, and drift roles', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'CiDeps', {
       env: { account: config.account, region: config.region },
@@ -254,8 +255,16 @@ describe('CiDeployRoleStack', () => {
     const drift = roles.find(
       (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-drift',
     );
-    expect(JSON.stringify(deploy)).toContain('ref:refs/heads/main');
-    expect(JSON.stringify(deploy)).toContain('environment:prod');
+    const deployTrust = deploy?.Properties?.AssumeRolePolicyDocument
+      ?.Statement as Array<{ Condition?: Record<string, unknown> }>;
+    expect(deployTrust).toHaveLength(1);
+    expect(deployTrust[0]!.Condition).toEqual({
+      StringEquals: {
+        'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+        'token.actions.githubusercontent.com:sub':
+          'repo:gagnechris/gagnechris:environment:prod',
+      },
+    });
     expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
     expect(JSON.stringify(diff)).toContain('pull_request');
     expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
@@ -327,6 +336,10 @@ describe('CiDeployRoleStack', () => {
         'xray:BatchGetTraces',
         'xray:GetTraceSummaries',
         'xray:GetTraceGraph',
+        'cognito-idp:ListUsers',
+        'cognito-idp:ListUsersInGroup',
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminListGroupsForUser',
       ]) {
         expect(denied).toContain(action);
       }
@@ -345,7 +358,7 @@ describe('CiDeployRoleStack', () => {
 
 describe('DnsStack and CertificateStack', () => {
   it('defines apex/www CloudFront aliases, iCloud mail records, and ACM cert', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'DnsDeps', {
       env: { account: config.account, region: config.region },
@@ -430,7 +443,7 @@ describe('DnsStack and CertificateStack', () => {
 
 describe('AuthStack', () => {
   it('creates admin-only pool with passkeys, MFA, managed login, and clients', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'AuthDeps', {
       env: { account: config.account, region: config.region },
@@ -539,7 +552,7 @@ describe('AuthStack', () => {
 
 describe('SiteStack', () => {
   it('creates private S3, CloudFront OAC, security headers, and path rewrite fn', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'Deps', {
       env: { account: config.account, region: config.region },
@@ -642,7 +655,7 @@ describe('SiteStack', () => {
 
 describe('DataStack', () => {
   it('creates on-demand single-table with GSIs, PITR, stream, and RETAIN', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'DataDeps', {
       env: { account: config.account, region: config.region },
@@ -705,7 +718,7 @@ describe('DataStack', () => {
 
 describe('ApiStack', () => {
   it('creates HTTP API with JWT on admin routes and health public', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'ApiDeps', {
       env: { account: config.account, region: config.region },
@@ -976,7 +989,7 @@ describe('ApiStack', () => {
 
 describe('PublisherStack', () => {
   it('wires stream source, S3/CF env via SSM, error alarm, and SSM name', () => {
-    const app = new App();
+    const app = testApp();
     const config = getEnvironment('prod', testEnv);
     const deps = new Stack(app, 'PublisherDeps', {
       env: { account: config.account, region: config.region },
