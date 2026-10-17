@@ -1,4 +1,5 @@
 import {
+  useArchiveNoteMutation,
   useDeleteNoteMutation,
   usePinNoteMutation,
   type Note,
@@ -16,14 +17,16 @@ export const deleteNoteMessage = (note: Pick<Note, 'type'>) =>
     ? 'That day starts again with an empty note.'
     : 'It will disappear from your list.';
 
-/** Pin / Unpin and Delete for a note row, each confirmed. */
+/** Pin / Unpin, Archive / Unarchive (pages only) and Delete for a note row; all but Archive confirmed. */
 export function useNoteRowActions() {
   const { mutateAsync: pin } = usePinNoteMutation();
+  const { mutateAsync: archive } = useArchiveNoteMutation();
   const { mutateAsync: remove } = useDeleteNoteMutation();
 
   const actionsFor = useCallback(
     (note: Note): RowAction[] => {
       const pinned = note.pinned;
+      const archived = Boolean(note.archived);
       return [
         {
           name: pinned ? 'unpin' : 'pin',
@@ -50,6 +53,24 @@ export function useNoteRowActions() {
             })();
           },
         },
+        ...(note.type === 'page'
+          ? [
+              {
+                name: archived ? 'unarchive' : 'archive',
+                label: archived ? 'Unarchive' : 'Archive',
+                run: () => {
+                  void archive({ note, archived: !archived }).catch(() =>
+                    showError(
+                      archived
+                        ? 'Could not unarchive the note'
+                        : 'Could not archive the note',
+                      'Pull to refresh and try again.',
+                    ),
+                  );
+                },
+              },
+            ]
+          : []),
         {
           name: 'delete',
           label: 'Delete',
@@ -77,7 +98,7 @@ export function useNoteRowActions() {
         },
       ];
     },
-    [pin, remove],
+    [pin, archive, remove],
   );
 
   const showActions = useCallback((title: string, actions: RowAction[]) => {

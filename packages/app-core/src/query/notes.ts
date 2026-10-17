@@ -257,6 +257,17 @@ export const usePinNoteMutation = () => {
   });
 };
 
+/** Archives or unarchives a standing note from a list row, outside its editor. */
+export const useArchiveNoteMutation = () => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ note, archived }: { note: Note; archived: boolean }) =>
+      updateNote(getClient(), note.id, { version: note.version, archived }),
+    onSuccess: (note) => setCachedNote(queryClient, note),
+  });
+};
+
 /**
  * After `daily_taken`: adds what this device typed to the daily note another
  * device created, and puts that note in the cache, so the editor rehydrates

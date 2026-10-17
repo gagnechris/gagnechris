@@ -11,6 +11,7 @@ import {
   noteFirstLine,
   noteOpenTaskCount,
   noteSections,
+  notesInArchiveView,
   noteTitle,
   searchHitDetail,
   type NotebookSearchHit,
@@ -42,12 +43,13 @@ import { SearchInput } from '../../../src/ui/SearchInput';
 import { CardRow, SectionTitle } from '../../../src/ui/Section';
 import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 
-const NOTE_KINDS = ['all', 'daily', 'pages'] as const;
+const NOTE_KINDS = ['all', 'daily', 'pages', 'archived'] as const;
 type NoteKind = (typeof NOTE_KINDS)[number];
 const NOTE_KIND_LABELS: Record<NoteKind, string> = {
   all: 'All',
   daily: 'Daily',
   pages: 'Pages',
+  archived: 'Archived',
 };
 
 type Item =
@@ -121,8 +123,15 @@ const NotesScreen = () => {
   const { actionsFor, showActions } = useNoteRowActions();
 
   const noteList = useMemo(
-    () => noteSections(notes.data?.pages.flatMap((p) => p.items) ?? [], today),
-    [notes.data, today],
+    () =>
+      noteSections(
+        notesInArchiveView(
+          notes.data?.pages.flatMap((p) => p.items) ?? [],
+          kind === 'archived',
+        ),
+        today,
+      ),
+    [notes.data, today, kind],
   );
   const listSections = useMemo<ListSection[]>(
     () =>
@@ -214,6 +223,10 @@ const NotesScreen = () => {
     </Text>
   ) : loading ? (
     <Text style={styles.status}>Loading notes…</Text>
+  ) : kind === 'archived' ? (
+    <EmptyState icon="archivebox" title="No archived pages">
+      Archive a page from its row’s actions to keep it out of your notes.
+    </EmptyState>
   ) : (
     <EmptyState icon="doc.text" title="No notes yet">
       Daily notes and pages you write show here, pinned ones first.

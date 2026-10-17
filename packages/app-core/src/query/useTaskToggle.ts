@@ -1,3 +1,4 @@
+import { taskCheckboxAction } from '@gagnechris/shared';
 import { useCallback, useState } from 'react';
 import type { Task } from './api.js';
 import { taskActionError } from './taskActionError.js';
@@ -16,7 +17,7 @@ export function useTaskToggle() {
 
   const toggle = useCallback(
     async (task: Pick<Task, 'id' | 'title' | 'status' | 'version'>) => {
-      const done = task.status === 'done';
+      const done = taskCheckboxAction(task.status) === 'reopen';
       setError(null);
       try {
         if (done) {

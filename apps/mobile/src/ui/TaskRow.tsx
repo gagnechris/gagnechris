@@ -1,5 +1,5 @@
 import type { Task } from '@gagnechris/app-core';
-import type { TaskDue } from '@gagnechris/shared';
+import { taskCheckboxAction, type TaskDue } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -68,7 +68,7 @@ export const TaskRow = ({
       {onToggle ? (
         <Checkbox
           shape="round"
-          label={closed ? `Reopen ${task.title}` : `Complete ${task.title}`}
+          label={`${taskCheckboxAction(task.status) === 'reopen' ? 'Reopen' : 'Complete'} ${task.title}`}
           checked={done}
           dropped={task.status === 'dropped'}
           onChange={() => {

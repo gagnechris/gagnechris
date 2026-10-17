@@ -225,6 +225,40 @@ describe('Notes list', () => {
     expect(allText(renderer)).toContain('No notes yet');
   });
 
+  it('keeps archived pages under Archived, and archives and unarchives from the row menu', async () => {
+    const id = '01ARCH00000000000000000000';
+    serve([
+      makeNote(id, 'old body', { title: 'Old plan' }),
+      makeNote('01SHELVED00000000000000000', 'shelved', {
+        title: 'Shelved',
+        archived: true,
+      }),
+    ]);
+    const renderer = await renderNotes();
+    expect(listedNotes(renderer)).toEqual(['Old plan']);
+
+    const choose = (option: string) => {
+      act(() => byLabel(renderer, 'Actions for Old plan').props.onPress());
+      const [sheet, pick] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
+        .mock.lastCall!;
+      act(() => pick(sheet.options.indexOf(option)));
+    };
+
+    choose('Archive');
+    await settle();
+    expect(server.state.store.get(id)!.archived).toBe(true);
+    expect(listedNotes(renderer)).toEqual([]);
+
+    act(() => byLabel(renderer, 'Archived').props.onPress());
+    await settle(10);
+    expect(listedNotes(renderer).sort()).toEqual(['Old plan', 'Shelved']);
+
+    choose('Unarchive');
+    await settle();
+    expect(server.state.store.get(id)!.archived).toBe(false);
+    expect(listedNotes(renderer)).toEqual(['Shelved']);
+  });
+
   it('offers the same actions to VoiceOver', async () => {
     serve([makeNote('01VO0000000000000000000000', 'b', { title: 'VO' })]);
     const renderer = await renderNotes();
@@ -235,6 +269,7 @@ describe('Notes list', () => {
     );
     expect(row.props.accessibilityActions).toEqual([
       { name: 'pin', label: 'Pin' },
+      { name: 'archive', label: 'Archive' },
       { name: 'delete', label: 'Delete' },
     ]);
     act(() =>

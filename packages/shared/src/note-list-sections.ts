@@ -84,6 +84,12 @@ export function noteSections<T extends ListNote>(
   return sections.filter((s) => s.notes.length > 0);
 }
 
+/** Archived notes when `archived`, else every note that isn't. */
+export const notesInArchiveView = <T extends ListNote>(
+  notes: readonly T[],
+  archived: boolean,
+): T[] => notes.filter((n) => Boolean(n.archived) === archived);
+
 /** Standing notes not archived: pinned first, then most recently updated. */
 export function sidebarStandingNotes<T extends ListNote>(
   notes: readonly T[],

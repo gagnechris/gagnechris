@@ -4,6 +4,7 @@ import {
   noteFirstLine,
   noteOpenTaskCount,
   noteSections,
+  notesInArchiveView,
   noteTitle,
   sidebarStandingNotes,
   type ListNote,
@@ -121,5 +122,22 @@ describe('sidebarStandingNotes', () => {
       note('legacy', { updatedAt: '2026-09-15T14:00:00.000Z' }),
     ]).map((n) => n.id);
     expect(ids).toEqual(['pinned-old', 'newer', 'legacy', 'older']);
+  });
+});
+
+describe('notesInArchiveView', () => {
+  test('archived notes only under Archived, every other note elsewhere', () => {
+    const notes = [
+      note('open', {}),
+      note('shelved', { archived: true }),
+      note('cleared', { archived: false }),
+    ];
+    expect(notesInArchiveView(notes, false).map((n) => n.id)).toEqual([
+      'open',
+      'cleared',
+    ]);
+    expect(notesInArchiveView(notes, true).map((n) => n.id)).toEqual([
+      'shelved',
+    ]);
   });
 });
