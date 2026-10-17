@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ConfirmFn } from './platform.js';
-import { errorMessage, type MutateResult } from './query/api.js';
+import { ApiError, errorMessage, type MutateResult } from './query/api.js';
 import type { FlushResult, SaveState } from './useQueuedAutosave.js';
 
 export type DraftPublishAutosave = {
@@ -41,6 +41,9 @@ export type DraftPublishEditorOptions<TEntity> = {
   requests: DraftPublishRequests<TEntity>;
   confirm: ConfirmFn;
   confirmMessages: { unpublish: string; discard: string };
+  /** Shown for a 409 or 412, as autosave shows it; by error code where one is given. */
+  conflictMessage?: string;
+  conflictMessages?: Record<string, string>;
   enabled?: boolean;
   /**
    * Runs when Publish is triggered and nothing holds the editor, before
@@ -58,6 +61,8 @@ export function useDraftPublishEditor<TEntity>({
   requests,
   confirm,
   confirmMessages,
+  conflictMessage,
+  conflictMessages,
   enabled = true,
   beforePublish,
 }: DraftPublishEditorOptions<TEntity>) {
@@ -75,6 +80,17 @@ export function useDraftPublishEditor<TEntity>({
   const { publish, unpublish, discard } = requests;
   const { unpublish: unpublishConfirm, discard: discardConfirm } =
     confirmMessages;
+
+  const failureMessage = useCallback(
+    (status: number, error: unknown, fallback: string) => {
+      if ((status === 409 || status === 412) && conflictMessage) {
+        const code = error instanceof ApiError ? error.error : undefined;
+        return (code && conflictMessages?.[code]) || conflictMessage;
+      }
+      return status === 400 ? errorMessage(error, fallback) : fallback;
+    },
+    [conflictMessage, conflictMessages],
+  );
 
   // Under hold, joining an in-flight save ends that chain at 'pending' with
   // later edits unsent, so keep saving until every edit made before the click
@@ -100,9 +116,12 @@ export function useDraftPublishEditor<TEntity>({
       const baselineGen = getLastSavedGen();
       const { data, error, response } = await request();
       if (error || !data) {
-        const fallback = `${label} failed (${response.status}).`;
         setSaveError(
-          response.status === 400 ? errorMessage(error, fallback) : fallback,
+          failureMessage(
+            response.status,
+            error,
+            `${label} failed (${response.status}).`,
+          ),
         );
         return;
       }
@@ -116,6 +135,7 @@ export function useDraftPublishEditor<TEntity>({
       }
     },
     [
+      failureMessage,
       flushEdits,
       getEditGen,
       getLastSavedGen,
@@ -166,9 +186,12 @@ export function useDraftPublishEditor<TEntity>({
       await awaitInFlight();
       const { data, error, response } = await discard();
       if (error || !data) {
-        const fallback = `Discard failed (${response.status}).`;
         setSaveError(
-          response.status === 400 ? errorMessage(error, fallback) : fallback,
+          failureMessage(
+            response.status,
+            error,
+            `Discard failed (${response.status}).`,
+          ),
         );
         return;
       }
@@ -181,6 +204,7 @@ export function useDraftPublishEditor<TEntity>({
     discard,
     discardConfirm,
     enabled,
+    failureMessage,
     isBusy,
     markClean,
     onReplaceDraft,

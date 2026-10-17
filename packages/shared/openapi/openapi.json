@@ -199,6 +199,10 @@
               }
             }
           },
+          "publishedSlug": {
+            "type": "string",
+            "minLength": 1
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -266,6 +270,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "publishedSlug": {
+            "type": "string",
+            "minLength": 1
           },
           "status": {
             "type": "string",
@@ -335,6 +343,10 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "publishedSlug": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "status": {
                   "type": "string",
@@ -604,6 +616,10 @@
             "type": "string",
             "nullable": true
           },
+          "publishedSlug": {
+            "type": "string",
+            "minLength": 1
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -750,6 +766,10 @@
                 "href": {
                   "type": "string",
                   "nullable": true
+                },
+                "publishedSlug": {
+                  "type": "string",
+                  "minLength": 1
                 },
                 "status": {
                   "type": "string",
@@ -4414,6 +4434,10 @@
                               "type": "string"
                             }
                           },
+                          "publishedSlug": {
+                            "type": "string",
+                            "minLength": 1
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -4756,6 +4780,10 @@
                         }
                       }
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -5086,6 +5114,10 @@
                           "type": "string"
                         }
                       }
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -5441,6 +5473,10 @@
                           "type": "string"
                         }
                       }
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -5817,6 +5853,10 @@
                         }
                       }
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -6166,6 +6206,10 @@
                           "type": "string"
                         }
                       }
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -6517,6 +6561,10 @@
                         }
                       }
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -6866,6 +6914,10 @@
                           "type": "string"
                         }
                       }
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -7233,6 +7285,10 @@
                           "href": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "publishedSlug": {
+                            "type": "string",
+                            "minLength": 1
                           },
                           "status": {
                             "type": "string",
@@ -7624,6 +7680,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -7986,6 +8046,10 @@
                     "href": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -8408,6 +8472,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -8815,6 +8883,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -9196,6 +9268,10 @@
                     "href": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",
@@ -9586,6 +9662,10 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -9967,6 +10047,10 @@
                     "href": {
                       "type": "string",
                       "nullable": true
+                    },
+                    "publishedSlug": {
+                      "type": "string",
+                      "minLength": 1
                     },
                     "status": {
                       "type": "string",

@@ -80,3 +80,46 @@ describe('publishable singletons over HTTP (DynamoDB Local)', () => {
     expect(res.status).toBe(409);
   });
 });
+
+describe('the live slug of a renamed draft', () => {
+  it.each([
+    ['post', '/api/admin/posts', { title: 'Live slug' }],
+    ['project', '/api/admin/projects', { name: 'Live slug', stage: 'live' }],
+  ] as const)(
+    'a %s answers publishedSlug while its draft slug differs',
+    async (_kind, base, fields) => {
+      type Entity = {
+        id: string;
+        slug: string;
+        version: number;
+        publishedSlug?: string;
+      };
+      const created: Entity = await ok('POST', base, {
+        body: { ...fields, slug: `${_kind}-live` },
+      });
+      expect(created).not.toHaveProperty('publishedSlug');
+      const published = await action<Entity>(
+        `${base}/${created.id}`,
+        'publish',
+        created.version,
+      );
+      expect(published).not.toHaveProperty('publishedSlug');
+
+      const renamed: Entity = await ok('PUT', `${base}/${created.id}`, {
+        body: { version: published.version, slug: `${_kind}-draft` },
+      });
+      expect(renamed.slug).toBe(`${_kind}-draft`);
+      expect(renamed.publishedSlug).toBe(`${_kind}-live`);
+      const read: Entity = await ok('GET', `${base}/${created.id}`);
+      expect(read.publishedSlug).toBe(`${_kind}-live`);
+
+      const discarded = await action<Entity>(
+        `${base}/${created.id}`,
+        'discard',
+        renamed.version,
+      );
+      expect(discarded.slug).toBe(`${_kind}-live`);
+      expect(discarded).not.toHaveProperty('publishedSlug');
+    },
+  );
+});

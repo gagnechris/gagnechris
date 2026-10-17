@@ -125,6 +125,10 @@ export function useVersionedEntityEditor<
     requests: { publish, unpublish, discard },
     confirm,
     confirmMessages: { unpublish: unpublishConfirm, discard: discardConfirm },
+    conflictMessage,
+    conflictMessages: slugTakenMessage
+      ? { slug_taken: slugTakenMessage }
+      : undefined,
     enabled,
     beforePublish,
   });

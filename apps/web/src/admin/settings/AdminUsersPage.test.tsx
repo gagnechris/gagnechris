@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ManagedUser } from '@gagnechris/shared';
-import { QueryClientTestProvider } from '../../test-utils';
+import { answerConfirms, QueryClientTestProvider } from '../../test-utils';
 import type { AuthUser } from '../../workspace/auth/session';
 import AdminUsersPage from './AdminUsersPage';
 import { adminApi } from '../../mockAdminApi';
@@ -224,6 +224,7 @@ describe('AdminUsersPage', () => {
   });
 
   test('shows the reason a change is refused', async () => {
+    answerConfirms(true);
     post.mockResolvedValue(conflict('last_full_admin'));
     renderPage();
     await userEvent.click(
@@ -235,7 +236,28 @@ describe('AdminUsersPage', () => {
     );
   });
 
+  test('Sign out, Disable and Remove ask first, and Cancel sends nothing', async () => {
+    const confirmSpy = answerConfirms(false);
+    renderPage();
+    await userEvent.click(
+      within(await row('Sam Rivera')).getByRole('button', { name: /Edit/ }),
+    );
+    for (const [button, message] of [
+      ['Sign out', 'Sign out everywhere? Ends their sessions'],
+      ['Disable', 'Disable sign-in? Keeps the account'],
+      ['Remove', 'Remove access? Takes away every app'],
+    ]) {
+      await userEvent.click(screen.getByRole('button', { name: button }));
+      expect(confirmSpy).toHaveBeenLastCalledWith(
+        expect.stringContaining(message),
+        button,
+      );
+    }
+    expect(post).not.toHaveBeenCalled();
+  });
+
   test('remove then restore', async () => {
+    answerConfirms(true);
     const removedSam = { ...sam, status: 'removed' as const };
     post.mockResolvedValueOnce(ok({ user: removedSam }));
     renderPage();
@@ -325,6 +347,7 @@ describe('AdminUsersPage', () => {
     const PENDING = 'gagnechris.pendingUserChange';
 
     test('a change without a recent sign-in asks for one first and sends nothing', async () => {
+      answerConfirms(true);
       session.authTime = Math.floor(Date.now() / 1000) - 600;
       renderPage();
       await userEvent.click(
@@ -407,6 +430,7 @@ describe('AdminUsersPage', () => {
     });
 
     test('the server asking for a fresh sign-in also prompts', async () => {
+      answerConfirms(true);
       post.mockResolvedValue({
         data: undefined,
         error: { error: 'reauth_required', message: 'x' },

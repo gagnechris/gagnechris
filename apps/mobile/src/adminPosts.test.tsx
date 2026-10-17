@@ -187,6 +187,23 @@ describe('Post editor', () => {
     expect(server.state.store.get('p1')!.status).toBe('draft');
   });
 
+  it('View on site opens the live slug while the draft is renamed', async () => {
+    serve([
+      makePost('p1', {
+        slug: 'renamed',
+        publishedSlug: 'live',
+        status: 'published',
+        publishedAt: '2026-09-30T09:00:00.000Z',
+      }),
+    ]);
+    const renderer = await show(<PostScreen />);
+    act(() => byLabel(renderer, 'Post actions').props.onPress());
+    pickAction('View on site');
+    expect(openBrowserAsync).toHaveBeenCalledWith(
+      'https://gagnechris.com/posts/live',
+    );
+  });
+
   it('adds a photo from the library into the body', async () => {
     serve([makePost('p1', { bodyMarkdown: 'Intro' })]);
     vi.mocked(launchImageLibraryAsync).mockResolvedValueOnce({

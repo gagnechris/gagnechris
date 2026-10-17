@@ -24,6 +24,7 @@ export function useWorkspaceDocEditor<
     dirty: editor.dirty,
     busy: editor.busy,
     save: editor.save,
+    dropRefusedEdits: editor.dropRefusedEdits,
     suppressLeaveGuardRef: editor.suppressLeaveGuardRef,
   });
 

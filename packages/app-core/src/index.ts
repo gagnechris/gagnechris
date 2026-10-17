@@ -74,6 +74,7 @@ export {
   userErrorMessage,
 } from './userAccess.js';
 export {
+  ACCOUNT_ACTION_CONFIRMS,
   changeToast,
   isReauthRequired,
   isRecentSignIn,

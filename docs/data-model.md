@@ -92,7 +92,13 @@ delete the page at an old published slug: if the row's `postId` is
 published, it leaves a redirect page there instead (see Architecture,
 request flow), which the edge serves as a 301 to the post's current slug. A
 redirected slug is not reserved: another post can claim it, and its page
-then replaces the redirect.
+then replaces the redirect. When the post is unpublished or deleted, the next
+publish scans every page under `blog/` and deletes the redirects it owned.
+
+The API's post and project responses carry `publishedSlug` (derived, never
+stored) while the draft slug differs from the live one, so View live opens the
+live page; `projectLiveHref` and `postLivePath` in `@gagnechris/shared` pick
+the URL.
 
 ### Access patterns (posts)
 

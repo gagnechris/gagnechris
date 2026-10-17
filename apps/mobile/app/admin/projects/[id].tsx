@@ -11,7 +11,7 @@ import {
   useVersionedEntityEditor,
   type ProjectDraftFields,
 } from '@gagnechris/app-core';
-import { projectPagePath, PROJECT_NAME_MAX_LENGTH } from '@gagnechris/shared';
+import { PROJECT_NAME_MAX_LENGTH, projectLiveHref } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,7 +29,10 @@ import {
   publishableConfirm,
   UNPUBLISH_PROMPT,
 } from '../../../src/admin/publishableConfirm';
-import { showPublishableMenu } from '../../../src/admin/publishableMenu';
+import {
+  liveUrl,
+  showPublishableMenu,
+} from '../../../src/admin/publishableMenu';
 import { usePhotoUpload } from '../../../src/admin/usePhotoUpload';
 import { PUBLIC_SITE_ORIGIN } from '../../../src/markdown/links';
 import { MarkdownView } from '../../../src/markdown/MarkdownView';
@@ -143,10 +146,8 @@ const ProjectScreen = () => {
               menuLabel="Project actions"
               onMenu={() =>
                 showPublishableMenu({
-                  liveUrl:
-                    entity?.status === 'published'
-                      ? `${PUBLIC_SITE_ORIGIN}${entity.href ?? projectPagePath(entity.slug)}`
-                      : null,
+                  liveUrl: liveUrl(entity && projectLiveHref(entity)),
+                  published: entity?.status === 'published',
                   hasUnpublishedChanges: actionBarProps.hasUnpublishedChanges,
                   onDiscard: actionBarProps.onDiscard,
                   onUnpublish: actionBarProps.onUnpublish,
