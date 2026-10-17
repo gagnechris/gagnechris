@@ -882,6 +882,26 @@ describe('deleting an embedded task', () => {
     expect(within(container).queryByText('Deleted task')).toBeNull();
     expect(api.taskDeletes).toEqual([]);
   });
+
+  test('a parent deleted elsewhere leaves its subtasks at its level, not under the task above', async () => {
+    const above = '01JTASKCCCCCCCCCCCCCCCCCCC';
+    const sub = '01JTASKDDDDDDDDDDDDDDDDDDD';
+    for (const task of [
+      { id: above, title: 'Above' },
+      { id: sub, title: 'Sub', parentId: TASK_ID },
+    ]) {
+      seedTask(task);
+      api.tasks.set(task.id, api.tasks.get(TASK_ID)!);
+    }
+    seedTask({ deleted: true });
+    renderNote(
+      `${tokenLine(above)}\n${tokenLine(TASK_ID)}\n  ${tokenLine(sub)}\nnotes`,
+    );
+
+    await waitFor(() =>
+      expect(body).toBe(`${tokenLine(above)}\n${tokenLine(sub)}\nnotes`),
+    );
+  });
 });
 
 describe('editing an embedded task title in place', () => {
