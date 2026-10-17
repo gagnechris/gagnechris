@@ -19,6 +19,7 @@ import {
 } from 'vitest';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom';
 import type { Note, NoteTemplate, Task } from '@gagnechris/app-core';
+import { localDateString, weekdayName } from '@gagnechris/shared';
 import { QueryClientTestProvider, workOutletContext } from '../test-utils';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 import NotebookTaskPage from './NotebookTaskPage';
@@ -477,8 +478,8 @@ describe('templates in a task’s details inside a note', () => {
     press(view, 'Enter');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
-    const description =
-      '## Screen · Friday\n\n[ ] Send feedback\n[ ] Book debrief\n\nNotes:\n';
+    // A task's details fill templates for the real today, not the note's date.
+    const description = `## Screen · ${weekdayName(localDateString(), 'long')}\n\n[ ] Send feedback\n[ ] Book debrief\n\nNotes:\n`;
     expect(view.state.doc.toString()).toBe(description);
     await waitFor(
       () => expect(api.tasks.get(TASK_ID)?.description).toBe(description),
