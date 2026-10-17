@@ -67,10 +67,12 @@ export {
   firstName,
   formatAdded,
   hasApp,
+  isRemovalUnfinished,
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
   LEVEL_ORDER,
-  STATUS_LABELS,
+  REMOVAL_UNFINISHED,
+  statusLabel,
   userErrorMessage,
 } from './userAccess.js';
 export {

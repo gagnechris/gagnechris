@@ -168,6 +168,8 @@ export const RemovedUserItemSchema = z.object({
   userId: z.string().min(1),
   email: z.string(),
   previousLevel: AccessLevelSchema.nullable(),
+  /** Set until every removal step has run. */
+  pending: z.literal(true).optional(),
   createdAt: z.string().min(1),
   removedBy: z.string().min(1),
 });

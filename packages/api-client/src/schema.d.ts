@@ -2939,6 +2939,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             }[];
                         };
                     };
@@ -3045,6 +3046,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                             restored: boolean;
                         };
@@ -3192,6 +3194,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -3348,6 +3351,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -3503,6 +3507,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -3658,6 +3663,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -3813,6 +3819,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -3965,6 +3972,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
@@ -4127,6 +4135,7 @@ export interface paths {
                                 /** @enum {string} */
                                 status: "active" | "invited" | "disabled" | "removed";
                                 createdAt: string | null;
+                                removalUnfinished?: boolean;
                             };
                         };
                     };
