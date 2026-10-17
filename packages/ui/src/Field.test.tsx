@@ -47,15 +47,20 @@ describe('Field', () => {
     expect(screen.queryByText('We reply here')).toBeNull();
   });
 
-  test('a prefix sits before the input and describes it', () => {
+  test('a prefix sits before the input, hidden from screen readers so the hint is the description', () => {
     render(
-      <Field label="Slug">
-        <TextInput prefix="/posts/" defaultValue="hello" />
+      <Field label="Slug" hint="Follows the title.">
+        <TextInput prefix="/" defaultValue="hello" />
       </Field>,
     );
     const input = screen.getByRole('textbox', { name: 'Slug' });
-    expect(input).toHaveAccessibleDescription('/posts/');
-    expect(input.closest('.kit-input-group')).not.toBeNull();
+    expect(input).toHaveAccessibleDescription('Follows the title.');
+    const group = input.closest('.kit-input-group');
+    expect(group).not.toBeNull();
+    expect(group!.querySelector('.kit-input-group__prefix')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
   });
 
   test('TextArea applies textarea classes and grows by default', () => {

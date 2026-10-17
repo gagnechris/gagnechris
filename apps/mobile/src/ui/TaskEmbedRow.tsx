@@ -7,6 +7,7 @@ import {
   findBareUrls,
   linkLabel,
   NOTEBOOK_TITLE_MAX_LENGTH,
+  oneLineTaskTitle,
   type BareUrl,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
@@ -166,7 +167,8 @@ const TitleField = ({
     return () => savePending(current);
   }, []);
 
-  const onChangeText = (text: string) => {
+  const onChangeText = (typed: string) => {
+    const text = oneLineTaskTitle(typed);
     setDraft(text);
     const p = pending.current;
     p.text = text;

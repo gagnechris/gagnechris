@@ -100,6 +100,8 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     textView.addSubview(placeholderLabel)
     linkTap.delegate = self
     addGestureRecognizer(linkTap)
+    // Links keep the theme's colour and underline from `restyle`.
+    textView.linkTextAttributes = [:]
   }
 
   // MARK: - Layout
@@ -474,6 +476,11 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
         ], range: range)
         if let href = mark.h {
           storage.addAttribute(.liveMarkdownLink, value: href, range: range)
+          // `.link` puts it in VoiceOver's Links rotor with an Open action;
+          // not on the lines being edited, where a tap places the caret.
+          if !signature.active {
+            storage.addAttribute(.link, value: URL(string: href) ?? href, range: range)
+          }
         }
       default:
         break
@@ -494,6 +501,7 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
     attributes[.liveMarkdownHidden] = nil
     attributes[.liveMarkdownBullet] = nil
     attributes[.liveMarkdownLink] = nil
+    attributes[.link] = nil
     if let text = attributes.removeValue(forKey: .liveMarkdownSyntax) as? UIColor {
       attributes[.foregroundColor] = text
     }
@@ -699,6 +707,17 @@ final class LiveMarkdownView: ExpoView, UITextViewDelegate, NSLayoutManagerDeleg
   }
 
   // MARK: - UITextViewDelegate
+
+  /// VoiceOver's Open on a link: the app opens it, as a tap does.
+  func textView(
+    _ textView: UITextView, primaryActionFor textItem: UITextItem, defaultAction: UIAction
+  ) -> UIAction? {
+    guard case .link = textItem.content,
+          let href = textView.textStorage.attribute(
+            .liveMarkdownLink, at: textItem.range.location, effectiveRange: nil) as? String
+    else { return defaultAction }
+    return UIAction { [weak self] _ in self?.onLinkPress(["href": href]) }
+  }
 
   func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
     guard text.isEmpty, range.length > 0, currentDecorations != nil else { return true }

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import HomePageScreen from '../app/admin/pages/home';
 import PagesScreen from '../app/admin/pages/index';
 import ResumeScreen from '../app/admin/pages/resume';
+import { expectReachable } from '../test/accessible';
 import { adminServer, makeHome } from '../test/adminServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
 import { router } from '../test/router';
@@ -258,6 +259,7 @@ describe('Resume editor', () => {
     serve();
     const renderer = await show(<ResumeScreen />);
     act(() => roleRow(renderer, 'Software Architect, Viacom').props.onPress());
+    expectReachable(renderer);
     act(() =>
       renderer.root
         .find(

@@ -22,6 +22,35 @@ export function insertImage(
   };
 }
 
+/**
+ * Where `selection`, taken in `before`, sits in `after`: moved by an edit
+ * before it, kept by one after it, and past the new text of one that overlaps
+ * it, so nothing typed meanwhile is replaced.
+ */
+export function followSelection(
+  before: string,
+  after: string,
+  { start, end }: Selection,
+): Selection {
+  const shorter = Math.min(before.length, after.length);
+  let prefix = 0;
+  while (prefix < shorter && before[prefix] === after[prefix]) prefix += 1;
+  let suffix = 0;
+  while (
+    suffix < shorter - prefix &&
+    before[before.length - 1 - suffix] === after[after.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+  if (end <= prefix) return { start, end };
+  const delta = after.length - before.length;
+  if (start >= before.length - suffix) {
+    return { start: start + delta, end: end + delta };
+  }
+  const caret = after.length - suffix;
+  return { start: caret, end: caret };
+}
+
 /** With `followSlug`, the slug tracks `key` until it is edited by hand. */
 export const withSlugSource = <T extends { slug: string }>(
   draft: T,

@@ -140,27 +140,6 @@
   gap: 2px;
 }
 
-.markdown-toolbar__btn {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  color: var(--neutral-600);
-  cursor: pointer;
-}
-
-.markdown-toolbar__btn:hover {
-  background: var(--neutral-100);
-  color: var(--neutral-900);
-}
-
-label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
-  outline: 2px solid var(--primary-500);
-  outline-offset: 1px;
-}
 /* The band a task title's first line sits in. The handle, check, title and
    subtask guide centre on it, so a wrapped title keeps them on its first line. */
 .task-embed,
@@ -958,11 +937,6 @@ label.markdown-toolbar__btn:has(+ .kit-visually-hidden:focus-visible) {
 
   .markdown-toggle {
     min-height: 44px;
-  }
-
-  label.markdown-toolbar__btn {
-    width: 44px;
-    height: 44px;
   }
 
   .markdown-editor .cm-content {

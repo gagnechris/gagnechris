@@ -14,7 +14,11 @@ import {
 } from '../test/adminServer';
 import { allText, byLabel, Providers, render, settle } from '../test/render';
 import { router, searchParams } from '../test/router';
-import { insertImage, withSlugSource } from './admin/draftEdits';
+import {
+  followSelection,
+  insertImage,
+  withSlugSource,
+} from './admin/draftEdits';
 
 let server: ReturnType<typeof adminServer>;
 let mounted: ReactTestRenderer | null = null;
@@ -241,6 +245,50 @@ describe('Post editor', () => {
     expect(server.state.calls).toContain(`PUT ${UPLOAD_URL}`);
   });
 
+  it('puts a photo where it was asked for, after text typed during the upload', async () => {
+    serve([makePost('p1', { bodyMarkdown: 'Intro\n\nEnd' })]);
+    let pick: (value: unknown) => void = () => {};
+    vi.mocked(launchImageLibraryAsync).mockReturnValueOnce(
+      new Promise((resolve) => {
+        pick = resolve;
+      }) as never,
+    );
+    const renderer = await show(<PostScreen />);
+    act(() =>
+      input(renderer, 'Body').props.onSelectionChange({
+        nativeEvent: { selection: { start: 5, end: 5 } },
+      }),
+    );
+    act(() => {
+      void renderer.root
+        .findByType('InputAccessoryView' as never)
+        .find((node) => node.props.accessibilityLabel === 'Photo')
+        .props.onPress();
+    });
+    act(() =>
+      input(renderer, 'Body').props.onChangeText('New start. Intro\n\nEnd'),
+    );
+    await act(async () =>
+      pick({
+        canceled: false,
+        assets: [
+          {
+            uri: 'file:///photos/beach.jpg',
+            mimeType: 'image/jpeg',
+            fileName: 'beach.jpg',
+            width: 10,
+            height: 10,
+          },
+        ],
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(server.state.store.get('p1')!.bodyMarkdown).toBe(
+        'New start. Intro\n\n![beach](/media/upload-1.jpg)\n\nEnd',
+      ),
+    );
+  });
+
   it('sets tags, excerpt and project in Details', async () => {
     serve(
       [makePost('p1')],
@@ -294,6 +342,19 @@ describe('post edits', () => {
     expect(
       insertImage('one\n\ntwo', { start: 5, end: 5 }, '[a]', '/m.jpg').text,
     ).toBe('one\n\n![a](/m.jpg)\n\ntwo');
+  });
+
+  it('follows a selection through text changed around it', () => {
+    const at = { start: 6, end: 9 };
+    expect(followSelection('Intro two end', 'Intro two end!', at)).toEqual(at);
+    expect(followSelection('Intro two end', 'An Intro two end', at)).toEqual({
+      start: 9,
+      end: 12,
+    });
+    expect(followSelection('Intro two end', 'Intro 2 end', at)).toEqual({
+      start: 7,
+      end: 7,
+    });
   });
 
   it('follows the title with the slug only when asked', () => {

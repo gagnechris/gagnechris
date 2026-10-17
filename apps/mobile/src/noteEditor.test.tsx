@@ -486,6 +486,20 @@ describe('note editor', () => {
     expect(field().props.value).toBe('Ship it now');
   });
 
+  it('saves a pasted multi-line task title as one line', async () => {
+    serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
+    const renderer = await renderNote();
+    const field = () => byLabel(renderer, 'Task title');
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText('Ship it\n  to staging\r\nthen prod'));
+    expect(field().props.value).toBe('Ship it to staging then prod');
+    act(() => field().props.onBlur());
+    await settle(10);
+    expect(server.state.taskStore.get(TASK)!.title).toBe(
+      'Ship it to staging then prod',
+    );
+  });
+
   it('puts an emptied task title back instead of saving it', async () => {
     serve([makeNote(NOTE, `{{task:${TASK}}}`)], [makeTask(TASK, 'Ship it')]);
     const renderer = await renderNote();

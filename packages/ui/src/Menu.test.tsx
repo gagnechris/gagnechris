@@ -149,4 +149,23 @@ describe('Menu', () => {
     expect(onRename).toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
+
+  test('in the bottom sheet the items work from the keyboard', async () => {
+    mockPhone(true);
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(<Harness onDelete={onDelete} />);
+    screen.getByRole('button', { name: 'More' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('menuitem', { name: 'Rename' })).toHaveFocus();
+    await user.keyboard('{ArrowDown}');
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('dialog')).toContainElement(
+      document.activeElement as HTMLElement,
+    );
+    screen.getByRole('menuitem', { name: 'Delete' }).focus();
+    await user.keyboard('{Enter}');
+    expect(onDelete).toHaveBeenCalled();
+  });
 });

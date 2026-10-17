@@ -1,47 +1,40 @@
 import { describe, expect, test } from 'vitest';
-import {
-  bulletCheckboxAsTask,
-  typedBulletCheckboxAsTask,
-} from './task-line.js';
+import { taskCheckboxAction } from './schemas.js';
+import { oneLineTaskTitle } from './task-line.js';
 
-describe('bulletCheckboxAsTask', () => {
-  test.each([
-    ['- [ ]', '[ ]'],
-    ['* [ ]', '[ ]'],
-    ['+ [ ]', '[ ]'],
-    ['  - [ ]', '  [ ]'],
-    ['\t-  [ ]', '\t[ ]'],
-  ])('%j becomes %j', (line, task) => {
-    expect(bulletCheckboxAsTask(line)).toBe(task);
+describe('task titles and boxes', () => {
+  test('a pasted title loses its line breaks', () => {
+    expect(oneLineTaskTitle('Ship it\n  to staging\r\nthen prod')).toBe(
+      'Ship it to staging then prod',
+    );
+    expect(oneLineTaskTitle('One line')).toBe('One line');
+    expect(oneLineTaskTitle(' keep  edges ')).toBe(' keep  edges ');
+    expect(oneLineTaskTitle('a \n \n\n  b')).toBe('a b');
+    expect(oneLineTaskTitle('\n  lead')).toBe(' lead');
+    expect(oneLineTaskTitle('trail  \n')).toBe('trail ');
+    expect(oneLineTaskTitle('\n \n')).toBe(' ');
   });
 
-  test.each(['- [x]', '[ ]', '- note [ ]', '1. [ ]', '- [ ] a', '-[ ]'])(
-    '%j is left alone',
-    (line) => {
-      expect(bulletCheckboxAsTask(line)).toBeNull();
-    },
-  );
-});
-
-describe('typedBulletCheckboxAsTask', () => {
-  test('the typed ] turns the bullet into a task line, text after the caret kept', () => {
-    const before = '## Focus\n  - [  Buy milk\nend';
-    const after = '## Focus\n  - [ ] Buy milk\nend';
-    const caret = after.indexOf(']') + 1;
-    expect(typedBulletCheckboxAsTask(before, after, caret)).toEqual({
-      text: '## Focus\n  [ ] Buy milk\nend',
-      caret: '## Focus\n  [ ]'.length,
-    });
+  test('matches the one-regex rule on any mix of spaces and breaks', () => {
+    const chars = [' ', '\n', '\r', '\t', 'x'];
+    for (let n = 0; n < 4000; n += 1) {
+      let text = '';
+      for (let k = n; k > 0; k = Math.floor(k / 5)) text += chars[k % 5];
+      expect(oneLineTaskTitle(text)).toBe(text.replace(/\s*\n\s*/g, ' '));
+    }
   });
 
-  test('anything but one typed ] is left alone', () => {
-    expect(typedBulletCheckboxAsTask('- [ ', '- [ ]', 5)).toEqual({
-      text: '[ ]',
-      caret: 3,
-    });
-    expect(typedBulletCheckboxAsTask('', '- [ ]', 5)).toBeNull();
-    expect(typedBulletCheckboxAsTask('- [ ', '- [ x', 5)).toBeNull();
-    expect(typedBulletCheckboxAsTask('- [ (url)', '- [ ](url)', 5)).toBeNull();
-    expect(typedBulletCheckboxAsTask('- [x', '- [x]', 5)).toBeNull();
+  test('stays fast on a long run of spaces', () => {
+    const text = `a${' '.repeat(100_000)}b\nc`;
+    const started = performance.now();
+    expect(oneLineTaskTitle(text)).toBe(`a${' '.repeat(100_000)}b c`);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  test('a done task reopens from its box; any other completes', () => {
+    expect(taskCheckboxAction('done')).toBe('reopen');
+    expect(taskCheckboxAction('dropped')).toBe('complete');
+    expect(taskCheckboxAction('todo')).toBe('complete');
+    expect(taskCheckboxAction('in_progress')).toBe('complete');
   });
 });

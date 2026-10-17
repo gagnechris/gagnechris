@@ -103,6 +103,8 @@ export const Dialog = (props: DialogProps) => {
         label={props.label}
         onClose={props.onClose}
         done={props.actions}
+        closeLabel={props.cancelLabel || undefined}
+        initialFocus={props.initialFocus}
       >
         {props.children}
       </BottomSheet>
@@ -121,6 +123,8 @@ export const Drawer = (props: Common) => {
         label={props.label}
         onClose={props.onClose}
         done={props.actions}
+        closeLabel={props.cancelLabel || undefined}
+        initialFocus={props.initialFocus}
       >
         {props.children}
       </BottomSheet>

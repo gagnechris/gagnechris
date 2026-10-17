@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Button } from './Button.js';
 import { Dialog, Drawer } from './Dialog.js';
@@ -92,6 +92,42 @@ describe.each(['dialog', 'drawer'] as const)('%s', (kind) => {
     await user.click(screen.getByRole('button', { name: 'Invite' }));
     expect(document.querySelector('.bottom-sheet')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Send invite' })).toBeVisible();
+  });
+
+  test('as a sheet it starts focus at initialFocus and names Close with cancelLabel', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const Surface = kind === 'dialog' ? Dialog : Drawer;
+    const Sheet = () => {
+      const start = useRef<HTMLInputElement>(null);
+      return (
+        <Surface
+          title="Edit access"
+          onClose={vi.fn()}
+          cancelLabel="Keep access"
+          initialFocus={start}
+          actions={<Button variant="primary">Save</Button>}
+        >
+          <label>
+            Name
+            <input />
+          </label>
+          <label>
+            Level
+            <input ref={start} />
+          </label>
+        </Surface>
+      );
+    };
+    render(<Sheet />);
+    expect(screen.getByRole('textbox', { name: 'Level' })).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'Keep access' }),
+    ).toBeInTheDocument();
   });
 
   test.each([false, true])(

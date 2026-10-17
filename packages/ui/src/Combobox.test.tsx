@@ -42,6 +42,24 @@ const Harness = ({
 };
 
 describe('Combobox', () => {
+  test("a click opens the list and still reaches the caller's onClick", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Combobox
+        aria-label="Linked note"
+        value=""
+        onValueChange={() => {}}
+        options={NOTES}
+        onPick={() => {}}
+        onClick={onClick}
+      />,
+    );
+    await user.click(screen.getByRole('combobox', { name: 'Linked note' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('listbox')).toBeVisible();
+  });
+
   test('focus stays in the input while arrows move the active option', async () => {
     const user = userEvent.setup();
     const onPick = vi.fn();

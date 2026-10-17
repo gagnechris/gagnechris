@@ -18,7 +18,7 @@ const meta = {
   component: Menu,
   parameters: catalog(
     'none: `ActionSheetIOS` (`pickFromSheet` in `apps/mobile/src/ui/Chip.tsx`, `notebook/taskActionSheets`)',
-    'One Menu surface opened from a trigger with `aria-haspopup` and `aria-expanded`. Arrows move, typing jumps, Enter picks, Escape and an outside click close and return focus. Items take an icon, a shortcut, `danger` and `disabled`; MenuRadioGroup marks the current item with a check. Under 768px the same items open in a BottomSheet.',
+    'One Menu surface opened from a trigger with `aria-haspopup` and `aria-expanded`. Arrows move, typing jumps, Enter picks, Escape and an outside click close and return focus. Items take an icon, a shortcut, `danger` and `disabled`; MenuRadioGroup marks the current item with a check. Under 768px the same items open in a BottomSheet, with focus on the first item and the same keys.',
   ),
   args: {
     label: 'Note actions',

@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router-dom';
 import {
   NOTEBOOK_TITLE_MAX_LENGTH,
+  oneLineTaskTitle,
   type Task,
   type TaskDue,
 } from '@gagnechris/shared';
@@ -246,7 +247,7 @@ function TaskEmbedTitle({
         onFocus={() => {
           if (draftRef.current === null) edit(title);
         }}
-        onChange={(e) => edit(e.target.value.replace(/\s*\n\s*/g, ' '))}
+        onChange={(e) => edit(oneLineTaskTitle(e.target.value))}
         onBlur={() => {
           if (draftRef.current !== null) commit();
         }}

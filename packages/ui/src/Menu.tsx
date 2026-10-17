@@ -78,12 +78,13 @@ export const Menu = ({
 
   useDismiss(open && !phone, dismiss, anchor);
 
+  // In a sheet this runs after the sheet's own focus move, so an item still wins.
   useEffect(() => {
-    if (!open || phone) return;
+    if (!open) return;
     const items = menu.current?.querySelectorAll<HTMLElement>(ITEMS);
     if (!items?.length) return;
     items[start === 'first' ? 0 : items.length - 1]!.focus();
-  }, [open, phone, start]);
+  }, [open, start]);
 
   const show = (from: 'first' | 'last') => {
     setStart(from);
@@ -117,7 +118,8 @@ export const Menu = ({
       e.stopPropagation();
       close();
     } else if (e.key === 'Tab') {
-      close();
+      // A sheet keeps focus inside, like any modal; a popover lets it move on.
+      if (!phone) close();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       focus(at + 1);

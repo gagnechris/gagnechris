@@ -151,6 +151,7 @@ export {
   useDeleteNoteMutation,
   useNotesByIds,
   useNotesQuery,
+  useArchiveNoteMutation,
   usePinNoteMutation,
 } from './query/notes.js';
 export {

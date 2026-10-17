@@ -233,6 +233,15 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
                 <Icon name="pin.fill" size={12} color={color.inkSoft} />
               </View>
             ) : null}
+            {note.archived ? (
+              <View
+                style={styles.chip}
+                accessible
+                accessibilityLabel="Archived"
+              >
+                <Text style={styles.chipText}>Archived</Text>
+              </View>
+            ) : null}
             {parseTagsText(draft.tagsText).map((tag) => (
               <Pressable
                 key={tag}

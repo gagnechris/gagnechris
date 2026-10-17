@@ -17,7 +17,7 @@ import {
   LiveMarkdownInput,
   type LiveMarkdownHandle,
 } from '../ui/LiveMarkdownInput';
-import { insertImage } from './draftEdits';
+import { followSelection, insertImage } from './draftEdits';
 
 type BodyAction =
   | 'heading'
@@ -96,10 +96,11 @@ export const MarkdownBodyField = ({
   const onAction = (action: BodyAction) => {
     if (action === 'preview') return onPreview();
     if (action === 'image') {
-      const at = selection;
-      void addPhoto((path, alt) =>
-        apply(insertImage(latest.current, at, alt, path)),
-      );
+      const [base, at] = [value, selection];
+      void addPhoto((path, alt) => {
+        const text = latest.current;
+        apply(insertImage(text, followSelection(base, text, at), alt, path));
+      });
       return;
     }
     apply(applyToolbarAction(value, selection, action));
