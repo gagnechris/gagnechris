@@ -8,6 +8,8 @@ import {
 import {
   DAILY_TEMPLATE_TASK_MESSAGE,
   dailyTemplateHasTasks,
+  dailyTemplateNamedWeekday,
+  dailyTemplateWeekdayMessage,
   resolveNotebookArea,
   saveLabel,
 } from '@gagnechris/shared';
@@ -106,6 +108,7 @@ const TemplateEditor = ({
     return <Text style={styles.status}>Loading template…</Text>;
   }
 
+  const namedWeekday = dailyTemplateNamedWeekday(text);
   const error =
     invalidText !== null
       ? DAILY_TEMPLATE_TASK_MESSAGE
@@ -143,6 +146,11 @@ const TemplateEditor = ({
         placeholderTextColor={color.muted}
         style={styles.input}
       />
+      {namedWeekday ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite">
+          {dailyTemplateWeekdayMessage(namedWeekday)}
+        </Text>
+      ) : null}
       <Text style={styles.hint}>
         New {label} notes start like this. Notes you’ve started don’t change.
         Checklists only, no tasks.

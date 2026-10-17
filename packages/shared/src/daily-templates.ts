@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { formatCalendarDay, weekdayName } from './calendar.js';
+import { formatCalendarDay, WEEKDAY_LONG, weekdayName } from './calendar.js';
 import { fenceLineKind, scanFences } from './markdown-fences.js';
 import {
   NotebookAreaSchema,
@@ -45,6 +45,16 @@ export function fillDailyTemplate(
     (_, token: string) => values[token]!,
   );
 }
+
+const NAMED_WEEKDAY = new RegExp(`\\b(${WEEKDAY_LONG.join('|')})\\b`);
+
+/** A weekday typed into a template, which every new day would repeat. */
+export function dailyTemplateNamedWeekday(markdown: string): string | null {
+  return NAMED_WEEKDAY.exec(markdown)?.[1] ?? null;
+}
+
+export const dailyTemplateWeekdayMessage = (weekday: string) =>
+  `Every new day will say ${weekday}. Use {{weekday}} to show each day’s own name.`;
 
 const TASK_LINE = /^[ \t]*\[ \][ \t]+\S/;
 
