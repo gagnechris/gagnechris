@@ -48,7 +48,13 @@ const LINTABLE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 
 // Inputs outside a workspace's own directory, by workspace directory.
 const EXTRA_INPUTS: Record<string, string[]> = {
-  scripts: ['.github/', '.githooks/', '.claude/hooks/'],
+  scripts: [
+    '.github/',
+    '.githooks/',
+    '.claude/hooks/',
+    'packages/app-core/',
+    'packages/ui/',
+  ],
 };
 
 // openapi:check and go:generate:check both rewrite the generated Go files.
