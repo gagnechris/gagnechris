@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
 # Builds the public, admin and Notebook apps and ships each to its own bucket
 # and CloudFront distribution.
+#
+#   deploy-web.sh              build, then upload
+#   deploy-web.sh cognito-env  print the Cognito settings the build bakes in,
+#                              as VAR=value lines
+#   deploy-web.sh build        build only, with no AWS access when the
+#                              VITE_COGNITO_* variables are set
+#   deploy-web.sh upload       upload an existing build; the VITE_COGNITO_*
+#                              variables it was built with must still match SSM
 set -euo pipefail
+
+MODE="${1:-all}"
+case "${MODE}" in
+  all | cognito-env | build | upload) ;;
+  *)
+    echo "Usage: deploy-web.sh [cognito-env|build|upload]" >&2
+    exit 2
+    ;;
+esac
 
 ENV_NAME="${ENV_NAME:-prod}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -20,29 +37,67 @@ ssm_value() {
     --query 'Parameter.Value' --output text
 }
 
-BUCKET="$(ssm_value siteBucketName)"
-DISTRIBUTION_ID="$(ssm_value cloudfrontDistributionId)"
-ADMIN_BUCKET="$(ssm_value adminSiteBucketName)"
-ADMIN_DISTRIBUTION_ID="$(ssm_value adminDistributionId)"
-NOTEBOOK_BUCKET="$(ssm_value notebookSiteBucketName)"
-NOTEBOOK_DISTRIBUTION_ID="$(ssm_value notebookDistributionId)"
-PUBLISHER_FN="$(ssm_value publisherFunctionName)"
+# Build variable and the SSM key it comes from.
+COGNITO_SETTINGS=(
+  VITE_COGNITO_USER_POOL_ID=cognitoUserPoolId
+  VITE_COGNITO_ADMIN_CLIENT_ID=cognitoAdminWebClientId
+  VITE_COGNITO_NOTEBOOK_CLIENT_ID=cognitoNotebookWebClientId
+  VITE_COGNITO_AUTH_DOMAIN=cognitoAuthDomain
+)
 
-VITE_COGNITO_USER_POOL_ID="$(ssm_value cognitoUserPoolId)"
-VITE_COGNITO_ADMIN_CLIENT_ID="$(ssm_value cognitoAdminWebClientId)"
-VITE_COGNITO_NOTEBOOK_CLIENT_ID="$(ssm_value cognitoNotebookWebClientId)"
-VITE_COGNITO_AUTH_DOMAIN="$(ssm_value cognitoAuthDomain)"
-# The admin app links public pages (View live, previews) at this origin.
-VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
-# Production GA4 property. Only this build sets it, so local, preview and e2e
-# builds load no Google Analytics.
-GA_MEASUREMENT_ID="G-CDG30T24XY"
-export VITE_COGNITO_USER_POOL_ID VITE_COGNITO_ADMIN_CLIENT_ID \
-  VITE_COGNITO_NOTEBOOK_CLIENT_ID VITE_COGNITO_AUTH_DOMAIN \
-  VITE_PUBLIC_SITE_ORIGIN GA_MEASUREMENT_ID
+if [ "${MODE}" = cognito-env ]; then
+  for setting in "${COGNITO_SETTINGS[@]}"; do
+    value="$(ssm_value "${setting#*=}")"
+    echo "${setting%%=*}=${value}"
+  done
+  exit 0
+fi
 
-npm run build -w @gagnechris/web
-npm run --silent check:web-shells
+if [ "${MODE}" != build ]; then
+  BUCKET="$(ssm_value siteBucketName)"
+  DISTRIBUTION_ID="$(ssm_value cloudfrontDistributionId)"
+  ADMIN_BUCKET="$(ssm_value adminSiteBucketName)"
+  ADMIN_DISTRIBUTION_ID="$(ssm_value adminDistributionId)"
+  NOTEBOOK_BUCKET="$(ssm_value notebookSiteBucketName)"
+  NOTEBOOK_DISTRIBUTION_ID="$(ssm_value notebookDistributionId)"
+  PUBLISHER_FN="$(ssm_value publisherFunctionName)"
+fi
+
+# A CDK deploy between the build and the upload can replace a Cognito client.
+if [ "${MODE}" = upload ]; then
+  for setting in "${COGNITO_SETTINGS[@]}"; do
+    var="${setting%%=*}"
+    current="$(ssm_value "${setting#*=}")"
+    if [ -z "${!var:-}" ]; then
+      echo "upload needs ${var}, the value the build used" >&2
+      exit 1
+    fi
+    if [ "${!var}" != "${current}" ]; then
+      echo "${var} changed since the build (built with '${!var}', SSM has '${current}'). Re-run all jobs so the build uses it." >&2
+      exit 1
+    fi
+  done
+fi
+
+if [ "${MODE}" != upload ]; then
+  for setting in "${COGNITO_SETTINGS[@]}"; do
+    var="${setting%%=*}"
+    if [ -z "${!var:-}" ]; then
+      value="$(ssm_value "${setting#*=}")"
+      printf -v "${var}" '%s' "${value}"
+    fi
+    export "${var?}"
+  done
+  # The admin app links public pages (View live, previews) at this origin.
+  VITE_PUBLIC_SITE_ORIGIN="https://gagnechris.com"
+  # Production GA4 property. Only this build sets it, so local, preview and e2e
+  # builds load no Google Analytics.
+  GA_MEASUREMENT_ID="G-CDG30T24XY"
+  export VITE_PUBLIC_SITE_ORIGIN GA_MEASUREMENT_ID
+
+  npm run build -w @gagnechris/web
+  npm run --silent check:web-shells
+fi
 
 # The publisher renders from this pristine shell; index.html seeds `/` in a
 # bucket the publisher hasn't written yet.
@@ -52,6 +107,11 @@ for required in index.html _shell.html; do
     exit 1
   fi
 done
+
+if [ "${MODE}" = build ]; then
+  echo "Web build complete."
+  exit 0
+fi
 
 # Extensionless Apple / WebAuthn association files need application/json; S3
 # guesses binary/octet-stream.

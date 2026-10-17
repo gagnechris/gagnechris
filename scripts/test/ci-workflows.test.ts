@@ -184,6 +184,61 @@ describe('GitHub Actions supply chain', () => {
     }
   });
 
+  it('builds web and the catalog only in jobs that can mint no OIDC token and read no secret', () => {
+    const builds =
+      /\bnpm run (build|storybook:build)\b|\bvite build\b|deploy-web\.sh(?! (upload|cognito-env)\b)|deploy-components\.sh(?! upload\b)/;
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
+        for (const step of job.steps ?? []) {
+          if (builds.test(step.run ?? '')) {
+            offenders.push(`${path}#${jobId}/${step.name}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+
+    const build = cdk.jobs.build! as Job & { environment?: string };
+    expect(hasIdToken(build, cdk)).toBe(false);
+    expect(readsSecret(build)).toBe(false);
+    expect(build.environment).toBeUndefined();
+    const runs = (build.steps ?? []).map((s) => s.run ?? '');
+    expect(runs).toContain('bash scripts/deploy-web.sh build');
+    expect(runs).toContain('bash scripts/deploy-components.sh build');
+    expect((cdk.jobs.deploy as Job & { needs?: string[] }).needs).toEqual([
+      'plan',
+      'build',
+    ]);
+  });
+
+  it('never restores the Go build cache in a job that can mint an OIDC token or reads a secret', () => {
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
+        for (const step of job.steps ?? []) {
+          if (
+            step.uses === SETUP_ACTION &&
+            step.with?.go !== 'false' &&
+            step.with?.['go-cache'] !== 'false'
+          ) {
+            offenders.push(`${path}#${jobId}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+    const action = loadYaml<{ runs: { steps: Step[] } }>(
+      join(ACTIONS_DIR, 'setup', 'action.yml'),
+    );
+    const setupGo = action.runs.steps.find((s) =>
+      s.uses?.startsWith('actions/setup-go@'),
+    );
+    expect(setupGo?.with?.cache).toBe("${{ inputs.go-cache != 'false' }}");
+  });
+
   it('plan job runs only official actions, git, bash and the AWS CLI', () => {
     const plan = cdk.jobs.plan!;
     expect(plan.permissions).toEqual({
@@ -544,7 +599,7 @@ describe('deploy job guards', () => {
 
   it('runs the web deploy only when plan says web, and records every deploy', () => {
     expect(deploy.if).toBe(
-      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'",
+      "always() && needs.plan.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true')",
     );
     const web = stepIndex(
       deploy,
