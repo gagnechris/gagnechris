@@ -12,6 +12,7 @@ const NOTE = '01NOTE0000000000000000000A';
 const P = '01HTASKPPPPPPPPPPPPPPPPPPP';
 const A = '01HTASKAAAAAAAAAAAAAAAAAAA';
 const B = '01HTASKBBBBBBBBBBBBBBBBBBB';
+const T = '01HTASKTTTTTTTTTTTTTTTTTTT';
 
 let server: ReturnType<typeof notebookServer>;
 let mounted: ReactTestRenderer | null = null;
@@ -254,5 +255,40 @@ describe('subtasks in a note', () => {
     await savedBody(
       `{{task:${P}}}\n  {{task:${A}}}\n    why\n  {{task:${B}}}\nPack\nCall hotel\nafter`,
     );
+  });
+
+  const parentBelowTask = () =>
+    serve(
+      [
+        makeNote(
+          NOTE,
+          `{{task:${T}}}\n{{task:${P}}}\n  {{task:${A}}}\n    why`,
+        ),
+      ],
+      [
+        makeTask(T, 'Errands', { noteId: NOTE }),
+        makeTask(P, 'Trip', { noteId: NOTE }),
+        makeTask(A, 'Book hotel', { noteId: NOTE, parentId: P }),
+      ],
+    );
+
+  it('deleting a parent moves its subtasks out to its level, not under the task above', async () => {
+    parentBelowTask();
+    const renderer = await renderNote();
+    const field = () => titleFields(renderer)[1]!;
+    act(() => field().props.onFocus());
+    act(() => field().props.onChangeText(''));
+    vi.setSystemTime(Date.now() + 1_000);
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    vi.setSystemTime(Date.now() + 1_000);
+    act(() => field().props.onKeyPress({ nativeEvent: { key: 'Backspace' } }));
+    await savedBody(`{{task:${T}}}\n{{task:${A}}}\n  why`);
+  });
+
+  it('a parent deleted elsewhere leaves its subtasks at its level', async () => {
+    parentBelowTask();
+    server.deleteTask(P);
+    await renderNote();
+    await savedBody(`{{task:${T}}}\n{{task:${A}}}\n  why`);
   });
 });
