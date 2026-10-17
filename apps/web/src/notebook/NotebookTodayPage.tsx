@@ -10,7 +10,14 @@ import {
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useDailyNoteDatesQuery, type Task } from '@gagnechris/app-core';
 import { addDays, isCalendarDay, snoozeBaseDay } from '@gagnechris/shared';
-import { Button, IconButton, Select } from '@gagnechris/ui';
+import {
+  Button,
+  IconButton,
+  PanelCollapseButton,
+  PanelExpandEdge,
+  Select,
+  usePanelEdgeFocus,
+} from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { monthBounds } from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
@@ -28,12 +35,7 @@ import { useLocalToday } from './useLocalToday';
 import { useTodayActions } from './useTodayActions';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useTodayTasks } from './useTodayTasks';
-import {
-  PanelCollapseButton,
-  PanelExpandEdge,
-} from '../workspace/ui/PanelEdge';
 import { ResizeHandle } from '../workspace/ui/ResizeHandle';
-import { usePanelEdgeFocus } from '../workspace/ui/usePanelEdgeFocus';
 import { useStoredWidth } from '../workspace/ui/useStoredWidth';
 import { noteColumnRoom } from '../workspace/ui/noteColumn';
 import {

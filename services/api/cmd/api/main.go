@@ -62,7 +62,7 @@ func main() {
 		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
-	)
+	).WithOriginSecret(conf.originSecret)
 	if conf.inLambda {
 		lambda.Start(app.HandleLambda)
 		return

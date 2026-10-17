@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Post } from '@gagnechris/app-core';
-import { QueryClientTestProvider } from '../test-utils';
+import { answerConfirms, QueryClientTestProvider } from '../test-utils';
 import AdminPostsPage from './AdminPostsPage';
 import { adminApi } from '../mockAdminApi';
 
@@ -249,7 +249,7 @@ describe('AdminPostsPage', () => {
     expect(titles).toEqual(['Untitled', 'Hello']);
   });
 
-  test('a row menu publishes the draft and unpublishes a published post', async () => {
+  test('a row menu publishes the draft, and unpublishes a published post once confirmed', async () => {
     const user = userEvent.setup();
     post.mockImplementation(async (path: string) =>
       respond(
@@ -295,11 +295,26 @@ describe('AdminPostsPage', () => {
     expect(
       screen.queryByRole('menuitem', { name: 'Publish' }),
     ).not.toBeInTheDocument();
+    const confirmSpy = answerConfirms(false);
     await user.click(screen.getByRole('menuitem', { name: 'Unpublish' }));
-    expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/unpublish', {
-      params: { path: { id: '01LIVE' } },
-      body: { version: 3 },
-    });
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Unpublish this post? It will leave the public Posts page.',
+      'Unpublish',
+    );
+    expect(post).not.toHaveBeenCalledWith(
+      '/api/admin/posts/{id}/unpublish',
+      expect.anything(),
+    );
+
+    confirmSpy.mockReturnValue(true);
+    await user.click(screen.getByRole('button', { name: 'Actions for Live' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Unpublish' }));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/api/admin/posts/{id}/unpublish', {
+        params: { path: { id: '01LIVE' } },
+        body: { version: 3 },
+      }),
+    );
   });
 
   test('a failed row publish shows why', async () => {

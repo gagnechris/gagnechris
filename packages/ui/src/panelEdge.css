@@ -1,0 +1,127 @@
+/* Collapse and expand controls on a panel's edge. Open, the collapse button
+   rides the edge and shows while it is hovered or focused; closed, a fixed
+   zone on the window's edge holds the expand button and takes no layout
+   width. */
+
+.ui-panel-edge-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 22px;
+  pointer-events: none;
+}
+
+.ui-panel-edge {
+  position: sticky;
+  top: calc(50vh - 1.25rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 2.5rem;
+  padding: 0 3px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
+  background: white;
+  color: var(--neutral-600);
+  box-shadow: var(--shadow-sm);
+  font: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-panel-edge:hover {
+  border-color: var(--neutral-300);
+  color: var(--neutral-900);
+}
+
+/* The site-wide button:focus ring would show after a click. */
+.ui-panel-edge:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ui-panel-edge:is(:hover, :focus-visible),
+.ui-panel-edge-zone:hover > .ui-panel-edge,
+.ui-panel-edge-zone--counted > .ui-panel-edge {
+  opacity: 1;
+}
+
+.ui-panel-edge__count {
+  min-width: 1rem;
+  color: var(--primary-800);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ui-panel-edge-zone {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 22;
+  width: 12px;
+}
+
+.ui-panel-edge-zone--left {
+  left: 0;
+}
+
+.ui-panel-edge-zone--right {
+  right: 0;
+}
+
+.ui-panel-edge-zone::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--primary-200);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-panel-edge-zone--left::before {
+  left: 0;
+}
+
+.ui-panel-edge-zone--right::before {
+  right: 0;
+}
+
+.ui-panel-edge-zone:is(:hover, :has(:focus-visible))::before {
+  opacity: 1;
+}
+
+.ui-panel-edge-zone > .ui-panel-edge {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.ui-panel-edge-zone--left > .ui-panel-edge {
+  left: 4px;
+}
+
+.ui-panel-edge-zone--right > .ui-panel-edge {
+  right: 4px;
+}
+
+/* No hover to reveal them on a touch screen. */
+@media (hover: none) {
+  .ui-panel-edge {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .ui-panel-edge-track,
+  .ui-panel-edge-zone {
+    display: none;
+  }
+}

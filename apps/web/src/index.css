@@ -92,8 +92,9 @@ button {
     box-shadow var(--transition-normal);
 }
 
-/* :where keeps the specificity low enough for component hover rules to win. */
-button:hover:where(:not(:disabled)) {
+/* Same specificity as `button`, so any class rule's background, transform or
+   shadow beats the hover; a library control without a hover background stays put. */
+button:where(:hover:not(:disabled)) {
   background-color: var(--primary-600);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);

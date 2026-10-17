@@ -52,6 +52,9 @@ test('a Full Admin invites someone, changes their access, removes and restores t
 
   await edit.click();
   await panel.getByRole('button', { name: 'Remove' }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText('Remove access?');
+  await confirm.getByRole('button', { name: 'Remove' }).click();
   await expect(row).toContainText('Removed · notes kept');
   await panel.getByRole('button', { name: 'Restore' }).click();
   await expect(

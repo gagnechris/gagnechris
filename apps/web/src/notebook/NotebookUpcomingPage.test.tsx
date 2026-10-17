@@ -211,6 +211,23 @@ describe('NotebookUpcomingPage', () => {
     localStorage.clear();
   });
 
+  test('a URL in a title is a link after the title', async () => {
+    addTask(
+      task(1, {
+        title: 'Read https://example.com/agenda first',
+        startDate: addDays(today, 1),
+      }),
+    );
+    renderNotebook();
+
+    const row = (
+      await screen.findByText('Read https://example.com/agenda first')
+    ).closest('li')!;
+    expect(
+      within(row).getByRole('link', { name: /^example\.com/ }),
+    ).toHaveAttribute('href', 'https://example.com/agenda');
+  });
+
   test('lists every scheduled and parked task once, across pages', async () => {
     addTask(task(1, { title: 'Tomorrow task', startDate: addDays(today, 1) }));
     addTask(task(2, { title: 'Parked', someday: true }));

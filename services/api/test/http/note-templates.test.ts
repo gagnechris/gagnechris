@@ -32,6 +32,37 @@ const storedRow = async (userId: string, id: string) =>
   ).Item;
 
 describe('note templates over HTTP (DynamoDB Local)', () => {
+  it('rejects task embeds on create and edit but allows task lines and code', async () => {
+    const embed = '## Agenda\n{{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}\n';
+    const id = ulid();
+    const created = await call('POST', PATH, {
+      body: { id, name: 'Standup', bodyMarkdown: embed },
+    });
+    expect(created.status).toBe(400);
+    expect(created.body).toEqual({
+      error: 'bad_request',
+      message: 'Invalid request body',
+      fields: { bodyMarkdown: 'custom' },
+    });
+    expect(await storedRow(USER, id)).toBeUndefined();
+
+    const fenced = '```\n{{task:01ARZ3NDEKTSV4RRFFQ48JMCZC}}\n```\n[ ] Ask\n';
+    const ok = await call('POST', PATH, {
+      body: { id, name: 'Standup', bodyMarkdown: fenced },
+    });
+    expect(ok.status).toBe(201);
+
+    const edited = await call('PUT', `${PATH}/${id}`, {
+      body: { version: 1, bodyMarkdown: embed },
+    });
+    expect(edited.status).toBe(400);
+    expect(edited.body).toEqual(created.body);
+    expect((await call('GET', `${PATH}/${id}`)).body).toMatchObject({
+      bodyMarkdown: fenced,
+      version: 1,
+    });
+  });
+
   it('creates, lists, renames, edits and deletes a template', async () => {
     const id = ulid();
     const created = await call('POST', PATH, {

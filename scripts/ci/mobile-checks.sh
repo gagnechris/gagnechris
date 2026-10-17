@@ -13,6 +13,8 @@ npm run typecheck --prefix apps/mobile
 
 npm run lint --prefix apps/mobile
 
+# TEST_TZ in scripts/verify.ts: a day ahead of UTC most of the day.
+export TZ=Pacific/Kiritimati
 npm test -w @gagnechris/api-client
 npm test -w @gagnechris/tokens
 npm test -w @gagnechris/app-core

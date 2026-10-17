@@ -5529,7 +5529,7 @@ type CreateNoteRequestType string
 
 // CreateNoteTemplateRequest defines model for CreateNoteTemplateRequest.
 type CreateNoteTemplateRequest struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -6227,6 +6227,7 @@ type Post struct {
 	ID                    string                      `json:"id"`
 	ProjectIds            []string                    `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]   `json:"publishedAt"`
+	PublishedSlug         *string                     `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[Post_Seo] `json:"seo"`
 	Slug                  string                      `json:"slug"`
 	Status                PostStatus                  `json:"status"`
@@ -6270,6 +6271,7 @@ type PostListResponse_Items struct {
 	ID                    string                      `json:"id"`
 	ProjectIds            []string                    `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]   `json:"publishedAt"`
+	PublishedSlug         *string                     `json:"publishedSlug,omitempty"`
 	Slug                  string                      `json:"slug"`
 	Status                PostListResponseItemsStatus `json:"status"`
 	Tags                  []string                    `json:"tags"`
@@ -6291,6 +6293,7 @@ type PostSummary struct {
 	ID                    string                    `json:"id"`
 	ProjectIds            []string                  `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string] `json:"publishedAt"`
+	PublishedSlug         *string                   `json:"publishedSlug,omitempty"`
 	Slug                  string                    `json:"slug"`
 	Status                PostSummaryStatus         `json:"status"`
 	Tags                  []string                  `json:"tags"`
@@ -6327,6 +6330,7 @@ type Project struct {
 	Pitch                 string                         `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]      `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]      `json:"publishedAt"`
+	PublishedSlug         *string                        `json:"publishedSlug,omitempty"`
 	Slug                  string                         `json:"slug"`
 	Stack                 []string                       `json:"stack"`
 	Stage                 ProjectStage                   `json:"stage"`
@@ -6390,6 +6394,7 @@ type ProjectListResponse_Items struct {
 	Pitch                 string                                          `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                       `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                       `json:"publishedAt"`
+	PublishedSlug         *string                                         `json:"publishedSlug,omitempty"`
 	Slug                  string                                          `json:"slug"`
 	Stack                 []string                                        `json:"stack"`
 	Stage                 ProjectListResponseItemsStage                   `json:"stage"`
@@ -6768,7 +6773,7 @@ type UpdateNoteRequest struct {
 
 // UpdateNoteTemplateRequest defines model for UpdateNoteTemplateRequest.
 type UpdateNoteTemplateRequest struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
 	Version      *int    `json:"version,omitempty"`
@@ -7477,6 +7482,7 @@ type GetAPIAdminPosts200JSONResponseBody_Items struct {
 	ID                    string                                         `json:"id"`
 	ProjectIds            []string                                       `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                      `json:"publishedAt"`
+	PublishedSlug         *string                                        `json:"publishedSlug,omitempty"`
 	Slug                  string                                         `json:"slug"`
 	Status                GetAPIAdminPosts200JSONResponseBodyItemsStatus `json:"status"`
 	Tags                  []string                                       `json:"tags"`
@@ -7566,6 +7572,7 @@ type PostAPIAdminPosts201JSONResponseBody struct {
 	ID                    string                                                      `json:"id"`
 	ProjectIds            []string                                                    `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                   `json:"publishedAt"`
+	PublishedSlug         *string                                                     `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[PostAPIAdminPosts201JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                      `json:"slug"`
 	Status                PostAPIAdminPosts201JSONResponseBodyStatus                  `json:"status"`
@@ -7653,6 +7660,7 @@ type DeleteAPIAdminPostsID200JSONResponseBody struct {
 	ID                    string                                                          `json:"id"`
 	ProjectIds            []string                                                        `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                       `json:"publishedAt"`
+	PublishedSlug         *string                                                         `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[DeleteAPIAdminPostsID200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                          `json:"slug"`
 	Status                DeleteAPIAdminPostsID200JSONResponseBodyStatus                  `json:"status"`
@@ -7735,6 +7743,7 @@ type GetAPIAdminPostsID200JSONResponseBody struct {
 	ID                    string                                                       `json:"id"`
 	ProjectIds            []string                                                     `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                    `json:"publishedAt"`
+	PublishedSlug         *string                                                      `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[GetAPIAdminPostsID200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                       `json:"slug"`
 	Status                GetAPIAdminPostsID200JSONResponseBodyStatus                  `json:"status"`
@@ -7825,6 +7834,7 @@ type PutAPIAdminPostsID200JSONResponseBody struct {
 	ID                    string                                                       `json:"id"`
 	ProjectIds            []string                                                     `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                    `json:"publishedAt"`
+	PublishedSlug         *string                                                      `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[PutAPIAdminPostsID200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                       `json:"slug"`
 	Status                PutAPIAdminPostsID200JSONResponseBodyStatus                  `json:"status"`
@@ -7919,6 +7929,7 @@ type PostAPIAdminPostsIDDiscard200JSONResponseBody struct {
 	ID                    string                                                               `json:"id"`
 	ProjectIds            []string                                                             `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                            `json:"publishedAt"`
+	PublishedSlug         *string                                                              `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[PostAPIAdminPostsIDDiscard200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                               `json:"slug"`
 	Status                PostAPIAdminPostsIDDiscard200JSONResponseBodyStatus                  `json:"status"`
@@ -8006,6 +8017,7 @@ type PostAPIAdminPostsIDPublish200JSONResponseBody struct {
 	ID                    string                                                               `json:"id"`
 	ProjectIds            []string                                                             `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                            `json:"publishedAt"`
+	PublishedSlug         *string                                                              `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[PostAPIAdminPostsIDPublish200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                               `json:"slug"`
 	Status                PostAPIAdminPostsIDPublish200JSONResponseBodyStatus                  `json:"status"`
@@ -8093,6 +8105,7 @@ type PostAPIAdminPostsIDUnpublish200JSONResponseBody struct {
 	ID                    string                                                                 `json:"id"`
 	ProjectIds            []string                                                               `json:"projectIds"`
 	PublishedAt           nullable.Nullable[string]                                              `json:"publishedAt"`
+	PublishedSlug         *string                                                                `json:"publishedSlug,omitempty"`
 	Seo                   nullable.Nullable[PostAPIAdminPostsIDUnpublish200JSONResponseBody_Seo] `json:"seo"`
 	Slug                  string                                                                 `json:"slug"`
 	Status                PostAPIAdminPostsIDUnpublish200JSONResponseBodyStatus                  `json:"status"`
@@ -8193,6 +8206,7 @@ type GetAPIAdminProjects200JSONResponseBody_Items struct {
 	Pitch                 string                                                             `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                          `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                          `json:"publishedAt"`
+	PublishedSlug         *string                                                            `json:"publishedSlug,omitempty"`
 	Slug                  string                                                             `json:"slug"`
 	Stack                 []string                                                           `json:"stack"`
 	Stage                 GetAPIAdminProjects200JSONResponseBodyItemsStage                   `json:"stage"`
@@ -8298,6 +8312,7 @@ type PostAPIAdminProjects201JSONResponseBody struct {
 	Pitch                 string                                                         `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                      `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                      `json:"publishedAt"`
+	PublishedSlug         *string                                                        `json:"publishedSlug,omitempty"`
 	Slug                  string                                                         `json:"slug"`
 	Stack                 []string                                                       `json:"stack"`
 	Stage                 PostAPIAdminProjects201JSONResponseBodyStage                   `json:"stage"`
@@ -8394,6 +8409,7 @@ type DeleteAPIAdminProjectsID200JSONResponseBody struct {
 	Pitch                 string                                                             `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                          `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                          `json:"publishedAt"`
+	PublishedSlug         *string                                                            `json:"publishedSlug,omitempty"`
 	Slug                  string                                                             `json:"slug"`
 	Stack                 []string                                                           `json:"stack"`
 	Stage                 DeleteAPIAdminProjectsID200JSONResponseBodyStage                   `json:"stage"`
@@ -8485,6 +8501,7 @@ type GetAPIAdminProjectsID200JSONResponseBody struct {
 	Pitch                 string                                                          `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                       `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                       `json:"publishedAt"`
+	PublishedSlug         *string                                                         `json:"publishedSlug,omitempty"`
 	Slug                  string                                                          `json:"slug"`
 	Stack                 []string                                                        `json:"stack"`
 	Stage                 GetAPIAdminProjectsID200JSONResponseBodyStage                   `json:"stage"`
@@ -8593,6 +8610,7 @@ type PutAPIAdminProjectsID200JSONResponseBody struct {
 	Pitch                 string                                                          `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                       `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                       `json:"publishedAt"`
+	PublishedSlug         *string                                                         `json:"publishedSlug,omitempty"`
 	Slug                  string                                                          `json:"slug"`
 	Stack                 []string                                                        `json:"stack"`
 	Stage                 PutAPIAdminProjectsID200JSONResponseBodyStage                   `json:"stage"`
@@ -8696,6 +8714,7 @@ type PostAPIAdminProjectsIDDiscard200JSONResponseBody struct {
 	Pitch                 string                                                                  `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                               `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                               `json:"publishedAt"`
+	PublishedSlug         *string                                                                 `json:"publishedSlug,omitempty"`
 	Slug                  string                                                                  `json:"slug"`
 	Stack                 []string                                                                `json:"stack"`
 	Stage                 PostAPIAdminProjectsIDDiscard200JSONResponseBodyStage                   `json:"stage"`
@@ -8792,6 +8811,7 @@ type PostAPIAdminProjectsIDPublish200JSONResponseBody struct {
 	Pitch                 string                                                                  `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                               `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                               `json:"publishedAt"`
+	PublishedSlug         *string                                                                 `json:"publishedSlug,omitempty"`
 	Slug                  string                                                                  `json:"slug"`
 	Stack                 []string                                                                `json:"stack"`
 	Stage                 PostAPIAdminProjectsIDPublish200JSONResponseBodyStage                   `json:"stage"`
@@ -8888,6 +8908,7 @@ type PostAPIAdminProjectsIDUnpublish200JSONResponseBody struct {
 	Pitch                 string                                                                    `json:"pitch"`
 	PreviewImage          nullable.Nullable[string]                                                 `json:"previewImage"`
 	PublishedAt           nullable.Nullable[string]                                                 `json:"publishedAt"`
+	PublishedSlug         *string                                                                   `json:"publishedSlug,omitempty"`
 	Slug                  string                                                                    `json:"slug"`
 	Stack                 []string                                                                  `json:"stack"`
 	Stage                 PostAPIAdminProjectsIDUnpublish200JSONResponseBodyStage                   `json:"stage"`
@@ -12822,7 +12843,7 @@ type GetAPINotebookTemplatesNotes503JSONResponseBody struct {
 
 // PostAPINotebookTemplatesNotesJSONBody defines parameters for PostAPINotebookTemplatesNotes.
 type PostAPINotebookTemplatesNotesJSONBody struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -13023,7 +13044,7 @@ type GetAPINotebookTemplatesNotesID503JSONResponseBody struct {
 
 // PutAPINotebookTemplatesNotesIDJSONBody defines parameters for PutAPINotebookTemplatesNotesID.
 type PutAPINotebookTemplatesNotesIDJSONBody struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
 	Version      *int    `json:"version,omitempty"`

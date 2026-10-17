@@ -11,6 +11,10 @@ const look = (target: Locator) =>
     };
   });
 
+/** Waits out the hover transition so a later read sees where it ends. */
+const settled = (target: Locator) =>
+  expect.poll(() => target.evaluate((el) => el.getAnimations().length)).toBe(0);
+
 test('app buttons and the search backdrop keep their look on hover', async ({
   page,
   apps,
@@ -67,6 +71,48 @@ test('a dialog scrim keeps its look under the pointer', async ({
       transform: 'none',
       boxShadow: 'none',
     });
+});
+
+test('library controls keep their own hover, and the search clear button stays under the pointer', async ({
+  page,
+  apps,
+  signIn,
+}) => {
+  await signIn();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${apps.notebook}/notes`);
+
+  const option = page
+    .getByRole('radiogroup', { name: 'Note type' })
+    .getByRole('radio', { checked: false })
+    .first();
+  const optionAtRest = await look(option);
+  await option.hover();
+  await settled(option);
+  expect(await look(option)).toEqual(optionAtRest);
+
+  await page.getByRole('searchbox', { name: 'Search notes' }).fill('milk');
+  const clear = page.getByRole('button', { name: 'Clear search' });
+  const boxAtRest = await clear.boundingBox();
+  const clearAtRest = await look(clear);
+  await clear.hover();
+  await expect
+    .poll(async () => (await look(clear)).background)
+    .not.toBe(clearAtRest.background);
+  await settled(clear);
+  const hovered = await look(clear);
+  expect(hovered.transform).toBe(clearAtRest.transform);
+  expect(hovered.background).not.toBe(
+    await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'var(--primary-600)';
+      document.body.append(probe);
+      const color = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return color;
+    }),
+  );
+  expect(await clear.boundingBox()).toEqual(boxAtRest);
 });
 
 test('sidebar links stay un-underlined on hover', async ({

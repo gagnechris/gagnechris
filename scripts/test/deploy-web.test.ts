@@ -58,7 +58,20 @@ type Stub = {
   /** An SSM parameter whose read fails. */
   ssmFails?: string;
   functionError?: string;
+  mode?: 'cognito-env' | 'build' | 'upload';
+  env?: Record<string, string>;
+  /** A build already in apps/web, as the upload job downloads it. */
+  prebuilt?: boolean;
 };
+
+// CI sets placeholder VITE_COGNITO_* values for the whole job; each test
+// supplies its own.
+const inheritedEnv = (): NodeJS.ProcessEnv =>
+  Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key]) => !key.startsWith('VITE_COGNITO_'),
+    ),
+  );
 
 function runDeploy(stub: Stub = {}) {
   const root = tempDir('deploy-web-');
@@ -121,22 +134,42 @@ fi
 `,
   );
 
-  const result = spawnSync('bash', [join(root, 'scripts', 'deploy-web.sh')], {
-    cwd: root,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: `${bin}:${process.env.PATH}`,
-      ENV_NAME: 'prod',
+  if (stub.prebuilt) {
+    const web = join(root, 'apps', 'web');
+    for (const d of ['dist', 'dist-admin', 'dist-notebook']) {
+      write(join(web, d, 'index.html'), '');
+      write(join(web, d, 'assets', 'x.js'), '');
+    }
+    write(join(web, 'dist', '_shell.html'), '');
+  }
+
+  const result = spawnSync(
+    'bash',
+    [join(root, 'scripts', 'deploy-web.sh'), ...(stub.mode ? [stub.mode] : [])],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      env: {
+        ...inheritedEnv(),
+        PATH: `${bin}:${process.env.PATH}`,
+        ENV_NAME: 'prod',
+        ...stub.env,
+      },
     },
-  });
+  );
   const calls = existsSync(log)
     ? readFileSync(log, 'utf8')
         .trim()
         .split('\n')
         .map((line) => line.split(SEP))
     : [];
-  return { status: result.status, stderr: result.stderr, calls, root };
+  return {
+    status: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    calls,
+    root,
+  };
 }
 
 const isSync = (c: string[]) =>
@@ -376,5 +409,66 @@ describe('deploy-web.sh home page and republish', () => {
     const run = runDeploy({ functionError: 'Unhandled' });
     expect(run.status).not.toBe(0);
     expect(run.stderr).toMatch(/FunctionError=Unhandled/);
+  });
+});
+
+describe('deploy-web.sh split across the build and deploy jobs', () => {
+  // The stub's SSM values are the parameters' leaf names.
+  const ssmCognito = {
+    VITE_COGNITO_USER_POOL_ID: 'cognito-user-pool-id',
+    VITE_COGNITO_ADMIN_CLIENT_ID: 'cognito-admin-web-client-id',
+    VITE_COGNITO_NOTEBOOK_CLIENT_ID: 'cognito-notebook-web-client-id',
+    VITE_COGNITO_AUTH_DOMAIN: 'cognito-auth-domain',
+  };
+
+  it('prints the Cognito settings the build needs, and nothing else', () => {
+    const run = runDeploy({ mode: 'cognito-env' });
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.stdout.trim().split('\n')).toEqual(
+      Object.entries(ssmCognito).map(([k, v]) => `${k}=${v}`),
+    );
+    expect(run.calls.some((c) => c[0] === 'npm')).toBe(false);
+  });
+
+  it('builds with the given Cognito settings and no AWS call', () => {
+    const run = runDeploy({
+      mode: 'build',
+      env: { ...ssmCognito, VITE_COGNITO_ADMIN_CLIENT_ID: 'from-plan' },
+    });
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.calls.some((c) => c[0] === 'aws')).toBe(false);
+    const npm = run.calls.filter((c) => c[0] === 'npm');
+    expect(npm[0]).toContain('admin=from-plan');
+    expect(npm[1]!.slice(1, 4)).toEqual([
+      'run',
+      '--silent',
+      'check:web-shells',
+    ]);
+  });
+
+  it('uploads an existing build without running npm', () => {
+    const run = runDeploy({ mode: 'upload', env: ssmCognito, prebuilt: true });
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.calls.some((c) => c[0] === 'npm')).toBe(false);
+    expect(syncTo(run.calls, 's3://site-bucket-name/')).toHaveLength(1);
+    expect(run.calls.some((c) => c[1] === 'lambda')).toBe(true);
+  });
+
+  it('refuses to upload a build made with Cognito settings SSM no longer has', () => {
+    const run = runDeploy({
+      mode: 'upload',
+      env: { ...ssmCognito, VITE_COGNITO_NOTEBOOK_CLIENT_ID: 'replaced' },
+      prebuilt: true,
+    });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/VITE_COGNITO_NOTEBOOK_CLIENT_ID changed/);
+    expect(run.calls.some((c) => c[1] === 's3')).toBe(false);
+  });
+
+  it('refuses to upload when it does not know what the build used', () => {
+    const run = runDeploy({ mode: 'upload', prebuilt: true });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/upload needs VITE_COGNITO_USER_POOL_ID/);
+    expect(run.calls.some((c) => c[1] === 's3')).toBe(false);
   });
 });

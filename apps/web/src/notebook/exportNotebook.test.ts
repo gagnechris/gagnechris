@@ -41,6 +41,15 @@ describe('exportNotebook', () => {
     expect(noteExportPath(note())).toMatch(/^notes\/pages\//);
   });
 
+  test('an archived page says so in its frontmatter', () => {
+    expect(
+      parse(noteToMarkdown(note({ archived: true })).split('---')[1]!),
+    ).toMatchObject({ archived: true, pinned: false });
+    expect(parse(noteToMarkdown(note()).split('---')[1]!)).not.toHaveProperty(
+      'archived',
+    );
+  });
+
   test('frontmatter reads back as the same strings in a YAML parser', () => {
     const titles = [
       '[WIP] plan',

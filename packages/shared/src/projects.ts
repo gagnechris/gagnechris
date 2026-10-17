@@ -25,6 +25,25 @@ export const projectCardHref = (
   project.href ||
   (projectHasPage(project) ? projectPagePath(project.slug) : null);
 
+/** Where View live opens for a published project: the live slug's page, its `href`, or nowhere. */
+export const projectLiveHref = (
+  project: PageFields & Pick<Project, 'slug' | 'status' | 'publishedSlug'>,
+): string | null =>
+  project.status === 'published'
+    ? projectCardHref({
+        ...project,
+        slug: project.publishedSlug ?? project.slug,
+      })
+    : null;
+
+/** Where View live opens for a published post, at its live slug. */
+export const postLivePath = (
+  post: Pick<Post, 'slug' | 'status' | 'publishedSlug'>,
+): string | null =>
+  post.status === 'published'
+    ? `/posts/${post.publishedSlug ?? post.slug}`
+    : null;
+
 export type PostProjectLink = { name: string; href: string | null };
 
 export const POST_PART_OF_LABEL = 'Part of the';

@@ -1,9 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import {
-  PanelCollapseButton,
-  PanelExpandEdge,
-} from '@web/workspace/ui/PanelEdge';
+import { PanelCollapseButton, PanelExpandEdge } from '@gagnechris/ui';
 import { ResizeHandle } from '@web/workspace/ui/ResizeHandle';
 import { catalog } from '../catalog';
 import './panelStory.css';
@@ -58,11 +55,11 @@ const Panels = ({ count }: { count?: number }) => {
 };
 
 const meta = {
-  title: 'Workspace/PanelEdge and ResizeHandle',
+  title: 'Workspace/ResizeHandle',
   component: Panels,
   parameters: catalog(
     'web only',
-    'The collapse button rides a panel’s resize edge; a collapsed panel comes back from a thin zone on the window’s edge. Arrow keys nudge the handle and a double-click resets it.',
+    'Drags a panel’s width; with the Shared UI PanelEdge controls on the same edge, hovering it shows the collapse button. Arrow keys nudge the handle and a double-click resets it.',
   ),
 } satisfies Meta<typeof Panels>;
 

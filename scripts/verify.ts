@@ -20,10 +20,16 @@ export interface Step {
   cmd: string[];
   // Steps with the same group run one after another.
   group?: string;
+  env?: Record<string, string>;
   // Generate steps rewrite files that other steps read, so they all finish
   // before any other step starts.
   phase?: 'generate';
 }
+
+// Unit tests run where the local date is a day ahead of UTC for most of the
+// day, so a test that hard-codes today or mixes UTC and local dates fails on
+// its own PR instead of on main days later. CI and mobile-checks.sh use it too.
+export const TEST_TZ = 'Pacific/Kiritimati';
 
 // Changes here can break any workspace.
 const GLOBAL_FILES = [
@@ -220,7 +226,11 @@ export function planSteps(
       steps.push({ name: `Lint ${w.name}`, cmd: npmRun(w, 'lint') });
     }
     if (w.scripts.includes('test')) {
-      steps.push({ name: `Test ${w.name}`, cmd: npmRun(w, 'test') });
+      steps.push({
+        name: `Test ${w.name}`,
+        cmd: npmRun(w, 'test'),
+        env: { TZ: TEST_TZ },
+      });
     }
   }
 
@@ -369,7 +379,7 @@ function run(step: Step): Promise<Result> {
   return new Promise((resolve) => {
     const child = spawn(step.cmd[0]!, step.cmd.slice(1), {
       cwd: ROOT,
-      env: { ...process.env, FORCE_COLOR: '1' },
+      env: { ...process.env, FORCE_COLOR: '1', ...step.env },
     });
     let output = '';
     child.stdout.on('data', (d: Buffer) => (output += d.toString()));

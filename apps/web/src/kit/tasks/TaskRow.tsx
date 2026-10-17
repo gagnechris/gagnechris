@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { Task } from '@gagnechris/shared';
 import { Checkbox } from '@gagnechris/ui';
 import { TaskParentLabel } from './TaskParentLabel';
+import { TaskTitleLinks } from './TaskTitleLinks';
 
 type RowTask = Pick<Task, 'title' | 'priority' | 'status'> & {
   parentId?: string | null;
@@ -103,6 +104,7 @@ export function TaskRow({
         ) : (
           <span style={titleLinkStyle}>{body}</span>
         )}
+        <TaskTitleLinks title={task.title} />
         {actions ? <span className="task-row__actions">{actions}</span> : null}
       </div>
     </li>

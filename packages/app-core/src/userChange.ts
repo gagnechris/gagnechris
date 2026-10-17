@@ -20,6 +20,27 @@ export type UserChange =
     }
   | { kind: 'invite'; email: string; name?: string; level: AccessLevel };
 
+/** Asked before the account actions that act on the person straight away. */
+export const ACCOUNT_ACTION_CONFIRMS: Partial<
+  Record<UserAction, { title: string; body: string; action: string }>
+> = {
+  'sign-out': {
+    title: 'Sign out everywhere?',
+    body: 'Ends their sessions in Admin and Notebook now.',
+    action: 'Sign out',
+  },
+  disable: {
+    title: 'Disable sign-in?',
+    body: 'Keeps the account and Notebook, but blocks sign-in.',
+    action: 'Disable',
+  },
+  remove: {
+    title: 'Remove access?',
+    body: 'Takes away every app. Their Notebook is kept, so if they come back their notes come back too.',
+    action: 'Remove',
+  },
+};
+
 /** Sign in this long before the server's limit, so the request isn't refused on arrival. */
 const MARGIN_SECONDS = 30;
 

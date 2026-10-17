@@ -94,6 +94,17 @@ export function loadAppViewerRequest(
   )() as (event: { request: { uri: string } }) => { uri: string };
 }
 
+export type ApiViewerRequest = (event: {
+  request: { uri: string; headers: CfHeaders };
+  viewer: { ip: string };
+}) => { uri: string; headers: CfHeaders };
+
+export function loadApiViewerRequest(dir = FUNCTIONS_DIR): ApiViewerRequest {
+  return new Function(
+    `${functionSource('api-viewer-request.js', dir)}\nreturn handler;`,
+  )() as ApiViewerRequest;
+}
+
 /** What the origin holds at a key: text CloudFront functions can see, or bytes. */
 type ObjectHeaders = {
   contentType: string;

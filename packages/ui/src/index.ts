@@ -25,6 +25,7 @@ export {
   MenuRadioGroup,
   MenuSeparator,
 } from './Menu.js';
+export { PanelCollapseButton, PanelExpandEdge } from './PanelEdge.js';
 export { RadioCardGroup } from './RadioCardGroup.js';
 export { Scrim } from './Scrim.js';
 export { SearchInput } from './SearchInput.js';
@@ -35,4 +36,5 @@ export { Toolbar } from './Toolbar.js';
 export { useDismiss } from './useDismiss.js';
 export { useDragReorder } from './useDragReorder.js';
 export { useModalDialog } from './useModalDialog.js';
+export { usePanelEdgeFocus } from './usePanelEdgeFocus.js';
 export { useTabs } from './useTabs.js';

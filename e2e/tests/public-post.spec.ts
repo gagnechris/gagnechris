@@ -187,3 +187,44 @@ test.describe('a published post', () => {
     await expect(page.getByRole('region', { name: 'Table 1' })).toBeVisible();
   });
 });
+
+test('a link to a renamed post’s earlier slug lands on its current URL', async ({
+  page,
+  seed,
+  prefix,
+  request,
+}) => {
+  const old = `${prefix}-before-${randomBytes(3).toString('hex')}`;
+  const renamed = `${old}-after`;
+  const moved = await seed.publishedPost({ title: 'Renamed post', slug: old });
+  const { data: edited } = await seed.api.PUT('/api/admin/posts/{id}', {
+    params: { path: { id: moved.id } },
+    body: { version: moved.version, slug: renamed },
+  });
+  await seed.api.POST('/api/admin/posts/{id}/publish', {
+    params: { path: { id: moved.id } },
+    body: { version: edited!.version },
+  });
+  const linking = await seed.publishedPost({
+    title: 'Linking post',
+    bodyMarkdown: `Read [the renamed post](/posts/${old}).`,
+  });
+  await expect
+    .poll(async () =>
+      (
+        await request.get(`${site()}/posts/${old}`, { maxRedirects: 0 })
+      ).status(),
+    )
+    .toBe(301);
+
+  await page.goto(`${site()}/posts/${linking.slug}`);
+  await page.getByRole('link', { name: 'the renamed post' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Renamed post' }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(`${site()}/posts/${renamed}`);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    new RegExp(`/posts/${renamed}$`),
+  );
+});

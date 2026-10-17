@@ -29,7 +29,7 @@ function executable(file: string, body: string): void {
 }
 
 /** Runs deploy-components.sh in a scratch repo layout with `aws` and `npm` stubbed. */
-function runDeploy(build: 'ok' | 'empty' = 'ok') {
+function runDeploy(build: 'ok' | 'empty' = 'ok', mode?: 'build' | 'upload') {
   const root = mkdtempSync(join(tmpdir(), 'deploy-components-'));
   tmpRoots.push(root);
   mkdirSync(join(root, 'scripts'));
@@ -64,9 +64,14 @@ mkdir -p "${out}/assets"
 ${build === 'ok' ? `touch "${out}/index.html" "${out}/assets/x.js"` : ''}
 `,
   );
+  if (mode === 'upload' && build === 'ok') {
+    mkdirSync(join(out, 'assets'), { recursive: true });
+    writeFileSync(join(out, 'index.html'), '');
+    writeFileSync(join(out, 'assets', 'x.js'), '');
+  }
   const result = spawnSync(
     'bash',
-    [join(root, 'scripts', 'deploy-components.sh')],
+    [join(root, 'scripts', 'deploy-components.sh'), ...(mode ? [mode] : [])],
     {
       cwd: root,
       encoding: 'utf8',
@@ -124,5 +129,20 @@ describe('deploy-components.sh', () => {
     expect(empty.status).toBe(1);
     expect(empty.stderr).toMatch(/Missing build output/);
     expect(empty.calls.some((c) => c[1] === 's3')).toBe(false);
+  });
+});
+
+describe('deploy-components.sh split across the build and deploy jobs', () => {
+  it('builds with no AWS call', () => {
+    const run = runDeploy('ok', 'build');
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.calls.map((c) => c[0])).toEqual(['npm']);
+  });
+
+  it('uploads an existing build without running npm', () => {
+    const run = runDeploy('ok', 'upload');
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.calls.some((c) => c[0] === 'npm')).toBe(false);
+    expect(run.calls.filter((c) => c[2] === 'sync')).toHaveLength(2);
   });
 });

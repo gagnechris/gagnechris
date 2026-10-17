@@ -1,5 +1,5 @@
 name: Setup
-description: Node from .nvmrc, Go from services/api/go.mod (unless go is false), npm and Go caches, and npm ci (run after actions/checkout)
+description: Node from .nvmrc, Go from services/api/go.mod (unless go is false), npm and Go caches (no Go cache when go-cache is false), and npm ci (run after actions/checkout)
 inputs:
   ignore-scripts:
     description: >-
@@ -18,6 +18,14 @@ inputs:
     description: "'false' skips Go and its module and build caches."
     required: false
     default: 'true'
+  go-cache:
+    description: >-
+      'false' sets up Go without restoring or saving its module and build
+      caches. Required in every job with `id-token: write` or a secret: the
+      cache is saved by jobs that run install scripts, and a poisoned build
+      cache would end up in the Lambdas synth compiles.
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -34,6 +42,7 @@ runs:
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
         go-version-file: services/api/go.mod
+        cache: ${{ inputs.go-cache != 'false' }}
         cache-dependency-path: services/api/**/go.sum
 
     - name: Install dependencies
