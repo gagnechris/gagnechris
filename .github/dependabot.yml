@@ -26,6 +26,26 @@ updates:
           - minor
           - patch
 
+  - package-ecosystem: gomod
+    directory: /services/api
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      go-dependencies:
+        update-types:
+          - minor
+          - patch
+
+  # Expo pins React Native and its native modules to the SDK, so only security updates open PRs here.
+  - package-ecosystem: npm
+    directory: /apps/mobile
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 0
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -79,6 +79,9 @@ jobs:
       - name: Go test
         run: npm run go:test
 
+      - name: Go vulnerability check
+        run: npm run go:vulncheck
+
       - name: CDK synth
         env:
           CDK_DEFAULT_ACCOUNT: '111111111111'

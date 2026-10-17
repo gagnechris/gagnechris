@@ -55,6 +55,7 @@
     "check:deployed-gsi": "tsx scripts/check-deployed-gsi.ts",
     "go:lint": "go -C services/api tool -modfile=tools/go.mod golangci-lint run ./...",
     "go:test": "go -C services/api test ./...",
+    "go:vulncheck": "go -C services/api tool -modfile=tools/go.mod govulncheck ./...",
     "go:fmt": "go -C services/api tool -modfile=tools/go.mod golangci-lint fmt ./...",
     "go:generate": "tsx scripts/generate-go-contract.ts && go -C services/api generate ./...",
     "go:generate:check": "npm run go:generate && git diff --exit-code -- services/api/internal/contract/contract.json services/api/internal/apitypes/apitypes.gen.go",
