@@ -192,6 +192,27 @@ test.describe('signed-in apps on a phone', () => {
     expect(Math.min(...widths)).toBeGreaterThanOrEqual(70);
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
   });
+
+  // The column check allows any font; this one holds with the narrowest.
+  test('at 197px each resume entry keeps its grip and Remove inside the entry', async ({
+    page,
+    apps,
+  }) => {
+    await page.setViewportSize({ width: 197, height: 800 });
+    await page.goto(new URL('/resume', apps.admin).href);
+    const items = page.locator('.workspace-repeat__item');
+    await expect(items.first()).toBeVisible();
+    const outside = await items.evaluateAll((rows) =>
+      rows.flatMap((row) => {
+        const box = row.getBoundingClientRect();
+        return [...row.querySelectorAll('.workspace-repeat__actions > *')]
+          .filter((el) => el.getBoundingClientRect().width > 1)
+          .filter((el) => el.getBoundingClientRect().right > box.right)
+          .map((el) => el.getAttribute('aria-label') ?? el.className);
+      }),
+    );
+    expect(outside).toEqual([]);
+  });
 });
 
 test('public pages fit at 200% zoom', async ({
