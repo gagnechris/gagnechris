@@ -290,6 +290,7 @@ describe('AdminUsersPage', () => {
   });
 
   test('a removal that stopped part-way can be finished from the drawer', async () => {
+    answerConfirms(true);
     const halfRemoved = {
       ...sam,
       status: 'removed' as const,
