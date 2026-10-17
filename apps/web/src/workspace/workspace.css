@@ -1,5 +1,6 @@
-/* index.css lifts every button on hover for the public site; app controls stay flat. */
-:root button:hover {
+/* index.css lifts every button on hover for the public site; app controls stay flat.
+   Element specificity, so a component's own transform still applies. */
+button:where(:hover) {
   transform: none;
   box-shadow: none;
 }
