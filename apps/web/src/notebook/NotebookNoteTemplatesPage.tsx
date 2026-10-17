@@ -105,7 +105,7 @@ function TemplateEditor({
 
   return (
     <section
-      className="note-templates__editor"
+      className="notebook-templates__editor"
       aria-label={`${entity.name} template`}
     >
       <div className="notebook-templates__bar">
@@ -144,12 +144,6 @@ function TemplateEditor({
         label="Template text"
         placeholder="Write what this template inserts…"
       />
-      <p className="kit-hint">
-        Task lines (<code>[ ] text</code>) become tasks in the note you insert
-        the template into. <code>{'{{date}}'}</code>,{' '}
-        <code>{'{{weekday}}'}</code> and <code>{'{{area}}'}</code> are filled in
-        then.
-      </p>
     </section>
   );
 }
@@ -261,15 +255,38 @@ export default function NotebookNoteTemplatesPage() {
       ) : templates.isPending ? (
         <p>Loading templates…</p>
       ) : (
-        <div className="note-templates">
-          <div className="note-templates__side">
-            <TemplateList
-              templates={list}
-              selected={selected}
-              onSelect={select}
-            />
-            <NewTemplateForm onCreated={select} />
-          </div>
+        <div className="notebook-templates">
+          <aside className="notebook-templates__side">
+            <section
+              className="notebook-card note-templates__picker"
+              aria-labelledby="note-templates-list"
+            >
+              <h2 id="note-templates-list">Templates</h2>
+              <TemplateList
+                templates={list}
+                selected={selected}
+                onSelect={select}
+              />
+              <NewTemplateForm onCreated={select} />
+            </section>
+            <section
+              className="notebook-card"
+              aria-labelledby="note-templates-rules"
+            >
+              <h2 id="note-templates-rules">How templates work</h2>
+              <ul>
+                <li>Every area shares these templates.</li>
+                <li>
+                  Task lines (<code>[ ] text</code>) become tasks in the note
+                  you insert the template into.
+                </li>
+                <li>
+                  <code>{'{{date}}'}</code>, <code>{'{{weekday}}'}</code> and{' '}
+                  <code>{'{{area}}'}</code> are filled in when you insert it.
+                </li>
+              </ul>
+            </section>
+          </aside>
           {selected ? (
             <TemplateEditor
               key={selected}
@@ -278,6 +295,7 @@ export default function NotebookNoteTemplatesPage() {
             />
           ) : list.length === 0 ? (
             <EmptyState
+              className="notebook-templates__editor"
               icon={<ShellIcon name="templates" size={32} />}
               title="No templates yet"
             >
@@ -285,6 +303,7 @@ export default function NotebookNoteTemplatesPage() {
             </EmptyState>
           ) : (
             <EmptyState
+              className="notebook-templates__editor"
               icon={<ShellIcon name="templates" size={32} />}
               title="Choose a template"
             >

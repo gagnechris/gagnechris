@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   addMovedTaskBlock,
+  insertAfterTaskBlock,
+  lineAfterOuterBlock,
   markdownItemBlock,
   noteHeadings,
   reindent,
@@ -65,6 +67,32 @@ describe('task blocks', () => {
     expect(taskDropNestIndent(['text', T], 0)).toBeNull();
     expect(taskDropNestIndent([T], -1)).toBeNull();
     expect(taskDropNestIndent(['```', P, '```', T], 1)).toBeNull();
+  });
+
+  test('the line after a subtask’s outer block is after its parent’s block, which a blank line ends', () => {
+    const lines = ['a', P, `  ${S}`, '    why', `  ${T}`, 'after', '', '  x'];
+    expect(lineAfterOuterBlock(lines, 1)).toBe(5);
+    expect(lineAfterOuterBlock(lines, 2)).toBe(5);
+    expect(lineAfterOuterBlock(lines, 3)).toBe(5);
+    expect(lineAfterOuterBlock(lines, 5)).toBe(6);
+    expect(lineAfterOuterBlock(lines, 7)).toBe(8);
+  });
+
+  test('a new line at the end of a parent or subtask row goes after the whole block', () => {
+    const lines = [P, `  ${S}`, `  ${T}`, 'after'];
+    expect(insertAfterTaskBlock(lines, 0, '\nCall hotel')).toEqual({
+      lines: [P, `  ${S}`, `  ${T}`, 'Call hotel', 'after'],
+      line: 3,
+      column: 10,
+    });
+    expect(insertAfterTaskBlock(lines, 1, 'one\ntwo').lines).toEqual([
+      P,
+      `  ${S}`,
+      `  ${T}`,
+      'one',
+      'two',
+      'after',
+    ]);
   });
 });
 

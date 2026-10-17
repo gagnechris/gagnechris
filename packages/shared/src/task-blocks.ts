@@ -40,6 +40,48 @@ export function markdownItemBlock(
   return { first: n, last };
 }
 
+/**
+ * The line after the outermost item block holding line `n`. A line added
+ * inside that block would take the lines below from the task they sit under;
+ * a blank line ends a block, so the walk up stops at one.
+ */
+export function lineAfterOuterBlock(
+  lines: readonly string[],
+  n: number,
+): number {
+  let top = n;
+  for (let k = n - 1; k >= 0 && indentWidth(lines[top]!) > 0; k -= 1) {
+    const text = lines[k]!;
+    if (blank(text)) break;
+    if (
+      indentWidth(text) < indentWidth(lines[top]!) &&
+      markdownItemBlock(lines, k).last >= n
+    ) {
+      top = k;
+    }
+  }
+  return markdownItemBlock(lines, top).last + 1;
+}
+
+/**
+ * Text that starts a new line at the end of the task row at `n` goes on new
+ * lines after the row's outer block (one leading line break is the one that
+ * starts it). Returns the lines and where the inserted text ends.
+ */
+export function insertAfterTaskBlock(
+  lines: readonly string[],
+  n: number,
+  text: string,
+): { lines: string[]; line: number; column: number } {
+  const added = text.replace(/^\r?\n/, '').split(/\r?\n/);
+  const at = lineAfterOuterBlock(lines, n);
+  return {
+    lines: [...lines.slice(0, at), ...added, ...lines.slice(at)],
+    line: at + added.length - 1,
+    column: added[added.length - 1]!.length,
+  };
+}
+
 /** The note's `##` headings outside code fences. */
 export function noteHeadings(lines: readonly string[]): NoteHeading[] {
   const fences = scanFences(lines);

@@ -138,7 +138,9 @@ export {
 export { indentWidth } from './indent-width.js';
 export {
   addMovedTaskBlock,
+  insertAfterTaskBlock,
   isMarkdownItem,
+  lineAfterOuterBlock,
   markdownItemBlock,
   noteHeadings,
   reindent,
