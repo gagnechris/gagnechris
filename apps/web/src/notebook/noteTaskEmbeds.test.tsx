@@ -750,10 +750,15 @@ describe('one task embedded in two notes', () => {
 
 describe('deleting an embedded task', () => {
   let body = '';
+  let setExternal: (value: string) => void = () => {};
   function renderNote(initial: string) {
     body = initial;
     const Note = () => {
       const [value, setValue] = useState(initial);
+      setExternal = (next) => {
+        body = next;
+        setValue(next);
+      };
       return (
         <NotebookMarkdownBody
           note={{ id: NOTE_A, area: 'work' }}
@@ -828,6 +833,32 @@ describe('deleting an embedded task', () => {
 
     await deletedAfterGrace();
     expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('undo after a task is added from another list keeps the task and its line', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask({ noteId: NOTE_B });
+    const { container } = renderNote('Standup');
+    const view = await editorView(container);
+    act(() => view.dispatch({ selection: { anchor: 'Standup'.length } }));
+    typeInto(view, '!');
+    expect(body).toBe('Standup!');
+
+    // What Still open's Add to today's note does to the open note.
+    act(() => setExternal(`Standup!\n\n${tokenLine(TASK_ID)}\n\n`));
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    act(() => {
+      undo(view);
+    });
+    expect(body).toBe(`Standup\n\n${tokenLine(TASK_ID)}\n\n`);
+    act(() => {
+      undo(view);
+    });
+    expect(body).toContain(tokenLine(TASK_ID));
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(false);
   });
 
   test('cutting the line keeps the task, since it is being moved', async () => {
