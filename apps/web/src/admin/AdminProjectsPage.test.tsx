@@ -144,9 +144,13 @@ describe('AdminProjectsPage', () => {
     );
     renderPage();
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Create starter projects' }),
+    const create = await screen.findByRole('button', {
+      name: 'Create starter projects',
+    });
+    expect(create.closest('.ui-empty')).toHaveTextContent(
+      'No projects yet.Start from drafts',
     );
+    await user.click(create);
 
     await waitFor(() => expect(screen.getAllByRole('link')).toHaveLength(3));
     expect(

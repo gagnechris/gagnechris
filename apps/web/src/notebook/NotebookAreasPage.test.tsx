@@ -152,8 +152,13 @@ describe('Settings > Areas', () => {
       'true',
     );
 
-    await user.click(screen.getByRole('button', { name: 'Move Home up' }));
+    const puts = state.puts.length;
+    screen.getByRole('button', { name: 'Reorder Home' }).focus();
+    await user.keyboard(' {ArrowUp}');
+    expect(state.puts).toHaveLength(puts);
+    await user.keyboard(' ');
     await waitFor(() => expect(switchNames()).toEqual(['Home', 'Work']));
+    expect(state.puts).toHaveLength(puts + 1);
     expect(state.puts.at(-1)).toEqual({
       version: 1,
       areas: [

@@ -194,10 +194,6 @@ th.kit-table__date {
   background: var(--primary-50);
 }
 
-.kit-list__date {
-  color: var(--neutral-400);
-}
-
 .kit-visually-hidden {
   position: absolute;
   width: 1px;
@@ -207,7 +203,7 @@ th.kit-table__date {
   white-space: nowrap;
 }
 
-label.kit-btn:has(+ .kit-visually-hidden:focus-visible) {
+label.ui-btn:has(+ .kit-visually-hidden:focus-visible) {
   outline: 2px solid var(--primary-500);
   outline-offset: 2px;
 }
@@ -313,10 +309,6 @@ td.kit-table__actions {
 @media (max-width: 767px) {
   :where(input, select, textarea) {
     font-size: max(16px, 1em);
-  }
-
-  .kit-check {
-    min-height: 44px;
   }
 }
 

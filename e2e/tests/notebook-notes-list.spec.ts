@@ -99,6 +99,11 @@ test('New opens a day or a standing note; standing notes stay in the sidebar unt
   await page.getByRole('button', { name: 'New', exact: true }).click();
   const menu = page.getByRole('group', { name: 'New note' });
   await expect(menu.getByLabel('Note for a day')).toHaveValue('2026-10-02');
+  const date = await menu.getByLabel('Note for a day').boundingBox();
+  const openDay = await menu
+    .getByRole('button', { name: 'Open day' })
+    .boundingBox();
+  expect(date!.x + date!.width).toBeLessThanOrEqual(openDay!.x);
   await menu.getByLabel('Note for a day').fill('2026-09-28');
   await menu.getByRole('button', { name: 'Open day' }).click();
   await expect(page).toHaveURL(/\/today\?date=2026-09-28&area=work/);

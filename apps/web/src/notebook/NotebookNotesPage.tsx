@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   errorMessage,
@@ -16,7 +16,14 @@ import {
   noteTitle,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
-import { Button, DateInput, SearchInput, SegmentedRadio } from '@gagnechris/ui';
+import {
+  Button,
+  DateInput,
+  Field,
+  SearchInput,
+  SegmentedRadio,
+  useDismiss,
+} from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
@@ -228,28 +235,18 @@ function NewNoteMenu({
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState(today);
   const panelId = useId();
+  const anchor = useRef<HTMLSpanElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const close = (refocus: boolean) => {
+  const dismiss = useCallback(() => {
+    const focusInside = anchor.current?.contains(document.activeElement);
     setOpen(false);
-    if (refocus) triggerRef.current?.focus();
-  };
+    if (focusInside) triggerRef.current?.focus();
+  }, []);
+  useDismiss(open, dismiss, anchor);
 
   return (
-    <span
-      className="note-menu"
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          close(false);
-        }
-      }}
-      onKeyDown={(e) => {
-        if (open && e.key === 'Escape') {
-          e.preventDefault();
-          close(true);
-        }
-      }}
-    >
+    <span ref={anchor} className="note-menu">
       <Button
         ref={triggerRef}
         variant="primary"
@@ -276,14 +273,13 @@ function NewNoteMenu({
               if (day) onDay(day);
             }}
           >
-            <label className="notebook-new-note__label">
-              Note for a day
+            <Field label="Note for a day">
               <DateInput
                 value={day}
                 required
                 onChange={(e) => setDay(e.target.value)}
               />
-            </label>
+            </Field>
             <Button type="submit" disabled={!day}>
               Open day
             </Button>
@@ -293,7 +289,7 @@ function NewNoteMenu({
             className="notebook-new-note__standing"
             disabled={creating}
             onClick={() => {
-              close(false);
+              setOpen(false);
               onStanding();
             }}
           >
