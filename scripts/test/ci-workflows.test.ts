@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { afterAll, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { TEST_TZ } from '../verify.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WORKFLOWS_DIR = join(ROOT, '.github', 'workflows');
@@ -29,6 +30,7 @@ interface Step {
   run?: string;
   shell?: string;
   with?: Record<string, unknown>;
+  env?: Record<string, string>;
 }
 
 interface RunDefaults {
@@ -778,6 +780,19 @@ describe('deploy job guards', () => {
     );
     expect(buildStep).toBeGreaterThan(-1);
     expect(shells).toBeGreaterThan(buildStep);
+  });
+
+  it('runs unit tests in the time zone verify uses', () => {
+    const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+    const test = ci.jobs.build!.steps!.find((s) => s.run === 'npm test');
+    expect(test?.env?.TZ).toBe(TEST_TZ);
+    const mobile = readFileSync(
+      join(ROOT, 'scripts', 'ci', 'mobile-checks.sh'),
+      'utf8',
+    );
+    const tz = mobile.indexOf(`export TZ=${TEST_TZ}\n`);
+    expect(tz).toBeGreaterThan(-1);
+    expect(tz).toBeLessThan(mobile.indexOf('npm test'));
   });
 
   it('serializes plan and deploy in cdk-prod without cancelling', () => {

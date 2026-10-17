@@ -61,8 +61,8 @@ Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 Deploy order (CDK `addDependency` + props):
 
 1. Certificate, Guardrails, Data, Email, Auth (writes `cognito-admin-web-client-id`, `cognito-notebook-web-client-id`, `cognito-ios-client-id`)
-2. **Api** (depends on Auth; reads SSM `site-bucket-name` and the admin-web, notebook-web and ios client IDs; writes `http-api-id`)
-3. **Site** (depends on Api; reads SSM `http-api-id`; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, and the bucket and distribution IDs for the admin and notebook hosts)
+2. **Api** (depends on Auth; reads SSM `site-bucket-name` and the admin-web, notebook-web and ios client IDs; writes `http-api-id` and creates the `gagnechris-prod-api-origin-verify` secret)
+3. **Site** (depends on Api; reads SSM `http-api-id` and the origin secret by name; writes `site-bucket-name`, `cloudfront-distribution-id`, `blog-slugs-kvs-arn`, and the bucket and distribution IDs for the admin and notebook hosts)
 4. Dns (needs Site's three distributions for Route 53 aliases)
 5. **Publisher** (depends on Site; reads Site's SSM params — no CFN exports from Site)
 6. Components (self-contained: its own certificate, DNS records and log bucket; imports only the alerts topic)
@@ -298,6 +298,8 @@ Site depends on Api so `/api` origin updates when the HttpApi is replaced. First
 SSM: `/gagnechris/prod/http-api-id`, `http-api-url`.
 
 Privacy (details in `docs/architecture.md`): notebook search is `POST` so terms stay out of CloudFront logs (`AccessLogs` bucket, 90 days) and API Gateway access logs; `/api/*` has the `api-security-headers` response headers policy; the Lambda sets `nosniff` and `no-store`. The default `execute-api` endpoint stays enabled because CloudFront uses it as the `/api/*` origin (accepted risk: JWT, admin group and throttles still apply).
+
+Client address: the contact and resume-notify per-IP limits count the viewer's IP, not the CloudFront edge. The `api-viewer-request` function on `/api/*` sends it as `x-viewer-address`, and the `/api/*` origin adds `x-origin-verify` with the value of the Secrets Manager secret `gagnechris-prod-api-origin-verify` (created by Api-prod, read by name in Site-prod, also the Lambda's `API_ORIGIN_SECRET`). The API believes `x-viewer-address` only next to the right secret and otherwise counts `sourceIp`, so a missing or stale header degrades to edge-address counting and never fails a request. The secret has no rotation: both stacks resolve it at deploy time, so a new value takes effect only after Api-prod and Site-prod both deploy again, and until then requests fall back to `sourceIp`.
 
 Publisher IAM: read-only on the table (`GetItem` / `BatchGetItem` with `dynamodb:LeadingKeys` `POST#*`, `HOME#*`, `RESUME#*`, `PROJECT#*`, `SITE#publish`, `SLUG#*`, `PROJECT_SLUG#*` (rename redirects); `Query` on `gsi1` for `STATUS#published` and `PROJECT_STATUS#published`). `infra/test/publisher-iam.test.ts` evaluates the synthesized policy: project rows, redirect rows and the two published partitions are readable, `USER#…`, `CONTACT#…` and draft partitions are not. A new publisher read outside those partitions fails with AccessDenied until the policy in `publisher-stack.ts` is widened. On the site bucket it reads and lists everything but puts and deletes only the keys in `scripts/publisher-owned-paths.generated.txt` (the targets' `s3Outputs`); the same test checks that, and that `media/*`, `assets/*` and `_shell.html` are not writable. A put outside those patterns fails with AccessDenied.
 
