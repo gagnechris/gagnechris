@@ -43,6 +43,7 @@ export {
   experienceRangeError,
   hasExperienceRangeError,
   RESUME_PDF_PATH,
+  RESUME_UNPUBLISH_NOTE,
   resumeDraftFromResume,
   resumePayload,
   resumeRoleEndId,
