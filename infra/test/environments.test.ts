@@ -254,8 +254,16 @@ describe('CiDeployRoleStack', () => {
     const drift = roles.find(
       (r) => r.Properties?.RoleName === 'gagnechris-prod-gha-drift',
     );
-    expect(JSON.stringify(deploy)).toContain('ref:refs/heads/main');
-    expect(JSON.stringify(deploy)).toContain('environment:prod');
+    const deployTrust = deploy?.Properties?.AssumeRolePolicyDocument
+      ?.Statement as Array<{ Condition?: Record<string, unknown> }>;
+    expect(deployTrust).toHaveLength(1);
+    expect(deployTrust[0]!.Condition).toEqual({
+      StringEquals: {
+        'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+        'token.actions.githubusercontent.com:sub':
+          'repo:gagnechris/gagnechris:environment:prod',
+      },
+    });
     expect(JSON.stringify(deploy)).toContain('AdministratorAccess');
     expect(JSON.stringify(diff)).toContain('pull_request');
     expect(JSON.stringify(diff)).toContain('ReadOnlyAccess');
@@ -327,6 +335,10 @@ describe('CiDeployRoleStack', () => {
         'xray:BatchGetTraces',
         'xray:GetTraceSummaries',
         'xray:GetTraceGraph',
+        'cognito-idp:ListUsers',
+        'cognito-idp:ListUsersInGroup',
+        'cognito-idp:AdminGetUser',
+        'cognito-idp:AdminListGroupsForUser',
       ]) {
         expect(denied).toContain(action);
       }

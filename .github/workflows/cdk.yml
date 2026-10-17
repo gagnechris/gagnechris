@@ -148,6 +148,7 @@ jobs:
           # Deploy the commit CI validated (workflow_run), not a floating main tip.
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Configure AWS credentials (planning role)
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
