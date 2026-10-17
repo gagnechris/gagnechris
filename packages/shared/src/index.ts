@@ -102,6 +102,7 @@ export {
 } from './task-embeds.js';
 export { indentWidth } from './indent-width.js';
 export {
+  addMovedTaskBlock,
   insertAfterTaskBlock,
   isMarkdownItem,
   lineAfterOuterBlock,
