@@ -5529,7 +5529,7 @@ type CreateNoteRequestType string
 
 // CreateNoteTemplateRequest defines model for CreateNoteTemplateRequest.
 type CreateNoteTemplateRequest struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -6768,7 +6768,7 @@ type UpdateNoteRequest struct {
 
 // UpdateNoteTemplateRequest defines model for UpdateNoteTemplateRequest.
 type UpdateNoteTemplateRequest struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
 	Version      *int    `json:"version,omitempty"`
@@ -12822,7 +12822,7 @@ type GetAPINotebookTemplatesNotes503JSONResponseBody struct {
 
 // PostAPINotebookTemplatesNotesJSONBody defines parameters for PostAPINotebookTemplatesNotes.
 type PostAPINotebookTemplatesNotesJSONBody struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
@@ -13023,7 +13023,7 @@ type GetAPINotebookTemplatesNotesID503JSONResponseBody struct {
 
 // PutAPINotebookTemplatesNotesIDJSONBody defines parameters for PutAPINotebookTemplatesNotesID.
 type PutAPINotebookTemplatesNotesIDJSONBody struct {
-	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed
+	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
 	Version      *int    `json:"version,omitempty"`

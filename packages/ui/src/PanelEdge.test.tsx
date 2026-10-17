@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
-import { PanelCollapseButton, PanelExpandEdge } from './PanelEdge';
+import { PanelCollapseButton, PanelExpandEdge } from './PanelEdge.js';
 
 const props = {
   label: 'Tasks',
@@ -22,18 +22,16 @@ describe('PanelEdge', () => {
     expect(button).toHaveAccessibleDescription('3 still open');
     expect(button).toHaveTextContent(/^3/);
     expect(container.firstChild).toHaveClass(
-      'workspace-edge-zone',
-      'workspace-edge-zone--right',
-      'workspace-edge-zone--counted',
+      'ui-panel-edge-zone',
+      'ui-panel-edge-zone--right',
+      'ui-panel-edge-zone--counted',
     );
   });
 
   test('no count, no badge', () => {
     const { container } = render(<PanelExpandEdge {...props} count={0} />);
     expect(screen.getByRole('button', { name: 'Tasks' })).toHaveTextContent('');
-    expect(container.firstChild).not.toHaveClass(
-      'workspace-edge-zone--counted',
-    );
+    expect(container.firstChild).not.toHaveClass('ui-panel-edge-zone--counted');
   });
 
   test('the chevrons point the way the panel moves', () => {

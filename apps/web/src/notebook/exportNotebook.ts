@@ -123,12 +123,13 @@ export function noteToMarkdown(
   const tags =
     note.tags.length > 0 ? `\ntags: [${note.tags.map(q).join(', ')}]` : '';
   const dateLine = note.date ? `\ndate: ${q(note.date)}` : '';
+  const archivedLine = note.archived ? '\narchived: true' : '';
   const frontmatter = `---
 id: ${q(note.id)}
 area: ${q(note.area)}
 type: ${q(note.type)}${dateLine}
 title: ${q(note.title)}
-pinned: ${note.pinned}${tags}
+pinned: ${note.pinned}${archivedLine}${tags}
 updatedAt: ${q(note.updatedAt)}
 ---
 

@@ -10584,7 +10584,7 @@ export interface paths {
                         id: string;
                         name: string;
                         /**
-                         * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed
+                         * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
                          * @default
                          */
                         bodyMarkdown?: string;
@@ -10879,7 +10879,7 @@ export interface paths {
                     "application/json": {
                         version?: number;
                         name?: string;
-                        /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed */
+                        /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
                         bodyMarkdown?: string;
                     };
                 };
@@ -12296,7 +12296,7 @@ export interface components {
             id: string;
             name: string;
             /**
-             * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed
+             * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
              * @default
              */
             bodyMarkdown: string;
@@ -12304,7 +12304,7 @@ export interface components {
         UpdateNoteTemplateRequest: {
             version?: number;
             name?: string;
-            /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed */
+            /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
             bodyMarkdown?: string;
         };
         Task: {

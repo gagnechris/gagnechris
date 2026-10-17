@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGetApiClient } from '../AppApiProvider.js';
+import { peekPendingFlush, takePendingFlush } from '../pendingFlushes.js';
 import {
   useQueuedAutosave,
   type AutosaveResult,
@@ -21,8 +22,18 @@ const isStaleVersion = (status: number, error: string | undefined) =>
 export function useTaskDescriptionEditor(task: Task) {
   const queryClient = useQueryClient();
   const getClient = useGetApiClient();
-  const [draft, setDraft] = useState(task.description);
-  const [dirty, setDirty] = useState(false);
+  // Edits from details closed before they saved keep sending in the
+  // background; reopened, they show at once and save from here once that
+  // send settles.
+  const queueKey = `task-description:${task.id}`;
+  const [adopting, setAdopting] = useState(
+    () => peekPendingFlush(queueKey) !== undefined,
+  );
+  const [draft, setDraft] = useState(() => {
+    const pending = peekPendingFlush(queueKey);
+    return pending ? String(pending.draft()) : task.description;
+  });
+  const [dirty, setDirty] = useState(adopting);
   const [shown, setShown] = useState(task.description);
   // A save from elsewhere shows while nothing here is unsaved.
   if (!dirty && task.description !== shown) {
@@ -98,7 +109,27 @@ export function useTaskDescriptionEditor(task: Task) {
       deleted: 'Another device deleted this task.',
     },
     tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
+    enabled: !adopting,
+    queueKey,
   });
+
+  useEffect(() => {
+    if (!peekPendingFlush(queueKey)) return;
+    let cancelled = false;
+    void takePendingFlush(queueKey).then((taken) => {
+      if (cancelled) return;
+      setAdopting(false);
+      if (!taken || taken.outcome === 'clean') {
+        setDirty(false);
+        return;
+      }
+      setDraft(String(taken.draft));
+      bumpEdit();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [bumpEdit, queueKey]);
 
   const onChange = useCallback(
     (description: string) => {
