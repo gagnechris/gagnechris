@@ -854,16 +854,20 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
-  it('accepts a descendant and refuses a rollback', () => {
-    expect(
-      runScript('check-deploy-ancestry.sh', [base, web], {}, repo).status,
-    ).toBe(0);
-    expect(
-      runScript('check-deploy-ancestry.sh', [web, base], {}, repo).status,
-    ).toBe(1);
-    expect(
-      runScript('check-deploy-ancestry.sh', [side, web], {}, repo).status,
-    ).toBe(1);
+  const ancestry = (deployed: string, head: string) =>
+    runScript('check-deploy-ancestry.sh', [deployed, head, 'main'], {}, repo);
+
+  it('accepts a descendant on main and refuses a rollback', () => {
+    expect(ancestry(base, web).status).toBe(0);
+    expect(ancestry(web, base).status).toBe(1);
+    expect(ancestry(side, web).status).toBe(1);
+  });
+
+  it('refuses a head that is not on main, even on a first deploy', () => {
+    expect(ancestry(base, side).stderr).toMatch(/is not on main/);
+    expect(ancestry(base, side).status).toBe(1);
+    expect(ancestry('', side).status).toBe(1);
+    expect(ancestry('', web).status).toBe(0);
   });
 
   it('releases only an ios-v* tag on a commit on main', () => {
@@ -877,12 +881,7 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   });
 
   it('fails when the deployed SHA cannot be found, instead of deploying all', () => {
-    const r = runScript(
-      'check-deploy-ancestry.sh',
-      ['b'.repeat(40), web],
-      {},
-      repo,
-    );
+    const r = ancestry('b'.repeat(40), web);
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/not in the repository/);
   });

@@ -167,8 +167,9 @@ jobs:
           echo "base_sha=${BASE}" >> "$GITHUB_OUTPUT"
           echo "Deploy head ${HEAD_SHA}; last deployed ${BASE:-(none)}"
 
-      - name: Refuse rollback deploy
-        if: steps.base.outputs.base_sha != ''
+      # The checkout follows the triggering run's head_sha, so a head that is
+      # not on main never deploys, whatever triggered the run.
+      - name: Refuse a head off main or a rollback deploy
         env:
           BASE: ${{ steps.base.outputs.base_sha }}
           HEAD_SHA: ${{ steps.base.outputs.head_sha }}
