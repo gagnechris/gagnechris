@@ -30,6 +30,13 @@ describe('NotebookMarkdownBody', () => {
     expect(screen.queryByText(/Loading editor/)).toBeNull();
   });
 
+  test('turns on the browser spelling and grammar checks', () => {
+    renderBody();
+    const body = screen.getByRole('textbox', { name: 'Note body' });
+    expect(body).toHaveAttribute('spellcheck', 'true');
+    expect(body).toHaveAttribute('autocorrect', 'on');
+  });
+
   test('without a note (the template editors), - [ ] stays a checklist bullet', () => {
     renderBody('- [ ');
     const content = screen.getByRole('textbox', { name: 'Note body' });

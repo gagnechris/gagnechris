@@ -71,5 +71,5 @@ for relative imports from first-party files, never `node_modules`.
 
 ## React versions
 
-Root and this app are both on React `19.3.0` (RN 0.86.3 accepts `^19.2.3`).
+Root and this app are both on React `19.3.0` (RN 0.88.0 accepts `^19.3.0`).
 Two copies exist on disk because of the split lockfiles; see `docs/mobile.md`.

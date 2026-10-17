@@ -61,6 +61,13 @@ const PHONE_SCROLL_MARGIN = 160;
 const FLASH_MS = 2000;
 const HIGHLIGHT_WAIT_MS = 2000;
 
+// CodeMirror turns the browser's spelling, grammar and autocorrect off by default.
+const writingChecks = EditorView.contentAttributes.of({
+  spellcheck: 'true',
+  autocorrect: 'on',
+  autocapitalize: 'sentences',
+});
+
 // The editor of a task's open details, under its row in the note.
 const renderDescription = (props: DescriptionEditorProps) => (
   <NotebookMarkdownBody {...props} />
@@ -165,6 +172,7 @@ export function NotebookMarkdownBody({
     () => [
       ...templateMenu.extensions,
       livePreview(),
+      writingChecks,
       markdownImages({ resolveSrc: resolveImageSrc }),
       taskListToggle(),
       ...(withTasks
