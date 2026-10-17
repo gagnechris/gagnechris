@@ -49,7 +49,7 @@ test('carried-in tasks go under the section picked in Daily templates', async ({
   const task = await seed.task({ title, startDate: '2026-10-01' });
   await page.clock.setFixedTime(FRIDAY_MORNING);
   await signIn();
-  await page.goto(`${apps.notebook}/settings/templates?template=work`);
+  await page.goto(`${apps.notebook}/settings/templates?area=work`);
 
   const select = page.getByRole('combobox', {
     name: /^Carried-in tasks go under/,
