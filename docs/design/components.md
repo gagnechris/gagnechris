@@ -87,7 +87,7 @@ catalog.
 | Markdown editor           | `kit/markdown/MarkdownEditor.tsx`, `kit/markdown/MarkdownBodyEditor.tsx`                 | `ui/LiveMarkdownInput.tsx`                     |
 | Editor accessory bar      | `kit/markdown/EditorAccessoryBar.tsx`                                                    | keyboard toolbar in `ui/LiveMarkdownInput.tsx` |
 | Markdown preview          | `kit/markdown/MarkdownPreview.tsx`, `kit/markdown/LazyMarkdownPreview.tsx`               | `markdown/`                                    |
-| Note row                  | `.kit-list__item` in `notebook/NotebookNotesPage.tsx`                                    | `ui/NoteRow.tsx`, `ui/Excerpt.tsx`             |
+| Note row                  | `.notebook-notes__row` in `notebook/NotebookNotesPage.tsx`                               | `ui/NoteRow.tsx`, `ui/Excerpt.tsx`             |
 | Demo frame                | `kit/demo/DemoFrame.tsx`                                                                 | web only                                       |
 
 ## Public page components
