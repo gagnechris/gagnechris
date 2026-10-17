@@ -124,6 +124,43 @@ describe('post orphan deletes', () => {
     expect(result.removedSlugs).toEqual([]);
   });
 
+  it('unpublishing a post also removes the redirects from its earlier slugs', async () => {
+    const leaving = '01POSTLEAVING0000000000000';
+    const storage = memoryStorage({
+      seed: {
+        'blog/now/index.html': '<html>live</html>',
+        'blog/before/index.html': '<html>redirect</html>',
+        'blog/renamed/index.html': '<html>redirect</html>',
+      },
+    });
+
+    const result = await runPublishTargets({
+      scope: unpublishScope('now'),
+      storage,
+      sources: {
+        ...sources,
+        slugRedirectOwner: async (kind, slug) =>
+          kind !== 'post'
+            ? undefined
+            : slug === 'before'
+              ? leaving
+              : slug === 'renamed'
+                ? kept.id
+                : undefined,
+      },
+      targets: publishTargets,
+    });
+
+    expect(storage.objects.has('blog/now/index.html')).toBe(false);
+    expect(storage.objects.has('blog/before/index.html')).toBe(false);
+    expect(storage.redirects.get('blog/renamed/index.html')).toBe(
+      '/posts/kept',
+    );
+    expect(result.removedSlugs).toEqual(
+      expect.arrayContaining(['now', 'before']),
+    );
+  });
+
   it('a full rebuild keeps a redirect and drops one whose post is gone', async () => {
     const storage = memoryStorage({
       seed: {

@@ -13,6 +13,8 @@ import {
   PostEditorDetails,
   PostEditorTitle,
 } from './PostEditorSections';
+import { postLivePath } from '@gagnechris/shared';
+import { POST_UNPUBLISH_CONFIRM } from './postConfirms';
 import { publicUrl } from './publicUrl';
 import { BottomSheet, Button } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
@@ -50,8 +52,7 @@ function PostEditorPageInner({ postId }: { postId: string }) {
     subject: 'this post',
     uniqueSlug: true,
     loadErrorFallback: 'Could not load post.',
-    unpublishConfirm:
-      'Unpublish this post? It will leave the public Posts page.',
+    unpublishConfirm: POST_UNPUBLISH_CONFIRM,
     discardConfirm:
       'Discard unpublished edits and restore the last published post?',
     delete: {
@@ -95,9 +96,10 @@ function PostEditorPageInner({ postId }: { postId: string }) {
           ← Posts
         </Link>
       }
-      viewLiveHref={(post) =>
-        post.status === 'published' ? publicUrl(`/posts/${post.slug}`) : null
-      }
+      viewLiveHref={(post) => {
+        const path = postLivePath(post);
+        return path ? publicUrl(path) : null;
+      }}
       actionBar={
         phone
           ? {

@@ -192,6 +192,23 @@ describe('Project editor', () => {
     );
   });
 
+  it('a published project with no page offers Unpublish but no View on site', async () => {
+    serve(
+      makeProject('p1', {
+        stage: 'idea',
+        bodyMarkdown: '',
+        href: null,
+        status: 'published',
+      }),
+    );
+    const renderer = await show(<ProjectScreen />);
+    act(() => byLabel(renderer, 'Project actions').props.onPress());
+    const [[{ options }]] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
+      .mock.calls as unknown as [[{ options: string[] }]];
+    expect(options).toContain('Unpublish');
+    expect(options).not.toContain('View on site');
+  });
+
   it('opens the card’s link target on the site', async () => {
     serve(makeProject('p1', { href: '/dont-feed-the-bears' }));
     const renderer = await show(<ProjectScreen />);

@@ -29,6 +29,9 @@ test('on a phone, a post is published and unpublished from its row', async ({
 
   await menu.click();
   await page.getByRole('menuitem', { name: 'Unpublish' }).click();
+  const confirm = page.getByRole('alertdialog');
+  await expect(confirm).toContainText('Unpublish this post?');
+  await confirm.getByRole('button', { name: 'Unpublish' }).click();
   await expect(row.getByText('Draft')).toBeVisible();
 
   // The title link covers the whole row.

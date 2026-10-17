@@ -7,10 +7,12 @@ import {
 import { createPortal } from 'react-dom';
 import { Button, Drawer } from '@gagnechris/ui';
 import { PHONE_QUERY, useMediaQuery } from '../../kit/useMediaQuery';
+import { appConfirm } from '../../workspace/confirmDialog';
 import { AccessLevelRadios } from './AccessLevelRadios';
 import { UserAvatar } from './UserAvatar';
 import { useUserChange } from './useUserChange';
 import {
+  ACCOUNT_ACTION_CONFIRMS,
   accessChange,
   type UserChange,
   formatAdded,
@@ -75,8 +77,15 @@ export default function EditUserDrawer({
         )
       : Promise.resolve();
 
-  const run = (kind: AccountAction) =>
-    submit(
+  const run = async (kind: AccountAction) => {
+    const prompt = ACCOUNT_ACTION_CONFIRMS[kind];
+    if (
+      prompt &&
+      !(await appConfirm(`${prompt.title} ${prompt.body}`, prompt.action))
+    ) {
+      return;
+    }
+    await submit(
       {
         id: user.id,
         name,
@@ -85,6 +94,7 @@ export default function EditUserDrawer({
       },
       'Could not update this user.',
     );
+  };
 
   const accountRow = (
     label: string,

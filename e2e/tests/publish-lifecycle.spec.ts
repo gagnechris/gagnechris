@@ -141,6 +141,44 @@ test('a post: publish, edit without going live, publish changes, unpublish', asy
   expect(await html(request, '/')).not.toContain(`/posts/${slug}`);
 });
 
+test('a renamed post: the earlier slug is a 301 until the post is unpublished', async ({
+  request,
+  seed,
+  prefix,
+}) => {
+  const old = `${prefix}-renamed-post`;
+  const renamed = `${old}-after`;
+  const post = await seed.publishedPost({ title: 'Renamed', slug: old });
+  const { data: edited } = await seed.api.PUT('/api/admin/posts/{id}', {
+    params: { path: { id: post.id } },
+    body: { version: post.version, slug: renamed },
+  });
+  const { data: republished } = await seed.api.POST(
+    '/api/admin/posts/{id}/publish',
+    { params: { path: { id: post.id } }, body: { version: edited!.version } },
+  );
+  expect(republished?.slug).toBe(renamed);
+  expect(await html(request, `/posts/${renamed}`)).toContain('Renamed');
+  const moved = await request.get(`${site()}/posts/${old}`, {
+    maxRedirects: 0,
+  });
+  expect(moved.status(), 'the earlier slug redirects').toBe(301);
+  expect(new URL(moved.headers().location!, site()).pathname).toBe(
+    `/posts/${renamed}`,
+  );
+
+  await seed.api.POST('/api/admin/posts/{id}/unpublish', {
+    params: { path: { id: post.id } },
+    body: { version: republished!.version },
+  });
+  await expectHtml404(request, `/posts/${renamed}`);
+  expect(
+    existsSync(join(siteRoot(), 'blog', old, 'index.html')),
+    'the redirect page outlived the post',
+  ).toBe(false);
+  await expectHtml404(request, `/posts/${old}`);
+});
+
 test('a project and an idea: listing, Build log, slug rename, unpublish', async ({
   request,
   seed,

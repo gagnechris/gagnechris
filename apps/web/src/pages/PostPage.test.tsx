@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import PostPage from './PostPage';
 
@@ -78,6 +78,46 @@ describe('PostPage', () => {
 
     const time = await screen.findByText('February 1, 2026');
     expect(time).toHaveAttribute('datetime', '2026-02-01');
+  });
+
+  test('an earlier slug lands on the current URL and canonical', async () => {
+    vi.stubEnv('VITE_LOCAL_SITE_ORIGIN', '');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: async () => `<!DOCTYPE html><html><body>
+          <article class="blog-post-prerender" data-slug="new-name">
+            <header><h1>Renamed</h1></header>
+            <div class="blog-post-body"><p>Moved.</p></div>
+          </article>
+        </body></html>`,
+      }),
+    );
+    let pathname = '';
+    function Where() {
+      pathname = useLocation().pathname;
+      return null;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/posts/old-name']}>
+        <Routes>
+          <Route path="/posts/:slug" element={<PostPage />} />
+        </Routes>
+        <Where />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Renamed' }),
+    ).toBeInTheDocument();
+    expect(pathname).toBe('/posts/new-name');
+    await waitFor(() =>
+      expect(
+        document.head.querySelector('link[rel="canonical"]'),
+      ).toHaveAttribute('href', expect.stringMatching(/\/posts\/new-name$/)),
+    );
   });
 
   test('shows NotFound when publisher page is missing', async () => {
