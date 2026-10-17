@@ -1599,19 +1599,46 @@ describe('moving tasks in a note', () => {
     const user = userEvent.setup();
     const row = (await handle()).closest('.task-embed')!;
 
-    fireEvent.contextMenu(row);
-    const menu = screen.getByRole('menu', { name: 'Move to' });
-    await user.click(within(menu).getByRole('menuitem', { name: 'Today' }));
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
-
-    expect(current()).toBe(body);
-    expect(
+    const liveText = () =>
       document.querySelector(
         '[role="status"][aria-live="polite"].kit-visually-hidden',
-      )?.textContent ?? '',
-    ).not.toContain('Moved to Today');
+      )?.textContent ?? '';
+    const announced: string[] = [];
+    let last = liveText();
+    const observer = new MutationObserver(() => {
+      const text = liveText();
+      if (text && text !== last) announced.push(text);
+      last = text;
+    });
+    observer.observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Today' },
+      ),
+    );
+    expect(current()).toBe(body);
+
+    // A real move afterwards: its announcement lands after any the no-op made.
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Meetings' },
+      ),
+    );
+    await waitFor(() => expect(announced).toContain('Moved to Meetings'));
+    observer.disconnect();
+    expect(announced).toEqual(['Moved to Meetings']);
+    expect(current()).toBe(
+      `## Today\nnotes\n\n## Meetings\nagenda\n${tokenLine(TASK_ID)}`,
+    );
   });
 
   test('Move to → another day’s note → tomorrow moves the lines to that day and points the tasks at it', async () => {

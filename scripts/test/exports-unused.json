@@ -1,0 +1,20 @@
+[
+  "@gagnechris/shared/html: upsertMeta",
+  "@gagnechris/shared/markdown-ast: MarkdownTableAlign",
+  "@gagnechris/shared/markdown-ast: decodeHtmlEntities",
+  "@gagnechris/shared/openapi: PREFIX_FORBIDDEN_DESCRIPTIONS",
+  "@gagnechris/shared/openapi: forbiddenPrefixFor",
+  "@gagnechris/shared/public-pages: notFoundLinks",
+  "@gagnechris/shared/site-chrome: SiteFooterLink",
+  "@gagnechris/shared/site-chrome: SiteMenuLink",
+  "@gagnechris/shared/site-chrome: SiteNavLink",
+  "@gagnechris/shared/site-chrome: siteNavLinks",
+  "@gagnechris/shared/site-config: APEX_DOMAIN",
+  "@gagnechris/shared/site-config: RESUME_PDF_PATH",
+  "@gagnechris/shared/site-config: SITE_GITHUB_URL",
+  "@gagnechris/shared/site-config: SITE_LINKEDIN_URL",
+  "@gagnechris/shared/site-config: SITE_PROFILE_IMAGE_SRC",
+  "@gagnechris/shared/site-config: SITE_PROJECTS_LIVE",
+  "@gagnechris/shared/site-config: projectPageTitle",
+  "@gagnechris/ui: useDismiss"
+]
