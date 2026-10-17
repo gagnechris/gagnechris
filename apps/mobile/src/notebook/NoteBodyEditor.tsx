@@ -4,6 +4,7 @@ import {
   lineAfterOuterBlock,
   markdownPlainText,
   openTaskDateQuery,
+  removeTaskLine,
   TASK_LINE_PREFIX,
   taskDateMenuItems,
   taskDateToken,
@@ -45,7 +46,6 @@ import {
   rebaseText,
   noteSegments,
   offsetOf,
-  removeSegment,
   replaceSegmentText,
   segmentText,
   type NoteSegment,
@@ -384,7 +384,10 @@ export const NoteBodyEditor = ({
   };
 
   const deleteEmbed = (key: string, id: string) => {
-    onChange(removeSegment(latest.current.segments, key));
+    const { segments: all, markdown: current } = latest.current;
+    const row = all.find((s) => s.key === key);
+    if (row?.kind !== 'embed') return;
+    onChange(removeTaskLine(current.split('\n'), row.start).join('\n'));
     embeds.onRemoved([id]);
   };
 
