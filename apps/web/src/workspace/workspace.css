@@ -2105,6 +2105,7 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
+  width: max-content;
 }
 
 .notebook-new-note__day > .ui-btn {
