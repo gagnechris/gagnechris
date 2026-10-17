@@ -206,7 +206,7 @@ export function TodayEditor({
             </Button>
             <Link
               className="notebook-today__template-action"
-              to={`/settings/templates?template=${area}&area=${area}`}
+              to={`/settings/templates?area=${area}`}
             >
               Edit template
             </Link>

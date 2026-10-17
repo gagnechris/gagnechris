@@ -342,11 +342,7 @@ func (h handlers) nestSubtasks(ctx context.Context, r *api.Request, n Note) {
 	}
 }
 
-func (h handlers) emptyDay(ctx context.Context, userID, area, date string) (*api.Response, error) {
-	areas, err := h.areas.get(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+func (h handlers) emptyDay(ctx context.Context, userID string, areas Areas, area, date string) (*api.Response, error) {
 	template, err := h.templates.get(ctx, userID, area)
 	if err != nil {
 		return nil, err
@@ -357,9 +353,9 @@ func (h handlers) emptyDay(ctx context.Context, userID, area, date string) (*api
 	}), nil
 }
 
-func (h handlers) dayResponse(ctx context.Context, userID, area, date string, n *Note) (*api.Response, error) {
+func (h handlers) dayResponse(ctx context.Context, userID string, areas Areas, area, date string, n *Note) (*api.Response, error) {
 	if n == nil {
-		return h.emptyDay(ctx, userID, area, date)
+		return h.emptyDay(ctx, userID, areas, area, date)
 	}
 	return noteResponse(http.StatusOK, *n)
 }
@@ -379,11 +375,15 @@ func (h handlers) getDaily(ctx context.Context, r *api.Request) (*api.Response, 
 	if err != nil {
 		return nil, err
 	}
+	areas, err := h.areas.require(ctx, r.UserID(), area)
+	if err != nil {
+		return nil, err
+	}
 	n, err := h.notes.getDaily(ctx, r.UserID(), area, date)
 	if err != nil {
 		return nil, err
 	}
-	return h.dayResponse(ctx, r.UserID(), area, date, n)
+	return h.dayResponse(ctx, r.UserID(), areas, area, date, n)
 }
 
 // openDaily creates the day's note when tasks carry into it, so the
@@ -402,23 +402,23 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 		return nil, err
 	}
 	userID := r.UserID()
+	areas, err := h.areas.require(ctx, userID, area)
+	if err != nil {
+		return nil, err
+	}
 	existing, err := h.notes.getDaily(ctx, userID, area, date)
 	if err != nil || existing != nil {
 		if err != nil {
 			return nil, err
 		}
-		return h.dayResponse(ctx, userID, area, date, existing)
-	}
-	areas, err := h.areas.require(ctx, userID, area)
-	if err != nil {
-		return nil, err
+		return h.dayResponse(ctx, userID, areas, area, date, existing)
 	}
 	carried, err := h.tasks.carriedInto(ctx, userID, area, date, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
 		return nil, err
 	}
 	if len(carried) == 0 {
-		return h.emptyDay(ctx, userID, area, date)
+		return h.emptyDay(ctx, userID, areas, area, date)
 	}
 	// Nesting follows the previous day's note: a task indented there after it
 	// carried in has no parent of its own, since only its home note sets one.

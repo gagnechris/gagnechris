@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { App, Stack } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -11,6 +11,7 @@ import {
   matchesEventPattern,
   resolvePatternTokens,
 } from './helpers/event-pattern.js';
+import { testApp } from './helpers/test-app.js';
 
 // Set to cross-check every case against EventBridge itself (read-only
 // TestEventPattern; needs AWS credentials).
@@ -30,7 +31,7 @@ const fixture = (name: string): unknown =>
 let patterns: Record<string, Record<string, unknown>>;
 
 beforeAll(() => {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', {
     CDK_ACCOUNT: '123456789012',
     ALERTS_EMAIL: 'alerts@example.com',

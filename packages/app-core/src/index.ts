@@ -1,11 +1,7 @@
+// Every export needs an importer outside this package (scripts/test/exports-used.test.ts).
+
 export { AppApiProvider, useGetApiClient } from './AppApiProvider.js';
-export {
-  defaultTimers,
-  type ConfirmFn,
-  type RetrySignals,
-  type Timers,
-} from './platform.js';
-export { mergeEditorSeo } from './mergeEditorSeo.js';
+export { type ConfirmFn, type RetrySignals } from './platform.js';
 export {
   emptyPostDraft,
   parsePostTags,
@@ -38,20 +34,15 @@ export {
   projectPreviewImageError,
   type ProjectDraftFields,
   type ProjectLinkDraft,
-  type ProjectLinkErrors,
 } from './projectDraft.js';
 export {
   createResumeContentBuilder,
   emptyEducation,
   emptyExperience,
   emptyResumeDraft,
-  END_BEFORE_START,
   experienceRangeError,
   hasExperienceRangeError,
-  MONTH_FORMAT,
-  parseResumeLines,
   RESUME_PDF_PATH,
-  resumeContentFromDraft,
   resumeDraftFromResume,
   resumePayload,
   resumeRoleEndId,
@@ -60,17 +51,17 @@ export {
   type ExperienceDraft,
   type ResumeContentBuilder,
   type ResumeDraftFields,
-  type RoleDates,
 } from './resumeDraft.js';
 export {
   accessChange,
-  firstName,
   formatAdded,
   hasApp,
+  isRemovalUnfinished,
   LEVEL_APPS,
   LEVEL_DESCRIPTIONS,
   LEVEL_ORDER,
-  STATUS_LABELS,
+  REMOVAL_UNFINISHED,
+  statusLabel,
   userErrorMessage,
 } from './userAccess.js';
 export {
@@ -91,23 +82,11 @@ export {
   AUTOSAVE_DEBOUNCE_MS,
   AUTOSAVE_RETRY_DELAYS_MS,
   useQueuedAutosave,
-  type AutosaveResult,
-  type FlushResult,
   type SaveState,
 } from './useQueuedAutosave.js';
 export {
-  useDraftPublishEditor,
-  type DraftPublishAutosave,
-  type DraftPublishDoc,
-  type DraftPublishEditorOptions,
-  type DraftPublishHold,
-  type DraftPublishRequests,
-} from './useDraftPublishEditor.js';
-export {
   useVersionedDocEditor,
-  type VersionedDocDeleteOptions,
   type VersionedDocEditorOptions,
-  type VersionedDocEntity,
 } from './useVersionedDocEditor.js';
 export {
   useVersionedEntityEditor,
@@ -119,169 +98,59 @@ export {
 export { queryKeys } from './query/keys.js';
 export {
   ApiError,
-  type ApiFieldErrors,
-  asMutateResult,
-  completeTask,
   errorMessage,
-  createNote,
-  createPost,
-  createProject,
-  createTask,
-  deleteNote,
-  deletePost,
-  deleteProject,
-  deleteTask,
-  discardHome,
-  discardPost,
-  discardProject,
-  discardResume,
-  fetchDailyNote,
   fetchDailyTemplate,
   fetchNoteTemplates,
   fetchNotebookAreas,
-  updateNotebookAreas,
-  fetchHome,
-  fetchNote,
-  fetchNotesBatch,
   fetchNotesPage,
-  fetchPost,
-  fetchPosts,
-  fetchPostsPage,
-  fetchProject,
-  fetchProjects,
-  fetchResume,
-  fetchTask,
-  fetchTasksBatch,
   fetchTasksPage,
-  isEmptyDailyNote,
-  publishHome,
-  publishPost,
-  publishProject,
-  publishResume,
-  resetDailyTemplate,
-  updateDailyTemplate,
-  reopenTask,
-  searchNotebook,
-  unpublishHome,
-  unpublishPost,
-  unpublishProject,
-  unpublishResume,
   unwrap,
-  updateHome,
-  updateNote,
-  updatePost,
-  updateProject,
-  updateResume,
-  updateTask,
-  openDailyNote,
-  upsertDailyNote,
-  type CreateNoteRequest,
-  type CreatePostRequest,
-  type CreateProjectRequest,
-  type CreateTaskRequest,
-  type DailyNoteGetResponse,
   type DailyTemplate,
   type NoteTemplate,
-  type EmptyDailyNote,
-  type ExpectedVersionRequest,
   type Home,
-  type ListNotesQuery,
-  type ListTasksQuery,
-  type MutateResult,
   type Note,
   type NotebookArea,
   type NotebookAreaEntry,
-  type NotebookAreas,
-  type NotebookSearchQuery,
-  type NotebookSearchResponse,
-  type NoteType,
-  type NotesPage,
   type Post,
-  type PostCounts,
-  type PostListFilters,
   type PostSummary,
   type Project,
   type Resume,
   type Task,
-  type TasksPage,
-  type UpdateHomeRequest,
-  type UpdateNoteRequest,
-  type UpdatePostRequest,
-  type UpdateProjectRequest,
-  type UpdateResumeRequest,
-  type UpdateTaskRequest,
-  type UpsertDailyNoteRequest,
 } from './query/api.js';
-export {
-  preferNewerByVersion,
-  setCachedHome,
-  setCachedNote,
-  setCachedPost,
-  setCachedProject,
-  setCachedResume,
-  setCachedTask,
-} from './query/cache.js';
-export {
-  createVersionedResource,
-  type VersionedEntity,
-  type VersionedResource,
-  type VersionedResourceConfig,
-} from './query/createVersionedResource.js';
-export {
-  NOTEBOOK_TOO_LARGE_MESSAGE,
-  siteTooLargeMessage,
-} from './query/tooLarge.js';
-export {
-  createDraftPublishResource,
-  type DraftPublishLifecycleMutators,
-  type DraftPublishResource,
-  type DraftPublishResourceConfig,
-} from './query/createDraftPublishResource.js';
+export { setCachedNote, setCachedTask } from './query/cache.js';
+export { createVersionedResource } from './query/createVersionedResource.js';
 export {
   postResource,
   useCreatePostMutation,
   useDeletePostMutation,
   usePostsQuery,
-  type PostResourceParams,
 } from './query/posts.js';
 export {
-  createStarterProjects,
-  newProjectRequest,
   projectResource,
-  STARTER_PROJECTS,
   useCreateProjectMutation,
   useCreateStarterProjectsMutation,
   useDeleteProjectMutation,
   useProjectsQuery,
-  type NewProjectInput,
-  type ProjectResourceParams,
-  type StarterProjectsResult,
 } from './query/projects.js';
 export {
   useInviteUserMutation,
   useSetUserAccessMutation,
   useUserActionMutation,
   useUsersQuery,
-  type UserAction,
 } from './query/users.js';
-export { homeResource, type HomeResourceParams } from './query/home.js';
-export { resumeResource, type ResumeResourceParams } from './query/resume.js';
+export { homeResource } from './query/home.js';
+export { resumeResource } from './query/resume.js';
 export {
   dailyNoteResource,
-  emptyDailyPlaceholder,
-  fetchDailyNoteEntity,
   isTemplateStartedDaily,
   noteResource,
   startDailyNoteBlank,
   useCreateNoteMutation,
   useDailyNoteDatesQuery,
   useDeleteNoteMutation,
-  useMergeIntoDailyNoteMutation,
   useNotesByIds,
   useNotesQuery,
   usePinNoteMutation,
-  type DailyNoteResourceParams,
-  type NoteResourceParams,
 } from './query/notes.js';
 export {
   useNotebookAreas,
@@ -291,41 +160,29 @@ export {
 export {
   dailyTemplateResource,
   useResetDailyTemplateMutation,
-  type DailyTemplateResourceParams,
 } from './query/templates.js';
 export {
   noteTemplateResource,
   useCreateNoteTemplateMutation,
   useDeleteNoteTemplateMutation,
   useNoteTemplatesQuery,
-  type NoteTemplateResourceParams,
 } from './query/noteTemplates.js';
 export {
-  applyTaskPatch,
   taskResource,
-  useCompleteTaskMutation,
-  useCreateTaskMutation,
   useDeleteTaskMutation,
   usePatchTaskMutation,
   useTaskParents,
-  useReopenTaskMutation,
-  useCachedTasks,
   useTasksByIds,
-  type TaskByIdResult,
   useTasksQuery,
   type TaskPatch,
-  type TaskPatchVars,
-  type TaskResourceParams,
-  type TaskVersionVars,
 } from './query/tasks.js';
 export {
-  SEARCH_DEBOUNCE_MS,
+  SEARCH_TRUNCATED_HINT,
   useDebouncedNotebookSearch,
   useNotebookSearchQuery,
   type LiveTaskHit,
 } from './query/search.js';
 export { taskActionError } from './query/taskActionError.js';
-export { taskRequestFromDraft } from './query/taskRequest.js';
 export { useTaskToggle } from './query/useTaskToggle.js';
 export { useTaskDescriptionEditor } from './query/useTaskDescriptionEditor.js';
 export { useMoveTaskToDay } from './query/useMoveTaskToDay.js';

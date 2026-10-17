@@ -289,6 +289,38 @@ describe('AdminUsersPage', () => {
     ).toBeInTheDocument();
   });
 
+  test('a removal that stopped part-way can be finished from the drawer', async () => {
+    const halfRemoved = {
+      ...sam,
+      status: 'removed' as const,
+      removalUnfinished: true,
+    };
+    const removedSam = { ...sam, status: 'removed' as const };
+    get.mockResolvedValue(ok({ users: [chris, halfRemoved, jordan] }));
+    renderPage();
+    const samRow = await row('Sam Rivera');
+    expect(within(samRow).getByText('Removal unfinished')).toBeInTheDocument();
+    await userEvent.click(within(samRow).getByRole('button', { name: /Edit/ }));
+    expect(
+      screen.getByText('Removing them didn’t finish').closest('[role=status]'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Restore' })).toBeEnabled();
+    post.mockResolvedValueOnce(ok({ user: removedSam }));
+    get.mockResolvedValue(ok({ users: [chris, removedSam, jordan] }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Finish removing' }),
+    );
+    expect(post).toHaveBeenLastCalledWith('/api/admin/users/{id}/remove', {
+      params: { path: { id: 'sam' } },
+    });
+    expect(
+      await screen.findByText(
+        'Sam Rivera no longer has access. Their notes are kept.',
+      ),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Removed · notes kept')).toBeInTheDocument();
+  });
+
   test('invites with Notebook only by default and lists them as Invited', async () => {
     const alex = person({
       id: 'alex',

@@ -10366,6 +10366,9 @@
                           "createdAt": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "removalUnfinished": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -10586,6 +10589,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -10871,6 +10877,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -11156,6 +11165,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -11441,6 +11453,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -11726,6 +11741,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -12011,6 +12029,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -12295,6 +12316,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -12600,6 +12624,9 @@
                         "createdAt": {
                           "type": "string",
                           "nullable": true
+                        },
+                        "removalUnfinished": {
+                          "type": "boolean"
                         }
                       },
                       "required": [

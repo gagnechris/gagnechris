@@ -9577,12 +9577,13 @@ type GetAPIAdminUsers200JSONResponseBodyUsersStatus string
 
 // GetAPIAdminUsers200JSONResponseBody_Users defines parameters for GetAPIAdminUsers.
 type GetAPIAdminUsers200JSONResponseBody_Users struct {
-	CreatedAt nullable.Nullable[string]                                        `json:"createdAt"`
-	Email     string                                                           `json:"email"`
-	ID        string                                                           `json:"id"`
-	Level     nullable.Nullable[GetAPIAdminUsers200JSONResponseBodyUsersLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                        `json:"name"`
-	Status    GetAPIAdminUsers200JSONResponseBodyUsersStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                        `json:"createdAt"`
+	Email             string                                                           `json:"email"`
+	ID                string                                                           `json:"id"`
+	Level             nullable.Nullable[GetAPIAdminUsers200JSONResponseBodyUsersLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                        `json:"name"`
+	RemovalUnfinished *bool                                                            `json:"removalUnfinished,omitempty"`
+	Status            GetAPIAdminUsers200JSONResponseBodyUsersStatus                   `json:"status"`
 }
 
 // GetAPIAdminUsers200JSONResponseBody defines parameters for GetAPIAdminUsers.
@@ -9636,12 +9637,13 @@ type PostAPIAdminUsers200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsers200JSONResponseBody_User defines parameters for PostAPIAdminUsers.
 type PostAPIAdminUsers200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                        `json:"createdAt"`
-	Email     string                                                           `json:"email"`
-	ID        string                                                           `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsers200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                        `json:"name"`
-	Status    PostAPIAdminUsers200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                        `json:"createdAt"`
+	Email             string                                                           `json:"email"`
+	ID                string                                                           `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsers200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                        `json:"name"`
+	RemovalUnfinished *bool                                                            `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsers200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsers200JSONResponseBody defines parameters for PostAPIAdminUsers.
@@ -9710,12 +9712,13 @@ type PutAPIAdminUsersIDAccess200JSONResponseBodyUserStatus string
 
 // PutAPIAdminUsersIDAccess200JSONResponseBody_User defines parameters for PutAPIAdminUsersIDAccess.
 type PutAPIAdminUsersIDAccess200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                               `json:"createdAt"`
-	Email     string                                                                  `json:"email"`
-	ID        string                                                                  `json:"id"`
-	Level     nullable.Nullable[PutAPIAdminUsersIDAccess200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                               `json:"name"`
-	Status    PutAPIAdminUsersIDAccess200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                               `json:"createdAt"`
+	Email             string                                                                  `json:"email"`
+	ID                string                                                                  `json:"id"`
+	Level             nullable.Nullable[PutAPIAdminUsersIDAccess200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                               `json:"name"`
+	RemovalUnfinished *bool                                                                   `json:"removalUnfinished,omitempty"`
+	Status            PutAPIAdminUsersIDAccess200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PutAPIAdminUsersIDAccess200JSONResponseBody defines parameters for PutAPIAdminUsersIDAccess.
@@ -9782,12 +9785,13 @@ type PostAPIAdminUsersIDDisable200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDDisable200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDDisable.
 type PostAPIAdminUsersIDDisable200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                 `json:"createdAt"`
-	Email     string                                                                    `json:"email"`
-	ID        string                                                                    `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDDisable200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                 `json:"name"`
-	Status    PostAPIAdminUsersIDDisable200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                 `json:"createdAt"`
+	Email             string                                                                    `json:"email"`
+	ID                string                                                                    `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDDisable200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                 `json:"name"`
+	RemovalUnfinished *bool                                                                     `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDDisable200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDDisable200JSONResponseBody defines parameters for PostAPIAdminUsersIDDisable.
@@ -9854,12 +9858,13 @@ type PostAPIAdminUsersIDEnable200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDEnable200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDEnable.
 type PostAPIAdminUsersIDEnable200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                `json:"createdAt"`
-	Email     string                                                                   `json:"email"`
-	ID        string                                                                   `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDEnable200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                `json:"name"`
-	Status    PostAPIAdminUsersIDEnable200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                `json:"createdAt"`
+	Email             string                                                                   `json:"email"`
+	ID                string                                                                   `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDEnable200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                `json:"name"`
+	RemovalUnfinished *bool                                                                    `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDEnable200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDEnable200JSONResponseBody defines parameters for PostAPIAdminUsersIDEnable.
@@ -9926,12 +9931,13 @@ type PostAPIAdminUsersIDRemove200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDRemove200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDRemove.
 type PostAPIAdminUsersIDRemove200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                `json:"createdAt"`
-	Email     string                                                                   `json:"email"`
-	ID        string                                                                   `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDRemove200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                `json:"name"`
-	Status    PostAPIAdminUsersIDRemove200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                `json:"createdAt"`
+	Email             string                                                                   `json:"email"`
+	ID                string                                                                   `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDRemove200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                `json:"name"`
+	RemovalUnfinished *bool                                                                    `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDRemove200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDRemove200JSONResponseBody defines parameters for PostAPIAdminUsersIDRemove.
@@ -9998,12 +10004,13 @@ type PostAPIAdminUsersIDResendInvite200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDResendInvite200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDResendInvite.
 type PostAPIAdminUsersIDResendInvite200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                      `json:"createdAt"`
-	Email     string                                                                         `json:"email"`
-	ID        string                                                                         `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDResendInvite200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                      `json:"name"`
-	Status    PostAPIAdminUsersIDResendInvite200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                      `json:"createdAt"`
+	Email             string                                                                         `json:"email"`
+	ID                string                                                                         `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDResendInvite200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                      `json:"name"`
+	RemovalUnfinished *bool                                                                          `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDResendInvite200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDResendInvite200JSONResponseBody defines parameters for PostAPIAdminUsersIDResendInvite.
@@ -10078,12 +10085,13 @@ type PostAPIAdminUsersIDRestore200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDRestore200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDRestore.
 type PostAPIAdminUsersIDRestore200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                 `json:"createdAt"`
-	Email     string                                                                    `json:"email"`
-	ID        string                                                                    `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDRestore200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                 `json:"name"`
-	Status    PostAPIAdminUsersIDRestore200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                 `json:"createdAt"`
+	Email             string                                                                    `json:"email"`
+	ID                string                                                                    `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDRestore200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                 `json:"name"`
+	RemovalUnfinished *bool                                                                     `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDRestore200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDRestore200JSONResponseBody defines parameters for PostAPIAdminUsersIDRestore.
@@ -10150,12 +10158,13 @@ type PostAPIAdminUsersIDSignOut200JSONResponseBodyUserStatus string
 
 // PostAPIAdminUsersIDSignOut200JSONResponseBody_User defines parameters for PostAPIAdminUsersIDSignOut.
 type PostAPIAdminUsersIDSignOut200JSONResponseBody_User struct {
-	CreatedAt nullable.Nullable[string]                                                 `json:"createdAt"`
-	Email     string                                                                    `json:"email"`
-	ID        string                                                                    `json:"id"`
-	Level     nullable.Nullable[PostAPIAdminUsersIDSignOut200JSONResponseBodyUserLevel] `json:"level"`
-	Name      nullable.Nullable[string]                                                 `json:"name"`
-	Status    PostAPIAdminUsersIDSignOut200JSONResponseBodyUserStatus                   `json:"status"`
+	CreatedAt         nullable.Nullable[string]                                                 `json:"createdAt"`
+	Email             string                                                                    `json:"email"`
+	ID                string                                                                    `json:"id"`
+	Level             nullable.Nullable[PostAPIAdminUsersIDSignOut200JSONResponseBodyUserLevel] `json:"level"`
+	Name              nullable.Nullable[string]                                                 `json:"name"`
+	RemovalUnfinished *bool                                                                     `json:"removalUnfinished,omitempty"`
+	Status            PostAPIAdminUsersIDSignOut200JSONResponseBodyUserStatus                   `json:"status"`
 }
 
 // PostAPIAdminUsersIDSignOut200JSONResponseBody defines parameters for PostAPIAdminUsersIDSignOut.

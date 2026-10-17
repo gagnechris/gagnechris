@@ -16,6 +16,8 @@ import {
   accessChange,
   type UserChange,
   formatAdded,
+  isRemovalUnfinished,
+  REMOVAL_UNFINISHED,
   userErrorMessage,
 } from '@gagnechris/app-core';
 
@@ -44,6 +46,7 @@ export default function EditUserDrawer({
   const [error, setError] = useState<string | null>(null);
   const name = displayName(user);
   const removed = user.status === 'removed';
+  const unfinished = isRemovalUnfinished(user);
   const changed = draft !== null && draft !== user.level;
   const change =
     changed && !removed ? accessChange(user, user.level, draft) : null;
@@ -148,6 +151,12 @@ export default function EditUserDrawer({
           be at least one Full Admin.
         </p>
       ) : null}
+      {unfinished && !isSelf ? (
+        <div className="users-callout users-callout--warning" role="status">
+          <strong>{REMOVAL_UNFINISHED.title}</strong>
+          <span>{REMOVAL_UNFINISHED.body}</span>
+        </div>
+      ) : null}
       {removed && !isSelf ? (
         <p className="users-callout">
           Restore picks up the access chosen above. Their notes and tasks are
@@ -198,6 +207,15 @@ export default function EditUserDrawer({
                   'Disable',
                   'disable',
                 )}
+          {unfinished
+            ? accountRow(
+                'Finish removing',
+                'Takes away every app and ends their sessions.',
+                'Finish removing',
+                'remove',
+                true,
+              )
+            : null}
           {removed
             ? accountRow(
                 'Restore access',

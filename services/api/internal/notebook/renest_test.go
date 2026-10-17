@@ -56,6 +56,9 @@ func TestUpdateTaskReturnsTheCommittedTaskWhenRenestHitsADeletedTask(t *testing.
 		return &dynamodb.GetItemOutput{Item: item}, nil
 	}
 	f.PutItemFn = func(*dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) { return &dynamodb.PutItemOutput{}, nil }
+	f.TransactWriteFn = func(*dynamodb.TransactWriteItemsInput) (*dynamodb.TransactWriteItemsOutput, error) {
+		return &dynamodb.TransactWriteItemsOutput{}, nil
+	}
 	f.BatchGetItemFn = func(*dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error) {
 		return &dynamodb.BatchGetItemOutput{Responses: map[string][]data.Item{"test": {h.tasks.base.storedItem(parent, nil, nil)}}}, nil
 	}
