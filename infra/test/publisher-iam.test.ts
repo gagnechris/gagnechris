@@ -1,4 +1,4 @@
-import { App, Stack } from 'aws-cdk-lib';
+import { Stack } from 'aws-cdk-lib';
 import { Template } from 'aws-cdk-lib/assertions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import { readFileSync } from 'node:fs';
@@ -16,6 +16,7 @@ import {
 import { getEnvironment } from '../lib/config/environments.js';
 import { DataStack } from '../lib/stacks/data-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
+import { testApp } from './helpers/test-app.js';
 
 type Statement = {
   Effect?: string;
@@ -25,7 +26,7 @@ type Statement = {
 };
 
 function publisherStatements(): Statement[] {
-  const app = new App();
+  const app = testApp();
   const config = getEnvironment('prod', {
     CDK_ACCOUNT: '123456789012',
     ALERTS_EMAIL: 'alerts@example.com',

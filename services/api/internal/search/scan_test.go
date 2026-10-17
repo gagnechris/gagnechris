@@ -195,3 +195,34 @@ func TestSearchUnderTheScanCapIsNotTruncated(t *testing.T) {
 		t.Errorf("truncated = %v, want false", truncated)
 	}
 }
+
+func TestSearchStopsAtTheByteCapAndSaysSo(t *testing.T) {
+	defer func(n int) { scanByteCap = n }(scanByteCap)
+	scanByteCap = 1_000_000
+	f := &fakeIndex{partitions: map[string][]data.Item{}}
+	body := strings.Repeat("lorem ipsum ", 4_000)
+	notes := scanByteCap/len(body) + 50
+	day := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := range notes {
+		id := fmt.Sprintf("01LONG%020d", i)
+		f.note("work", id, "Daily", day.AddDate(0, 0, i).Format("2006-01-02"))
+		item := f.partitions[keys.NotebookAreaGSI1Pk(testUser, "work")]
+		for _, row := range item {
+			if attrS(row["id"]) == id {
+				row["bodyMarkdown"] = data.S(body)
+			}
+		}
+	}
+	f.note("work", "01OLDEST", "Roadmap", "2019-12-31")
+
+	truncated, hits, _ := runSearch(t, f, `{"q":"roadmap"}`)
+	if len(hits) != 0 {
+		t.Errorf("hits %v: the oldest note is past the byte cap", hits)
+	}
+	if truncated == nil || !*truncated {
+		t.Errorf("truncated = %v, want true", truncated)
+	}
+	if notes >= scanCap {
+		t.Fatalf("%d notes reach the row cap first", notes)
+	}
+}

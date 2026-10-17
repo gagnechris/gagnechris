@@ -101,20 +101,29 @@ component gets a story in the same PR.
 against `origin/main`: Prettier and ESLint on the changed files, typecheck and
 unit tests for each workspace with a changed, deleted or renamed file and every
 workspace that depends on it, the generated-file drift checks whose inputs
-changed, tsconfig coverage and case collisions when files are added, and Go lint
-and test when Go changed. Changes under `.github/` or `.githooks/` run the
-`@gagnechris/scripts` tests. A change to the root `package.json`, lockfile,
-`tsconfig.base.json`, ESLint config, `.nvmrc` or `.npmrc` checks every
-workspace. The two code generators (`openapi:check`, `go:generate:check`) and
-Go lint and test run one after another, since they write and read the same
-generated files; everything else runs in parallel. `npm run verify:all` runs the full
-set. `npm install` points `core.hooksPath` at `.githooks`, whose `pre-push`
-runs `npm run verify`; `git push --no-verify` skips it. The build, web shell,
-RN bundle, Storybook build, CDK synth, e2e and integration checks stay CI-only (run them
-yourself when the change touches them).
+changed, tsconfig coverage and case collisions when files are added, Go lint
+and test when Go changed, and the ticket-id check for any change. Changes under
+`.github/`, `.githooks/` or `.claude/hooks/` run the `@gagnechris/scripts` tests. A change to the
+root `package.json`, lockfile, `tsconfig.base.json`, ESLint config, `.nvmrc` or
+`.npmrc` checks every workspace; a change to the ESLint config, the root
+`package.json` or the lockfile lints everything, and a change to the Prettier
+config, `.prettierignore`, the root `package.json` or the lockfile runs
+`format:check`. The generated-file checks (`openapi:check`, `go:generate:check`,
+`tokens:check`, `publish-surface:check`) all finish before any other check
+starts, since they rewrite files the others read; the two Go code generators
+run one after another, as do Go lint and test, and everything else runs in
+parallel. `npm run verify:all` runs the full set. `npm install` points
+`core.hooksPath` at `.githooks`, whose `pre-push` runs `npm run verify` for the
+pushed commit: it refuses a push when that commit is not `HEAD` or the working
+tree has uncommitted or untracked files, since the checks read the working tree.
+`git push --no-verify` skips it. The build, web shell, RN bundle, Storybook
+build, CDK synth, `go:vulncheck`, `check:platform-neutral-lint`, e2e and
+integration checks stay CI-only (run them yourself when the change touches
+them).
 
 ```bash
 npm test              # all root workspaces with a test script (web, shared, api-client, tokens, data, app-core, public-ui, ops, api-tests unit, publisher, infra, scripts: the repo-wide tests in scripts/test); mobile: npm test --prefix apps/mobile
+# infra tests make Apps with testApp() (infra/test/helpers/test-app.ts): each synthesizes under one temp root that the run's global teardown deletes; a plain new App() would leave a /tmp/cdk.out* of tens of MB per App, and test/test-app.test.ts fails on one
 npm run test:integration -w @gagnechris/api-tests   # the black-box HTTP suite against the Go API on DynamoDB Local (Docker); test:http is the same
 npm run typecheck     # all workspaces with a typecheck script
 npm run lint          # ESLint for every workspace

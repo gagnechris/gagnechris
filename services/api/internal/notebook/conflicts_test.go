@@ -179,6 +179,38 @@ func TestThrottledWritesAre503s(t *testing.T) {
 			_, err := repo.update(context.Background(), "u1", "01JZ0000000000000000000001", api.Expected{Set: true, Version: 3}, noteFields{title: &title})
 			return err
 		},
+		"note template create": func() error {
+			f := &fakeDynamo{putErr: &types.ProvisionedThroughputExceededException{}}
+			_, err := (&noteTemplatesRepo{table: fakeTable(f), now: func() time.Time { return testNow }}).create(context.Background(), "u1", newNoteID, "Standup", "body")
+			return err
+		},
+		"note template update": func() error {
+			f := &fakeDynamo{putErr: &types.ProvisionedThroughputExceededException{}}
+			f.items = []data.Item{storedNoteTemplateItem()}
+			name := "Retro"
+			_, err := (&noteTemplatesRepo{table: fakeTable(f), now: func() time.Time { return testNow }}).update(context.Background(), "u1", newNoteID, api.Expected{Set: true, Version: 2}, &name, nil)
+			return err
+		},
+		"note template delete": func() error {
+			f := &fakeDynamo{}
+			f.items = []data.Item{storedNoteTemplateItem()}
+			f.DeleteItemFn = func(*dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
+				return nil, &types.ProvisionedThroughputExceededException{}
+			}
+			return (&noteTemplatesRepo{table: fakeTable(f), now: func() time.Time { return testNow }}).delete(context.Background(), "u1", newNoteID, api.Expected{Set: true, Version: 2})
+		},
+		"daily template": func() error {
+			f := &fakeDynamo{putErr: &types.ProvisionedThroughputExceededException{}}
+			body := "## Today"
+			_, err := (&templatesRepo{table: fakeTable(f), now: func() time.Time { return testNow }}).write(context.Background(), "u1", "work", templateEdit{bodyMarkdown: body, keepSection: true}, false, api.Expected{})
+			return err
+		},
+		"areas": func() error {
+			f := &fakeDynamo{putErr: &types.ProvisionedThroughputExceededException{}}
+			list := defaultAreas().Areas
+			_, err := (&areasRepo{table: fakeTable(f), now: func() time.Time { return testNow }}).write(context.Background(), "u1", list, api.Expected{})
+			return err
+		},
 	}
 	for name, write := range cases {
 		err := write()
@@ -190,6 +222,14 @@ func TestThrottledWritesAre503s(t *testing.T) {
 			t.Fatalf("%s: %d %v, want a 503", name, status, body)
 		}
 	}
+}
+
+func storedNoteTemplateItem() data.Item {
+	at := testNow.Format("2006-01-02T15:04:05.000Z")
+	return noteTemplateItem(storedNoteTemplate{
+		NoteTemplate: NoteTemplate{ID: newNoteID, Name: "Standup", BodyMarkdown: "body", Version: 2, CreatedAt: at, UpdatedAt: at},
+		userID:       "u1",
+	})
 }
 
 func TestAssertClientVersion(t *testing.T) {

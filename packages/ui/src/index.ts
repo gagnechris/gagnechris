@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
 // The publisher and Node scripts that render these compile without the DOM lib.
+// Every export needs an importer outside this package (scripts/test/exports-used.test.ts).
 
 export { BottomSheet } from './BottomSheet.js';
 export { Button } from './Button.js';
 export { Card } from './Card.js';
 export { Checkbox } from './Checkbox.js';
-export { Chip, ChipSelect, type ChipTone } from './Chip.js';
+export { Chip, ChipSelect } from './Chip.js';
 export { ChipsInput } from './ChipsInput.js';
 export { Combobox, type ComboboxOption } from './Combobox.js';
 export { ConfirmDialog } from './ConfirmDialog.js';
@@ -23,7 +24,6 @@ export {
   MenuItem,
   MenuRadioGroup,
   MenuSeparator,
-  type MenuTriggerProps,
 } from './Menu.js';
 export { RadioCardGroup } from './RadioCardGroup.js';
 export { Scrim } from './Scrim.js';

@@ -167,6 +167,37 @@ export function taskDropNestIndent(
   return task.nested ? indent : indent + TASK_NEST_WIDTH;
 }
 
+/**
+ * Takes out the line at `n`. The lines under it move out to its level, so a
+ * removed parent's subtasks don't nest under the task above instead.
+ */
+export function removeTaskLine(lines: readonly string[], n: number): string[] {
+  const { last } = markdownItemBlock(lines, n);
+  const under = lines.slice(n + 1, last + 1);
+  const step =
+    under.length > 0 ? indentWidth(under[0]!) - indentWidth(lines[n]!) : 0;
+  return [
+    ...lines.slice(0, n),
+    ...under.map((line) => reindent(line, -step)),
+    ...lines.slice(last + 1),
+  ];
+}
+
+/** Takes out each line that embeds one of `ids`, as `removeTaskLine` does. */
+export function removeTaskEmbedLines(
+  markdown: string,
+  ids: ReadonlySet<string>,
+): string {
+  const drop = findTaskEmbeds(markdown)
+    .filter((e) => ids.has(e.id))
+    .map((e) => e.line);
+  if (drop.length === 0) return markdown;
+  let lines = markdown.split('\n');
+  // Bottom up, so each line number still points at its line.
+  for (const n of drop.reverse()) lines = removeTaskLine(lines, n);
+  return lines.join('\n');
+}
+
 /** The line of the embed for `taskId`; null when the note no longer has it. */
 export const taskEmbedLineOf = (markdown: string, taskId: string) =>
   findTaskEmbeds(markdown).find((e) => e.id === taskId)?.line ?? null;

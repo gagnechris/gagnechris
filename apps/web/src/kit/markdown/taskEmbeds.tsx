@@ -25,7 +25,7 @@ import {
   lineAfterOuterBlock,
   parseTaskEmbedLine,
   parseTaskLine,
-  reindent,
+  removeTaskLine,
   scanFences,
   taskEmbedNesting,
   taskEmbedToken,
@@ -864,12 +864,11 @@ export function deleteTaskEmbedLine(view: EditorView, widget: HTMLElement) {
   const last = blockEnd(doc, line.number);
   const changes = [{ from, to, insert: '' }];
   if (last > line.number) {
-    const under = { from: line.to + 1, to: doc.line(last).to };
-    const step =
-      indentWidth(doc.line(line.number + 1).text) - indentWidth(line.text);
+    const kept = removeTaskLine(doc.toJSON(), line.number - 1);
     changes.push({
-      ...under,
-      insert: reindent(doc.sliceString(under.from, under.to), -step),
+      from: line.to + 1,
+      to: doc.line(last).to,
+      insert: kept.slice(line.number - 1, last - 1).join('\n'),
     });
   }
   view.dispatch({
