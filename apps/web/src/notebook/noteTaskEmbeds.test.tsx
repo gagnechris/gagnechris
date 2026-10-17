@@ -40,6 +40,7 @@ import { useState } from 'react';
 import NotebookTaskPage from './NotebookTaskPage';
 import NotebookTodayPage from './NotebookTodayPage';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
+import { insertNoteTemplate } from './noteTemplateMenu';
 import { openDailyViaGet } from '../__tests__/fixtures/openDailyViaGet';
 import {
   resetTaskDetailsStore,
@@ -750,10 +751,15 @@ describe('one task embedded in two notes', () => {
 
 describe('deleting an embedded task', () => {
   let body = '';
+  let setExternal: (value: string) => void = () => {};
   function renderNote(initial: string) {
     body = initial;
     const Note = () => {
       const [value, setValue] = useState(initial);
+      setExternal = (next) => {
+        body = next;
+        setValue(next);
+      };
       return (
         <NotebookMarkdownBody
           note={{ id: NOTE_A, area: 'work' }}
@@ -828,6 +834,32 @@ describe('deleting an embedded task', () => {
 
     await deletedAfterGrace();
     expect(api.taskDeletes).toEqual([]);
+  });
+
+  test('undo after a task is added from another list keeps the task and its line', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask({ noteId: NOTE_B });
+    const { container } = renderNote('Standup');
+    const view = await editorView(container);
+    act(() => view.dispatch({ selection: { anchor: 'Standup'.length } }));
+    typeInto(view, '!');
+    expect(body).toBe('Standup!');
+
+    // What Still open's Add to today's note does to the open note.
+    act(() => setExternal(`Standup!\n\n${tokenLine(TASK_ID)}\n\n`));
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    act(() => {
+      undo(view);
+    });
+    expect(body).toBe(`Standup\n\n${tokenLine(TASK_ID)}\n\n`);
+    act(() => {
+      undo(view);
+    });
+    expect(body).toContain(tokenLine(TASK_ID));
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(false);
   });
 
   test('cutting the line keeps the task, since it is being moved', async () => {
@@ -1598,19 +1630,46 @@ describe('moving tasks in a note', () => {
     const user = userEvent.setup();
     const row = (await handle()).closest('.task-embed')!;
 
-    fireEvent.contextMenu(row);
-    const menu = screen.getByRole('menu', { name: 'Move to' });
-    await user.click(within(menu).getByRole('menuitem', { name: 'Today' }));
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 50));
-    });
-
-    expect(current()).toBe(body);
-    expect(
+    const liveText = () =>
       document.querySelector(
         '[role="status"][aria-live="polite"].kit-visually-hidden',
-      )?.textContent ?? '',
-    ).not.toContain('Moved to Today');
+      )?.textContent ?? '';
+    const announced: string[] = [];
+    let last = liveText();
+    const observer = new MutationObserver(() => {
+      const text = liveText();
+      if (text && text !== last) announced.push(text);
+      last = text;
+    });
+    observer.observe(document.body, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Today' },
+      ),
+    );
+    expect(current()).toBe(body);
+
+    // A real move afterwards: its announcement lands after any the no-op made.
+    fireEvent.contextMenu(row);
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Move to' })).getByRole(
+        'menuitem',
+        { name: 'Meetings' },
+      ),
+    );
+    await waitFor(() => expect(announced).toContain('Moved to Meetings'));
+    observer.disconnect();
+    expect(announced).toEqual(['Moved to Meetings']);
+    expect(current()).toBe(
+      `## Today\nnotes\n\n## Meetings\nagenda\n${tokenLine(TASK_ID)}`,
+    );
   });
 
   test('Move to → another day’s note → tomorrow moves the lines to that day and points the tasks at it', async () => {
@@ -2122,5 +2181,140 @@ after`);
     expect(body()).toBe(
       `${nested(SUB_1, SUB_2)}\n![image](notebook-image:pasted.png)\n\n\nafter`,
     );
+  });
+
+  describe('with the caret beside a row', () => {
+    const note = `${nested(SUB_1, SUB_2)}\nafter`;
+
+    async function escapeFrom(title: string) {
+      const user = userEvent.setup();
+      await user.click(await screen.findByDisplayValue(title));
+      await user.keyboard('{Escape}');
+      return editorView(document.body);
+    }
+
+    test('Enter beside a parent opens a line after its subtasks', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+      expect(view.state.selection.main.head).toBe(view.state.doc.line(1).to);
+
+      press(view, 'Enter');
+      typeInto(view, 'Agenda');
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+    });
+
+    test('Enter beside a subtask opens a line after the whole block', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Pick dates');
+
+      press(view, 'Enter');
+      typeInto(view, 'Agenda');
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+    });
+
+    test('Backspace beside a subtask deletes only its line', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Pick dates');
+
+      press(view, 'Backspace');
+
+      expect(body()).toBe(`${nested(SUB_2)}\nafter`);
+    });
+
+    test('Backspace beside a parent deletes its line and takes its subtasks out a level', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Backspace');
+
+      expect(body()).toBe(`${tokenLine(SUB_1)}\n${tokenLine(SUB_2)}\nafter`);
+    });
+
+    test('Delete beside a parent goes into its first subtask instead of joining the lines', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Delete');
+
+      expect(body()).toBe(note);
+      const field = screen.getByDisplayValue('Pick dates');
+      await waitFor(() => expect(field).toHaveFocus());
+      expect((field as HTMLTextAreaElement).selectionStart).toBe(0);
+    });
+
+    test('Delete beside a row above a line of text leaves both lines', async () => {
+      seed([]);
+      const { body } = renderNote(`${tokenLine(PARENT)}\nafter`);
+      const view = await escapeFrom('Plan offsite');
+
+      press(view, 'Delete');
+
+      expect(body()).toBe(`${tokenLine(PARENT)}\nafter`);
+    });
+
+    test('lines pasted beside a parent or a subtask land after the block', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      await screen.findByDisplayValue('Book venue');
+      const view = await editorView(document.body);
+
+      act(() => {
+        const at = view.state.doc.line(1).to;
+        view.dispatch({
+          changes: { from: at, insert: '\nfoo' },
+          selection: { anchor: at + 4 },
+          userEvent: 'input.paste',
+        });
+      });
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nfoo\nafter`);
+
+      act(() => {
+        const at = view.state.doc.line(2).from;
+        view.dispatch({
+          changes: { from: at, insert: 'bar\n' },
+          selection: { anchor: at + 4 },
+          userEvent: 'input.paste',
+        });
+      });
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nbar\nfoo\nafter`);
+    });
+
+    test('a template inserted beside a parent goes after its subtasks', async () => {
+      seed([
+        { id: SUB_1, title: 'Pick dates' },
+        { id: SUB_2, title: 'Book venue' },
+      ]);
+      const { body } = renderNote(note);
+      const view = await escapeFrom('Plan offsite');
+
+      act(() => insertNoteTemplate(view, '## Agenda\n'));
+
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n## Agenda\n\nafter`);
+    });
   });
 });

@@ -1,7 +1,9 @@
 import {
   accessChange,
   formatAdded,
-  STATUS_LABELS,
+  isRemovalUnfinished,
+  REMOVAL_UNFINISHED,
+  statusLabel,
   useUserActionMutation,
   userErrorMessage,
   type UserChange,
@@ -58,6 +60,7 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const name = displayName(user);
   const removed = user.status === 'removed';
+  const unfinished = isRemovalUnfinished(user);
   const busy = isPending || resend.isPending;
   const changed = draft !== null && draft !== user.level;
   const change =
@@ -101,7 +104,18 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
 
   const actions: { title: string; kind: AccountAction; danger?: boolean }[] =
     removed
-      ? [{ title: 'Restore access', kind: 'restore' }]
+      ? [
+          ...(unfinished
+            ? [
+                {
+                  title: 'Finish removing',
+                  kind: 'remove' as const,
+                  danger: true,
+                },
+              ]
+            : []),
+          { title: 'Restore access', kind: 'restore' },
+        ]
       : [
           { title: 'Sign out everywhere', kind: 'sign-out' },
           user.status === 'disabled'
@@ -115,7 +129,7 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
       <View style={styles.who}>
         <Text style={styles.email}>{user.email}</Text>
         <Text style={styles.meta}>
-          {STATUS_LABELS[user.status]} · Added {formatAdded(user.createdAt)}
+          {statusLabel(user)} · Added {formatAdded(user.createdAt)}
         </Text>
       </View>
 
@@ -129,6 +143,12 @@ export const EditUserSheet = ({ user, isSelf, onClose, onDone }: Props) => {
           You can’t lower your own access or disable yourself. There must always
           be at least one Full Admin.
         </FieldHint>
+      ) : null}
+      {unfinished && !isSelf ? (
+        <View style={styles.callout} accessibilityLiveRegion="polite">
+          <Text style={styles.calloutTitle}>{REMOVAL_UNFINISHED.title}</Text>
+          <Text style={styles.calloutBody}>{REMOVAL_UNFINISHED.body}</Text>
+        </View>
       ) : null}
       {removed && !isSelf ? (
         <FieldHint>

@@ -1,11 +1,8 @@
+import { breakpoint } from '@gagnechris/tokens';
 import { useCallback, useSyncExternalStore } from 'react';
 
-/**
- * Where the workspace sidebar becomes the tab bar: `breakpoint.tabBar` in
- * @gagnechris/tokens, written out because importing the tokens into the
- * public entry splits them into a chunk of their own (breakpoints.test.ts).
- */
-export const PHONE_QUERY = '(max-width: 767px)';
+/** Where the workspace sidebar becomes the tab bar. */
+export const PHONE_QUERY = `(max-width: ${breakpoint.tabBar}px)`;
 
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(

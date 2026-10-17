@@ -8,6 +8,9 @@ import { useCachedTasks } from './tasks.js';
 
 export const SEARCH_DEBOUNCE_MS = 200;
 
+export const SEARCH_TRUNCATED_HINT =
+  'Only your most recent notes and tasks were searched.';
+
 export const useNotebookSearchQuery = (
   filters: NotebookSearchQuery,
   enabled = true,

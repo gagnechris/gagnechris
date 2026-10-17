@@ -135,9 +135,9 @@ describe('POST /api/notebook/search', () => {
   });
 
   it('reads markdown and embedded tasks as plain text, and daily notes by their day', async () => {
-    const done = await task({ title: 'Call Sam', status: 'done' });
-    const dropped = await task({ title: 'Email Sam', status: 'dropped' });
-    const gone = await task({ title: 'Text Sam' });
+    const done = await task({ title: 'Call Lou', status: 'done' });
+    const dropped = await task({ title: 'Email Lou', status: 'dropped' });
+    const gone = await task({ title: 'Text Lou' });
     await ok('DELETE', `/notebook/tasks/${gone.id}`, {
       body: { version: 1 },
     });
@@ -158,11 +158,11 @@ describe('POST /api/notebook/search', () => {
       body: { id: ulid(), bodyMarkdown: 'garden beds' },
     });
 
-    const sam = await search({ q: 'sam' });
-    expect(sam.notes).toEqual([
+    const lou = await search({ q: 'lou' });
+    expect(lou.notes).toEqual([
       expect.objectContaining({
         id: standup.id,
-        snippet: 'Follow up Call Sam Email Sam (dropped)',
+        snippet: 'Follow up Call Lou Email Lou (dropped)',
         matches: [{ start: 15, end: 18 }],
       }),
     ]);
@@ -172,11 +172,11 @@ describe('POST /api/notebook/search', () => {
         snippet: `{{task:${done.id}}}`,
       }),
     ]);
-    expect(sam.tasks.map((t) => [t.id, t.status, t.version])).toEqual([
+    expect(lou.tasks.map((t) => [t.id, t.status, t.version])).toEqual([
       [done.id, 'done', 1],
       [dropped.id, 'dropped', 1],
     ]);
-    expect((await search({ q: 'text sam' })).notes).toEqual([]);
+    expect((await search({ q: 'text lou' })).notes).toEqual([]);
 
     expect((await search({ q: 'saturday' })).notes).toEqual([
       {

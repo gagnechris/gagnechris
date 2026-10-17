@@ -207,7 +207,7 @@ describe('daily templates', () => {
     );
     expect(screen.getByRole('link', { name: 'Edit template' })).toHaveAttribute(
       'href',
-      '/settings/templates?template=work&area=work',
+      '/settings/templates?area=work',
     );
     expect(state.dailyPuts).toHaveLength(0);
 
@@ -263,6 +263,23 @@ describe('daily templates', () => {
     expect(state.resets).toBe(1);
   });
 
+  test('a weekday typed into the template gets a hint; {{weekday}} does not', async () => {
+    const user = userEvent.setup();
+    renderAt('/settings/templates?area=work');
+    const editor = await screen.findByRole('textbox', {
+      name: 'Work template',
+    });
+    expect(screen.queryByText(/Every new day will say/)).toBeNull();
+
+    await user.clear(editor);
+    await user.type(editor, '## Focus for Tuesday');
+    expect(
+      screen.getByText(
+        'Every new day will say Tuesday. Use {{weekday}} to show each day’s own name.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   test('the carried-in section select lists the template’s headings and saves the choice', async () => {
     const user = userEvent.setup();
     renderAt('/settings/templates?area=work');
@@ -309,7 +326,7 @@ describe('daily templates', () => {
     expect(select).toBeDisabled();
   });
 
-  test('the Work / Personal switch defaults to the current area', async () => {
+  test('the sidebar area switch picks the template', async () => {
     const user = userEvent.setup();
     renderAt('/settings/templates?area=work');
     expect(
@@ -318,11 +335,13 @@ describe('daily templates', () => {
     expect(screen.getByTestId('preview')).toHaveTextContent(
       /## Focus for Wednesday/,
     );
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Template' }),
+    ).not.toBeInTheDocument();
     await user.click(
-      within(screen.getByRole('radiogroup', { name: 'Template' })).getByRole(
-        'radio',
-        { name: 'Personal' },
-      ),
+      within(
+        screen.getByRole('radiogroup', { name: 'Notebook area' }),
+      ).getByRole('radio', { name: 'Personal' }),
     );
     expect(
       await screen.findByRole('textbox', { name: 'Personal template' }),

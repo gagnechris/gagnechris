@@ -152,6 +152,24 @@ describe('GitHub Actions supply chain', () => {
 
   // Steps of one job share the runner, so a build's install scripts could
   // reach any later secret step through files or $GITHUB_ENV.
+  it('keeps no git credentials after checkout in a job that can mint an OIDC token or reads a secret', () => {
+    const offenders: string[] = [];
+    for (const { path, doc } of workflows) {
+      for (const [jobId, job] of Object.entries(doc.jobs)) {
+        if (!hasIdToken(job, doc) && !readsSecret(job)) continue;
+        for (const step of job.steps ?? []) {
+          if (
+            step.uses?.startsWith('actions/checkout@') &&
+            step.with?.['persist-credentials'] !== false
+          ) {
+            offenders.push(`${path}#${jobId}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('runs native build installs only after every step that holds a secret', () => {
     const buildsWithInstallScripts = (run: string) =>
       /\beas\s+build\b|\bnpx\b|\bpod\s+install\b|eas-local-build\.sh\s+build\b/.test(
@@ -851,6 +869,11 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
   const uiPkg = commit('packages/ui/src/Button.tsx');
   const story = commit('apps/storybook/src/ui/Button.stories.tsx');
   const componentsStack = commit('infra/lib/stacks/components-stack.ts');
+  const webAsset = commit('apps/web/public/extra.txt');
+  mkdirSync(join(repo, 'docs/moved'), { recursive: true });
+  git('mv', 'apps/web/public/extra.txt', 'docs/moved/extra.txt');
+  git('commit', '-q', '-m', 'move');
+  const movedOut = git('rev-parse', 'HEAD');
   git('checkout', '-q', '-b', 'side', base);
   const side = commit('docs/side.md');
 
@@ -946,6 +969,10 @@ describe('check-deploy-ancestry.sh, check-release-ref.sh and deploy-paths.sh', (
     }
     expect(paths(ssmParams, ownedPaths)).toBe('cdk=false\nweb=true');
     expect(paths(ownedPaths, ssmNames)).toBe('cdk=false\nweb=true');
+  });
+
+  it('runs the web deploy when a file moves out of a deploy path', () => {
+    expect(paths(webAsset, movedOut)).toBe('cdk=false\nweb=true');
   });
 });
 
@@ -1094,6 +1121,60 @@ describe('iOS release', () => {
     expect(env?.deployment_branch_policy.custom_branch_policies).toBe(true);
     expect(env?.custom_branch_policies).toEqual([
       { name: 'ios-v*', type: 'tag' },
+    ]);
+  });
+});
+
+describe('iOS release tag ruleset', () => {
+  const ruleset = JSON.parse(
+    readFileSync(join(ROOT, 'scripts', 'ios-release-tag-ruleset.json'), 'utf8'),
+  ) as {
+    name: string;
+    target: string;
+    enforcement: string;
+    conditions: { ref_name: { include: string[] } };
+    rules: { type: string }[];
+    bypass_actors: { actor_id: number; actor_type: string }[];
+  };
+
+  it('lets only repository admins create, move or delete ios-v* tags', () => {
+    expect(ruleset.target).toBe('tag');
+    expect(ruleset.enforcement).toBe('active');
+    expect(ruleset.conditions.ref_name.include).toEqual(['refs/tags/ios-v*']);
+    expect(ruleset.rules.map((r) => r.type).sort()).toEqual([
+      'creation',
+      'deletion',
+      'update',
+    ]);
+    expect(ruleset.bypass_actors).toEqual([
+      { actor_id: 5, actor_type: 'RepositoryRole', bypass_mode: 'always' },
+    ]);
+  });
+
+  it('is applied with the main branch ruleset', () => {
+    const bin = join(tempDir(), 'bin');
+    mkdirSync(bin);
+    const log = join(bin, 'gh.log');
+    writeFileSync(
+      join(bin, 'gh'),
+      `#!/usr/bin/env bash\necho "$*" >> '${log}'\n`,
+    );
+    chmodSync(join(bin, 'gh'), 0o755);
+    const r = spawnSync(
+      'bash',
+      [join(ROOT, 'scripts', 'apply-branch-protection.sh')],
+      {
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        encoding: 'utf8',
+      },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const posts = readFileSync(log, 'utf8')
+      .split('\n')
+      .filter((l) => l.startsWith('api --method POST'));
+    expect(posts).toEqual([
+      expect.stringContaining('scripts/main-branch-ruleset.json'),
+      expect.stringContaining('scripts/ios-release-tag-ruleset.json'),
     ]);
   });
 });
@@ -1317,5 +1398,48 @@ describe('alert notifications', () => {
       FAKE_AWS_EXIT: '254',
     });
     expect(r.status).not.toBe(0);
+  });
+});
+
+describe('check-branch-name.sh', () => {
+  const check = (branch: string) =>
+    runScript('check-branch-name.sh', [branch], {}).status;
+
+  it.each([
+    'gagnechris/chr-595-add-a-pr-template',
+    'gagnechris/chr-7',
+    'chr-12-fix-it',
+    'dependabot/npm_and_yarn/vite-7.1.0',
+    'dependabot/github_actions/actions/checkout-7.0.1',
+  ])('accepts %s', (branch) => {
+    expect(check(branch)).toBe(0);
+  });
+
+  it.each([
+    'claude/project-thread-abc123',
+    'gagnechris/fix-the-thing',
+    'feature/chr-notes',
+    'gagnechris/xchr-12-typo',
+    'main',
+  ])('refuses %s', (branch) => {
+    expect(check(branch)).toBe(1);
+  });
+
+  it('runs on every pull request before setup, with the ref in env', () => {
+    const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+    const build = ci.jobs.build!;
+    const guard = stepIndex(build, (s) =>
+      (s.run ?? '').includes('scripts/ci/check-branch-name.sh'),
+    );
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(
+      stepIndex(build, (s) => s.uses === SETUP_ACTION),
+    );
+    const step = build.steps![guard]! as Step & {
+      env?: Record<string, string>;
+    };
+    expect(step.if).toBe("github.event_name == 'pull_request'");
+    expect(step.env?.HEAD_REF).toBe('${{ github.head_ref }}');
+    expect(step.run).not.toContain('${{');
   });
 });

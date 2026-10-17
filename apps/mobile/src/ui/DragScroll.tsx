@@ -9,8 +9,7 @@ import {
 import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
-  ScrollView,
-  View,
+  ScrollViewInstance,
 } from 'react-native';
 
 /** What a drag inside a scroll view needs from it. */
@@ -35,7 +34,7 @@ const MAX_STEP = 14;
 
 /** Props and context for a scroll view whose content can drag rows. */
 export function useDragScrollView() {
-  const ref = useRef<ScrollView>(null);
+  const ref = useRef<ScrollViewInstance>(null);
   const offset = useRef(0);
   const minOffset = useRef(0);
   const maxOffset = useRef(Infinity);
@@ -99,13 +98,10 @@ export function useDragScrollView() {
           nativeEvent.contentInset.bottom,
       );
     },
-    // The scroll view's host instance measures like a View.
     onLayout: () =>
-      (ref.current as unknown as View | null)?.measureInWindow?.(
-        (_x, y, _width, height) => {
-          frame.current = { top: y, height };
-        },
-      ),
+      ref.current?.measureInWindow((_x, y, _width, height) => {
+        frame.current = { top: y, height };
+      }),
   };
 
   return { props, value, Provider: DragScrollContext.Provider };

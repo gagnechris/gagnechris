@@ -73,7 +73,8 @@ COMPONENTS_PATTERNS=(
   '.github/actions/setup/*'
 )
 
-changed="$(git diff --name-only "${BASE}" "${HEAD}")"
+# Both sides of a rename: a file moved out of a deploy path still changes it.
+changed="$(git diff --name-only --no-renames "${BASE}" "${HEAD}")"
 
 # Usage: matches <ignore-glob> <pattern>...  ('' ignores nothing)
 matches() {

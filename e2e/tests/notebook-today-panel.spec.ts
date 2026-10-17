@@ -462,7 +462,7 @@ test.describe('at 1000px', () => {
   });
 });
 
-test('at 767px the strip and sheet behave as before', async ({
+test('at 767px the strip opens the Today sheet and the side panel stays hidden', async ({
   page,
   apps,
   signIn,

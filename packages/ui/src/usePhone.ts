@@ -1,6 +1,7 @@
+import { breakpoint } from '@gagnechris/tokens';
 import { useSyncExternalStore } from 'react';
 
-const QUERY = '(max-width: 767px)';
+const QUERY = `(max-width: ${breakpoint.tabBar}px)`;
 
 const media = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -13,7 +14,7 @@ const subscribe = (onChange: () => void) => {
   return () => list?.removeEventListener('change', onChange);
 };
 
-/** True under 768px, where menus and dialogs open as bottom sheets. */
+/** True at the tab-bar width and below, where menus and dialogs open as bottom sheets. */
 export const usePhone = () =>
   useSyncExternalStore(
     subscribe,

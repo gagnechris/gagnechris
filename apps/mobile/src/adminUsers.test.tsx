@@ -164,6 +164,30 @@ describe('Users', () => {
     expect(allText(renderer)).not.toContain('no longer has access');
   });
 
+  it('finishes a removal that stopped part-way', async () => {
+    const renderer = await show([
+      me,
+      makeUser('sam', {
+        name: 'Sam Rivera',
+        level: 'cms',
+        status: 'removed',
+        removalUnfinished: true,
+      }),
+    ]);
+    expect(allText(renderer)).toContain('Removal unfinished');
+    act(() => row(renderer, 'Sam Rivera').props.onPress());
+    expect(allText(renderer)).toContain('Removing them didn’t finish');
+    byLabel(renderer, 'Restore access');
+    acceptAlert();
+    await act(async () => byLabel(renderer, 'Finish removing').props.onPress());
+    await settle(5);
+    expect(server.state.users.get('sam')).toMatchObject({ status: 'removed' });
+    expect(server.state.users.get('sam')!.removalUnfinished).toBeUndefined();
+    expect(allText(renderer)).toContain(
+      'Sam Rivera no longer has access. Their notes are kept.',
+    );
+  });
+
   it('restores a removed user and keeps your own access fixed', async () => {
     const renderer = await show([
       me,
