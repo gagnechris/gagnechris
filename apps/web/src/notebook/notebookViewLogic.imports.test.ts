@@ -39,7 +39,12 @@ const VIEW_LOGIC = [
   'highlightParts',
   'newestById',
   'byNewest',
+  'lineAfterOuterBlock',
+  'insertAfterTaskBlock',
 ] as const;
+
+/** Names an editor's own copy of the outer-block rule would go by. */
+const OWN_BLOCK_RULE = /\b(?:function|const)\s+(\w*outer\w*block\w*)\b/gi;
 
 const sourceFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -88,6 +93,7 @@ describe('Notebook view logic', () => {
       ['kit/markdown/taskDateMenuEditor.tsx', 'taskDateMenuReducer'],
       ['kit/markdown/taskDateMenuEditor.tsx', 'tokenInsertion'],
       ['kit/tasks/TaskDateButton.tsx', 'taskDateMenuItems'],
+      ['kit/markdown/taskEmbeds.tsx', 'lineAfterOuterBlock'],
     ];
     for (const [file, name] of uses) {
       expect({ file, name, from: importOf(file, name) }).toEqual({
@@ -110,6 +116,9 @@ describe('Notebook view logic', () => {
         ) {
           offenders.push(`${where} defines ${name}`);
         }
+      }
+      for (const [, name] of code.matchAll(OWN_BLOCK_RULE)) {
+        offenders.push(`${where} defines ${name}`);
       }
       for (const [name, from] of namedImports(code)) {
         if (

@@ -1,5 +1,7 @@
 import { useLatest, type useNoteTaskEmbedSync } from '@gagnechris/app-core';
 import {
+  insertAfterTaskBlock,
+  lineAfterOuterBlock,
   markdownPlainText,
   openTaskDateQuery,
   TASK_LINE_PREFIX,
@@ -295,6 +297,7 @@ export const NoteBodyEditor = ({
     if (!segment) return edit(key, typed);
     const before = segmentText(segment);
     const pending = trims.current.get(key);
+    if (!pending && breakAfterRow(segment, before, typed, caret)) return;
     let text = typed;
     if (pending) {
       const rebased = rebaseText(typed, before, pending);
@@ -417,19 +420,91 @@ export const NoteBodyEditor = ({
     },
   });
 
-  /** Puts the caret on a blank line right under the embed at `key`. */
+  /** Puts `markdown` in the note and the caret on `line` at `column`. */
+  const placeCaret = (
+    markdown: string,
+    line: number,
+    column: number,
+    inserted: { at: number; count: number } | null,
+  ) => {
+    const { markdown: current, foldBreaks } = latest.current;
+    if (markdown !== current) onChange(markdown);
+    // A fold's break below the new lines moves down with them.
+    const breaks = inserted
+      ? new Set(
+          [...foldBreaks].map((b) =>
+            b > inserted.at ? b + inserted.count : b,
+          ),
+        )
+      : foldBreaks;
+    const target = segmentAtLine(noteSegments(markdown, breaks), line);
+    if (!target) return;
+    const offset = offsetOf(target.lines, line - target.start, column);
+    const moved = {
+      key: target.key,
+      selection: { start: offset, end: offset },
+    };
+    pendingSelection.current = moved;
+    setFocus(moved);
+  };
+
+  /**
+   * Puts the caret on a blank line after the outer block of the embed at
+   * `key`, as on web: a line inside the block would take its subtasks from
+   * their parent.
+   */
   const continueAfter = (key: string) => {
-    const all = latest.current.segments;
-    const next = all[all.findIndex((s) => s.key === key) + 1];
-    if (next?.kind !== 'text') return;
-    const caret = { start: 0, end: 0 };
-    if (next.lines.length === 0 || next.lines[0] === '') {
-      const moved = { key: next.key, selection: caret };
-      pendingSelection.current = moved;
-      setFocus(moved);
-    } else {
-      edit(next.key, `\n${segmentText(next)}`, caret);
+    const { segments: all, markdown: current } = latest.current;
+    const row = all.find((s) => s.key === key);
+    if (row?.kind !== 'embed') return;
+    const lines = current.split('\n');
+    const at = lineAfterOuterBlock(lines, row.start);
+    const next = lines[at];
+    if (next !== undefined && next.trim() === '') {
+      placeCaret(current, at, next.length, null);
+      return;
     }
+    const empty = all.find(
+      (s) => s.kind === 'text' && s.start === at && s.lines.length === 0,
+    );
+    if (empty) {
+      placeCaret(current, at, 0, null);
+      return;
+    }
+    const added = [...lines.slice(0, at), '', ...lines.slice(at)];
+    placeCaret(added.join('\n'), at, 0, { at, count: 1 });
+  };
+
+  /**
+   * The start of a text run right under a task row is the end of that row:
+   * a line break typed or pasted there goes after the row's outer block.
+   * True when it did.
+   */
+  const breakAfterRow = (
+    segment: TextSegment,
+    before: string,
+    text: string,
+    caret?: Selection,
+  ) => {
+    const { segments: all, markdown: current } = latest.current;
+    const row = all[all.indexOf(segment) - 1];
+    if (row?.kind !== 'embed' || !text.endsWith(before)) return false;
+    const inserted = text.slice(0, text.length - before.length);
+    if (!inserted.includes('\n')) return false;
+    if (caret && caret.end !== inserted.length) return false;
+    const lines = current.split('\n');
+    const at = lineAfterOuterBlock(lines, row.start);
+    if (at <= segment.start) return false;
+    if (/^\r?\n$/.test(inserted)) {
+      continueAfter(row.key);
+      return true;
+    }
+    const result = insertAfterTaskBlock(lines, row.start, inserted);
+    placeCaret(result.lines.join('\n'), result.line, result.column, {
+      at,
+      count: result.lines.length - lines.length,
+    });
+    return true;
   };
 
   const lastText = segments[segments.length - 1]!.key;
