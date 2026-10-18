@@ -5,6 +5,7 @@ package notebook
 
 import (
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -225,13 +226,16 @@ func carriedInLines(tasks []CarriedInTask) []string {
 	return lines
 }
 
-// NestLike sets the parent of each task note embeds from note's indentation,
-// none when it isn't indented under a task there; tasks note doesn't embed
-// keep theirs.
-func NestLike(tasks []CarriedInTask, note string) []CarriedInTask {
-	embedded := map[string]bool{}
+// ArrangeLike puts the tasks note embeds first, in note's order, and the rest
+// after in their own order. Each task note embeds takes its parent from
+// note's indentation, none when it isn't indented under a task there; tasks
+// note doesn't embed keep theirs.
+func ArrangeLike(tasks []CarriedInTask, note string) []CarriedInTask {
+	position := map[string]int{}
 	for _, e := range FindTaskEmbeds(note) {
-		embedded[e.ID] = true
+		if _, ok := position[e.ID]; !ok {
+			position[e.ID] = len(position)
+		}
 	}
 	parents := map[string]string{}
 	for _, s := range TaskEmbedParents(note) {
@@ -241,7 +245,7 @@ func NestLike(tasks []CarriedInTask, note string) []CarriedInTask {
 	for i, t := range tasks {
 		out[i] = t
 		id := strings.ToUpper(t.ID)
-		if !embedded[id] {
+		if _, ok := position[id]; !ok {
 			continue
 		}
 		out[i].ParentID = nil
@@ -249,6 +253,19 @@ func NestLike(tasks []CarriedInTask, note string) []CarriedInTask {
 			out[i].ParentID = &p
 		}
 	}
+	slices.SortStableFunc(out, func(a, b CarriedInTask) int {
+		pa, okA := position[strings.ToUpper(a.ID)]
+		pb, okB := position[strings.ToUpper(b.ID)]
+		switch {
+		case okA && okB:
+			return pa - pb
+		case okA:
+			return -1
+		case okB:
+			return 1
+		}
+		return 0
+	})
 	return out
 }
 
