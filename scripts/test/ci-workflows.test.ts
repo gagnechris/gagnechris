@@ -1333,6 +1333,11 @@ describe('iOS release tag ruleset', () => {
       `#!/usr/bin/env bash\necho "$*" >> '${log}'\n`,
     );
     chmodSync(join(bin, 'gh'), 0o755);
+    writeFileSync(
+      join(bin, 'python3'),
+      '#!/usr/bin/env bash\necho "Bad CPU type in executable" >&2\nexit 126\n',
+    );
+    chmodSync(join(bin, 'python3'), 0o755);
     const r = spawnSync(
       'bash',
       [join(ROOT, 'scripts', 'apply-branch-protection.sh')],
@@ -1348,6 +1353,49 @@ describe('iOS release tag ruleset', () => {
     expect(posts).toEqual([
       expect.stringContaining('scripts/main-branch-ruleset.json'),
       expect.stringContaining('scripts/ios-release-tag-ruleset.json'),
+    ]);
+  });
+});
+
+describe('apply-github-environments.sh', () => {
+  it('adds missing policies before removing extra ones, without python3', () => {
+    const bin = join(tempDir(), 'bin');
+    mkdirSync(bin);
+    const log = join(bin, 'gh.log');
+    writeFileSync(
+      join(bin, 'gh'),
+      [
+        '#!/usr/bin/env bash',
+        `echo "$*" >> '${log}'`,
+        'case "$*" in',
+        `  *"--paginate"*prod*) echo '{"id":7,"name":"old","type":"branch"}'; echo '{"id":8,"name":"main","type":"branch"}' ;;`,
+        '  *"--paginate"*) ;;',
+        `  *"--method POST"*) echo '{"id":9,"name":"x","type":"tag"}' ;;`,
+        'esac',
+        '',
+      ].join('\n'),
+    );
+    chmodSync(join(bin, 'gh'), 0o755);
+    writeFileSync(join(bin, 'python3'), '#!/usr/bin/env bash\nexit 126\n');
+    chmodSync(join(bin, 'python3'), 0o755);
+    const r = spawnSync(
+      'bash',
+      [join(ROOT, 'scripts', 'apply-github-environments.sh')],
+      {
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        encoding: 'utf8',
+      },
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const writes = readFileSync(log, 'utf8')
+      .split('\n')
+      .filter((l) => l.startsWith('api --method'))
+      .map((l) => l.split(' ').slice(0, 4).join(' '));
+    expect(writes).toEqual([
+      'api --method PUT repos/gagnechris/gagnechris/environments/prod',
+      'api --method DELETE repos/gagnechris/gagnechris/environments/prod/deployment-branch-policies/7',
+      'api --method PUT repos/gagnechris/gagnechris/environments/testflight',
+      'api --method POST repos/gagnechris/gagnechris/environments/testflight/deployment-branch-policies',
     ]);
   });
 });

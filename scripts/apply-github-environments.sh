@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Requires gh auth with admin on the repo. Uses Python (jq may be x86-only).
+# Requires gh auth with admin on the repo.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,8 +11,8 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required" >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required" >&2
   exit 1
 fi
 
@@ -21,128 +21,83 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   exit 1
 fi
 
-REPO="$REPO" CONFIG_FILE="$CONFIG_FILE" python3 <<'PY'
-import json, os, subprocess
-from typing import Dict, List, Optional
+REPO="$REPO" CONFIG_FILE="$CONFIG_FILE" node --input-type=module <<'JS'
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
-repo = os.environ["REPO"]
-with open(os.environ["CONFIG_FILE"], encoding="utf-8") as f:
-    cfg = json.load(f)
+const repo = process.env.REPO;
+const cfg = JSON.parse(readFileSync(process.env.CONFIG_FILE, 'utf8'));
 
+const gh = (args, input) =>
+  execFileSync('gh', ['api', ...args], {
+    input,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'inherit'],
+  });
 
-def list_branch_policies(env_name: str) -> List[Dict]:
-    """Paginate deployment-branch-policies (GitHub may page the list)."""
-    policies: List[Dict] = []
-    url: Optional[str] = (
-        f"repos/{repo}/environments/{env_name}/deployment-branch-policies?per_page=100"
-    )
-    while url:
-        proc = subprocess.run(
-            ["gh", "api", "-i", url],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        raw = proc.stdout
-        if "\r\n\r\n" in raw:
-            header_blob, body = raw.split("\r\n\r\n", 1)
-        elif "\n\n" in raw:
-            header_blob, body = raw.split("\n\n", 1)
-        else:
-            header_blob, body = "", raw
-        payload = json.loads(body)
-        policies.extend(payload.get("branch_policies", []))
-        next_url = None
-        for line in header_blob.splitlines():
-            if line.lower().startswith("link:"):
-                for part in line.split(","):
-                    if 'rel="next"' in part:
-                        start = part.find("<") + 1
-                        end = part.find(">")
-                        full = part[start:end]
-                        marker = "api.github.com/"
-                        next_url = (
-                            full.split(marker, 1)[-1] if marker in full else full
-                        )
-        url = next_url
-    return policies
+const listBranchPolicies = (env) =>
+  gh([
+    '--paginate',
+    `repos/${repo}/environments/${env}/deployment-branch-policies?per_page=100`,
+    '--jq',
+    '.branch_policies[]',
+  ])
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 
+const key = (p) => `${p.name}\0${p.type ?? 'branch'}`;
 
-for env in cfg["environments"]:
-    name = env["name"]
-    print(f"Configuring environment: {name}")
-    body = {
-        "wait_timer": env.get("wait_timer", 0),
-        "prevent_self_review": env.get("prevent_self_review", False),
-        "reviewers": env.get("reviewers", []),
-        "deployment_branch_policy": env["deployment_branch_policy"],
+for (const env of cfg.environments) {
+  console.log(`Configuring environment: ${env.name}`);
+  gh(
+    ['--method', 'PUT', `repos/${repo}/environments/${env.name}`, '--input', '-'],
+    JSON.stringify({
+      wait_timer: env.wait_timer ?? 0,
+      prevent_self_review: env.prevent_self_review ?? false,
+      reviewers: env.reviewers ?? [],
+      deployment_branch_policy: env.deployment_branch_policy,
+    }),
+  );
+
+  const desired = env.custom_branch_policies ?? [];
+  const desiredKeys = new Set(desired.map(key));
+  const existingKeys = new Set(listBranchPolicies(env.name).map(key));
+
+  // Add missing policies first so prod is never left with no allowed ref.
+  for (const policy of desired) {
+    if (existingKeys.has(key(policy))) {
+      console.log(`  Keeping branch policy: ${JSON.stringify(policy)}`);
+      continue;
     }
-    subprocess.run(
+    console.log(`  Adding branch policy: ${JSON.stringify(policy)}`);
+    const created = JSON.parse(
+      gh(
         [
-            "gh",
-            "api",
-            "--method",
-            "PUT",
-            f"repos/{repo}/environments/{name}",
-            "--input",
-            "-",
+          '--method',
+          'POST',
+          `repos/${repo}/environments/${env.name}/deployment-branch-policies`,
+          '--input',
+          '-',
         ],
-        input=json.dumps(body),
-        text=True,
-        check=True,
-    )
+        JSON.stringify(policy),
+      ),
+    );
+    console.log(`  -> id=${created.id} name=${created.name} type=${created.type}`);
+  }
 
-    desired = env.get("custom_branch_policies", [])
-    desired_keys = {(p["name"], p.get("type", "branch")) for p in desired}
+  for (const policy of listBranchPolicies(env.name)) {
+    if (desiredKeys.has(key(policy))) continue;
+    console.log(`  Removing extra branch policy id=${policy.id} name=${policy.name}`);
+    gh([
+      '--method',
+      'DELETE',
+      `repos/${repo}/environments/${env.name}/deployment-branch-policies/${policy.id}`,
+    ]);
+  }
+}
 
-    existing = list_branch_policies(name)
-    existing_by_key = {(p["name"], p.get("type", "branch")): p for p in existing}
-
-    # Add missing policies FIRST so prod is never left with zero allowed branches.
-    for policy in desired:
-        key = (policy["name"], policy.get("type", "branch"))
-        if key in existing_by_key:
-            print(f"  Keeping branch policy: {policy}")
-            continue
-        print(f"  Adding branch policy: {policy}")
-        out = subprocess.check_output(
-            [
-                "gh",
-                "api",
-                "--method",
-                "POST",
-                f"repos/{repo}/environments/{name}/deployment-branch-policies",
-                "--input",
-                "-",
-            ],
-            input=json.dumps(policy),
-            text=True,
-        )
-        created = json.loads(out)
-        print(
-            f"  -> id={created.get('id')} name={created.get('name')} type={created.get('type')}"
-        )
-
-    for policy in list_branch_policies(name):
-        key = (policy["name"], policy.get("type", "branch"))
-        if key in desired_keys:
-            continue
-        pid = policy["id"]
-        print(f"  Removing extra branch policy id={pid} name={policy.get('name')}")
-        subprocess.run(
-            [
-                "gh",
-                "api",
-                "--method",
-                "DELETE",
-                f"repos/{repo}/environments/{name}/deployment-branch-policies/{pid}",
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-
-print(
-    f"Done. Verify with: gh api repos/{repo}/environments "
-    "--jq '.environments[] | {name, deployment_branch_policy, protection_rules}'"
-)
-PY
+console.log(
+  `Done. Verify with: gh api repos/${repo}/environments --jq '.environments[] | {name, deployment_branch_policy, protection_rules}'`,
+);
+JS
