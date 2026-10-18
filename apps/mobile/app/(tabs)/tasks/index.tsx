@@ -22,7 +22,6 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -34,6 +33,7 @@ import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
 import { EmptyState } from '../../../src/ui/EmptyState';
+import { PressArea } from '../../../src/ui/PressArea';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
 import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
@@ -183,12 +183,13 @@ const TasksScreen = () => {
           const selected = option === showOn;
           const label = option ? TASK_SHOW_ON_LABELS[option] : 'Any day';
           return (
-            <Pressable
+            <PressArea
               key={option || 'any'}
               accessibilityRole="tab"
               accessibilityLabel={label}
               accessibilityState={{ selected }}
               onPress={() => setShowOn(option)}
+              feedback="fade"
               style={[styles.chip, selected && styles.chipSelected]}
             >
               <Text
@@ -196,7 +197,7 @@ const TasksScreen = () => {
               >
                 {label}
               </Text>
-            </Pressable>
+            </PressArea>
           );
         })}
       </ScrollView>

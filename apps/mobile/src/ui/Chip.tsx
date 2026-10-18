@@ -12,7 +12,8 @@ import {
 import { color, font, MIN_TARGET } from '../theme';
 import { Icon } from './Icon';
 
-export type ChipTone = 'neutral' | 'selected' | 'warning' | 'danger';
+/** `add` is the dashed chip that adds an item to a set of chips. */
+export type ChipTone = 'neutral' | 'selected' | 'warning' | 'danger' | 'add';
 
 type ChipProps = {
   children: string;
@@ -211,10 +212,12 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.55 },
   text: { ...font.medium, fontSize: tokens.text.caption },
   dot: { width: 6, height: 6, borderRadius: 3 },
+  // With the chip's slop on every side, a 44 pt square.
   remove: {
+    minWidth: CHIP_HEIGHT,
     minHeight: CHIP_HEIGHT,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingRight: tokens.space[2],
   },
   select: {
     flexDirection: 'row',
@@ -253,6 +256,12 @@ const chipBox = StyleSheet.create<Record<ChipTone, ViewStyle>>({
     borderWidth: 1,
     borderColor: tokens.color.dangerBorder,
   },
+  add: {
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.border,
+    borderStyle: 'dashed',
+  },
 });
 
 const chipText = StyleSheet.create<Record<ChipTone, TextStyle>>({
@@ -260,4 +269,5 @@ const chipText = StyleSheet.create<Record<ChipTone, TextStyle>>({
   selected: { color: tokens.primary[800] },
   warning: { color: tokens.color.warning },
   danger: { color: tokens.color.danger },
+  add: { color: color.accent },
 });

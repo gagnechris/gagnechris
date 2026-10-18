@@ -4,7 +4,6 @@ import {
   Alert,
   Image,
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,10 +13,12 @@ import {
 } from 'react-native';
 import { PUBLIC_SITE_ORIGIN, resolveMarkdownUrl } from '../markdown/links';
 import { color, font, MIN_TARGET } from '../theme';
+import { Chip } from '../ui/Chip';
 import { confirmAction } from '../ui/confirm';
 import { Icon } from '../ui/Icon';
 import { ListRow } from '../ui/ListRow';
 import { Section } from '../ui/Section';
+import { TextButton } from '../ui/TextButton';
 
 /** A page sheet with Done, holding an editor's secondary fields. */
 export const DetailsSheet = ({
@@ -46,14 +47,9 @@ export const DetailsSheet = ({
         >
           {title}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Done"
-          onPress={onClose}
-          style={styles.done}
-        >
-          <Text style={styles.doneText}>Done</Text>
-        </Pressable>
+        <TextButton strong align="end" onPress={onClose}>
+          Done
+        </TextButton>
       </View>
       <ScrollView
         contentContainerStyle={styles.content}
@@ -124,7 +120,7 @@ export const TextField = ({
   );
 };
 
-/** Chips that remove on tap (after a confirm), plus an add chip. */
+/** Chips that remove (after a confirm), plus an add chip. */
 export const ChipsField = ({
   label,
   noun,
@@ -152,25 +148,18 @@ export const ChipsField = ({
       <FieldLabel>{label}</FieldLabel>
       <View style={styles.chips}>
         {values.map((item) => (
-          <Pressable
+          <Chip
             key={item}
-            accessibilityRole="button"
             accessibilityLabel={`${label}: ${item}`}
-            accessibilityHint={`Removes the ${noun}`}
-            onPress={() => void remove(item)}
-            style={styles.chip}
+            removeLabel={`Remove ${noun} ${item}`}
+            onRemove={() => void remove(item)}
           >
-            <Text style={styles.chipText}>{item}</Text>
-          </Pressable>
+            {item}
+          </Chip>
         ))}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Add ${noun}`}
-          onPress={add}
-          style={[styles.chip, styles.addChip]}
-        >
-          <Text style={styles.addText}>+ {noun}</Text>
-        </Pressable>
+        <Chip tone="add" accessibilityLabel={`Add ${noun}`} onPress={add}>
+          {`+ ${noun}`}
+        </Chip>
       </View>
     </>
   );
@@ -251,17 +240,6 @@ const styles = StyleSheet.create({
     color: color.ink,
     flexShrink: 1,
   },
-  done: {
-    minHeight: MIN_TARGET,
-    minWidth: MIN_TARGET,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  doneText: {
-    ...font.semibold,
-    fontSize: tokens.text.body,
-    color: color.accent,
-  },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.space[12],
@@ -296,30 +274,13 @@ const styles = StyleSheet.create({
   },
   prefix: { ...font.regular, fontSize: tokens.text.body, color: color.muted },
   prefixedInput: { flex: 1 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.space[2] },
-  chip: {
+  // Room for each chip's slop, so every chip keeps a 44 pt target.
+  chips: {
     flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: MIN_TARGET,
-    paddingHorizontal: tokens.space[3],
-    borderRadius: tokens.radius.md,
-    backgroundColor: color.fill,
-  },
-  chipText: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.inkSoft,
-  },
-  addChip: {
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderStyle: 'dashed',
-  },
-  addText: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.accent,
+    flexWrap: 'wrap',
+    rowGap: tokens.space[4],
+    columnGap: tokens.space[2],
+    paddingVertical: tokens.space[2],
   },
   image: {
     width: '100%',

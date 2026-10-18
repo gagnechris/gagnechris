@@ -1,6 +1,7 @@
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
+import { PressArea } from '../ui/PressArea';
 
 type Props = {
   title: string;
@@ -34,18 +35,13 @@ export const ContentRow = ({ title, meta, tags, divider, onPress }: Props) => {
     );
   }
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PressArea
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        divider && styles.divider,
-        pressed && styles.pressed,
-      ]}
+      style={[styles.row, divider && styles.divider]}
     >
       {body}
-    </Pressable>
+    </PressArea>
   );
 };
 
@@ -61,7 +57,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
   },
-  pressed: { backgroundColor: color.fill },
   title: { ...font.semibold, fontSize: tokens.text.body, color: color.ink },
   meta: {
     ...font.regular,

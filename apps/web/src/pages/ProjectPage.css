@@ -230,7 +230,7 @@
 .project-links a {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   color: var(--color-link);
   text-decoration: underline;
   text-decoration-thickness: 1px;

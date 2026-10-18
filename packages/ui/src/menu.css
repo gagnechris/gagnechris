@@ -56,7 +56,7 @@
 }
 
 .ui-menu--sheet .ui-menu__item {
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   font-size: var(--text-base);
 }
 

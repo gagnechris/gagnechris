@@ -4,14 +4,15 @@ import type { SFSymbol } from 'expo-symbols';
 import {
   InputAccessoryView,
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { color, font, MIN_TARGET } from '../theme';
+import { color, font } from '../theme';
 import { Icon } from '../ui/Icon';
+import { IconButton } from '../ui/IconButton';
+import { PressArea } from '../ui/PressArea';
 import type { ToolbarAction } from './toolbarEdits';
 
 export const NOTE_TOOLBAR_ID = 'note-keyboard-toolbar';
@@ -64,35 +65,31 @@ export const NoteKeyboardToolbar = <A extends string = ToolbarAction>({
             contentContainerStyle={styles.chips}
           >
             {dateMenu.items.map((item) => (
-              <Pressable
+              <PressArea
                 key={item.id}
                 accessibilityRole="menuitem"
                 accessibilityLabel={
                   item.detail ? `${item.label}, ${item.detail}` : item.label
                 }
                 onPress={() => onPickDate?.(item)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.chip}
               >
                 <Text style={styles.chipLabel}>{item.label}</Text>
                 {item.detail ? (
                   <Text style={styles.chipDetail}>{item.detail}</Text>
                 ) : null}
-              </Pressable>
+              </PressArea>
             ))}
           </ScrollView>
         </View>
       ) : null}
       <View style={styles.buttons} accessibilityRole="toolbar">
         {buttons.map((button) => (
-          <Pressable
+          <IconButton
             key={button.action}
-            accessibilityRole="button"
-            accessibilityLabel={button.label}
+            size="lg"
+            label={button.label}
             onPress={() => onAction(button.action)}
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
           >
             {button.icon ? (
               <Icon name={button.icon} size={20} color={color.ink} />
@@ -107,21 +104,20 @@ export const NoteKeyboardToolbar = <A extends string = ToolbarAction>({
                 {button.text}
               </Text>
             )}
-          </Pressable>
+          </IconButton>
         ))}
         <View style={styles.spacer} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Hide keyboard"
+        <IconButton
+          size="lg"
+          label="Hide keyboard"
           onPress={() => onHideKeyboard()}
-          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
         >
           <Icon
             name="keyboard.chevron.compact.down"
             size={20}
             color={color.ink}
           />
-        </Pressable>
+        </IconButton>
       </View>
     </View>
   </InputAccessoryView>
@@ -167,13 +163,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: tokens.space[1],
   },
-  button: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-  },
   buttonText: { ...font.bold, fontSize: tokens.text.body, color: color.ink },
   wordText: {
     ...font.semibold,
@@ -181,6 +170,5 @@ const styles = StyleSheet.create({
     color: color.ink,
     paddingHorizontal: tokens.space[2],
   },
-  pressed: { backgroundColor: color.fill },
   spacer: { flex: 1 },
 });

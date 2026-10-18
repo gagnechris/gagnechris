@@ -8,7 +8,7 @@ const meta = {
   title: 'Shared UI/Chip',
   component: Chip,
   parameters: catalog(
-    '`apps/mobile/src/ui/Chip.tsx` (`Chip` in the same tones; `ChipSelect` opens an action sheet)',
+    '`apps/mobile/src/ui/Chip.tsx` (`Chip` in the same tones plus a dashed `add` tone; `ChipSelect` opens an action sheet)',
     'A 26px pill in four tones, with an optional dot or icon and a remove button labelled "Remove {value}". With `onClick` it is a toggle. ChipSelect is an outline chip that opens a Menu; empty, it reads as an "Add …" action.',
   ),
   args: { children: 'Work' },

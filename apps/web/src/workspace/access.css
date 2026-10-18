@@ -95,18 +95,18 @@
   }
 
   .kit-status-filter .workspace-segmented__option {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .workspace-back {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .kit-input {
     min-width: 0;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .kit-field {

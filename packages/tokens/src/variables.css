@@ -112,6 +112,9 @@
   --radius-editorial: 0.625rem; /* 10px */
   --radius-full: 9999px;
 
+  /* Sizes */
+  --size-tap-target: 44px;
+
   /* Breakpoints (reference only: @media cannot use var()) */
   --breakpoint-phone: 480px;
   --breakpoint-narrow: 640px;

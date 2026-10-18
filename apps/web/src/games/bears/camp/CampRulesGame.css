@@ -363,7 +363,7 @@
 }
 
 .camp-link-btn {
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   padding: 0 var(--space-3);
   border: 0;
   background: transparent;
@@ -622,7 +622,7 @@
   .camp-end .bears-end__tip a {
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     margin-bottom: -10px;
     font-size: 15px;
     font-weight: 600;

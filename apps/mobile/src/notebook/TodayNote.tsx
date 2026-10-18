@@ -17,11 +17,12 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, type RefObject } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { nativeRetrySignals } from '../net';
-import { color, font, MIN_TARGET } from '../theme';
+import { color, font } from '../theme';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
+import { IconButton } from '../ui/IconButton';
 import { nativeConfirm } from '../ui/confirm';
 import {
   EditorError,
@@ -149,14 +150,15 @@ const DailyNoteEditor = ({
         >
           {entity!.version === 0 && !dirty ? 'New' : saveLabel}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Note options"
-          onPress={() => showTaskRowsChoice(entity!.id, peek.has(entity!.id))}
-          style={styles.options}
-        >
-          <Icon name="ellipsis" size={16} color={color.inkSoft} />
-        </Pressable>
+        <View style={styles.options}>
+          <IconButton
+            size="lg"
+            label="Note options"
+            onPress={() => showTaskRowsChoice(entity!.id, peek.has(entity!.id))}
+          >
+            <Icon name="ellipsis" size={16} color={color.inkSoft} />
+          </IconButton>
+        </View>
       </View>
       <EditorNotices conflict={conflict} saveError={saveError} dirty={dirty} />
       {isTemplateStartedDaily(entity!) && !dirty && saveState !== 'saving' ? (
@@ -213,13 +215,7 @@ const styles = StyleSheet.create({
     fontSize: tokens.text.caption,
     color: color.inkSoft,
   },
-  options: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: -tokens.space[3],
-  },
+  options: { marginRight: -tokens.space[3] },
   template: {
     gap: tokens.space[2],
     padding: tokens.space[3],

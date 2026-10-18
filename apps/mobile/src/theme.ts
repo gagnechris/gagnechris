@@ -34,4 +34,4 @@ export const color = {
 } as const;
 
 /** iOS minimum hit target. */
-export const MIN_TARGET = 44;
+export const MIN_TARGET = tokens.size.tapTarget;

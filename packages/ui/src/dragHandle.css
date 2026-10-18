@@ -32,6 +32,6 @@
 
 @media (max-width: 767px) {
   .ui-drag-handle {
-    height: 44px;
+    height: var(--size-tap-target);
   }
 }

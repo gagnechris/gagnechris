@@ -21,10 +21,8 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
-  Pressable,
   Share,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -44,7 +42,8 @@ import {
 import { showTaskRowsChoice } from '../../../src/notebook/taskActionSheets';
 import { useTaskDetailsStore } from '../../../src/notebook/taskDetailsStore';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
-import { color, font, MIN_TARGET } from '../../../src/theme';
+import { color, font } from '../../../src/theme';
+import { Chip } from '../../../src/ui/Chip';
 import { confirmAction, nativeConfirm } from '../../../src/ui/confirm';
 import { Icon } from '../../../src/ui/Icon';
 import { IconButton } from '../../../src/ui/IconButton';
@@ -219,51 +218,30 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
             submitBehavior="blurAndSubmit"
           />
           <View style={styles.chips}>
-            <View
-              style={styles.chip}
-              accessible
+            <Chip
               accessibilityLabel={`Area: ${notebookAreaName(areas, note.area)}`}
             >
-              <Text style={styles.chipText}>
-                {notebookAreaName(areas, note.area)}
-              </Text>
-            </View>
+              {notebookAreaName(areas, note.area)}
+            </Chip>
             {draft.pinned ? (
               <View style={styles.chip} accessible accessibilityLabel="Pinned">
                 <Icon name="pin.fill" size={12} color={color.inkSoft} />
               </View>
             ) : null}
-            {note.archived ? (
-              <View
-                style={styles.chip}
-                accessible
-                accessibilityLabel="Archived"
-              >
-                <Text style={styles.chipText}>Archived</Text>
-              </View>
-            ) : null}
+            {note.archived ? <Chip>Archived</Chip> : null}
             {parseTagsText(draft.tagsText).map((tag) => (
-              <Pressable
+              <Chip
                 key={tag}
-                accessibilityRole="button"
                 accessibilityLabel={`Tag ${tag}`}
                 accessibilityHint="Removes the tag"
                 onPress={() => void removeTag(tag)}
-                hitSlop={CHIP_SLOP}
-                style={styles.chip}
               >
-                <Text style={styles.chipText}>#{tag}</Text>
-              </Pressable>
+                {`#${tag}`}
+              </Chip>
             ))}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add tag"
-              onPress={addTag}
-              hitSlop={CHIP_SLOP}
-              style={[styles.chip, styles.addChip]}
-            >
-              <Text style={styles.addText}>+ tag</Text>
-            </Pressable>
+            <Chip tone="add" accessibilityLabel="Add tag" onPress={addTag}>
+              + tag
+            </Chip>
           </View>
           {preview ? (
             <MarkdownView
@@ -301,9 +279,8 @@ const NoteScreen = ({ id, onReload }: DetailScreenProps) => {
 
 export default detailEditorRoute(NoteScreen);
 
-const CHIP_HEIGHT = 32;
-// Tag chips stay compact; the slop makes each a 44pt target.
-const CHIP_SLOP = (MIN_TARGET - CHIP_HEIGHT) / 2;
+// The pinned marker lines up with the Chips beside it.
+const CHIP_HEIGHT = 28;
 
 const styles = StyleSheet.create({
   content: {
@@ -330,21 +307,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[3],
     borderRadius: tokens.radius.md,
     backgroundColor: color.fill,
-  },
-  chipText: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.inkSoft,
-  },
-  addChip: {
-    backgroundColor: color.surface,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderStyle: 'dashed',
-  },
-  addText: {
-    ...font.medium,
-    fontSize: tokens.text.caption,
-    color: color.accent,
   },
 });

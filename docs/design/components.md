@@ -66,7 +66,15 @@ is drawn smaller.
 
 iOS primitives with no web component: `ui/Screen.tsx`, `ui/DragScroll.tsx`,
 `ui/AccountCard.tsx`, `ui/YourApps.tsx`, `ui/SpaceTabs.tsx` (the tab bar of a
-space).
+space), and these two:
+
+| Component  | iOS                                                                                                                                          | Used by                                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TextButton | `ui/TextButton.tsx`: accent text with no box (`strong`; `xs`, `base`, `body`; `align`; `padded`)                                             | Cancel and Done on sheets and search, Add in quick add, Jump to today, Review on the sync bar                                                            |
+| PressArea  | `ui/PressArea.tsx`: a labelled press surface around custom content (`button`, `link`, `tab`, `radio`, `menuitem`; `fill` or `fade` feedback) | Search hits and recent searches, post previews, content rows, Mentioned in, the Today banner, the show-on filter, access level rows, the date menu chips |
+
+ESLint bans `Pressable` and `Touchable*` elements in `apps/mobile` outside
+`src/ui`, so every pressable screen element goes through a primitive here.
 
 The public site uses Button, IconButton, Field, TextInput, TextArea and Card.
 
@@ -182,14 +190,16 @@ uses:
 - **iOS:** the same component names and variants as web, at native sizes:
   Button `sm` 44 pt, `md` 50 pt (the default), `lg` 56 pt; IconButton `sm`
   28, `md` 36, `lg` 44; Chip 28 pt. Task checkboxes are round, as on web.
+  The 44 pt minimum is `tokens.size.tapTarget` (`MIN_TARGET` in
+  `apps/mobile/src/theme.ts`).
 
 The public site keeps its editorial look through `tone="editorial"` (below).
 
 ## Specs
 
-Values are tokens from `packages/tokens`. Every control is at least 44px tall
-under 768px, and text inputs use 16px text there. Every variant and state is
-drawn on the
+Values are tokens from `packages/tokens`. Every control is at least 44px
+(`--size-tap-target`) tall under 768px, and text inputs use 16px text there.
+Every variant and state is drawn on the
 [Component library specs](https://claude.ai/artifact/HxZthqfahxDTYwK8gNECtf)
 design canvas, and each component has a story in the Storybook catalog
 (`apps/storybook`).
@@ -289,6 +299,9 @@ arrows move the selection.
   `--color-danger-border`, `--color-danger`).
 - Optional leading dot or icon and a remove button labelled "Remove {value}",
   with a 44px hit area under 768px.
+- iOS adds an `add` tone: a dashed white chip in the accent colour ("+ tag")
+  that adds an item to the set; its remove button is a 44 pt square through
+  `hitSlop`.
 - ChipSelect is an outline chip (white, `--neutral-300` border) with a chevron
   that opens a Menu; an empty one reads as an "Add …" action in `--neutral-500`.
 

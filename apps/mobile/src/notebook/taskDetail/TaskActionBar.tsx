@@ -1,6 +1,7 @@
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, font, MIN_TARGET } from '../../theme';
+import { StyleSheet, View } from 'react-native';
+import { color } from '../../theme';
+import { Button } from '../../ui/Button';
 
 type Props = {
   done: boolean;
@@ -11,22 +12,14 @@ type Props = {
 /** Complete / Reopen and Snooze, pinned above the tab bar. */
 export const TaskActionBar = ({ done, onToggleDone, onSnooze }: Props) => (
   <View style={styles.bottomBar}>
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      variant="primary"
       accessibilityLabel={done ? 'Reopen task' : 'Complete task'}
       onPress={onToggleDone}
-      style={[styles.barButton, styles.primary]}
     >
-      <Text style={styles.primaryText}>{done ? 'Reopen' : 'Complete'}</Text>
-    </Pressable>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Snooze"
-      onPress={onSnooze}
-      style={[styles.barButton, styles.secondary]}
-    >
-      <Text style={styles.secondaryText}>Snooze</Text>
-    </Pressable>
+      {done ? 'Reopen' : 'Complete'}
+    </Button>
+    <Button onPress={onSnooze}>Snooze</Button>
   </View>
 );
 
@@ -40,24 +33,5 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: color.border,
-  },
-  barButton: {
-    flex: 1,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-  },
-  primary: { backgroundColor: color.accent },
-  primaryText: {
-    ...font.semibold,
-    fontSize: tokens.text.body,
-    color: color.surface,
-  },
-  secondary: { backgroundColor: color.fill },
-  secondaryText: {
-    ...font.semibold,
-    fontSize: tokens.text.body,
-    color: color.ink,
   },
 });

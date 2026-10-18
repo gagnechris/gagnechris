@@ -2,7 +2,6 @@ import { formatPostDate } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState, type ReactElement } from 'react';
 import {
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { Excerpt } from '../ui/Excerpt';
+import { PressArea } from '../ui/PressArea';
 
 export type PostPreviewItem = {
   slug: string;
@@ -29,12 +29,12 @@ export const PostPreview = ({
 }) => {
   const date = formatPostDate(post.publishedAt);
   return (
-    <Pressable
+    <PressArea
       accessibilityRole="link"
       accessibilityLabel={[post.title, date].filter(Boolean).join(', ')}
       accessibilityHint={post.excerpt || undefined}
       onPress={onPress}
-      style={({ pressed }) => [styles.preview, pressed && styles.pressed]}
+      style={styles.preview}
     >
       {date ? <Text style={styles.date}>{date}</Text> : null}
       <Text style={styles.title}>{post.title}</Text>
@@ -43,7 +43,7 @@ export const PostPreview = ({
           {post.excerpt}
         </Excerpt>
       ) : null}
-    </Pressable>
+    </PressArea>
   );
 };
 
@@ -112,7 +112,6 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface,
     borderRadius: tokens.radius.lg - 4,
   },
-  pressed: { backgroundColor: color.fill },
   date: {
     ...font.medium,
     fontSize: tokens.text.caption,

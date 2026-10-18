@@ -594,7 +594,7 @@
 @media (max-width: 767px) {
   .task-embed,
   .markdown-editor .cm-task-line {
-    --task-embed-line: 44px;
+    --task-embed-line: var(--size-tap-target);
   }
 
   .task-embed__title-wrap {
@@ -603,7 +603,7 @@
 
   .task-embed__open {
     width: 2.25rem;
-    height: 44px;
+    height: var(--size-tap-target);
   }
 
   /* A 44px target around a 26px chip. */
@@ -936,7 +936,7 @@
   }
 
   .markdown-toggle {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .markdown-editor .cm-content {

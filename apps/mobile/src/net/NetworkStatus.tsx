@@ -1,9 +1,9 @@
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOutboxFailedCount } from '../outbox/useOutbox';
-import { color, MIN_TARGET } from '../theme';
+import { TextButton } from '../ui/TextButton';
 import { useUpgradeRequired } from '../sync/upgradeRequired';
 import { useIsOnline } from './connectivity';
 import { useUnsavedEditCount } from './useUnsavedEditCount';
@@ -50,17 +50,15 @@ export const NetworkStatus = () => {
         </Text>
       ) : null}
       {failed > 0 ? (
-        <Pressable
-          accessibilityRole="button"
+        <TextButton
+          strong
+          size="xs"
           accessibilityHint="Shows the edits and what you can do about them"
           onPress={() => router.push('/conflicts')}
-          style={styles.review}
           testID="failed-edits"
         >
-          <Text style={styles.reviewText}>
-            {failedEditsLabel(failed)} · Review
-          </Text>
-        </Pressable>
+          {`${failedEditsLabel(failed)} · Review`}
+        </TextButton>
       ) : null}
     </View>
   );
@@ -86,12 +84,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: tokens.text.xs,
     color: tokens.neutral[600],
-  },
-  review: { minHeight: MIN_TARGET, justifyContent: 'center' },
-  reviewText: {
-    fontSize: tokens.text.xs,
-    color: color.accent,
-    fontWeight: '600',
   },
   notice: {
     fontSize: tokens.text.xs,

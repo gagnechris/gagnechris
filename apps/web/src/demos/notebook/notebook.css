@@ -232,7 +232,7 @@
   }
 
   .notebook-demo__input {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     padding: 0 11px;
     border: 1px solid var(--neutral-300);
     border-radius: 10px;
@@ -246,7 +246,7 @@
   }
 
   .notebook-demo__add .ui-btn {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     border-radius: 10px;
     font-size: 1rem;
   }
@@ -266,7 +266,7 @@
   }
 
   .notebook-demo__tab {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     padding: 0 8px;
     border: 0;
     border-bottom: 3px solid transparent;

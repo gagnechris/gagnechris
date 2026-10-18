@@ -77,7 +77,7 @@
 }
 
 .ui-btn--lg {
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   padding: 0 1.25rem;
   font-size: var(--text-base);
 }
@@ -130,7 +130,7 @@
 /* Phones: a finger needs a 44px target. */
 @media (max-width: 767px) {
   .ui-btn:not(.ui-btn--link) {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .ui-btn.ui-btn--editorial {

@@ -2,8 +2,9 @@ import { calendarDay } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { color, font, MIN_TARGET } from '../theme';
+import { Modal, StyleSheet, Text, View } from 'react-native';
+import { color, font } from '../theme';
+import { TextButton } from '../ui/TextButton';
 
 const dateOf = (day: string) => {
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
@@ -29,18 +30,15 @@ export const PickDateModal = ({ title, today, onDone, onCancel }: Props) => {
     >
       <View style={styles.sheet}>
         <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onCancel}
-            style={styles.action}
-          >
-            <Text style={styles.cancel}>Cancel</Text>
-          </Pressable>
+          <TextButton align="start" onPress={onCancel}>
+            Cancel
+          </TextButton>
           <Text style={styles.title} accessibilityRole="header">
             {title}
           </Text>
-          <Pressable
-            accessibilityRole="button"
+          <TextButton
+            strong
+            align="end"
             onPress={() =>
               onDone(
                 calendarDay(
@@ -50,10 +48,9 @@ export const PickDateModal = ({ title, today, onDone, onCancel }: Props) => {
                 ),
               )
             }
-            style={styles.action}
           >
-            <Text style={styles.done}>Done</Text>
-          </Pressable>
+            Done
+          </TextButton>
         </View>
         <DateTimePicker
           value={picked}
@@ -82,8 +79,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  action: { minHeight: MIN_TARGET, justifyContent: 'center' },
   title: { ...font.semibold, fontSize: tokens.text.body, color: color.ink },
-  cancel: { ...font.regular, fontSize: tokens.text.body, color: color.accent },
-  done: { ...font.semibold, fontSize: tokens.text.body, color: color.accent },
 });
