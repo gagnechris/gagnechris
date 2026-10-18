@@ -58,12 +58,12 @@ func TestSortTasksForList(t *testing.T) {
 	}
 }
 
-func TestNestLike(t *testing.T) {
+func TestArrangeLike(t *testing.T) {
 	const a, b, c, d = "01ARZ3NDEKTSV4RRFFQ69G5FA1", "01ARZ3NDEKTSV4RRFFQ69G5FA2", "01ARZ3NDEKTSV4RRFFQ69G5FA3", "01ARZ3NDEKTSV4RRFFQ69G5FA4"
 	stored := a
 	tasks := []CarriedInTask{{ID: a}, {ID: strings.ToLower(b)}, {ID: c, ParentID: &stored}, {ID: d, ParentID: &stored}}
 	note := "{{task:" + a + "}}\n  {{task:" + b + "}}\n{{task:" + c + "}}\n"
-	got := NestLike(tasks, note)
+	got := ArrangeLike(tasks, note)
 	parent := func(i int) string {
 		if got[i].ParentID == nil {
 			return ""
@@ -74,10 +74,23 @@ func TestNestLike(t *testing.T) {
 		t.Fatalf("parents = %q %q %q %q", parent(0), parent(1), parent(2), parent(3))
 	}
 	if tasks[2].ParentID == nil {
-		t.Fatal("NestLike changed its input")
+		t.Fatal("ArrangeLike changed its input")
 	}
 	want := []string{"{{task:" + a + "}}", "  {{task:" + strings.ToUpper(b) + "}}", "{{task:" + c + "}}"}
 	if lines := carriedInLines(got[:3]); !slices.Equal(lines, want) {
 		t.Fatalf("lines = %q", lines)
+	}
+}
+
+func TestArrangeLikeFollowsNoteOrder(t *testing.T) {
+	const a, b, c, d = "01ARZ3NDEKTSV4RRFFQ69G5FA1", "01ARZ3NDEKTSV4RRFFQ69G5FA2", "01ARZ3NDEKTSV4RRFFQ69G5FA3", "01ARZ3NDEKTSV4RRFFQ69G5FA4"
+	tasks := []CarriedInTask{{ID: a}, {ID: b}, {ID: c}, {ID: d}}
+	note := "## Focus\n{{task:" + c + "}}\n{{task:" + strings.ToLower(a) + "}}\n\n## Later\n{{task:" + b + "}}\n{{task:" + c + "}}\n"
+	var ids []string
+	for _, t := range ArrangeLike(tasks, note) {
+		ids = append(ids, t.ID)
+	}
+	if want := []string{c, a, b, d}; !slices.Equal(ids, want) {
+		t.Fatalf("order = %v, want %v", ids, want)
 	}
 }

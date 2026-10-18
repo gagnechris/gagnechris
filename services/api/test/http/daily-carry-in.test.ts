@@ -306,4 +306,25 @@ describe('opening a daily note carries in open tasks', () => {
       version: 1,
     });
   });
+
+  it('carries tasks in the order the previous day listed them', async () => {
+    await task(1);
+    await task(2);
+    await task(3);
+    await task(4);
+    await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+      body: {
+        id: id(85),
+        bodyMarkdown: `## Focus\n{{task:${id(3)}}}\n{{task:${id(1)}}}\n{{task:${id(2)}}}`,
+      },
+    });
+
+    const monday = await open(MON, id(86));
+    expect(taskEmbedIds(String(monday.body.bodyMarkdown))).toEqual([
+      id(3),
+      id(1),
+      id(2),
+      id(4),
+    ]);
+  });
 });

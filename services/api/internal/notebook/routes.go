@@ -462,14 +462,15 @@ func (h handlers) carryInto(ctx context.Context, r *api.Request, userID string, 
 	if len(carried) == 0 {
 		return nil, nil
 	}
-	// Nesting follows the previous day's note: a task indented there after it
-	// carried in has no parent of its own, since only its home note sets one.
+	// Order and nesting follow the previous day's note: a task indented there
+	// after it carried in has no parent of its own, since only its home note
+	// sets one.
 	previous, err := h.notes.latestDailyBefore(ctx, userID, area, date)
 	if err != nil {
 		return nil, err
 	}
 	if previous != nil {
-		carried = NestLike(carried, previous.BodyMarkdown)
+		carried = ArrangeLike(carried, previous.BodyMarkdown)
 	}
 	template, err := h.templates.get(ctx, userID, area)
 	if err != nil {
