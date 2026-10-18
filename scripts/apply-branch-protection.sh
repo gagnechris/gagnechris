@@ -14,8 +14,8 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required" >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo "node is required" >&2
   exit 1
 fi
 
@@ -24,7 +24,7 @@ for ruleset_file in "${RULESET_FILES[@]}"; do
     echo "Missing $ruleset_file" >&2
     exit 1
   fi
-  name="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["name"])' "$ruleset_file")"
+  name="$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).name' "$ruleset_file")"
   existing_id="$(
     gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$name\") | .id" \
       | head -n 1
