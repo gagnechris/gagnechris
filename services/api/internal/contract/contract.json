@@ -1348,6 +1348,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "unopened": {
+          "type": "boolean"
         }
       },
       "required": [

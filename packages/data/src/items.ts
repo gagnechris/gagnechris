@@ -448,6 +448,11 @@ export const NoteMetaItemSchema = VersionedMetaFieldsSchema.extend({
   archived: z.boolean().optional(),
   /** Absent on rows written before embeds; derived from the body on read. */
   taskIds: z.array(z.string()).optional(),
+  /**
+   * `true` on a daily note made by anything but `/open`, until the day's
+   * first open carries open tasks into it; absent otherwise.
+   */
+  unopened: z.boolean().optional(),
 });
 
 export type NoteMetaItem = z.infer<typeof NoteMetaItemSchema>;

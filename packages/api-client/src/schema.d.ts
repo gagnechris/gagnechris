@@ -6972,7 +6972,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Open the daily note; on first open, creates it from the template with open tasks from earlier days in its carry-over section */
+        /** Open the daily note; on first open, carries open tasks from earlier days into its carry-over section, creating it from the template when it does not exist */
         post: {
             parameters: {
                 query?: never;

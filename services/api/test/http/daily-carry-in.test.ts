@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ScanCommand } from '@aws-sdk/lib-dynamodb';
 import {
+  addMovedTaskBlock,
   DEFAULT_DAILY_TEMPLATES,
   fillDailyTemplate,
   taskEmbedIds,
@@ -169,7 +170,7 @@ describe('opening a daily note carries in open tasks', () => {
     expect(await dailyClaims()).toBe(1);
   });
 
-  it('leaves an existing note alone and creates nothing when nothing is open', async () => {
+  it('creates nothing when nothing is open, and leaves a note it made alone', async () => {
     const empty = await open(MON, id(81));
     expect(empty.body).toMatchObject({
       exists: false,
@@ -181,14 +182,124 @@ describe('opening a daily note carries in open tasks', () => {
     });
     expect(await dailyClaims()).toBe(0);
 
-    await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
+    await task(1);
+    const first = await open(MON, id(82));
+    expect(first.body).toMatchObject({ id: id(82), version: 1 });
+    await task(6, { startDate: '2026-10-01' });
+    const again = await open(MON, id(83));
+    expect(again.body).toMatchObject({
+      id: id(82),
+      version: 1,
+      bodyMarkdown: first.body.bodyMarkdown,
+    });
+  });
+
+  const mondayTemplate = fillDailyTemplate(DEFAULT_DAILY_TEMPLATES.work, {
+    areaName: 'Work',
+    date: MON,
+  });
+  // What moving task 9 to Monday writes: the day's template, then the
+  // task's block, here with task 6 under it.
+  const movedToMonday = addMovedTaskBlock(
+    mondayTemplate,
+    id(9),
+    `{{task:${id(9)}}}\n  {{task:${id(6)}}}`,
+  )!;
+  const moveToMonday = () =>
+    call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
+      body: { id: id(80), bodyMarkdown: movedToMonday },
+    });
+
+  it('a day a task was moved to carries in on its first open', async () => {
+    await task(1);
+    await task(6, { startDate: '2026-10-01' });
+    await task(9, { startDate: MON });
+    expect((await moveToMonday()).status).toBe(200);
+    const edited = movedToMonday + 'Agenda\n';
+    const edit = await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
+      body: { id: id(80), version: 1, bodyMarkdown: edited },
+    });
+    expect(edit.status).toBe(200);
+
+    const monday = await open(MON, id(81));
+    expect(monday.status).toBe(200);
+    const carried = edited.replace(
+      '## Focus for Monday\n- \n\n',
+      `## Focus for Monday\n{{task:${id(1)}}}\n\n`,
+    );
+    expect(monday.body).toMatchObject({
+      id: id(80),
+      version: 3,
+      bodyMarkdown: carried,
+    });
+    expect(new Set(monday.body.taskIds as string[])).toEqual(
+      new Set([id(1), id(6), id(9)]),
+    );
+
+    await task(2);
+    const again = await open(MON, id(82));
+    expect(again.body).toMatchObject({
+      id: id(80),
+      version: 3,
+      bodyMarkdown: carried,
+    });
+  });
+
+  it('carries into the template section by its filled heading', async () => {
+    await task(1);
+    const template = await call('PUT', '/api/notebook/templates/daily/work', {
       body: {
-        id: id(82),
-        bodyMarkdown: 'Standup',
+        version: 0,
+        bodyMarkdown: '## Notes\n- \n\n## Focus for {{weekday}}\n- \n',
+        carryOverSection: 'Focus for {{weekday}}',
       },
     });
+    expect(template.status).toBe(200);
+    await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
+      body: {
+        id: id(80),
+        bodyMarkdown: `## Notes\n- \n\n## Focus for Monday\n- \n`,
+      },
+    });
+
+    expect((await open(MON, id(81))).body.bodyMarkdown).toBe(
+      `## Notes\n- \n\n## Focus for Monday\n{{task:${id(1)}}}\n`,
+    );
+  });
+
+  it('two devices opening a day a task was moved to carry in once', async () => {
     await task(1);
-    const existing = await open(MON, id(83));
+    await task(6, { startDate: '2026-10-01' });
+    await task(9, { startDate: MON });
+    expect((await moveToMonday()).status).toBe(200);
+
+    const [phone, desktop] = await Promise.all([
+      open(MON, id(81)),
+      open(MON, id(82)),
+    ]);
+    expect(phone.status).toBe(200);
+    expect(desktop.status).toBe(200);
+    expect(desktop.body).toMatchObject({
+      id: id(80),
+      version: 2,
+      bodyMarkdown: phone.body.bodyMarkdown,
+    });
+    expect(String(phone.body.bodyMarkdown).match(/\{\{task:/g)).toHaveLength(3);
+  });
+
+  it('a note made before the day with nothing to carry is left alone after its first open', async () => {
+    await call('PUT', `/api/notebook/notes/daily/work/${MON}`, {
+      body: { id: id(82), bodyMarkdown: 'Standup' },
+    });
+    const first = await open(MON, id(83));
+    expect(first.body).toMatchObject({
+      id: id(82),
+      bodyMarkdown: 'Standup',
+      version: 1,
+    });
+
+    await task(1);
+    const existing = await open(MON, id(84));
     expect(existing.body).toMatchObject({
       id: id(82),
       bodyMarkdown: 'Standup',

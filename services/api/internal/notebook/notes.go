@@ -199,6 +199,8 @@ type createNoteInput struct {
 	title, body        string
 	tags               []string
 	pinned             bool
+	// opened is /open's own create, which carries tasks in as it writes.
+	opened bool
 }
 
 func (r *notesRepo) create(ctx context.Context, userID string, in createNoteInput) (Note, error) {
@@ -210,6 +212,7 @@ func (r *notesRepo) create(ctx context.Context, userID string, in createNoteInpu
 	}
 	if in.noteType == "daily" {
 		n.Date = in.date
+		n.Unopened = !in.opened
 	}
 	return r.base.createIdempotent(ctx, n)
 }
@@ -224,6 +227,7 @@ func (r *notesRepo) delete(ctx context.Context, userID, id string, expected api.
 	return r.base.softDelete(ctx, userID, id, expected, func(n Note, now string) Note {
 		n.UpdatedAt = now
 		n.Deleted = true
+		n.Unopened = false
 		return n
 	})
 }
@@ -375,12 +379,13 @@ func (r *notesRepo) latestDailyBefore(ctx context.Context, userID, area, date st
 const latestDailyScan = 10
 
 type dailyFields struct {
-	id string
+	id     string
+	opened bool
 	noteFields
 }
 
 func (r *notesRepo) createDaily(ctx context.Context, userID, area, date string, f dailyFields) (Note, error) {
-	in := createNoteInput{id: f.id, area: area, noteType: "daily", date: &date, tags: []string{}}
+	in := createNoteInput{id: f.id, area: area, noteType: "daily", date: &date, tags: []string{}, opened: f.opened}
 	if f.title != nil {
 		in.title = *f.title
 	}
@@ -470,4 +475,38 @@ func matchesDailyCreate(n Note, f dailyFields) bool {
 func isDeletedConflict(err error) bool {
 	var conflict *api.ConflictError
 	return errors.As(err, &conflict) && conflict.Code == api.CodeDeleted
+}
+
+// errOpened: the day's note was opened since it was read.
+var errOpened = errors.New("daily note already opened")
+
+// markOpened clears n's unopened mark, writing body in when tasks carry in.
+// Both writes hold n's version, so of two opens racing only one carries.
+func (r *notesRepo) markOpened(ctx context.Context, n Note, body *string) (Note, error) {
+	if body != nil {
+		return r.base.mutate(ctx, n.UserID, n.ID, api.Expected{Set: true, Version: n.Version}, func(existing Note, now string) (Note, error) {
+			if !existing.Unopened {
+				return existing, errOpened
+			}
+			existing.BodyMarkdown = *body
+			existing.TaskIDs = TaskEmbedIDs(*body)
+			existing.UpdatedAt = now
+			existing.Unopened = false
+			return existing, nil
+		})
+	}
+	_, err := r.table.DB.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName:           aws.String(r.table.Name),
+		Key:                 noteKey(n.UserID, n.ID),
+		UpdateExpression:    aws.String("REMOVE unopened"),
+		ConditionExpression: aws.String("version = :v AND unopened = :t AND deleted = :f"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":v": data.N(int64(n.Version)), ":t": data.Bool(true), ":f": data.Bool(false),
+		},
+	})
+	if isConditionFailed(err) {
+		return n, errOpened
+	}
+	n.Unopened = false
+	return n, err
 }
