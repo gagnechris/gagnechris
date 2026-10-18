@@ -95,12 +95,12 @@
 
 @media (max-width: 767px) {
   .ui-check {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .ui-check__input {
-    width: 44px;
-    height: 44px;
+    width: var(--size-tap-target);
+    height: var(--size-tap-target);
     left: -12px;
   }
 }

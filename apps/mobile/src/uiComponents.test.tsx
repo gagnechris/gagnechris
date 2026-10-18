@@ -12,9 +12,11 @@ import { EmptyState } from './ui/EmptyState';
 import { Icon } from './ui/Icon';
 import { IconButton, type IconButtonVariant } from './ui/IconButton';
 import { ListRow } from './ui/ListRow';
+import { PressArea } from './ui/PressArea';
 import { SearchInput } from './ui/SearchInput';
 import { SegmentedRadio } from './ui/SegmentedRadio';
 import { Tabs } from './ui/Tabs';
+import { TextButton } from './ui/TextButton';
 
 const flatStyle = (style: unknown): Record<string, unknown> =>
   Array.isArray(style)
@@ -237,11 +239,30 @@ describe('Chip and ChipSelect', () => {
     expectAccessible(renderer);
   });
 
-  it('has a labelled remove button', async () => {
+  it('draws the add chip dashed, in the accent colour', async () => {
+    const renderer = await render(
+      <Chip tone="add" onPress={() => {}}>
+        + tag
+      </Chip>,
+    );
+    expect(styleOf(renderer, '+ tag')).toMatchObject({
+      backgroundColor: color.surface,
+      borderStyle: 'dashed',
+    });
+    expect(
+      flatStyle(renderer.root.findByType('Text' as never).props.style).color,
+    ).toBe(color.accent);
+  });
+
+  it('has a labelled remove button with a 44 pt target', async () => {
     const onRemove = vi.fn();
     const renderer = await render(<Chip onRemove={onRemove}>work</Chip>);
-    act(() => byLabel(renderer, 'Remove work').props.onPress());
+    const remove = byLabel(renderer, 'Remove work');
+    act(() => remove.props.onPress());
     expect(onRemove).toHaveBeenCalled();
+    const { minWidth, minHeight } = flatStyle(remove.props.style);
+    expect((minWidth as number) + 2 * remove.props.hitSlop).toBe(MIN_TARGET);
+    expect((minHeight as number) + 2 * remove.props.hitSlop).toBe(MIN_TARGET);
     expectAccessible(renderer);
   });
 
@@ -399,6 +420,57 @@ describe('ListRow, SearchInput and EmptyState', () => {
         .accessible,
     ).toBe(true);
     expect(byLabel(renderer, 'New page')).toBeDefined();
+    expectAccessible(renderer);
+  });
+});
+
+describe('TextButton and PressArea', () => {
+  it('TextButton reads its text, or the label it is given, and dims when disabled', async () => {
+    const onPress = vi.fn();
+    const renderer = await render(
+      <>
+        <TextButton onPress={onPress}>Cancel</TextButton>
+        <TextButton
+          strong
+          disabled
+          accessibilityLabel="Jump to today"
+          onPress={() => {}}
+        >
+          Today
+        </TextButton>
+      </>,
+    );
+    act(() => byLabel(renderer, 'Cancel').props.onPress());
+    expect(onPress).toHaveBeenCalled();
+    expect(styleOf(renderer, 'Cancel')).toMatchObject({
+      minWidth: MIN_TARGET,
+      minHeight: MIN_TARGET,
+    });
+    const today = byLabel(renderer, 'Jump to today');
+    expect(today.props.accessibilityState).toEqual({ disabled: true });
+    expect(today.props.disabled).toBe(true);
+    expect(allText(renderer)).toContain('Today');
+    expectAccessible(renderer);
+  });
+
+  it('PressArea is one element with its role, label and state', async () => {
+    const onPress = vi.fn();
+    const renderer = await render(
+      <PressArea
+        accessibilityRole="tab"
+        accessibilityLabel="Editor"
+        accessibilityState={{ selected: true }}
+        onPress={onPress}
+        style={{ minHeight: MIN_TARGET }}
+      >
+        <Icon name="checkmark" />
+      </PressArea>,
+    );
+    const area = byLabel(renderer, 'Editor');
+    expect(area.props.accessibilityRole).toBe('tab');
+    expect(area.props.accessibilityState).toEqual({ selected: true });
+    act(() => area.props.onPress());
+    expect(onPress).toHaveBeenCalled();
     expectAccessible(renderer);
   });
 });

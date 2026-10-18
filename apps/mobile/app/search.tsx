@@ -15,7 +15,7 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../src/area';
 import { dailyNotePath } from '../src/notebook/detailRoutes';
@@ -28,9 +28,11 @@ import { color, font, MIN_TARGET } from '../src/theme';
 import { Checkbox } from '../src/ui/Checkbox';
 import { Excerpt } from '../src/ui/Excerpt';
 import { Icon } from '../src/ui/Icon';
+import { PressArea } from '../src/ui/PressArea';
 import { SearchInput } from '../src/ui/SearchInput';
 import { Section } from '../src/ui/Section';
 import { SegmentedRadio, segmentOptions } from '../src/ui/SegmentedRadio';
+import { TextButton } from '../src/ui/TextButton';
 
 const SCOPES = ['area', 'all'] as const;
 type Scope = (typeof SCOPES)[number];
@@ -136,8 +138,7 @@ const SearchScreen = () => {
             onChange={() => void toggle(task!)}
           />
         ) : null}
-        <Pressable
-          accessibilityRole="button"
+        <PressArea
           accessibilityLabel={`${hit.title}${tags}${detail ? `, ${detail}` : ''}`}
           accessibilityHint={
             hit.type === 'task' ? 'Opens the task' : 'Opens the note'
@@ -161,7 +162,7 @@ const SearchScreen = () => {
               lines={3}
             />
           ) : null}
-        </Pressable>
+        </PressArea>
       </View>
     );
   };
@@ -178,14 +179,7 @@ const SearchScreen = () => {
             autoFocus
           />
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cancel"
-          onPress={() => router.back()}
-          style={styles.cancel}
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </Pressable>
+        <TextButton onPress={() => router.back()}>Cancel</TextButton>
       </View>
       <ScrollView
         contentContainerStyle={styles.content}
@@ -207,25 +201,23 @@ const SearchScreen = () => {
           recent.length > 0 ? (
             <Section title="Recent">
               {recent.map((r, index) => (
-                <Pressable
+                <PressArea
                   key={r}
-                  accessibilityRole="button"
                   accessibilityLabel={`Search for ${r}`}
                   onPress={() => setQ(r)}
                   style={[styles.recent, index > 0 && styles.divider]}
                 >
                   <Icon name="clock" size={15} color={color.muted} />
                   <Text style={styles.recentText}>{r}</Text>
-                </Pressable>
+                </PressArea>
               ))}
-              <Pressable
-                accessibilityRole="button"
+              <PressArea
                 accessibilityLabel="Clear recent searches"
                 onPress={clearRecent}
                 style={[styles.recent, styles.divider]}
               >
                 <Text style={styles.clear}>Clear recent searches</Text>
-              </Pressable>
+              </PressArea>
             </Section>
           ) : (
             <Text style={styles.status}>
@@ -274,12 +266,6 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space[2],
   },
   field: { flex: 1 },
-  cancel: { minHeight: MIN_TARGET, justifyContent: 'center' },
-  cancelText: {
-    ...font.regular,
-    fontSize: tokens.text.body,
-    color: color.accent,
-  },
   content: {
     paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.space[8],

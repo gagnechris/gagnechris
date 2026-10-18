@@ -52,7 +52,7 @@
 }
 
 .kit-input--lg {
-  min-height: 44px;
+  min-height: var(--size-tap-target);
 }
 
 .kit-input-group {
@@ -276,6 +276,6 @@ select.kit-select {
   }
 
   .kit-input:not(textarea) {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 }

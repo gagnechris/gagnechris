@@ -24,6 +24,12 @@ describe('tokens', () => {
     expect(map['--radius-full']).toBe('9999px');
   });
 
+  it('keeps the tap target in px for CSS and in pt for React Native', () => {
+    const map = Object.fromEntries(tokenCssEntries());
+    expect(tokens.size.tapTarget).toBe(44);
+    expect(map['--size-tap-target']).toBe('44px');
+  });
+
   it('names the public text colours in kebab case, with link aliasing primary-700', () => {
     const map = Object.fromEntries(tokenCssEntries());
     expect(map['--color-ink']).toBe('#16191d');

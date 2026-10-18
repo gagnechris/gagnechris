@@ -79,7 +79,7 @@
 
 @media (max-width: 767px) {
   .admin-stage__options .workspace-segmented__option {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 }
 

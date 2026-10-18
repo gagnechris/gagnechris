@@ -6,7 +6,7 @@ import {
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { openMarkdownLink } from '../../../src/markdown/links';
 import { useSiteResume } from '../../../src/site/feed';
 import { shareResumePdf, viewResumePdf } from '../../../src/site/resumePdf';
@@ -19,6 +19,7 @@ import {
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
 import { showError } from '../../../src/ui/confirm';
+import { PressArea } from '../../../src/ui/PressArea';
 import { Screen } from '../../../src/ui/Screen';
 import { SectionTitle } from '../../../src/ui/Section';
 
@@ -69,8 +70,7 @@ const Experience = ({ view }: { view: ResumeView }) => {
         ))}
       {view.earlierLabel ? (
         <>
-          <Pressable
-            accessibilityRole="button"
+          <PressArea
             accessibilityLabel={view.earlierLabel}
             accessibilityHint={earlierOpen ? 'Hides details' : 'Shows details'}
             accessibilityState={{ expanded: earlierOpen }}
@@ -81,7 +81,7 @@ const Experience = ({ view }: { view: ResumeView }) => {
             <Text style={siteStyles.link}>
               {earlierOpen ? 'Hide details' : 'Show details'}
             </Text>
-          </Pressable>
+          </PressArea>
           {earlier.map((role, i) => (
             <Role key={i} role={role} full={earlierOpen} />
           ))}

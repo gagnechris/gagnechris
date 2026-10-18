@@ -1,9 +1,10 @@
 import { LEVEL_DESCRIPTIONS, LEVEL_ORDER } from '@gagnechris/app-core';
 import { ACCESS_LEVEL_LABELS, type AccessLevel } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../../theme';
 import { Icon } from '../../ui/Icon';
+import { PressArea } from '../../ui/PressArea';
 import { Section } from '../../ui/Section';
 
 type Props = {
@@ -22,7 +23,7 @@ export const AccessLevelPicker = ({
       const off = isDisabled(level);
       const on = value === level;
       return (
-        <Pressable
+        <PressArea
           key={level}
           accessibilityRole="radio"
           accessibilityLabel={ACCESS_LEVEL_LABELS[level]}
@@ -37,7 +38,7 @@ export const AccessLevelPicker = ({
             <Text style={styles.desc}>{LEVEL_DESCRIPTIONS[level]}</Text>
           </View>
           {on ? <Icon name="checkmark" size={18} color={color.accent} /> : null}
-        </Pressable>
+        </PressArea>
       );
     })}
   </Section>
