@@ -31,6 +31,9 @@ type Note struct {
 	CreatedAt    string   `json:"createdAt"`
 	UpdatedAt    string   `json:"updatedAt"`
 	Deleted      bool     `json:"deleted"`
+	// Unopened marks a daily note made by anything but /open: the day's
+	// first open still carries tasks into it.
+	Unopened bool `json:"-"`
 }
 
 // Task is the API's Task, in metaToTask's field order.
@@ -110,6 +113,9 @@ func ParseNote(item data.Item) (Note, error) {
 	} else {
 		n.TaskIDs = TaskEmbedIDs(n.BodyMarkdown)
 	}
+	if unopened := r.OptBool("unopened"); unopened != nil {
+		n.Unopened = *unopened
+	}
 	n.Version, n.CreatedAt, n.UpdatedAt, n.Deleted = versionedMeta(r)
 	return n, r.Err("note")
 }
@@ -172,6 +178,9 @@ func noteItem(n Note) data.Item {
 	item["createdAt"] = data.S(n.CreatedAt)
 	item["updatedAt"] = data.S(n.UpdatedAt)
 	item["deleted"] = data.Bool(n.Deleted)
+	if n.Unopened && !n.Deleted {
+		item["unopened"] = data.Bool(true)
+	}
 	if !n.Deleted {
 		item["gsi1pk"] = data.S(keys.NotebookAreaGSI1Pk(n.UserID, n.Area))
 		if n.Type == "daily" && n.Date != nil && *n.Date != "" {

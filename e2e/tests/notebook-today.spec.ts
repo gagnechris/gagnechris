@@ -217,11 +217,21 @@ test('each task appears in exactly one place on the page', async ({
   const inNoteLater = `${prefix} in note on Tuesday`;
   const scheduledToday = `${prefix} scheduled today`;
   const tomorrow = `${prefix} tomorrow`;
-  await seedDaily(seed, '2026-10-01', [{ title: carried }]);
-  await seedDaily(seed, '2026-10-02', [
+  const today = await seedDaily(seed, '2026-10-02', [
     { title: inNoteToday, startDate: '2026-10-02' },
     { title: inNoteLater, startDate: '2026-10-06' },
   ]);
+  // Opened before yesterday's task exists, so it stays Still open rather
+  // than carrying into the note.
+  const opened = await seed.api.POST(
+    '/api/notebook/notes/daily/{area}/{date}/open',
+    {
+      params: { path: { area: 'work', date: '2026-10-02' } },
+      body: { id: today.note.id },
+    },
+  );
+  expect(opened.data).toMatchObject({ id: today.note.id });
+  await seedDaily(seed, '2026-10-01', [{ title: carried }]);
   await seed.task({ title: scheduledToday, startDate: '2026-10-02' });
   await seed.task({ title: tomorrow, startDate: '2026-10-03' });
 

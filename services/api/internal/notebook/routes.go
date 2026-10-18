@@ -5,7 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -386,7 +388,9 @@ func (h handlers) getDaily(ctx context.Context, r *api.Request) (*api.Response, 
 }
 
 // openDaily creates the day's note when tasks carry into it, so the
-// carried-in block is written once whichever device opens the day first.
+// carried-in block is written once whichever device opens the day first. A
+// note made some other way (a task moved to that day, say) is unopened: its
+// first open carries in the same way, around what it already holds.
 func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response, error) {
 	v, err := api.NewValidator(r.Body)
 	if err != nil {
@@ -405,19 +409,58 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	existing, err := h.notes.getDaily(ctx, userID, area, date)
-	if err != nil || existing != nil {
+	for attempt := 0; ; attempt++ {
+		existing, err := h.notes.getDaily(ctx, userID, area, date)
 		if err != nil {
 			return nil, err
 		}
-		return h.dayResponse(ctx, userID, areas, area, date, existing)
+		if existing != nil && !existing.Unopened {
+			return noteResponse(http.StatusOK, *existing)
+		}
+		body, err := h.carryInto(ctx, r, userID, areas, area, date, existing)
+		if err != nil {
+			return nil, err
+		}
+		var n Note
+		switch {
+		case existing != nil:
+			n, err = h.notes.markOpened(ctx, *existing, body)
+		case body == nil:
+			return h.emptyDay(ctx, userID, areas, area, date)
+		default:
+			n, err = h.notes.createDaily(ctx, userID, area, date, dailyFields{id: id, opened: true, noteFields: noteFields{bodyMarkdown: body}})
+		}
+		// Another device opened or wrote the day first: read it again.
+		var conflict *api.ConflictError
+		if (errors.Is(err, errOpened) || errors.As(err, &conflict)) && attempt < openDailyRetries {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		return noteResponse(http.StatusOK, n)
 	}
+}
+
+const openDailyRetries = 3
+
+// carryInto is the day's body with the tasks still open from earlier days
+// carried in: a new note's from the template, an unopened note's around what
+// it holds, leaving out tasks it already embeds. Nil when none carry in.
+func (h handlers) carryInto(ctx context.Context, r *api.Request, userID string, areas Areas, area, date string, existing *Note) (*string, error) {
 	carried, err := h.tasks.carriedInto(ctx, userID, area, date, store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
 		return nil, err
 	}
+	if existing != nil {
+		embedded := map[string]bool{}
+		for _, taskID := range existing.TaskIDs {
+			embedded[strings.ToUpper(taskID)] = true
+		}
+		carried = slices.DeleteFunc(carried, func(t CarriedInTask) bool { return embedded[strings.ToUpper(t.ID)] })
+	}
 	if len(carried) == 0 {
-		return h.emptyDay(ctx, userID, areas, area, date)
+		return nil, nil
 	}
 	// Nesting follows the previous day's note: a task indented there after it
 	// carried in has no parent of its own, since only its home note sets one.
@@ -432,24 +475,20 @@ func (h handlers) openDaily(ctx context.Context, r *api.Request) (*api.Response,
 	if err != nil {
 		return nil, err
 	}
-	body := FillDailyTemplate(CarryIntoDailyTemplate(template.BodyMarkdown, carried, template.CarryOverSection), areas.Name(area), date)
-	n, err := h.notes.createDaily(ctx, userID, area, date, dailyFields{id: id, noteFields: noteFields{bodyMarkdown: &body}})
-	var conflict *api.ConflictError
-	if errors.As(err, &conflict) {
-		// Another device opened the day first: its note is the one record.
-		current, cerr := h.notes.getDaily(ctx, userID, area, date)
-		if cerr != nil {
-			return nil, cerr
+	name := areas.Name(area)
+	var body string
+	if existing == nil {
+		body = FillDailyTemplate(CarryIntoDailyTemplate(template.BodyMarkdown, carried, template.CarryOverSection), name, date)
+	} else {
+		// The note's headings are filled, so the section is matched filled.
+		section := template.CarryOverSection
+		if section != nil {
+			filled := FillDailyTemplate(*section, name, date)
+			section = &filled
 		}
-		if current == nil {
-			return nil, err
-		}
-		return noteResponse(http.StatusOK, *current)
+		body = CarryIntoDailyTemplate(existing.BodyMarkdown, carried, section)
 	}
-	if err != nil {
-		return nil, err
-	}
-	return noteResponse(http.StatusOK, n)
+	return &body, nil
 }
 
 func (h handlers) upsertDaily(ctx context.Context, r *api.Request) (*api.Response, error) {
