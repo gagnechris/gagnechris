@@ -11,9 +11,10 @@ import {
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
 import { Excerpt } from '../ui/Excerpt';
+import { PressArea } from '../ui/PressArea';
 import { Section } from '../ui/Section';
 
 /** Every note that embeds the task, home note first, as on web. */
@@ -57,9 +58,8 @@ export const TaskMentions = ({
           const when =
             note.type === 'page' ? noteDayLabel(noteDay(note), today) : '';
           return (
-            <Pressable
+            <PressArea
               key={note.id}
-              accessibilityRole="button"
               accessibilityLabel={[title, when, context]
                 .filter(Boolean)
                 .join(', ')}
@@ -76,7 +76,7 @@ export const TaskMentions = ({
                   {context}
                 </Excerpt>
               ) : null}
-            </Pressable>
+            </PressArea>
           );
         })
       )}

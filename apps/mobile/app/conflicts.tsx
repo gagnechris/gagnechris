@@ -3,12 +3,13 @@ import { noteTitle } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConflictPanel } from '../src/notebook/ConflictPanel';
 import { useOutboxConflicts, type Conflict } from '../src/outbox';
 import { findCached } from '../src/sync';
-import { color, font, MIN_TARGET } from '../src/theme';
+import { color, font } from '../src/theme';
+import { TextButton } from '../src/ui/TextButton';
 
 const titleOf = (conflict: Conflict, local: Note | Task | undefined) => {
   const entity = local ?? conflict.server;
@@ -33,14 +34,9 @@ const ConflictsScreen = () => {
         <Text style={styles.heading} accessibilityRole="header">
           Edits that couldn't sync
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Done"
-          onPress={() => router.back()}
-          style={styles.done}
-        >
-          <Text style={styles.doneText}>Done</Text>
-        </Pressable>
+        <TextButton strong align="end" onPress={() => router.back()}>
+          Done
+        </TextButton>
       </View>
       <ScrollView contentContainerStyle={styles.list}>
         {conflicts.length === 0 ? (
@@ -81,12 +77,6 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space[2],
   },
   heading: { ...font.semibold, fontSize: tokens.text.body, color: color.ink },
-  done: { minHeight: MIN_TARGET, justifyContent: 'center' },
-  doneText: {
-    ...font.semibold,
-    fontSize: tokens.text.body,
-    color: color.accent,
-  },
   list: { gap: tokens.space[4], padding: tokens.space[4] },
   item: { gap: tokens.space[2] },
   title: { ...font.semibold, fontSize: tokens.text.base, color: color.ink },

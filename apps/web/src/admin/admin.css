@@ -356,7 +356,7 @@
 
   .admin-row-list .ui-row__title,
   .admin-subscreen-back {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .admin-row-list .ui-row__title {

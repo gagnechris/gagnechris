@@ -755,4 +755,20 @@ export default tseslint.config(
       'import-x/no-cycle': ['error', { maxDepth: 10 }],
     },
   },
+  // Screens build from apps/mobile/src/ui; a control it lacks is added there first.
+  {
+    files: ['apps/mobile/**/*.tsx'],
+    ignores: ['apps/mobile/src/ui/**', 'apps/mobile/**/*.test.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXOpeningElement[name.name=/^(Pressable|Touchable[A-Za-z]*)$/], JSXOpeningElement[name.property.name=/^(Pressable|Touchable[A-Za-z]*)$/]',
+          message:
+            'Use a control from apps/mobile/src/ui (see docs/design/components.md); add a missing one there first.',
+        },
+      ],
+    },
+  },
 );

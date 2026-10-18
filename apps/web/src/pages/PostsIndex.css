@@ -24,7 +24,7 @@
 .posts-index__rss {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   margin-top: 4px;
   font-size: var(--text-sm);
   font-weight: 500;

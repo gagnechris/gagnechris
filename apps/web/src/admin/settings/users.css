@@ -464,7 +464,7 @@
   }
 
   .users-resend {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 }
 

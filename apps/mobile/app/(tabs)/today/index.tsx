@@ -15,7 +15,7 @@ import {
 import { tokens } from '@gagnechris/tokens';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useArea } from '../../../src/area';
 import { PickDateModal } from '../../../src/notebook/PickDateModal';
@@ -28,6 +28,8 @@ import { color, font, MIN_TARGET } from '../../../src/theme';
 import { AreaChip } from '../../../src/ui/AreaChip';
 import { Icon } from '../../../src/ui/Icon';
 import { IconButton } from '../../../src/ui/IconButton';
+import { PressArea } from '../../../src/ui/PressArea';
+import { TextButton } from '../../../src/ui/TextButton';
 
 const TodayScreen = () => {
   const insets = useSafeAreaInsets();
@@ -154,20 +156,15 @@ const TodayScreen = () => {
         >
           <Icon name="chevron.left" size={18} color={color.ink} />
         </IconButton>
-        <Pressable
-          accessibilityRole="button"
+        <TextButton
+          strong
+          size="base"
           accessibilityLabel="Jump to today"
-          accessibilityState={{ disabled: date === today }}
           disabled={date === today}
           onPress={() => goTo(today)}
-          style={styles.navButton}
         >
-          <Text
-            style={[styles.navText, date === today && styles.navTextDisabled]}
-          >
-            Today
-          </Text>
-        </Pressable>
+          Today
+        </TextButton>
         <IconButton
           size="lg"
           label="Next day"
@@ -177,15 +174,15 @@ const TodayScreen = () => {
         </IconButton>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
+      <PressArea
         accessibilityLabel={
           tasksLoading
             ? 'Today’s tasks. Show list'
             : `${stillOpenRows.length} still open, ${comingUpCount} coming up. Show list`
         }
         onPress={() => setSheetOpen(true)}
-        style={({ pressed }) => [styles.banner, pressed && styles.pressed]}
+        feedback="fade"
+        style={styles.banner}
       >
         <Icon name="arrow.right.to.line" size={16} color={color.accentInk} />
         <Text style={styles.bannerText}>
@@ -195,7 +192,7 @@ const TodayScreen = () => {
           {` · ${tasksLoading ? '…' : comingUpCount} coming up`}
         </Text>
         <Icon name="chevron.up" size={14} color={color.accentInk} />
-      </Pressable>
+      </PressArea>
 
       <TodayNote
         key={noteKey}
@@ -284,19 +281,6 @@ const styles = StyleSheet.create({
     color: color.ink,
   },
   dayNav: { flexDirection: 'row', alignItems: 'center', gap: tokens.space[1] },
-  navButton: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.radius.md,
-  },
-  navText: {
-    ...font.semibold,
-    fontSize: tokens.text.base,
-    color: color.accent,
-  },
-  navTextDisabled: { color: color.muted },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -306,7 +290,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md,
     backgroundColor: color.accentSoft,
   },
-  pressed: { opacity: 0.7 },
   bannerText: {
     ...font.regular,
     flex: 1,

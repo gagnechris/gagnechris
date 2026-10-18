@@ -409,16 +409,16 @@
   }
 
   .notebook-today__day-nav > .ui-btn {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: var(--size-tap-target);
+    min-height: var(--size-tap-target);
   }
 
   .notebook-today__calendar > summary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: var(--size-tap-target);
+    min-height: var(--size-tap-target);
     padding: 0;
     list-style: none;
   }
@@ -454,7 +454,7 @@
 
   .notebook-today__area {
     width: auto;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .notebook-today__strip {

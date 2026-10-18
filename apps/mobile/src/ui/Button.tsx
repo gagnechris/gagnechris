@@ -20,6 +20,8 @@ type Props = {
   disabled?: boolean;
   /** Shows a spinner and ignores presses; the label stays. */
   loading?: boolean;
+  /** Defaults to the text. */
+  accessibilityLabel?: string;
   accessibilityHint?: string;
 };
 
@@ -30,11 +32,12 @@ export const Button = ({
   size = 'md',
   disabled,
   loading,
+  accessibilityLabel,
   accessibilityHint,
 }: Props) => (
   <Pressable
     accessibilityRole="button"
-    accessibilityLabel={children}
+    accessibilityLabel={accessibilityLabel ?? children}
     accessibilityHint={accessibilityHint}
     accessibilityState={{ disabled: !!disabled, busy: !!loading }}
     disabled={disabled}

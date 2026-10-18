@@ -179,7 +179,7 @@
     order: 0;
     display: inline-flex;
     align-items: center;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     font-size: 1rem;
   }
 
@@ -231,14 +231,14 @@
 
   .workspace-actions__more .ui-btn {
     justify-content: flex-start;
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     border: 0;
     font-size: 1rem;
     font-weight: 500;
   }
 
   .workspace-action-bar .ui-btn--primary {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
     padding: 0 1.125rem;
     border-radius: var(--radius-full);
   }

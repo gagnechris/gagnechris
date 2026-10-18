@@ -2,8 +2,9 @@ import { useQuickAddTask } from '@gagnechris/app-core';
 import type { NotebookArea, TaskLineDraft } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { color, font, MIN_TARGET } from '../theme';
+import { TextButton } from '../ui/TextButton';
 
 /** One line of task syntax: `Renew passport @nov 1 !high`. */
 export const QuickAddTask = ({
@@ -50,18 +51,16 @@ export const QuickAddTask = ({
           returnKeyType="done"
           autoCorrect={false}
         />
-        <Pressable
-          accessibilityRole="button"
+        <TextButton
+          strong
+          size="base"
+          padded
           accessibilityLabel="Add"
-          accessibilityState={{ disabled: !canAdd }}
           disabled={!canAdd}
           onPress={() => void submit()}
-          style={styles.add}
         >
-          <Text style={[styles.addText, !canAdd && styles.disabled]}>
-            {quickAdd.pending ? 'Adding…' : 'Add'}
-          </Text>
-        </Pressable>
+          {quickAdd.pending ? 'Adding…' : 'Add'}
+        </TextButton>
       </View>
       {quickAdd.error ? (
         <Text style={styles.error} accessibilityRole="alert">
@@ -93,19 +92,6 @@ const styles = StyleSheet.create({
     fontSize: tokens.text.body,
     color: color.ink,
   },
-  add: {
-    minWidth: MIN_TARGET,
-    minHeight: MIN_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: tokens.space[3],
-  },
-  addText: {
-    ...font.semibold,
-    fontSize: tokens.text.base,
-    color: color.accent,
-  },
-  disabled: { color: color.muted },
   error: { ...font.medium, fontSize: tokens.text.caption, color: color.alert },
   hint: {
     ...font.regular,

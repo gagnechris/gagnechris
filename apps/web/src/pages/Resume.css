@@ -40,7 +40,7 @@
 
 /* The library Button, drawn white on ink as the design has it. */
 .resume-intro__actions .ui-btn.resume-download {
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   padding: 0 18px;
   border: 0;
   border-radius: 6px;
@@ -62,7 +62,7 @@
 .resume-intro__link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;

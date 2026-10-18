@@ -50,7 +50,7 @@
 
 @media (max-width: 767px) {
   .ui-chips {
-    min-height: 44px;
+    min-height: var(--size-tap-target);
   }
 
   .ui-chips__input {

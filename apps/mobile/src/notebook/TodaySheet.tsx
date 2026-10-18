@@ -2,17 +2,11 @@ import { comingUpDayLabel, type ComingUpDay } from '@gagnechris/shared';
 import type { Task, TodayStillOpenRow } from '@gagnechris/app-core';
 import { tokens } from '@gagnechris/tokens';
 import { useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { color, font, MIN_TARGET } from '../theme';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { color, font } from '../theme';
 import { TaskRow } from '../ui/TaskRow';
 import { Tabs } from '../ui/Tabs';
+import { TextButton } from '../ui/TextButton';
 import { TaskParentsProvider } from './taskParents';
 
 type Tab = 'stillOpen' | 'comingUp';
@@ -72,13 +66,9 @@ export const TodaySheet = ({
           <Text style={styles.title} accessibilityRole="header">
             Today’s tasks
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={styles.done}
-          >
-            <Text style={styles.doneText}>Done</Text>
-          </Pressable>
+          <TextButton strong align="end" onPress={onClose}>
+            Done
+          </TextButton>
         </View>
         <Tabs
           label="Today’s tasks"
@@ -162,12 +152,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   title: { ...font.bold, fontSize: tokens.text.xl, color: color.ink },
-  done: { minHeight: MIN_TARGET, justifyContent: 'center' },
-  doneText: {
-    ...font.semibold,
-    fontSize: tokens.text.body,
-    color: color.accent,
-  },
   list: { paddingBottom: tokens.space[8] },
   dayLabel: {
     ...font.semibold,

@@ -140,6 +140,19 @@ const fixtures = [
     expect: '@gagnechris/ui',
     rule: 'no-restricted-syntax',
   },
+  ...[
+    `import { Pressable } from 'react-native';\nexport const X = () => <Pressable onPress={() => {}} />;\n`,
+    `import { TouchableOpacity } from 'react-native';\nexport const X = () => <TouchableOpacity onPress={() => {}} />;\n`,
+    `import * as RN from 'react-native';\nexport const X = () => <RN.TouchableHighlight onPress={() => {}} />;\n`,
+  ].flatMap((source) =>
+    ['apps/mobile/src/notebook', 'apps/mobile/app'].map((dir) => ({
+      dir,
+      ext: 'tsx',
+      source,
+      expect: 'apps/mobile/src/ui',
+      rule: 'no-restricted-syntax',
+    })),
+  ),
 ];
 
 let failed = false;

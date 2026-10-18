@@ -1,7 +1,7 @@
 /**
- * `text`, `space`, `radius` and `breakpoint` are px numbers so React Native
- * can use them directly; the generator converts all but breakpoints to `rem`
- * for CSS.
+ * `text`, `space`, `radius`, `size` and `breakpoint` are px numbers so React
+ * Native can use them directly; the generator converts `text`, `space` and
+ * `radius` to `rem` for CSS.
  */
 const primary = {
   50: '#f0f7f7',
@@ -134,6 +134,10 @@ export const tokens = {
     editorial: 10,
     full: 9999,
   },
+  size: {
+    /** The smallest a control a finger presses may be (iOS's 44 pt). */
+    tapTarget: 44,
+  },
   breakpoint,
 } as const;
 
@@ -141,8 +145,11 @@ export type Tokens = typeof tokens;
 
 const ROOT_FONT_SIZE_PX = 16;
 
-/** `radius-full` is a pill sentinel, so scaling it with the root font size is meaningless. */
-const pxOnly = new Set(['--radius-full']);
+/**
+ * `radius-full` is a pill sentinel, so scaling it with the root font size is
+ * meaningless; a tap target is a finger's size, whatever the root font size.
+ */
+const pxOnly = new Set(['--radius-full', '--size-tap-target']);
 
 /** Media queries match viewport px, whatever the root font size. */
 const pxGroups = new Set(['breakpoint']);
@@ -206,6 +213,7 @@ export function tokensToCssRoot(source: Tokens = tokens): string {
     '--transition-fast': '  /* Transitions */',
     '--shadow-sm': '  /* Shadows */',
     '--radius-sm': '  /* Border Radius */',
+    '--size-tap-target': '  /* Sizes */',
     '--breakpoint-phone':
       '  /* Breakpoints (reference only: @media cannot use var()) */',
   };

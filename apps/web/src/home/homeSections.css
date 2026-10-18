@@ -32,7 +32,7 @@
 .home-section__more {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: var(--size-tap-target);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: 500;
