@@ -29,7 +29,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aws-sdk/lib-dynamodb": "^3.1151.0",
+    "@aws-sdk/lib-dynamodb": "^3.1152.0",
     "@gagnechris/data": "*",
     "@gagnechris/shared": "*"
   },
