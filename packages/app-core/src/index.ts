@@ -152,6 +152,7 @@ export {
   useNotesByIds,
   useNotesQuery,
   useArchiveNoteMutation,
+  useOpenDailyNoteWhenToday,
   usePinNoteMutation,
 } from './query/notes.js';
 export {

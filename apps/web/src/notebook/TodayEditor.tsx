@@ -5,6 +5,7 @@ import {
   isTemplateStartedDaily,
   startDailyNoteBlank,
   useDeleteNoteMutation,
+  useOpenDailyNoteWhenToday,
   useReportEmbeddedIds,
   type NotebookArea,
 } from '@gagnechris/app-core';
@@ -80,6 +81,7 @@ export function TodayEditor({
   onDeleted: () => void;
 }) {
   const deleteMutation = useDeleteNoteMutation();
+  useOpenDailyNoteWhenToday(area, date, today);
   const {
     draft,
     updateDraft,
@@ -95,7 +97,7 @@ export function TodayEditor({
     runDelete,
   } = useWorkspaceDocEditor({
     resource: dailyNoteResource,
-    params: { area, date, carryIn: date === today },
+    params: { area, date },
     initialDraft: emptyNoteDraft(),
     toDraft: noteDraftFromNote,
     getEntityId: (note) => `${note.area}:${note.date}:${note.id}`,

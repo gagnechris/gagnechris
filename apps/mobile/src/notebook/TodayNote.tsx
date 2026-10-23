@@ -3,6 +3,7 @@ import {
   isTemplateStartedDaily,
   startDailyNoteBlank,
   useNoteTaskEmbedSync,
+  useOpenDailyNoteWhenToday,
   useReportEmbeddedIds,
   useVersionedDocEditor,
   type NotebookArea,
@@ -73,9 +74,10 @@ const DailyNoteEditor = ({
   onReload,
 }: Props & { onReload: () => void }) => {
   const router = useRouter();
+  useOpenDailyNoteWhenToday(area, date, today);
   const editor = useVersionedDocEditor({
     resource: dailyNoteResource,
-    params: { area, date, carryIn: date === today },
+    params: { area, date },
     initialDraft: emptyNoteDraft(),
     toDraft: noteDraftFromNote,
     getEntityId: (note) => `${note.area}:${note.date}:${note.id}`,
