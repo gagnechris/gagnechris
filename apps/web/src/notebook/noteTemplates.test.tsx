@@ -178,9 +178,11 @@ const template = (
   id: string,
   name: string,
   bodyMarkdown: string,
+  area: NoteTemplate['area'] = null,
 ): NoteTemplate => ({
   id,
   name,
+  area,
   bodyMarkdown,
   version: 1,
   createdAt: TS,
@@ -191,11 +193,19 @@ const HM_SCREEN = template(
   '01JTMPAAAAAAAAAAAAAAAAAAA1',
   'HM Screen Interview',
   '## Screen · {{weekday}}\n\n[ ] Send feedback\n[ ] Book debrief\n\nNotes:\n',
+  'work',
 );
 const ONE_ON_ONE = template(
   '01JTMPAAAAAAAAAAAAAAAAAAA2',
   '1:1',
   '- Wins\n- Blockers\n',
+);
+// A Personal note offers it; the Work notes these tests open never do.
+const GROCERIES = template(
+  '01JTMPAAAAAAAAAAAAAAAAAAA3',
+  'Groceries',
+  '- Milk\n',
+  'personal',
 );
 
 const seedTask = (noteId: string | null) =>
@@ -277,7 +287,7 @@ beforeEach(() => {
   api.daily = null;
   api.notes.clear();
   api.tasks.clear();
-  api.templates = [HM_SCREEN, ONE_ON_ONE];
+  api.templates = [HM_SCREEN, ONE_ON_ONE, GROCERIES];
   api.puts = [];
   api.taskPuts = [];
   localStorage.clear();

@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { Combobox } from '@gagnechris/ui';
 import { Link } from 'react-router-dom';
-import { useNoteTemplatesQuery, type NoteTemplate } from '@gagnechris/app-core';
+import {
+  useNoteTemplatesQuery,
+  type NotebookArea,
+  type NoteTemplate,
+} from '@gagnechris/app-core';
 import { filterNoteTemplates, markdownPlainText } from '@gagnechris/shared';
 import '../kit/tasks/taskSyntax.css';
 
@@ -55,11 +59,13 @@ export function NoteTemplateOptions({
 
 /** Insert template… in a note's ⋯ menu: a filter field over the templates. */
 export function NoteTemplatePicker({
+  area,
   onChoose,
 }: {
+  area: NotebookArea;
   onChoose: (template: NoteTemplate) => void;
 }) {
-  const query = useNoteTemplatesQuery();
+  const query = useNoteTemplatesQuery({ area });
   const [filter, setFilter] = useState('');
   const items = filterNoteTemplates(query.data ?? [], filter);
 

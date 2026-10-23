@@ -5529,6 +5529,9 @@ type CreateNoteRequestType string
 
 // CreateNoteTemplateRequest defines model for CreateNoteTemplateRequest.
 type CreateNoteTemplateRequest struct {
+	// Area The area whose notes offer the template; null for every area
+	Area nullable.Nullable[string] `json:"area,omitempty"`
+
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
@@ -6056,12 +6059,14 @@ type NoteSyncChange_1 struct {
 
 // NoteTemplate defines model for NoteTemplate.
 type NoteTemplate struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // NoteTemplateListResponse defines model for NoteTemplateListResponse.
@@ -6072,12 +6077,14 @@ type NoteTemplateListResponse struct {
 
 // NoteTemplateListResponse_Items defines model for NoteTemplateListResponse.Items.
 type NoteTemplateListResponse_Items struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // NotebookAreaEntry defines model for NotebookAreaEntry.
@@ -6773,6 +6780,9 @@ type UpdateNoteRequest struct {
 
 // UpdateNoteTemplateRequest defines model for UpdateNoteTemplateRequest.
 type UpdateNoteTemplateRequest struct {
+	// Area The area whose notes offer the template; null for every area
+	Area nullable.Nullable[string] `json:"area,omitempty"`
+
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
@@ -12799,12 +12809,14 @@ type PutAPINotebookTemplatesDailyArea503JSONResponseBody struct {
 
 // GetAPINotebookTemplatesNotes200JSONResponseBody_Items defines parameters for GetAPINotebookTemplatesNotes.
 type GetAPINotebookTemplatesNotes200JSONResponseBody_Items struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // GetAPINotebookTemplatesNotes200JSONResponseBody defines parameters for GetAPINotebookTemplatesNotes.
@@ -12843,6 +12855,9 @@ type GetAPINotebookTemplatesNotes503JSONResponseBody struct {
 
 // PostAPINotebookTemplatesNotesJSONBody defines parameters for PostAPINotebookTemplatesNotes.
 type PostAPINotebookTemplatesNotesJSONBody struct {
+	// Area The area whose notes offer the template; null for every area
+	Area nullable.Nullable[string] `json:"area,omitempty"`
+
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	ID           string  `json:"id"`
@@ -12851,12 +12866,14 @@ type PostAPINotebookTemplatesNotesJSONBody struct {
 
 // PostAPINotebookTemplatesNotes201JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
 type PostAPINotebookTemplatesNotes201JSONResponseBody struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // PostAPINotebookTemplatesNotes400JSONResponseBody defines parameters for PostAPINotebookTemplatesNotes.
@@ -12992,12 +13009,14 @@ type DeleteAPINotebookTemplatesNotesID503JSONResponseBody struct {
 
 // GetAPINotebookTemplatesNotesID200JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
 type GetAPINotebookTemplatesNotesID200JSONResponseBody struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // GetAPINotebookTemplatesNotesID400JSONResponseBody defines parameters for GetAPINotebookTemplatesNotesID.
@@ -13044,6 +13063,9 @@ type GetAPINotebookTemplatesNotesID503JSONResponseBody struct {
 
 // PutAPINotebookTemplatesNotesIDJSONBody defines parameters for PutAPINotebookTemplatesNotesID.
 type PutAPINotebookTemplatesNotesIDJSONBody struct {
+	// Area The area whose notes offer the template; null for every area
+	Area nullable.Nullable[string] `json:"area,omitempty"`
+
 	// BodyMarkdown Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
 	BodyMarkdown *string `json:"bodyMarkdown,omitempty"`
 	Name         *string `json:"name,omitempty"`
@@ -13058,12 +13080,14 @@ type PutAPINotebookTemplatesNotesIDParams struct {
 
 // PutAPINotebookTemplatesNotesID200JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.
 type PutAPINotebookTemplatesNotesID200JSONResponseBody struct {
-	BodyMarkdown string `json:"bodyMarkdown"`
-	CreatedAt    string `json:"createdAt"`
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	UpdatedAt    string `json:"updatedAt"`
-	Version      int    `json:"version"`
+	// Area The area whose notes offer the template; null for every area
+	Area         nullable.Nullable[string] `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	ID           string                    `json:"id"`
+	Name         string                    `json:"name"`
+	UpdatedAt    string                    `json:"updatedAt"`
+	Version      int                       `json:"version"`
 }
 
 // PutAPINotebookTemplatesNotesID400JSONResponseBody defines parameters for PutAPINotebookTemplatesNotesID.

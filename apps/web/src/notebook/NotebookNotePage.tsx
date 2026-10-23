@@ -125,6 +125,7 @@ export default function NotebookNotePage() {
           <NoteDetailsToggle markdown={draft.bodyMarkdown} />
           <NoteMenu
             noteId={entity.id}
+            area={entity.area}
             archived={draft.archived}
             onArchivedChange={(archived) =>
               updateDraft((prev) => ({ ...prev, archived }))
@@ -179,7 +180,11 @@ export default function NotebookNotePage() {
 
       <NotebookMarkdownBody
         editorRef={editorRef}
-        templates={{ date: today, areaName: areaName(entity.area) }}
+        templates={{
+          date: today,
+          area: entity.area,
+          areaName: areaName(entity.area),
+        }}
         note={entity}
         value={draft.bodyMarkdown}
         onChange={(bodyMarkdown) =>

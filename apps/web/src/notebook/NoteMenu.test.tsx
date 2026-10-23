@@ -54,7 +54,7 @@ describe('NoteMenu', () => {
   test('holds the peek setting for this note and Delete note', async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
-    render(<NoteMenu noteId={NOTE} onDelete={onDelete} />);
+    render(<NoteMenu noteId={NOTE} area="work" onDelete={onDelete} />);
     const trigger = screen.getByRole('button', { name: 'Note options' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
 
@@ -87,7 +87,7 @@ describe('NoteMenu', () => {
 
   test('has no Delete note without onDelete', async () => {
     const user = userEvent.setup();
-    render(<NoteMenu noteId={NOTE} />);
+    render(<NoteMenu noteId={NOTE} area="work" />);
     await user.click(screen.getByRole('button', { name: 'Note options' }));
     expect(screen.queryByRole('menuitem', { name: 'Delete note' })).toBeNull();
   });

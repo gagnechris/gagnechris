@@ -10513,6 +10513,8 @@ export interface paths {
                             items: {
                                 id: string;
                                 name: string;
+                                /** @description The area whose notes offer the template; null for every area */
+                                area: string | null;
                                 bodyMarkdown: string;
                                 version: number;
                                 /** Format: date-time */
@@ -10600,6 +10602,11 @@ export interface paths {
                         id: string;
                         name: string;
                         /**
+                         * @description The area whose notes offer the template; null for every area
+                         * @default null
+                         */
+                        area?: string | null;
+                        /**
                          * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
                          * @default
                          */
@@ -10619,6 +10626,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             name: string;
+                            /** @description The area whose notes offer the template; null for every area */
+                            area: string | null;
                             bodyMarkdown: string;
                             version: number;
                             /** Format: date-time */
@@ -10775,6 +10784,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             name: string;
+                            /** @description The area whose notes offer the template; null for every area */
+                            area: string | null;
                             bodyMarkdown: string;
                             version: number;
                             /** Format: date-time */
@@ -10895,6 +10906,8 @@ export interface paths {
                     "application/json": {
                         version?: number;
                         name?: string;
+                        /** @description The area whose notes offer the template; null for every area */
+                        area?: string | null;
                         /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
                         bodyMarkdown?: string;
                     };
@@ -10912,6 +10925,8 @@ export interface paths {
                         "application/json": {
                             id: string;
                             name: string;
+                            /** @description The area whose notes offer the template; null for every area */
+                            area: string | null;
                             bodyMarkdown: string;
                             version: number;
                             /** Format: date-time */
@@ -12293,6 +12308,8 @@ export interface components {
         NoteTemplate: {
             id: string;
             name: string;
+            /** @description The area whose notes offer the template; null for every area */
+            area: string | null;
             bodyMarkdown: string;
             version: number;
             /** Format: date-time */
@@ -12305,6 +12322,8 @@ export interface components {
             items: {
                 id: string;
                 name: string;
+                /** @description The area whose notes offer the template; null for every area */
+                area: string | null;
                 bodyMarkdown: string;
                 version: number;
                 /** Format: date-time */
@@ -12317,6 +12336,11 @@ export interface components {
             id: string;
             name: string;
             /**
+             * @description The area whose notes offer the template; null for every area
+             * @default null
+             */
+            area: string | null;
+            /**
              * @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not
              * @default
              */
@@ -12325,6 +12349,8 @@ export interface components {
         UpdateNoteTemplateRequest: {
             version?: number;
             name?: string;
+            /** @description The area whose notes offer the template; null for every area */
+            area?: string | null;
             /** @description Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not */
             bodyMarkdown?: string;
         };

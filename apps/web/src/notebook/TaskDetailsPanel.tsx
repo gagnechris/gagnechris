@@ -5,6 +5,7 @@ import {
   usePatchTaskMutation,
   useTaskDescriptionEditor,
   useTaskToggle,
+  type NotebookArea,
   type Task,
   type TaskPatch,
 } from '@gagnechris/app-core';
@@ -97,7 +98,7 @@ export type DescriptionEditorProps = {
   onChange: (value: string) => void;
   label: string;
   placeholder: string;
-  templates: { date: string; areaName: string };
+  templates: { date: string; area: NotebookArea; areaName: string };
 };
 
 /** A task's description and fields, under its row in a note. */
@@ -165,7 +166,11 @@ export function TaskDetailsPanel({
         onChange: description.onChange,
         label: `Details for ${task.title}`,
         placeholder: 'Add details…',
-        templates: { date: today, areaName: areaName(task.area) },
+        templates: {
+          date: today,
+          area: task.area,
+          areaName: areaName(task.area),
+        },
       })}
       <div className="task-details__chips">
         <ChipSelect

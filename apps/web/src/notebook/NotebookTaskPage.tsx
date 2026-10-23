@@ -260,7 +260,11 @@ export default function NotebookTaskPage() {
       </Field>
 
       <NotebookMarkdownBody
-        templates={{ date: today, areaName: areaName(entity.area) }}
+        templates={{
+          date: today,
+          area: entity.area,
+          areaName: areaName(entity.area),
+        }}
         value={draft.description}
         onChange={(description) =>
           updateDraft((prev) => ({ ...prev, description }))

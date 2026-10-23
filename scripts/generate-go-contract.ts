@@ -374,6 +374,7 @@ const legacyResume = {
 const noteTemplate = {
   id: '01K6G0000000000000000TMPA0',
   name: 'HM Screen Interview',
+  area: 'work' as const,
   bodyMarkdown: '## {{date}}\n\n[ ] Send feedback',
   version: 3,
   createdAt: TS,

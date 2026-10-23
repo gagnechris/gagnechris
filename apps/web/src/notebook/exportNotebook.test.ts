@@ -247,6 +247,7 @@ describe('exportNotebook', () => {
       {
         id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
         name: 'HM Screen Interview',
+        area: null,
         bodyMarkdown: '## {{date}}\n[ ] Send feedback\n',
         version: 1,
         createdAt: '2026-10-09T12:00:00.000Z',

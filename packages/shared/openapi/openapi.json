@@ -2628,6 +2628,13 @@
             "type": "string",
             "minLength": 1
           },
+          "area": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "The area whose notes offer the template; null for every area"
+          },
           "bodyMarkdown": {
             "type": "string"
           },
@@ -2647,6 +2654,7 @@
         "required": [
           "id",
           "name",
+          "area",
           "bodyMarkdown",
           "version",
           "createdAt",
@@ -2669,6 +2677,13 @@
                   "type": "string",
                   "minLength": 1
                 },
+                "area": {
+                  "type": "string",
+                  "nullable": true,
+                  "maxLength": 24,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "description": "The area whose notes offer the template; null for every area"
+                },
                 "bodyMarkdown": {
                   "type": "string"
                 },
@@ -2688,6 +2703,7 @@
               "required": [
                 "id",
                 "name",
+                "area",
                 "bodyMarkdown",
                 "version",
                 "createdAt",
@@ -2713,6 +2729,14 @@
             "minLength": 1,
             "maxLength": 100
           },
+          "area": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "default": null,
+            "description": "The area whose notes offer the template; null for every area"
+          },
           "bodyMarkdown": {
             "type": "string",
             "default": "",
@@ -2735,6 +2759,13 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100
+          },
+          "area": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 24,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "The area whose notes offer the template; null for every area"
           },
           "bodyMarkdown": {
             "type": "string",
@@ -25867,6 +25898,13 @@
                             "type": "string",
                             "minLength": 1
                           },
+                          "area": {
+                            "type": "string",
+                            "nullable": true,
+                            "maxLength": 24,
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "description": "The area whose notes offer the template; null for every area"
+                          },
                           "bodyMarkdown": {
                             "type": "string"
                           },
@@ -25886,6 +25924,7 @@
                         "required": [
                           "id",
                           "name",
+                          "area",
                           "bodyMarkdown",
                           "version",
                           "createdAt",
@@ -26037,6 +26076,14 @@
                     "minLength": 1,
                     "maxLength": 100
                   },
+                  "area": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "default": null,
+                    "description": "The area whose notes offer the template; null for every area"
+                  },
                   "bodyMarkdown": {
                     "type": "string",
                     "default": "",
@@ -26077,6 +26124,13 @@
                       "type": "string",
                       "minLength": 1
                     },
+                    "area": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "The area whose notes offer the template; null for every area"
+                    },
                     "bodyMarkdown": {
                       "type": "string"
                     },
@@ -26096,6 +26150,7 @@
                   "required": [
                     "id",
                     "name",
+                    "area",
                     "bodyMarkdown",
                     "version",
                     "createdAt",
@@ -26360,6 +26415,13 @@
                       "type": "string",
                       "minLength": 1
                     },
+                    "area": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "The area whose notes offer the template; null for every area"
+                    },
                     "bodyMarkdown": {
                       "type": "string"
                     },
@@ -26379,6 +26441,7 @@
                   "required": [
                     "id",
                     "name",
+                    "area",
                     "bodyMarkdown",
                     "version",
                     "createdAt",
@@ -26601,6 +26664,13 @@
                     "minLength": 1,
                     "maxLength": 100
                   },
+                  "area": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 24,
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "description": "The area whose notes offer the template; null for every area"
+                  },
                   "bodyMarkdown": {
                     "type": "string",
                     "description": "Up to 10 KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not"
@@ -26636,6 +26706,13 @@
                       "type": "string",
                       "minLength": 1
                     },
+                    "area": {
+                      "type": "string",
+                      "nullable": true,
+                      "maxLength": 24,
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "description": "The area whose notes offer the template; null for every area"
+                    },
                     "bodyMarkdown": {
                       "type": "string"
                     },
@@ -26655,6 +26732,7 @@
                   "required": [
                     "id",
                     "name",
+                    "area",
                     "bodyMarkdown",
                     "version",
                     "createdAt",

@@ -9,7 +9,11 @@ import {
 import { EditorView, keymap } from '@codemirror/view';
 import { useCallback, useId, useMemo, useState, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
-import { useNoteTemplatesQuery, type NoteTemplate } from '@gagnechris/app-core';
+import {
+  useNoteTemplatesQuery,
+  type NotebookArea,
+  type NoteTemplate,
+} from '@gagnechris/app-core';
 import { fillNoteTemplate, filterNoteTemplates } from '@gagnechris/shared';
 import type { MarkdownEditorHandle } from '../kit/markdown/MarkdownEditor';
 import { PHONE_QUERY, useMediaQuery } from '../kit/useMediaQuery';
@@ -220,18 +224,21 @@ type Snapshot = {
 };
 
 /**
- * Typing `/` at the start of an empty line lists the user's templates,
+ * Typing `/` at the start of an empty line lists the note area's templates,
  * filtered by what follows; Enter puts the chosen one's text there.
  */
 export function useNoteTemplateMenu({
   enabled,
+  area,
   fill,
 }: {
   enabled: boolean;
+  /** Only this area's templates and every area's are listed. */
+  area: NotebookArea | undefined;
   fill: (markdown: string) => string;
 }) {
   const baseId = useId();
-  const templates = useNoteTemplatesQuery(enabled).data;
+  const templates = useNoteTemplatesQuery({ area, enabled }).data;
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const docked = useMediaQuery(PHONE_QUERY);
 

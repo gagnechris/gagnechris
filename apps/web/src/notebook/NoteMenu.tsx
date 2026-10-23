@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import type { NoteTemplate } from '@gagnechris/app-core';
+import type { NotebookArea, NoteTemplate } from '@gagnechris/app-core';
 import { taskEmbedIds } from '@gagnechris/shared';
 import {
   Button,
@@ -38,6 +38,7 @@ const TASK_ROWS = [
 /** The note's ⋯ menu: how task rows show, Insert template…, Archive, and Delete. */
 export function NoteMenu({
   noteId,
+  area,
   archived,
   onArchivedChange,
   onDelete,
@@ -45,6 +46,7 @@ export function NoteMenu({
   onInsertTemplate,
 }: {
   noteId: string;
+  area: NotebookArea;
   archived?: boolean;
   /** Without it there is no Archive item. */
   onArchivedChange?: (archived: boolean) => void;
@@ -127,6 +129,7 @@ export function NoteMenu({
       {picking && onInsertTemplate ? (
         <div className="note-menu__panel">
           <NoteTemplatePicker
+            area={area}
             onChoose={(template) => {
               stopPicking(false);
               onInsertTemplate(template);
