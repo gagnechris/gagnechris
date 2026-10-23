@@ -236,6 +236,7 @@ export {
   NOTE_TEMPLATE_NAME_MAX_LENGTH,
   noteTemplateHasEmbeds,
   NoteTemplateSchema,
+  noteTemplatesForArea,
   type NoteTemplate,
 } from './note-templates.js';
 export {

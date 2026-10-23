@@ -19,12 +19,13 @@ import (
 
 // NoteTemplate is NoteTemplateSchema, in its field order.
 type NoteTemplate struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	BodyMarkdown string `json:"bodyMarkdown"`
-	Version      int    `json:"version"`
-	CreatedAt    string `json:"createdAt"`
-	UpdatedAt    string `json:"updatedAt"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Area         *string `json:"area"`
+	BodyMarkdown string  `json:"bodyMarkdown"`
+	Version      int     `json:"version"`
+	CreatedAt    string  `json:"createdAt"`
+	UpdatedAt    string  `json:"updatedAt"`
 }
 
 type storedNoteTemplate struct {
@@ -52,6 +53,7 @@ func parseNoteTemplate(item data.Item) (storedNoteTemplate, error) {
 		NoteTemplate: NoteTemplate{
 			ID:           r.Str("id", 1),
 			Name:         r.Str("name", 1),
+			Area:         r.OptOnlyStr("area", 1),
 			BodyMarkdown: r.Str("bodyMarkdown", 0),
 			Version:      r.NonNegativeInt("version"),
 			CreatedAt:    r.Str("createdAt", 1),
@@ -70,6 +72,9 @@ func noteTemplateItem(t storedNoteTemplate) data.Item {
 	item["id"] = data.S(t.ID)
 	item["userId"] = data.S(t.userID)
 	item["name"] = data.S(t.Name)
+	if t.Area != nil {
+		item["area"] = data.S(*t.Area)
+	}
 	item["bodyMarkdown"] = data.S(t.BodyMarkdown)
 	item["version"] = data.N(int64(t.Version))
 	item["createdAt"] = data.S(t.CreatedAt)
@@ -164,7 +169,7 @@ func (r *noteTemplatesRepo) count(ctx context.Context, userID string) (int, erro
 // create is idempotent: a repeat of the same id, name and text returns the
 // stored template; the same id with other content is a 409. The count cap
 // is checked before the write, so concurrent creates can pass it by a few.
-func (r *noteTemplatesRepo) create(ctx context.Context, userID, id, name, body string) (NoteTemplate, error) {
+func (r *noteTemplatesRepo) create(ctx context.Context, userID, id, name string, area *string, body string) (NoteTemplate, error) {
 	replay := func() (NoteTemplate, error) {
 		existing, err := r.get(ctx, userID, id)
 		if err != nil {
@@ -173,7 +178,7 @@ func (r *noteTemplatesRepo) create(ctx context.Context, userID, id, name, body s
 		if existing == nil {
 			return NoteTemplate{}, nil
 		}
-		if existing.Name == name && existing.BodyMarkdown == body {
+		if existing.Name == name && sameParent(existing.Area, area) && existing.BodyMarkdown == body {
 			return existing.NoteTemplate, nil
 		}
 		return NoteTemplate{}, &api.ConflictError{
@@ -193,7 +198,7 @@ func (r *noteTemplatesRepo) create(ctx context.Context, userID, id, name, body s
 	}
 	now := jstime.ISO(r.now())
 	t := storedNoteTemplate{
-		NoteTemplate: NoteTemplate{ID: id, Name: name, BodyMarkdown: body, Version: 1, CreatedAt: now, UpdatedAt: now},
+		NoteTemplate: NoteTemplate{ID: id, Name: name, Area: area, BodyMarkdown: body, Version: 1, CreatedAt: now, UpdatedAt: now},
 		userID:       userID,
 	}
 	_, err = r.table.DB.PutItem(ctx, &dynamodb.PutItemInput{
@@ -222,7 +227,7 @@ func (r *noteTemplatesRepo) conflict(ctx context.Context, userID, id string, exp
 	return store.VersionConflict(expected, &current.Version, current.NoteTemplate)
 }
 
-func (r *noteTemplatesRepo) update(ctx context.Context, userID, id string, expected api.Expected, name, body *string) (NoteTemplate, error) {
+func (r *noteTemplatesRepo) update(ctx context.Context, userID, id string, expected api.Expected, name, body *string, area *string, hasArea bool) (NoteTemplate, error) {
 	t, err := r.getOrThrow(ctx, userID, id)
 	if err != nil {
 		return NoteTemplate{}, err
@@ -233,6 +238,9 @@ func (r *noteTemplatesRepo) update(ctx context.Context, userID, id string, expec
 	}
 	setIf(&t.Name, name)
 	setIf(&t.BodyMarkdown, body)
+	if hasArea {
+		t.Area = area
+	}
 	t.Version = base + 1
 	t.UpdatedAt = jstime.ISO(r.now())
 	_, err = r.table.DB.PutItem(ctx, &dynamodb.PutItemInput{

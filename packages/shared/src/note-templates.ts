@@ -1,6 +1,12 @@
 import * as z from 'zod';
 import { formatCalendarDay, weekdayName } from './calendar.js';
-import { UlidSchema, VersionSchema, utf8ByteLength } from './schemas.js';
+import {
+  NotebookAreaSchema,
+  UlidSchema,
+  VersionSchema,
+  utf8ByteLength,
+  type NotebookArea,
+} from './schemas.js';
 import { findTaskEmbeds } from './task-embeds.js';
 
 export const NOTE_TEMPLATE_MAX_BYTES = 10_000;
@@ -41,9 +47,14 @@ const NoteTemplateBodySchema = z
     `Up to ${NOTE_TEMPLATE_MAX_BYTES / 1000} KB (UTF-8; larger → 413); task lines allowed, {{task:…}} embeds are not`,
   );
 
+const NoteTemplateAreaSchema = NotebookAreaSchema.nullable().describe(
+  'The area whose notes offer the template; null for every area',
+);
+
 export const NoteTemplateSchema = z.object({
   id: UlidSchema,
   name: z.string().min(1),
+  area: NoteTemplateAreaSchema,
   bodyMarkdown: z.string(),
   version: VersionSchema,
   createdAt: z.string().datetime({ offset: true }),
@@ -59,6 +70,7 @@ export const NoteTemplateListResponseSchema = z.object({
 export const CreateNoteTemplateRequestSchema = z.object({
   id: UlidSchema,
   name: NoteTemplateNameSchema,
+  area: NoteTemplateAreaSchema.default(null),
   bodyMarkdown: NoteTemplateBodySchema.default(''),
 });
 
@@ -69,12 +81,21 @@ export type CreateNoteTemplateRequest = z.input<
 export const UpdateNoteTemplateRequestSchema = z.object({
   version: VersionSchema.optional(),
   name: NoteTemplateNameSchema.optional(),
+  area: NoteTemplateAreaSchema.optional(),
   bodyMarkdown: NoteTemplateBodySchema.optional(),
 });
 
 export type UpdateNoteTemplateRequest = z.infer<
   typeof UpdateNoteTemplateRequestSchema
 >;
+
+/** The templates a note in `area` offers: that area's and every area's. */
+export function noteTemplatesForArea<T extends Pick<NoteTemplate, 'area'>>(
+  templates: readonly T[],
+  area: NotebookArea,
+): T[] {
+  return templates.filter((t) => t.area === null || t.area === area);
+}
 
 /** By name, ignoring case. */
 export function compareNoteTemplates(

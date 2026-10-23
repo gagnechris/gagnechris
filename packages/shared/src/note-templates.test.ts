@@ -6,6 +6,7 @@ import {
   UpdateNoteTemplateRequestSchema,
   fillNoteTemplate,
   filterNoteTemplates,
+  noteTemplatesForArea,
 } from './note-templates.js';
 
 const t = (id: string, name: string) => ({ id, name });
@@ -38,6 +39,20 @@ describe('filterNoteTemplates', () => {
   });
 });
 
+describe('noteTemplatesForArea', () => {
+  test("keeps the area's templates and every area's", () => {
+    const templates = [
+      { id: '1', area: 'work' },
+      { id: '2', area: null },
+      { id: '3', area: 'personal' },
+    ];
+    expect(noteTemplatesForArea(templates, 'work').map((x) => x.id)).toEqual([
+      '1',
+      '2',
+    ]);
+  });
+});
+
 describe('CreateNoteTemplateRequestSchema', () => {
   const id = '01JTMPAAAAAAAAAAAAAAAAAAA1';
 
@@ -48,7 +63,12 @@ describe('CreateNoteTemplateRequestSchema', () => {
         name: '  HM Screen ',
         bodyMarkdown: '[ ] Send feedback',
       }),
-    ).toEqual({ id, name: 'HM Screen', bodyMarkdown: '[ ] Send feedback' });
+    ).toEqual({
+      id,
+      name: 'HM Screen',
+      area: null,
+      bodyMarkdown: '[ ] Send feedback',
+    });
     expect(
       CreateNoteTemplateRequestSchema.safeParse({ id, name: '  ' }).success,
     ).toBe(false);

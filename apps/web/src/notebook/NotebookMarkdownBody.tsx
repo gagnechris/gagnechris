@@ -12,6 +12,7 @@ import {
   useGetApiClient,
   useLatest,
   type EmbedNote,
+  type NotebookArea,
 } from '@gagnechris/app-core';
 import {
   fillNoteTemplate,
@@ -53,7 +54,7 @@ type Props = {
   label?: string;
   placeholder?: string;
   /** Turns on `/` templates, filled for this day and area. */
-  templates?: { date: string; areaName?: string };
+  templates?: { date: string; area: NotebookArea; areaName?: string };
 };
 
 /** Room under the caret for the accessory bar and the docked date chips. */
@@ -157,6 +158,7 @@ export function NotebookMarkdownBody({
   const templateArea = templates?.areaName;
   const templateMenu = useNoteTemplateMenu({
     enabled: templates !== undefined,
+    area: templates?.area,
     fill: useCallback(
       (markdown: string) =>
         templateDate

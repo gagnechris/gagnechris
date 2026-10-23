@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import type { NoteTemplate } from '@gagnechris/app-core';
+import { AUTOSAVE_DEBOUNCE_MS, type NoteTemplate } from '@gagnechris/app-core';
 import {
   answerConfirms,
   QueryClientTestProvider,
@@ -10,6 +10,9 @@ import {
 } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookNoteTemplatesPage from './NotebookNoteTemplatesPage';
+
+/** Past the autosave debounce, with room for a loaded machine. */
+const AUTOSAVED = { timeout: AUTOSAVE_DEBOUNCE_MS + 3000 };
 
 const TS = '2026-10-02T12:00:00.000Z';
 
@@ -67,6 +70,7 @@ vi.mock('../workspace/api/client', () => ({
         const created: NoteTemplate = {
           id: String(body.id),
           name: String(body.name),
+          area: (body.area as string | null | undefined) ?? null,
           bodyMarkdown: String(body.bodyMarkdown ?? ''),
           version: 1,
           createdAt: TS,
@@ -135,7 +139,7 @@ describe('note templates settings', () => {
     expect(
       await screen.findByRole('link', { name: 'Note templates' }),
     ).toHaveAttribute('aria-current', 'page');
-    await screen.findByText('No templates yet');
+    await screen.findByText('No Work templates yet');
 
     await user.type(
       screen.getByRole('textbox', { name: 'New template' }),
@@ -146,6 +150,7 @@ describe('note templates settings', () => {
       expect(state.posts).toEqual([
         expect.objectContaining({
           name: 'HM Screen Interview',
+          area: 'work',
           bodyMarkdown: '',
         }),
       ]),
@@ -159,19 +164,23 @@ describe('note templates settings', () => {
 
     const body = await screen.findByRole('textbox', { name: 'Template text' });
     await user.type(body, '## Questions{enter}[[ ] Send feedback');
-    await waitFor(() =>
-      expect(state.puts.at(-1)).toMatchObject({
-        name: 'HM Screen Interview',
-        bodyMarkdown: '## Questions\n[ ] Send feedback',
-      }),
+    await waitFor(
+      () =>
+        expect(state.puts.at(-1)).toMatchObject({
+          name: 'HM Screen Interview',
+          area: 'work',
+          bodyMarkdown: '## Questions\n[ ] Send feedback',
+        }),
+      AUTOSAVED,
     );
 
     const name = screen.getByRole('textbox', { name: 'Name' });
     await user.clear(name);
     expect(screen.getByText('A template needs a name.')).toBeInTheDocument();
     await user.type(name, 'HM screen');
-    await waitFor(() =>
-      expect(state.puts.at(-1)).toMatchObject({ name: 'HM screen' }),
+    await waitFor(
+      () => expect(state.puts.at(-1)).toMatchObject({ name: 'HM screen' }),
+      AUTOSAVED,
     );
     expect(state.puts.every((put) => put.name !== '')).toBe(true);
     expect(
@@ -180,6 +189,59 @@ describe('note templates settings', () => {
         { name: 'HM screen' },
       ),
     ).toHaveAttribute('aria-current', 'true');
+
+    await user.click(screen.getByRole('radio', { name: 'All areas' }));
+    await waitFor(
+      () =>
+        expect(state.puts.at(-1)).toMatchObject({
+          name: 'HM screen',
+          area: null,
+        }),
+      AUTOSAVED,
+    );
+  }, 15_000);
+
+  test('lists the sidebar area’s templates and every area’s, saying which', async () => {
+    state.templates = [
+      {
+        id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
+        name: 'Standup',
+        area: 'work',
+        bodyMarkdown: '- Yesterday',
+        version: 1,
+        createdAt: TS,
+        updatedAt: TS,
+      },
+      {
+        id: '01JTMPAAAAAAAAAAAAAAAAAAA2',
+        name: 'Groceries',
+        area: 'personal',
+        bodyMarkdown: '',
+        version: 1,
+        createdAt: TS,
+        updatedAt: TS,
+      },
+      {
+        id: '01JTMPAAAAAAAAAAAAAAAAAAA3',
+        name: 'Retro',
+        area: null,
+        bodyMarkdown: '',
+        version: 1,
+        createdAt: TS,
+        updatedAt: TS,
+      },
+    ];
+    renderAt('/settings/note-templates?template=01JTMPAAAAAAAAAAAAAAAAAAA1');
+    const list = await screen.findByRole('list', { name: 'Templates' });
+    const [retro, standup] = within(list).getAllByRole('listitem');
+    expect(within(list).queryByText('Groceries')).toBeNull();
+    expect(within(retro!).getByText('All areas · Empty')).toBeInTheDocument();
+    expect(
+      within(standup!).getByText('Work only · Yesterday'),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole('radio', { name: 'Work only' }),
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   test('lists templates by name and deletes one after confirming', async () => {
@@ -187,6 +249,7 @@ describe('note templates settings', () => {
       {
         id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
         name: 'Retro',
+        area: null,
         bodyMarkdown: '',
         version: 1,
         createdAt: TS,
@@ -195,6 +258,7 @@ describe('note templates settings', () => {
       {
         id: '01JTMPAAAAAAAAAAAAAAAAAAA2',
         name: '1:1',
+        area: null,
         bodyMarkdown: '- Wins',
         version: 2,
         createdAt: TS,
@@ -211,8 +275,8 @@ describe('note templates settings', () => {
         .map((b) => b.textContent),
     ).toEqual(['1:1', 'Retro']);
     const [oneOnOne, retro] = within(list).getAllByRole('listitem');
-    expect(within(oneOnOne!).getByText('Wins')).toBeInTheDocument();
-    expect(within(retro!).getByText('Empty')).toBeInTheDocument();
+    expect(within(oneOnOne!).getByText('All areas · Wins')).toBeInTheDocument();
+    expect(within(retro!).getByText('All areas · Empty')).toBeInTheDocument();
 
     await user.click(within(list).getByRole('button', { name: '1:1' }));
     expect(
@@ -238,6 +302,7 @@ describe('note templates settings', () => {
       {
         id: '01JTMPAAAAAAAAAAAAAAAAAAA1',
         name: 'Retro',
+        area: null,
         bodyMarkdown: '- Wins',
         version: 1,
         createdAt: TS,

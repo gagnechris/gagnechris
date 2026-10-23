@@ -180,6 +180,7 @@ export function TodayEditor({
           <NoteDetailsToggle markdown={draft.bodyMarkdown} />
           <NoteMenu
             noteId={entity.id}
+            area={area}
             onDelete={entity.version > 0 ? () => void runDelete() : undefined}
             deleteDisabled={busy}
             onInsertTemplate={insertTemplate}
@@ -215,7 +216,7 @@ export function TodayEditor({
       ) : null}
       <NotebookMarkdownBody
         editorRef={editorRef}
-        templates={{ date, areaName }}
+        templates={{ date, area, areaName }}
         note={entity}
         ensureNoteSaved={save}
         value={draft.bodyMarkdown}

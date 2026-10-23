@@ -73,6 +73,7 @@ describe('note templates over HTTP (DynamoDB Local)', () => {
     expect(created.body).toEqual({
       id,
       name: 'HM Screen Interview',
+      area: null,
       bodyMarkdown: BODY,
       version: 1,
       createdAt: ISO,
@@ -244,6 +245,7 @@ describe('note templates over HTTP (DynamoDB Local)', () => {
           Item: buildNoteTemplateItem(FULL, {
             id: ulid(),
             name: `Template ${i}`,
+            area: null,
             bodyMarkdown: '',
             version: 1,
             createdAt: at,
@@ -264,5 +266,78 @@ describe('note templates over HTTP (DynamoDB Local)', () => {
       error: 'conflict',
       message: NOTE_TEMPLATE_LIMIT_MESSAGE,
     });
+  });
+
+  it('keeps a template to one area or every area', async () => {
+    const as = 'user-note-templates-http-areas';
+    const work = ulid();
+    const every = ulid();
+    const created = await call('POST', PATH, {
+      user: as,
+      body: { id: work, name: 'Standup', area: 'work' },
+    });
+    expect(created).toMatchObject({ status: 201, body: { area: 'work' } });
+    expect(await storedRow(as, work)).toMatchObject({ area: 'work' });
+    const shared = await call('POST', PATH, {
+      user: as,
+      body: { id: every, name: 'Retro' },
+    });
+    expect(shared).toMatchObject({ status: 201, body: { area: null } });
+    expect(await storedRow(as, every)).not.toHaveProperty('area');
+
+    const unknown = await call('POST', PATH, {
+      user: as,
+      body: { id: ulid(), name: 'Family', area: 'family' },
+    });
+    expect(unknown).toMatchObject({
+      status: 400,
+      body: { fields: { area: 'not_found' } },
+    });
+
+    const moved = await call('PUT', `${PATH}/${work}`, {
+      user: as,
+      body: { version: 1, area: null },
+    });
+    expect(moved).toMatchObject({
+      status: 200,
+      body: { area: null, name: 'Standup', version: 2 },
+    });
+    expect(await storedRow(as, work)).not.toHaveProperty('area');
+    const renamed = await call('PUT', `${PATH}/${every}`, {
+      user: as,
+      body: { version: 1, area: 'personal' },
+    });
+    expect(renamed.body).toMatchObject({ area: 'personal' });
+    const kept = await call('PUT', `${PATH}/${every}`, {
+      user: as,
+      body: { version: 2, name: 'Retro notes' },
+    });
+    expect(kept.body).toMatchObject({ area: 'personal', name: 'Retro notes' });
+
+    const list = await call('GET', PATH, { user: as });
+    expect(
+      new Map(
+        list.body.items.map((t: { id: string; area: string | null }) => [
+          t.id,
+          t.area,
+        ]),
+      ),
+    ).toEqual(
+      new Map([
+        [work, null],
+        [every, 'personal'],
+      ]),
+    );
+
+    const areas = await call('PUT', '/api/notebook/areas', {
+      user: as,
+      body: { areas: [{ id: 'work', name: 'Work' }] },
+      ifMatch: '"0"',
+    });
+    expect(areas.status).toBe(200);
+    const after = await call('GET', PATH, { user: as });
+    expect(
+      after.body.items.find((t: { id: string }) => t.id === every),
+    ).toMatchObject({ area: null });
   });
 });

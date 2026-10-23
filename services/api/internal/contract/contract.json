@@ -1695,6 +1695,10 @@
           "type": "string",
           "minLength": 1
         },
+        "area": {
+          "type": "string",
+          "minLength": 1
+        },
         "bodyMarkdown": {
           "type": "string"
         },
@@ -2510,6 +2514,7 @@
       "id": "01K6G0000000000000000TMPA0",
       "userId": "user-sub-1",
       "name": "HM Screen Interview",
+      "area": "work",
       "bodyMarkdown": "## {{date}}\n\n[ ] Send feedback",
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",
@@ -4054,6 +4059,7 @@
     "noteTemplate": {
       "id": "01K6G0000000000000000TMPA0",
       "name": "HM Screen Interview",
+      "area": "work",
       "bodyMarkdown": "## {{date}}\n\n[ ] Send feedback",
       "version": 3,
       "createdAt": "2026-10-01T12:00:00.000Z",

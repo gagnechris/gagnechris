@@ -788,6 +788,8 @@ export const NoteTemplateItemSchema = z.object({
   id: z.string().min(1),
   userId: z.string().min(1),
   name: z.string().min(1),
+  /** Absent for a template every area offers. */
+  area: z.string().min(1).optional(),
   bodyMarkdown: z.string(),
   version: z.number().int().positive(),
   createdAt: z.string().min(1),
@@ -807,6 +809,7 @@ export function buildNoteTemplateItem(
     id: template.id,
     userId,
     name: template.name,
+    ...(template.area === null ? {} : { area: template.area }),
     bodyMarkdown: template.bodyMarkdown,
     version: template.version,
     createdAt: template.createdAt,

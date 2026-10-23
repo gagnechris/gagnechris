@@ -34,10 +34,35 @@ func noteTemplateBody(v *api.Validator) (string, bool) {
 	return s, ok
 }
 
+// noteTemplateArea reads the template's area: null for every area, else one
+// of the user's areas.
+func (h handlers) noteTemplateArea(ctx context.Context, r *api.Request, v *api.Validator) (area *string, present bool, err error) {
+	area, present = v.NullableString("area", AreaRule)
+	if err := v.ErrMaybeTooLarge(); err != nil {
+		return nil, false, err
+	}
+	if area != nil {
+		if _, err := h.areas.require(ctx, r.UserID(), *area); err != nil {
+			return nil, false, err
+		}
+	}
+	return area, present, nil
+}
+
 func (h handlers) listNoteTemplates(ctx context.Context, r *api.Request) (*api.Response, error) {
 	items, err := h.noteTemplates.list(ctx, r.UserID(), store.LogCorrupt(r.Log, r.Metrics))
 	if err != nil {
 		return nil, err
+	}
+	areas, err := h.areas.get(ctx, r.UserID())
+	if err != nil {
+		return nil, err
+	}
+	// A removed area's templates show in every area rather than in none.
+	for i, t := range items {
+		if t.Area != nil && !areas.Has(*t.Area) {
+			items[i].Area = nil
+		}
 	}
 	return listResponse(store.Page[NoteTemplate]{Items: items}, checkNoteTemplate)
 }
@@ -50,10 +75,11 @@ func (h handlers) createNoteTemplate(ctx context.Context, r *api.Request) (*api.
 	id, _ := v.ULID("id", true)
 	name, _ := noteTemplateName(v, true)
 	body, _ := noteTemplateBody(v)
-	if err := v.ErrMaybeTooLarge(); err != nil {
+	area, _, err := h.noteTemplateArea(ctx, r, v)
+	if err != nil {
 		return nil, err
 	}
-	t, err := h.noteTemplates.create(ctx, r.UserID(), id, name, body)
+	t, err := h.noteTemplates.create(ctx, r.UserID(), id, name, area, body)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +106,8 @@ func (h handlers) updateNoteTemplate(ctx context.Context, r *api.Request) (*api.
 	version := bodyVersion(v)
 	name := optStr(noteTemplateName(v, false))
 	body := optStr(noteTemplateBody(v))
-	if err := v.ErrMaybeTooLarge(); err != nil {
+	area, hasArea, err := h.noteTemplateArea(ctx, r, v)
+	if err != nil {
 		return nil, err
 	}
 	id, err := idParam(r)
@@ -91,7 +118,7 @@ func (h handlers) updateNoteTemplate(ctx context.Context, r *api.Request) (*api.
 	if err != nil {
 		return nil, err
 	}
-	t, err := h.noteTemplates.update(ctx, r.UserID(), id, e, name, body)
+	t, err := h.noteTemplates.update(ctx, r.UserID(), id, e, name, body, area, hasArea)
 	if err != nil {
 		return nil, e.IfMatchConflict(err)
 	}

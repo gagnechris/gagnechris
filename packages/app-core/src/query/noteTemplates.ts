@@ -1,3 +1,4 @@
+import { noteTemplatesForArea } from '@gagnechris/shared';
 import {
   useMutation,
   useQuery,
@@ -12,6 +13,7 @@ import {
   fetchNoteTemplates,
   updateNoteTemplate,
   type CreateNoteTemplateRequest,
+  type NotebookArea,
   type NoteTemplate,
 } from './api.js';
 import { preferNewerByVersion, setDetail, upsertById } from './cache.js';
@@ -41,6 +43,9 @@ export const noteTemplateResource = createVersionedResource<
     updateNoteTemplate(client, id, {
       version: body.version,
       ...(typeof body.name === 'string' ? { name: body.name } : {}),
+      ...(body.area === null || typeof body.area === 'string'
+        ? { area: body.area as NotebookArea | null }
+        : {}),
       ...(typeof body.bodyMarkdown === 'string'
         ? { bodyMarkdown: body.bodyMarkdown }
         : {}),
@@ -49,13 +54,22 @@ export const noteTemplateResource = createVersionedResource<
   tooLargeMessage: 'This template is over the 10 KB limit.',
 });
 
-/** Every template, oldest first. */
-export const useNoteTemplatesQuery = (enabled = true) => {
+/**
+ * Every template, oldest first; with `area`, only the ones a note in that
+ * area offers.
+ */
+export const useNoteTemplatesQuery = ({
+  area,
+  enabled = true,
+}: { area?: NotebookArea; enabled?: boolean } = {}) => {
   const getClient = useGetApiClient();
   return useQuery({
     queryKey: queryKeys.noteTemplates.list(),
     queryFn: () => fetchNoteTemplates(getClient()),
     enabled,
+    select: area
+      ? (list: NoteTemplate[]) => noteTemplatesForArea(list, area)
+      : undefined,
   });
 };
 
