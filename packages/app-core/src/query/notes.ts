@@ -1,4 +1,5 @@
-import { createUlid } from '@gagnechris/shared';
+import { createUlid, localDateString } from '@gagnechris/shared';
+import { useEffect, useRef } from 'react';
 import {
   useInfiniteQuery,
   useMutation,
@@ -39,8 +40,6 @@ export type NoteResourceParams = { id: string };
 export type DailyNoteResourceParams = {
   area: NotebookArea;
   date: string;
-  /** Opening today's note creates it with earlier open tasks carried in. */
-  carryIn?: boolean;
 };
 
 /** Kept until the first successful upsert so re-renders reuse one client id. */
@@ -142,8 +141,10 @@ export const dailyNoteResource = createVersionedResource<
   DailyNoteResourceParams
 >({
   queryKey: ({ area, date }) => queryKeys.notes.daily(area, date),
-  fetch: (client, { area, date, carryIn }) =>
-    fetchDailyNoteEntity(client, area, date, carryIn),
+  // Decided as it fetches: a refetch can run before a render that knows the
+  // day rolled over. Opening today's note carries earlier open tasks in.
+  fetch: (client, { area, date }) =>
+    fetchDailyNoteEntity(client, area, date, date === localDateString()),
   update: async (client, { area, date }, body) => {
     const version = typeof body.version === 'number' ? body.version : undefined;
     const id = String(body.id ?? '');
@@ -162,6 +163,31 @@ export const dailyNoteResource = createVersionedResource<
   setCache: setSavedNote,
   tooLargeMessage: NOTEBOOK_TOO_LARGE_MESSAGE,
 });
+
+/**
+ * A day shown before it was today was read without carry-in; once the
+ * device's day reaches it, it is read again so its first open carries in.
+ */
+export function useOpenDailyNoteWhenToday(
+  area: NotebookArea,
+  date: string,
+  today: string,
+): void {
+  const queryClient = useQueryClient();
+  const key = pendingDailyKey(area, date);
+  const isToday = date === today;
+  const shown = useRef({ key, isToday });
+  useEffect(() => {
+    const was = shown.current;
+    shown.current = { key, isToday };
+    if (isToday && !was.isToday && was.key === key) {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.notes.daily(area, date),
+        exact: true,
+      });
+    }
+  }, [area, date, isToday, key, queryClient]);
+}
 
 /**
  * Start blank: the unsaved day drops its template text and stays blank on

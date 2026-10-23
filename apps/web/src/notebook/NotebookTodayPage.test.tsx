@@ -1088,4 +1088,23 @@ describe('NotebookTodayPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Work notebook · Today')).toBeInTheDocument();
   });
+
+  test('a day shown before it is today is opened once it becomes today', async () => {
+    vi.setSystemTime(new Date(2026, 9, 20, 23, 59, 50));
+    renderToday('2026-10-21');
+    await screen.findByRole('textbox', { name: 'Note body' });
+    expect(state.opens).toEqual([]);
+
+    vi.setSystemTime(new Date(2026, 9, 21, 8, 0, 0));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(
+      await screen.findByText('Work notebook · Today'),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(state.opens).toEqual(['work:2026-10-21']);
+    });
+  });
 });
