@@ -245,6 +245,7 @@ describe('note templates over HTTP (DynamoDB Local)', () => {
           Item: buildNoteTemplateItem(FULL, {
             id: ulid(),
             name: `Template ${i}`,
+            area: null,
             bodyMarkdown: '',
             version: 1,
             createdAt: at,

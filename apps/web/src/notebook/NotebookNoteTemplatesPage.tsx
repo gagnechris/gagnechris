@@ -299,8 +299,8 @@ export default function NotebookNoteTemplatesPage() {
       <p className="workspace-panel__lede">
         Text you reuse in {areaName}, like an interview outline. Type{' '}
         <code>/</code> at the start of a line in a note or task page, or use
-        Insert template… in a note’s ⋯ menu. Switch areas in the sidebar to
-        see another area’s templates.
+        Insert template… in a note’s ⋯ menu. Switch areas in the sidebar to see
+        another area’s templates.
       </p>
       {templates.error ? (
         <p className="workspace-panel__error" role="alert">
