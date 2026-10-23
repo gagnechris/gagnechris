@@ -170,6 +170,7 @@ func applyNoteUpdate(existing Note, f noteFields, now string) (Note, error) {
 		return existing, api.BadRequest("Only page notes can be archived", map[string]string{"archived": "page_only"})
 	}
 	n := existing
+	n.previousTaskIDs = existing.TaskIDs
 	if f.title != nil {
 		n.Title = *f.title
 	}

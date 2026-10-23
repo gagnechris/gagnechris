@@ -1533,6 +1533,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "carryStopped": {
+          "type": "boolean"
         }
       },
       "required": [

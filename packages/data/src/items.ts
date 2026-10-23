@@ -489,6 +489,12 @@ export const TaskMetaItemSchema = VersionedMetaFieldsSchema.extend({
   /** Absent on rows written before subtasks; read as `null`. */
   parentId: z.string().min(1).nullable().optional(),
   tags: z.array(z.string()),
+  /**
+   * `true` once the task's line was taken out of a daily note it was carried
+   * into: later days leave it out until it is rescheduled, moved, reopened or
+   * embedded in a daily note again. Absent otherwise.
+   */
+  carryStopped: z.boolean().optional(),
 });
 
 export type TaskMetaItem = z.infer<typeof TaskMetaItemSchema>;

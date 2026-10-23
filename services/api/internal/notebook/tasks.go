@@ -143,9 +143,13 @@ func (r *tasksRepo) update(ctx context.Context, userID, id string, expected api.
 		if f.hasDue {
 			t.DueDate = f.dueDate
 		}
+		start, someday, home := t.StartDate, t.Someday, t.NoteID
 		t.StartDate, t.Someday = applySchedule(t.StartDate, t.Someday, f.startDate, f.hasStart, f.someday)
 		if f.hasNote {
 			t.NoteID = f.noteID
+		}
+		if !sameParent(start, t.StartDate) || someday != t.Someday || !sameParent(home, t.NoteID) {
+			t.CarryStopped = false
 		}
 		if f.hasTags {
 			t.Tags = NormalizeTags(f.tags)
@@ -171,6 +175,7 @@ func (r *tasksRepo) reopen(ctx context.Context, userID, id string, expected api.
 		if !isOpen(t.Status) {
 			t.Status = "todo"
 		}
+		t.CarryStopped = false
 		t.CompletedAt = nil
 		t.UpdatedAt = now
 		return t, nil
@@ -320,13 +325,13 @@ func (r *tasksRepo) listByNote(ctx context.Context, userID string, q listTasksQu
 
 // carriedInto is the open tasks a new daily note for day carries in: what
 // is still open from earlier days. Tasks starting on day itself stay in
-// Still open.
+// Still open, as do tasks whose carry was stopped.
 func (r *tasksRepo) carriedInto(ctx context.Context, userID, area, day string, onCorrupt func(*api.DataIntegrityError)) ([]CarriedInTask, error) {
 	q := listTasksQuery{area: area, open: true, startOnOrBefore: day, today: day, limit: 100}
 	tasks, err := CollectPages(carryInMax, func(cursor string) (store.Page[Task], error) {
 		q.cursor = cursor
 		return r.list(ctx, userID, q, onCorrupt)
-	}, func(t Task) bool { return t.StartDate == nil || *t.StartDate != day })
+	}, func(t Task) bool { return !t.CarryStopped && (t.StartDate == nil || *t.StartDate != day) })
 	if err != nil {
 		return nil, err
 	}
