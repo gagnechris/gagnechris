@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import type { NoteTemplate } from '@gagnechris/app-core';
+import { AUTOSAVE_DEBOUNCE_MS, type NoteTemplate } from '@gagnechris/app-core';
 import {
   answerConfirms,
   QueryClientTestProvider,
@@ -10,6 +10,9 @@ import {
 } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
 import NotebookNoteTemplatesPage from './NotebookNoteTemplatesPage';
+
+/** Past the autosave debounce, with room for a loaded machine. */
+const AUTOSAVED = { timeout: AUTOSAVE_DEBOUNCE_MS + 3000 };
 
 const TS = '2026-10-02T12:00:00.000Z';
 
@@ -161,20 +164,23 @@ describe('note templates settings', () => {
 
     const body = await screen.findByRole('textbox', { name: 'Template text' });
     await user.type(body, '## Questions{enter}[[ ] Send feedback');
-    await waitFor(() =>
-      expect(state.puts.at(-1)).toMatchObject({
-        name: 'HM Screen Interview',
-        area: 'work',
-        bodyMarkdown: '## Questions\n[ ] Send feedback',
-      }),
+    await waitFor(
+      () =>
+        expect(state.puts.at(-1)).toMatchObject({
+          name: 'HM Screen Interview',
+          area: 'work',
+          bodyMarkdown: '## Questions\n[ ] Send feedback',
+        }),
+      AUTOSAVED,
     );
 
     const name = screen.getByRole('textbox', { name: 'Name' });
     await user.clear(name);
     expect(screen.getByText('A template needs a name.')).toBeInTheDocument();
     await user.type(name, 'HM screen');
-    await waitFor(() =>
-      expect(state.puts.at(-1)).toMatchObject({ name: 'HM screen' }),
+    await waitFor(
+      () => expect(state.puts.at(-1)).toMatchObject({ name: 'HM screen' }),
+      AUTOSAVED,
     );
     expect(state.puts.every((put) => put.name !== '')).toBe(true);
     expect(
@@ -185,13 +191,15 @@ describe('note templates settings', () => {
     ).toHaveAttribute('aria-current', 'true');
 
     await user.click(screen.getByRole('radio', { name: 'All areas' }));
-    await waitFor(() =>
-      expect(state.puts.at(-1)).toMatchObject({
-        name: 'HM screen',
-        area: null,
-      }),
+    await waitFor(
+      () =>
+        expect(state.puts.at(-1)).toMatchObject({
+          name: 'HM screen',
+          area: null,
+        }),
+      AUTOSAVED,
     );
-  });
+  }, 15_000);
 
   test('lists the sidebar area’s templates and every area’s, saying which', async () => {
     state.templates = [
