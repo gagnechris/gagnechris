@@ -67,7 +67,10 @@ const api = vi.hoisted(() => ({
 
 type Init = {
   body?: Record<string, unknown>;
-  params?: { path?: Record<string, string> };
+  params?: {
+    path?: Record<string, string>;
+    query?: Record<string, unknown>;
+  };
 };
 
 const ok = <T,>(data: T, status = 200) => ({
@@ -114,7 +117,14 @@ vi.mock('../workspace/api/client', () => ({
           return task && !task.deleted ? ok(task) : fail(404, 'not_found');
         }
         if (path === '/api/notebook/tasks') return ok({ items: [] });
-        if (path === '/api/notebook/notes') return ok({ items: [] });
+        if (path === '/api/notebook/notes') {
+          const taskId = init?.params?.query?.taskId;
+          return ok({
+            items: [...api.notes.values()].filter(
+              (n) => !n.deleted && n.taskIds.includes(String(taskId)),
+            ),
+          });
+        }
         return fail(404, 'not_found');
       },
       PUT: async (path: string, init?: Init) => {
@@ -818,6 +828,38 @@ describe('deleting an embedded task', () => {
     });
     expect(api.tasks.get(TASK_ID)?.deleted).toBe(true);
   }, 15_000);
+
+  test('deleting the line of a task another note shows takes it out of this note only', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    seedTask({ noteId: NOTE_B });
+    api.notes.set(NOTE_B, {
+      id: NOTE_B,
+      userId: 'u1',
+      area: 'work',
+      type: 'daily',
+      date: '2026-10-01',
+      title: '',
+      bodyMarkdown: tokenLine(TASK_ID),
+      tags: [],
+      pinned: false,
+      archived: false,
+      taskIds: [TASK_ID],
+      version: 1,
+      createdAt: TS,
+      updatedAt: TS,
+      deleted: false,
+    });
+    const { container } = renderNote(`Standup\n${tokenLine(TASK_ID)}`);
+    await within(container).findByRole('textbox', { name: 'Task title' });
+    const view = await editorView(container);
+
+    deleteEmbedLine(view);
+    expect(body).toBe('Standup');
+
+    await deletedAfterGrace();
+    expect(api.taskDeletes).toEqual([]);
+    expect(api.tasks.get(TASK_ID)?.deleted).toBe(false);
+  });
 
   test('undo brings the line back and keeps the task', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

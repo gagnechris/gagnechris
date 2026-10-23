@@ -391,19 +391,25 @@ export const NoteBodyEditor = ({
     embeds.onRemoved([id]);
   };
 
-  const confirmDeleteEmbed = (key: string, id: string, title: string) =>
+  const confirmDeleteEmbed = (key: string, id: string, title: string) => {
+    const state = stateOf(id);
+    const home = state.kind === 'task' ? state.saved?.noteId : null;
+    const carried = Boolean(home && note && home !== note.id);
     ActionSheetIOS.showActionSheetWithOptions(
       {
         title,
         options: ['Delete task', 'Cancel'],
         destructiveButtonIndex: 0,
         cancelButtonIndex: 1,
-        message: 'Takes it out of this note and your task list.',
+        message: carried
+          ? 'Takes it out of this note. It stays in the note it came from.'
+          : 'Takes it out of this note and your task list.',
       },
       (index) => {
         if (index === 0) deleteEmbed(key, id);
       },
     );
+  };
 
   const rowDrag = useRowDrag({
     markdown: () => latest.current.markdown,

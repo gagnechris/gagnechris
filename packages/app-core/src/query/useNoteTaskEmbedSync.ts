@@ -8,8 +8,14 @@ import {
 } from '@gagnechris/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useGetApiClient } from '../AppApiProvider.js';
 import { useLatest } from '../useLatest.js';
-import { ApiError, type NotebookArea, type Task } from './api.js';
+import {
+  ApiError,
+  fetchNotesPage,
+  type NotebookArea,
+  type Task,
+} from './api.js';
 import { queryKeys } from './keys.js';
 import { taskActionError } from './taskActionError.js';
 import { taskRequestFromDraft } from './taskRequest.js';
@@ -75,6 +81,27 @@ const isGone = (error: unknown) =>
   (error.status === 404 ||
     (error.current as { deleted?: boolean } | undefined)?.deleted === true);
 
+/**
+ * Whether a note other than `noteId` still shows the task, as a carried-in
+ * task's home day does. Unknown (offline) counts as shown when the task's home
+ * is another note, so a removed line never deletes what still lives there.
+ */
+const shownElsewhere = async (
+  client: Parameters<typeof fetchNotesPage>[0],
+  task: Task,
+  noteId: string,
+): Promise<boolean> => {
+  try {
+    const { items } = await fetchNotesPage(client, {
+      taskId: task.id,
+      limit: 10,
+    });
+    return items.some((n) => n.id !== noteId);
+  } catch {
+    return task.noteId !== null && task.noteId !== noteId;
+  }
+};
+
 const wait = (ms: number) =>
   new Promise<void>((resolve) => {
     setTimeout(resolve, ms);
@@ -85,8 +112,8 @@ type Pending = { draft: TaskLineDraft; failed: boolean };
 /**
  * Creates the task behind each converted line (retrying until the API
  * answers), keeps it in step with later edits of an undone conversion,
- * deletes the task when its line is deleted, and reports what each embed
- * should show.
+ * deletes the task when its line is deleted and no other note shows it, and
+ * reports what each embed should show.
  */
 export function useNoteTaskEmbedSync({
   markdown,
@@ -109,6 +136,7 @@ export function useNoteTaskEmbedSync({
   deleteGraceMs?: number;
 }) {
   const queryClient = useQueryClient();
+  const getClient = useGetApiClient();
   const { mutateAsync: createTask } = useCreateTaskMutation();
   const { mutateAsync: patchTask } = usePatchTaskMutation();
   const { mutateAsync: deleteTask } = useDeleteTaskMutation();
@@ -275,6 +303,9 @@ export function useNoteTaskEmbedSync({
       const task =
         queryClient.getQueryData<Task>(queryKeys.tasks.detail(id)) ?? created;
       if (!task || task.deleted) return;
+      const noteId = noteRef.current?.id;
+      if (noteId && (await shownElsewhere(getClient(), task, noteId))) return;
+      if (idsRef.current.includes(id)) return;
       setSyncError(null);
       try {
         await deleteTask({ id, version: task.version });
@@ -284,7 +315,7 @@ export function useNoteTaskEmbedSync({
         }
       }
     },
-    [deleteTask, idsRef, queryClient],
+    [deleteTask, getClient, idsRef, queryClient],
   );
 
   // Deletes wait out the grace period, and run at once if the note closes.

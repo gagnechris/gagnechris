@@ -34,6 +34,8 @@ type Note struct {
 	// Unopened marks a daily note made by anything but /open: the day's
 	// first open still carries tasks into it.
 	Unopened bool `json:"-"`
+	// previousTaskIDs is what an update's note embedded before it.
+	previousTaskIDs []string
 }
 
 // Task is the API's Task, in metaToTask's field order.
@@ -56,6 +58,8 @@ type Task struct {
 	CreatedAt   string   `json:"createdAt"`
 	UpdatedAt   string   `json:"updatedAt"`
 	Deleted     bool     `json:"deleted"`
+	// CarryStopped: later days leave the task out of their carried-in block.
+	CarryStopped bool `json:"-"`
 }
 
 // versionedMeta reads VersionedMetaFieldsSchema.
@@ -153,6 +157,9 @@ func ParseTask(item data.Item) (Task, error) {
 		t.ParentID = r.NullStr("parentId", 1)
 	}
 	t.Tags = r.StrList("tags")
+	if stopped := r.OptBool("carryStopped"); stopped != nil {
+		t.CarryStopped = *stopped
+	}
 	t.Version, t.CreatedAt, t.UpdatedAt, t.Deleted = versionedMeta(r)
 	return t, r.Err("task")
 }
@@ -224,6 +231,9 @@ func taskItem(t Task) data.Item {
 	item["createdAt"] = data.S(t.CreatedAt)
 	item["updatedAt"] = data.S(t.UpdatedAt)
 	item["deleted"] = data.Bool(t.Deleted)
+	if t.CarryStopped && !t.Deleted {
+		item["carryStopped"] = data.Bool(true)
+	}
 	if !t.Deleted {
 		item["gsi1pk"] = data.S(keys.TaskAreaStatusGSI1Pk(t.UserID, t.Area, t.Status))
 		item["gsi1sk"] = data.S(taskGSI1Sk(t))

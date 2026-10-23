@@ -335,11 +335,15 @@ func readNoteFields(v *api.Validator, byID bool) noteFields {
 	return f
 }
 
-// nestSubtasks sets the parents the note's indentation gives its tasks. The
-// note is already saved, so a failure is logged and the next save retries.
+// nestSubtasks sets the parents the note's indentation gives its tasks, and
+// which carried-in tasks later days leave out. The note is already saved, so
+// a failure is logged and the next save retries the nesting.
 func (h handlers) nestSubtasks(ctx context.Context, r *api.Request, n Note) {
 	if err := h.tasks.syncParents(ctx, r.UserID(), n, store.LogCorrupt(r.Log, r.Metrics)); err != nil {
 		r.Log.Warn("Subtask nesting failed", "noteId", n.ID, "errMessage", err.Error())
+	}
+	if err := h.tasks.syncCarry(ctx, r.UserID(), n); err != nil {
+		r.Log.Warn("Carry sync failed", "noteId", n.ID, "errMessage", err.Error())
 	}
 }
 

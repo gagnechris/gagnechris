@@ -327,4 +327,83 @@ describe('opening a daily note carries in open tasks', () => {
       id(4),
     ]);
   });
+
+  describe('a carried task taken out of a day', () => {
+    const TUE = '2026-10-06';
+    const WED = '2026-10-07';
+
+    async function carriedThenRemoved() {
+      await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+        body: { id: id(80), bodyMarkdown: 'Standup' },
+      });
+      await task(1, { startDate: FRI, noteId: id(80) });
+      await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+        body: { id: id(80), version: 1, bodyMarkdown: `{{task:${id(1)}}}` },
+      });
+      const monday = await open(MON, id(81));
+      expect(taskEmbedIds(String(monday.body.bodyMarkdown))).toEqual([id(1)]);
+      const removed = await call(
+        'PUT',
+        `/api/notebook/notes/daily/work/${MON}`,
+        {
+          body: {
+            id: id(81),
+            version: monday.body.version,
+            bodyMarkdown: 'Standup',
+          },
+        },
+      );
+      expect(removed.status).toBe(200);
+    }
+
+    it('is not carried into later days, and stays open in its own note', async () => {
+      await carriedThenRemoved();
+
+      const tuesday = await open(TUE, id(82));
+      expect(tuesday.body.exists).toBe(false);
+      const t = await call('GET', `/api/notebook/tasks/${id(1)}`);
+      expect(t.body).toMatchObject({ status: 'todo', noteId: id(80) });
+      expect(t.body).not.toHaveProperty('carryStopped');
+    });
+
+    it('carries again once it is rescheduled', async () => {
+      await carriedThenRemoved();
+      const t = await call('GET', `/api/notebook/tasks/${id(1)}`);
+      const moved = await call('PUT', `/api/notebook/tasks/${id(1)}`, {
+        body: { version: t.body.version, startDate: MON },
+      });
+      expect(moved.status).toBe(200);
+
+      const tuesday = await open(TUE, id(82));
+      expect(taskEmbedIds(String(tuesday.body.bodyMarkdown))).toEqual([id(1)]);
+    });
+
+    it('carries again once a day embeds it again', async () => {
+      await carriedThenRemoved();
+      await call('PUT', `/api/notebook/notes/daily/work/${TUE}`, {
+        body: { id: id(82), bodyMarkdown: `{{task:${id(1)}}}` },
+      });
+
+      const wednesday = await open(WED, id(83));
+      expect(taskEmbedIds(String(wednesday.body.bodyMarkdown))).toEqual([
+        id(1),
+      ]);
+    });
+
+    it('a task taken out of its own note still carries', async () => {
+      await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+        body: { id: id(80), bodyMarkdown: 'Standup' },
+      });
+      await task(1, { startDate: FRI, noteId: id(80) });
+      await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+        body: { id: id(80), version: 1, bodyMarkdown: `{{task:${id(1)}}}` },
+      });
+      await call('PUT', `/api/notebook/notes/daily/work/${FRI}`, {
+        body: { id: id(80), version: 2, bodyMarkdown: 'Standup' },
+      });
+
+      const monday = await open(MON, id(81));
+      expect(taskEmbedIds(String(monday.body.bodyMarkdown))).toEqual([id(1)]);
+    });
+  });
 });
