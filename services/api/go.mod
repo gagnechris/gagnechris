@@ -1,6 +1,6 @@
 module github.com/gagnechris/gagnechris/services/api
 
-go 1.27.2
+go 1.27.3
 
 // The black-box HTTP suite is a TypeScript workspace; its node_modules can hold .go files.
 ignore ./test
