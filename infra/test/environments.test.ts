@@ -172,7 +172,10 @@ describe('GuardrailsStack', () => {
         BudgetName: 'gagnechris-prod-monthly',
         BudgetType: 'COST',
         TimeUnit: 'MONTHLY',
-        BudgetLimit: { Amount: 20, Unit: 'USD' },
+        BudgetLimit: { Amount: 25, Unit: 'USD' },
+        FilterExpression: {
+          Tags: { Key: 'project', Values: ['gagnechris'] },
+        },
       },
       NotificationsWithSubscribers: Match.arrayWith([
         Match.objectLike({
@@ -197,7 +200,34 @@ describe('GuardrailsStack', () => {
       IncludeGlobalServiceEvents: true,
     });
 
-    template.resourceCountIs('Custom::AWS', 1);
+    template.hasResourceProperties('AWS::Budgets::Budget', {
+      Budget: {
+        BudgetName: 'account-unattributed-monthly',
+        BudgetLimit: { Amount: 5, Unit: 'USD' },
+        FilterExpression: {
+          And: [
+            {
+              Not: {
+                Tags: {
+                  Key: 'project',
+                  Values: ['gagnechris', 'extracredit'],
+                },
+              },
+            },
+            {
+              Not: {
+                Dimensions: {
+                  Key: 'SERVICE',
+                  Values: ['Amazon Registrar', 'Tax'],
+                },
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    template.resourceCountIs('Custom::AWS', 3);
 
     template.hasResourceProperties('AWS::AccessAnalyzer::Analyzer', {
       Type: 'ACCOUNT',
