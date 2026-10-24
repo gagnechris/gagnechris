@@ -65,7 +65,7 @@ Publisher (not the Vite build) generates prerendered HTML, `posts.json`, `rss.xm
 
 ## Hosting & Integrations
 
-- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com`, `notebook.gagnechris.com` and the Storybook catalog at `components.gagnechris.com` (`Components-prod`), one distribution each. Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
+- **Hosting**: AWS (S3 + CloudFront) for `gagnechris.com`, `admin.gagnechris.com`, `notebook.gagnechris.com` and the Storybook catalog at `components.gagnechris.com` (`Components-prod`), one distribution each. `christophergagne.com` and `chrisgagne.net` 301 to the apex (`Redirects-prod`). Old apex `/admin*` and `/auth*` URLs 301 to the app hosts; the apex never signs in
 - **Contact form**: `POST /api/contact` → SES
 - **Analytics**: Google Analytics 4, only in the production public build (`GA_MEASUREMENT_ID`, set by `scripts/deploy-web.sh`); local, preview and e2e builds load no GA
 - **Node**: requires Node.js 22.22.2+ (see `.nvmrc`)

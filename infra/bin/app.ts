@@ -15,6 +15,7 @@ import { DnsStack } from '../lib/stacks/dns-stack.js';
 import { EmailStack } from '../lib/stacks/email-stack.js';
 import { GuardrailsStack } from '../lib/stacks/guardrails-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
+import { RedirectsStack } from '../lib/stacks/redirects-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 
 const app = new App();
@@ -127,6 +128,12 @@ new ComponentsStack(app, `Components-${config.name}`, {
   description: `Storybook component catalog at components.${config.domainName} (${config.name}).`,
   config,
   alertsTopic: guardrails.alertsTopic,
+});
+
+new RedirectsStack(app, `Redirects-${config.name}`, {
+  env: stackEnv,
+  description: `Other registered domains, each a 301 to ${config.domainName} (${config.name}).`,
+  config,
 });
 
 new CiDeployRoleStack(app, `CiDeployRole-${config.name}`, {
