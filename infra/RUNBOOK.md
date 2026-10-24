@@ -54,6 +54,17 @@ After deploying Guardrails:
 
 If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `AWS::SNS::Subscription` (deleted outside CFN), redeploy Guardrails so `AlertsEmailV2` recreates it, then confirm the email again.
 
+### Budgets
+
+Guardrails activates `project` as a cost allocation tag (backfilled from 2026-09-01) and owns two monthly cost budgets, both alerting the email and the alerts topic at 50, 80 and 100% actual and 100% forecast:
+
+| Budget                         | Counts                                                                                                                               | Limit |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| `gagnechris-prod-monthly`      | Spend tagged `project=gagnechris` (every stack here, via `applyStandardTags`)                                                        | $25   |
+| `account-unattributed-monthly` | Spend with no `project` tag of a known application (`ACCOUNT_PROJECTS` in `guardrails-stack.ts`), excluding Amazon Registrar and tax | $5    |
+
+Every application in the account tags its stacks `project=<name>`, owns its own budget in its own CDK app and is listed in `ACCOUNT_PROJECTS`. Domain registrations and renewals are left out of every budget. Resources CDK only looks up, such as the `gagnechris.com` hosted zone, carry no tag and count as unattributed.
+
 Optional override without relying on the CLI: `export CDK_ACCOUNT=...`
 
 ### Stack dependency order

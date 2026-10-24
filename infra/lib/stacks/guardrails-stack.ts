@@ -28,9 +28,15 @@ import type { Construct } from 'constructs';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 
+const PROJECT_TAG_KEY = 'project';
+// Every application in the account; each one tags its stacks `project=<name>`.
+const ACCOUNT_PROJECTS = ['gagnechris', 'extracredit'] as const;
+const COST_ALLOCATION_BACKFILL_FROM = '2026-09-01T00:00:00Z';
+
 export interface GuardrailsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
   readonly monthlyBudgetUsd?: number;
+  readonly unattributedMonthlyBudgetUsd?: number;
   readonly trailRetentionDays?: number;
 }
 
@@ -40,7 +46,12 @@ export class GuardrailsStack extends Stack {
   constructor(scope: Construct, id: string, props: GuardrailsStackProps) {
     super(scope, id, props);
 
-    const { config, monthlyBudgetUsd = 20, trailRetentionDays = 90 } = props;
+    const {
+      config,
+      monthlyBudgetUsd = 25,
+      unattributedMonthlyBudgetUsd = 5,
+      trailRetentionDays = 90,
+    } = props;
     const email = config.alertsEmail;
 
     this.alertsTopic = new Topic(this, 'Alerts', {
@@ -132,18 +143,115 @@ export class GuardrailsStack extends Stack {
       managementEvents: ReadWriteType.ALL,
     });
 
-    const budgetName = `gagnechris-${config.name}-monthly`;
-    const emailSubscriber = {
-      subscriptionType: 'EMAIL',
-      address: email,
-    };
-    const snsSubscriber = {
-      subscriptionType: 'SNS',
-      address: this.alertsTopic.topicArn,
-    };
+    // Budget tag filters only see a tag once it is an active cost allocation
+    // tag; there is no CloudFormation type for that account setting.
+    const costAllocationTag = new AwsCustomResource(
+      this,
+      'ProjectCostAllocationTag',
+      {
+        installLatestAwsSdk: false,
+        onCreate: {
+          service: 'CostExplorer',
+          action: 'updateCostAllocationTagsStatus',
+          parameters: {
+            CostAllocationTagsStatus: [
+              { TagKey: PROJECT_TAG_KEY, Status: 'Active' },
+            ],
+          },
+          physicalResourceId: PhysicalResourceId.of(
+            `ProjectCostAllocationTag-${this.account}`,
+          ),
+        },
+        onUpdate: {
+          service: 'CostExplorer',
+          action: 'updateCostAllocationTagsStatus',
+          parameters: {
+            CostAllocationTagsStatus: [
+              { TagKey: PROJECT_TAG_KEY, Status: 'Active' },
+            ],
+          },
+          physicalResourceId: PhysicalResourceId.of(
+            `ProjectCostAllocationTag-${this.account}`,
+          ),
+        },
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['ce:UpdateCostAllocationTagsStatus'],
+            resources: ['*'],
+          }),
+        ]),
+      },
+    );
 
-    const actualThresholds = [50, 80, 100];
-    new CfnBudget(this, 'MonthlyCostBudget', {
+    // Activation only tags spend from then on. Without the backfill the
+    // unattributed budget counts the whole current month as untagged.
+    const costAllocationBackfill = new AwsCustomResource(
+      this,
+      'ProjectCostAllocationBackfill',
+      {
+        installLatestAwsSdk: false,
+        onCreate: {
+          service: 'CostExplorer',
+          action: 'startCostAllocationTagBackfill',
+          parameters: { BackfillFrom: COST_ALLOCATION_BACKFILL_FROM },
+          physicalResourceId: PhysicalResourceId.of(
+            `ProjectCostAllocationBackfill-${this.account}`,
+          ),
+        },
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ['ce:StartCostAllocationTagBackfill'],
+            resources: ['*'],
+          }),
+        ]),
+      },
+    );
+    costAllocationBackfill.node.addDependency(costAllocationTag);
+
+    for (const resource of [costAllocationTag, costAllocationBackfill]) {
+      NagSuppressions.addResourceSuppressions(
+        resource,
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason:
+              'Cost allocation tag actions are account-scoped and require Resource "*".',
+          },
+        ],
+        true,
+      );
+    }
+
+    const budgetName = `gagnechris-${config.name}-monthly`;
+    const unattributedBudgetName = `account-unattributed-monthly`;
+    const subscribers = [
+      { subscriptionType: 'EMAIL', address: email },
+      { subscriptionType: 'SNS', address: this.alertsTopic.topicArn },
+    ];
+    const notificationsWithSubscribers = [
+      ...[50, 80, 100].map((threshold) => ({
+        notification: {
+          notificationType: 'ACTUAL',
+          comparisonOperator: 'GREATER_THAN',
+          threshold,
+          thresholdType: 'PERCENTAGE',
+        },
+        subscribers,
+      })),
+      {
+        notification: {
+          notificationType: 'FORECASTED',
+          comparisonOperator: 'GREATER_THAN',
+          threshold: 100,
+          thresholdType: 'PERCENTAGE',
+        },
+        subscribers,
+      },
+    ];
+
+    const projectBudget = new CfnBudget(this, 'MonthlyCostBudget', {
       budget: {
         budgetName,
         budgetType: 'COST',
@@ -152,28 +260,56 @@ export class GuardrailsStack extends Stack {
           amount: monthlyBudgetUsd,
           unit: 'USD',
         },
-      },
-      notificationsWithSubscribers: [
-        ...actualThresholds.map((threshold) => ({
-          notification: {
-            notificationType: 'ACTUAL',
-            comparisonOperator: 'GREATER_THAN',
-            threshold,
-            thresholdType: 'PERCENTAGE',
+        filterExpression: {
+          tags: {
+            key: PROJECT_TAG_KEY,
+            values: ['gagnechris'],
+            matchOptions: ['EQUALS'],
           },
-          subscribers: [emailSubscriber, snsSubscriber],
-        })),
-        {
-          notification: {
-            notificationType: 'FORECASTED',
-            comparisonOperator: 'GREATER_THAN',
-            threshold: 100,
-            thresholdType: 'PERCENTAGE',
-          },
-          subscribers: [emailSubscriber, snsSubscriber],
         },
-      ],
+      },
+      notificationsWithSubscribers,
     });
+    projectBudget.node.addDependency(costAllocationTag);
+
+    // Each application in the account budgets its own `project` tag; this
+    // catches the rest. Domain renewals are known yearly charges, and tax
+    // follows the other lines, so neither counts here.
+    const unattributedBudget = new CfnBudget(this, 'UnattributedCostBudget', {
+      budget: {
+        budgetName: unattributedBudgetName,
+        budgetType: 'COST',
+        timeUnit: 'MONTHLY',
+        budgetLimit: {
+          amount: unattributedMonthlyBudgetUsd,
+          unit: 'USD',
+        },
+        filterExpression: {
+          and: [
+            {
+              not: {
+                tags: {
+                  key: PROJECT_TAG_KEY,
+                  values: [...ACCOUNT_PROJECTS],
+                  matchOptions: ['EQUALS'],
+                },
+              },
+            },
+            {
+              not: {
+                dimensions: {
+                  key: 'SERVICE',
+                  values: ['Amazon Registrar', 'Tax'],
+                  matchOptions: ['EQUALS'],
+                },
+              },
+            },
+          ],
+        },
+      },
+      notificationsWithSubscribers,
+    });
+    unattributedBudget.node.addDependency(costAllocationBackfill);
 
     // No native CFN type for account-level S3 BPA.
     const accountBpa = new AwsCustomResource(
@@ -282,7 +418,12 @@ export class GuardrailsStack extends Stack {
 
     new CfnOutput(this, 'MonthlyBudgetName', {
       value: budgetName,
-      description: `Monthly COST budget (${monthlyBudgetUsd} USD).`,
+      description: `Monthly COST budget for project=gagnechris (${monthlyBudgetUsd} USD).`,
+    });
+
+    new CfnOutput(this, 'UnattributedBudgetName', {
+      value: unattributedBudgetName,
+      description: `Monthly COST budget for spend outside every project tag (${unattributedMonthlyBudgetUsd} USD).`,
     });
   }
 }
