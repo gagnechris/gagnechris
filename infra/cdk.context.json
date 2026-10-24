@@ -6,5 +6,13 @@
   "hosted-zone:account=111111111111:domainName=gagnechris.com:region=us-east-1": {
     "Id": "/hostedzone/Z3OH52RP1X06LZ",
     "Name": "gagnechris.com."
+  },
+  "hosted-zone:account=172337824039:domainName=chrisgagne.net:region=us-east-1": {
+    "Id": "/hostedzone/Z0315460W3Z32OTZ13GO",
+    "Name": "chrisgagne.net."
+  },
+  "hosted-zone:account=111111111111:domainName=chrisgagne.net:region=us-east-1": {
+    "Id": "/hostedzone/Z0315460W3Z32OTZ13GO",
+    "Name": "chrisgagne.net."
   }
 }
