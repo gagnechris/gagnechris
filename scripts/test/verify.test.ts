@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -18,6 +19,7 @@ import {
   pushedTreeProblem,
   runAll,
   schedule,
+  stepEnv,
   TEST_TZ,
   type Step,
   type Workspace,
@@ -423,5 +425,34 @@ describe('verify', () => {
       ]),
     );
     expect(real.find((w) => w.dir === 'apps/mobile')!.prefix).toBe(true);
+  });
+});
+
+describe('stepEnv', () => {
+  it('drops the git environment a hook exports and keeps the rest', () => {
+    const env = stepEnv(
+      { PATH: '/bin', GIT_DIR: '/repo/.git', GIT_INDEX_FILE: '/repo/index' },
+      { env: { TZ: TEST_TZ } },
+    );
+    expect(env).toEqual({ PATH: '/bin', FORCE_COLOR: '1', TZ: TEST_TZ });
+  });
+
+  it('keeps a check from re-initialising the repository the hook runs in', () => {
+    const real = tempDir();
+    execFileSync('git', ['init', '-q'], { cwd: real });
+    const scratch = tempDir();
+    const hookEnv = { ...process.env, GIT_DIR: join(real, '.git') };
+
+    execFileSync('git', ['init', '-q'], {
+      cwd: scratch,
+      env: stepEnv(hookEnv, {}),
+    });
+
+    const bare = spawnSync('git', ['config', 'core.bare'], {
+      cwd: real,
+      encoding: 'utf8',
+    }).stdout.trim();
+    expect(bare).toBe('false');
+    expect(existsSync(join(scratch, '.git'))).toBe(true);
   });
 });

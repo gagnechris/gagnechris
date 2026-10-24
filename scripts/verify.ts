@@ -374,12 +374,25 @@ export interface Result {
   seconds: number;
 }
 
+// Git exports GIT_DIR and friends to hooks. A check that inherits them and
+// runs git elsewhere (the scripts tests `git init` temp repos) acts on this
+// repository instead, and from a worktree marks it bare.
+export function stepEnv(
+  env: NodeJS.ProcessEnv,
+  step: Pick<Step, 'env'>,
+): NodeJS.ProcessEnv {
+  const inherited = Object.fromEntries(
+    Object.entries(env).filter(([key]) => !key.startsWith('GIT_')),
+  );
+  return { ...inherited, FORCE_COLOR: '1', ...step.env };
+}
+
 function run(step: Step): Promise<Result> {
   const start = Date.now();
   return new Promise((resolve) => {
     const child = spawn(step.cmd[0]!, step.cmd.slice(1), {
       cwd: ROOT,
-      env: { ...process.env, FORCE_COLOR: '1', ...step.env },
+      env: stepEnv(process.env, step),
     });
     let output = '';
     child.stdout.on('data', (d: Buffer) => (output += d.toString()));
