@@ -42,6 +42,9 @@ export type TaskEmbedView =
 /** Returns focus to the surrounding editor: below the row, or onto its line. */
 export type TaskEmbedLeave = (below: boolean) => void;
 
+/** Enter in the title: at its start the row moves down, else a task starts below. */
+export type TaskEmbedEnter = (atStart: boolean) => void;
+
 /** Deletes the row's line from the note, which deletes its task. */
 export type TaskEmbedDelete = () => void;
 
@@ -111,6 +114,7 @@ function TaskEmbedTitle({
   title,
   onRename,
   onLeave,
+  onEnter,
   onDelete,
   onMove,
   onToggleDetails,
@@ -120,6 +124,7 @@ function TaskEmbedTitle({
   title: string;
   onRename: (title: string) => void;
   onLeave?: TaskEmbedLeave;
+  onEnter?: TaskEmbedEnter;
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
   onToggleDetails?: () => void;
@@ -199,8 +204,10 @@ function TaskEmbedTitle({
       onToggleDetails();
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      const { selectionEnd, value } = e.currentTarget;
       commit();
-      if (onLeave) onLeave(true);
+      if (onEnter) onEnter(selectionEnd === 0 && value !== '');
+      else if (onLeave) onLeave(true);
       else e.currentTarget.blur();
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -261,6 +268,7 @@ function TaskEmbedTitle({
 export function TaskEmbedRow({
   view,
   onLeave,
+  onEnter,
   onDelete,
   onMove,
   details,
@@ -271,6 +279,7 @@ export function TaskEmbedRow({
 }: {
   view: TaskEmbedView;
   onLeave?: TaskEmbedLeave;
+  onEnter?: TaskEmbedEnter;
   onDelete?: TaskEmbedDelete;
   onMove?: TaskEmbedMove;
   details?: TaskEmbedDetails;
@@ -393,6 +402,7 @@ export function TaskEmbedRow({
           title={task.title}
           onRename={onRename}
           onLeave={onLeave}
+          onEnter={onEnter}
           onDelete={onDelete}
           onMove={onMove}
           onToggleDetails={details?.onToggle}

@@ -49,9 +49,25 @@ describe('continueMarkdownList', () => {
     expect(enter('- [ ] |')).toBe('|');
   });
 
+  it('starts a task line after a task line, at its indent', () => {
+    expect(enter('[ ] call Sam|')).toBe('[ ] call Sam\n[ ] |');
+    expect(enter('  [ ] book| venue')).toBe('  [ ] book\n  [ ] | venue');
+  });
+
+  it('moves a task line down from the start of its text', () => {
+    expect(enter('[ ] |call Sam')).toBe('\n[ ] |call Sam');
+    expect(enter('[ ] plan\n  [ ] |book')).toBe(
+      '[ ] plan\n  [ ] \n  [ ] |book',
+    );
+  });
+
+  it('clears an empty task line', () => {
+    expect(enter('[ ] one\n[ ] |')).toBe('[ ] one\n|');
+  });
+
   it('leaves other lines and the marker itself to the default Enter', () => {
     expect(enter('plain|')).toBeNull();
-    expect(enter('[ ] task line|')).toBeNull();
+    expect(enter('[|] task line')).toBeNull();
     expect(enter('-| one')).toBeNull();
   });
 });
