@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import type { Note } from '@gagnechris/app-core';
+import { WEEKLY_RECAP_PENDING_MARKDOWN } from '@gagnechris/shared';
 import {
   answerConfirms,
   createTestQueryClient,
@@ -258,6 +259,33 @@ describe('NotebookNotePage', () => {
       timeout: 4000,
     });
     expect(screen.getByText('Personal standing note')).toBeInTheDocument();
+  });
+
+  test('a recap being written says so and fills in when the recap lands', async () => {
+    seedNote({
+      title: 'Week of Oct 26, 2026',
+      bodyMarkdown: WEEKLY_RECAP_PENDING_MARKDOWN,
+      tags: ['recap'],
+      version: 1,
+    });
+    renderPage();
+    expect(
+      await screen.findByText(/Claude is writing this recap/),
+    ).toHaveAttribute('role', 'status');
+
+    api.note = {
+      ...api.note!,
+      bodyMarkdown: '## The week\nCalm.',
+      version: 2,
+    };
+    await waitFor(
+      () =>
+        expect(screen.getByRole('textbox', { name: 'Note body' })).toHaveValue(
+          '## The week\nCalm.',
+        ),
+      { timeout: 5000 },
+    );
+    expect(screen.queryByText(/Claude is writing this recap/)).toBeNull();
   });
 
   test('a daily note opens on Today for its date and area', async () => {

@@ -3,11 +3,13 @@ import { Link, useNavigate, useOutletContext } from 'react-router-dom';
 import {
   errorMessage,
   useCreateNoteMutation,
+  useCreateWeeklyRecapMutation,
   useLoadAllPages,
   useNotesQuery,
   useTasksQuery,
 } from '@gagnechris/app-core';
 import {
+  addDays,
   noteDay,
   noteDayLabel,
   noteFirstLine,
@@ -15,6 +17,7 @@ import {
   noteSections,
   notesInArchiveView,
   noteTitle,
+  weekStartOf,
 } from '@gagnechris/shared';
 import { createUlid } from '../lib/ulid';
 import {
@@ -75,6 +78,7 @@ export default function NotebookNotesPage() {
   );
 
   const createMutation = useCreateNoteMutation();
+  const recapMutation = useCreateWeeklyRecapMutation();
   const {
     exportZip,
     busy: exportBusy,
@@ -114,6 +118,19 @@ export default function NotebookNotesPage() {
     }
   };
 
+  const startRecap = async (weekStart: string) => {
+    try {
+      const note = await recapMutation.mutateAsync({
+        id: createUlid(),
+        area,
+        weekStart,
+      });
+      void navigate(`/notes/${note.id}`);
+    } catch {
+      // The mutation's error is rendered below.
+    }
+  };
+
   const loading = notesQuery.isPending || notesQuery.hasNextPage;
 
   return (
@@ -137,15 +154,21 @@ export default function NotebookNotesPage() {
           </Button>
           <NewNoteMenu
             today={today}
-            creating={createMutation.isPending}
+            creating={createMutation.isPending || recapMutation.isPending}
             onDay={(date) => void navigate(`/today?date=${date}&area=${area}`)}
             onStanding={() => void createStandingNote()}
+            onRecap={(weekStart) => void startRecap(weekStart)}
           />
         </div>
       </div>
       {createMutation.error ? (
         <p className="workspace-panel__error" role="alert">
           {errorMessage(createMutation.error, 'Could not create the note.')}
+        </p>
+      ) : null}
+      {recapMutation.error ? (
+        <p className="workspace-panel__error" role="alert">
+          {errorMessage(recapMutation.error, 'Could not start the recap.')}
         </p>
       ) : null}
       {exportError ? (
@@ -229,11 +252,13 @@ function NewNoteMenu({
   creating,
   onDay,
   onStanding,
+  onRecap,
 }: {
   today: string;
   creating: boolean;
   onDay: (date: string) => void;
   onStanding: () => void;
+  onRecap: (weekStart: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [day, setDay] = useState(today);
@@ -297,6 +322,29 @@ function NewNoteMenu({
             }}
           >
             Standing note
+          </Button>
+          <Button
+            variant="ghost"
+            className="notebook-new-note__standing"
+            disabled={creating}
+            title="Claude recaps this week’s notes and tasks and suggests what to focus on next week"
+            onClick={() => {
+              setOpen(false);
+              onRecap(weekStartOf(today));
+            }}
+          >
+            Recap this week
+          </Button>
+          <Button
+            variant="ghost"
+            className="notebook-new-note__standing"
+            disabled={creating}
+            onClick={() => {
+              setOpen(false);
+              onRecap(addDays(weekStartOf(today), -7));
+            }}
+          >
+            Recap last week
           </Button>
         </div>
       ) : null}

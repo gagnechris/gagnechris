@@ -334,6 +334,7 @@ them (same as draft `META` rows).
 | SES emails / UTC day                    | `RATE#ses#global`                | `DAY#<yyyy-mm-dd>`     | 100        |
 | Resume notify IP/day                    | `RATE#resume#ip#<ip>`            | `DAY#<yyyy-mm-dd>`     | 1 (dedupe) |
 | Notebook image uploads / user / UTC day | `RATE#notebook-image#user#<sub>` | `DAY#<yyyy-mm-dd>`     | 200        |
+| Notebook weekly recaps / user / UTC day | `RATE#notebook-recap#user#<sub>` | `DAY#<yyyy-mm-dd>`     | 10         |
 
 ## User revocations
 

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   noteResource,
   useDeleteNoteMutation,
+  useWeeklyRecapRefresh,
   type Note,
 } from '@gagnechris/app-core';
 import { Checkbox, Field, TextInput } from '@gagnechris/ui';
@@ -15,6 +16,7 @@ import { useInsertNoteTemplate } from './noteTemplateMenu';
 import { useLocalToday } from './useLocalToday';
 import {
   emptyNoteDraft,
+  isWeeklyRecapPending,
   noteDraftFromNote,
   notePayloadFromDraft,
   type NoteDraft,
@@ -80,6 +82,8 @@ export default function NotebookNotePage() {
       },
     },
   });
+
+  useWeeklyRecapRefresh(entity);
 
   const insertTemplate = useInsertNoteTemplate(editorRef, {
     date: today,
@@ -150,6 +154,12 @@ export default function NotebookNotePage() {
         {areaName(entity.area)} standing note
         {draft.archived ? ' · Archived' : ''}
       </p>
+      {isWeeklyRecapPending(entity) ? (
+        <p className="kit-hint" role="status">
+          Claude is writing this recap from the week’s notes and tasks. It shows
+          up here in a minute or two.
+        </p>
+      ) : null}
 
       <Field label="Title">
         <TextInput

@@ -4,10 +4,13 @@ export const POWERTOOLS_METRICS_NAMESPACE = 'gagnechris' as const;
 export const API_SERVICE_NAME = 'gagnechris-api' as const;
 export const PUBLISHER_SERVICE_NAME = 'gagnechris-publisher' as const;
 export const RESTORE_TEST_SERVICE_NAME = 'gagnechris-restore-test' as const;
+export const NOTEBOOK_RECAP_SERVICE_NAME = 'gagnechris-notebook-recap' as const;
 
 export const CONTACT_PER_IP_PER_HOUR = 3;
 /** Notebook image upload URLs one user can get per UTC day. */
 export const NOTEBOOK_IMAGE_UPLOADS_PER_USER_PER_DAY = 200;
+/** Each weekly recap is a model call, so one user's requests per UTC day are capped. */
+export const NOTEBOOK_RECAPS_PER_USER_PER_DAY = 10;
 /** Shared by contact + resume notify; well under the SES sandbox 200/day. */
 export const SES_GLOBAL_DAILY_CAP = 100;
 /** Resume notices stop once the shared count reaches this, leaving the rest for contact messages. */

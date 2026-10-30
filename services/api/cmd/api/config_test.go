@@ -19,17 +19,18 @@ func envOf(vars map[string]string) func(string) string {
 
 func lambdaEnv() map[string]string {
 	return map[string]string{
-		"AWS_LAMBDA_RUNTIME_API":     "127.0.0.1:9001",
-		"DATA_TABLE_NAME":            "gagnechris-prod",
-		"ADMIN_WEB_CLIENT_ID":        "admin",
-		"NOTEBOOK_WEB_CLIENT_ID":     "notebook",
-		"IOS_CLIENT_ID":              "ios",
-		"SITE_BUCKET_NAME":           "site",
-		"NOTEBOOK_MEDIA_BUCKET_NAME": "notebook-media",
-		"CONTACT_FROM_EMAIL":         "from@example.com",
-		"CONTACT_TO_EMAIL":           "to@example.com",
-		"USER_POOL_ID":               "us-east-1_pool",
-		"API_ORIGIN_SECRET":          "origin-secret",
+		"AWS_LAMBDA_RUNTIME_API":       "127.0.0.1:9001",
+		"DATA_TABLE_NAME":              "gagnechris-prod",
+		"ADMIN_WEB_CLIENT_ID":          "admin",
+		"NOTEBOOK_WEB_CLIENT_ID":       "notebook",
+		"IOS_CLIENT_ID":                "ios",
+		"SITE_BUCKET_NAME":             "site",
+		"NOTEBOOK_MEDIA_BUCKET_NAME":   "notebook-media",
+		"CONTACT_FROM_EMAIL":           "from@example.com",
+		"CONTACT_TO_EMAIL":             "to@example.com",
+		"USER_POOL_ID":                 "us-east-1_pool",
+		"API_ORIGIN_SECRET":            "origin-secret",
+		"NOTEBOOK_RECAP_FUNCTION_NAME": "recap",
 	}
 }
 
@@ -50,8 +51,8 @@ func TestLambdaConfig(t *testing.T) {
 	if c.images != (noteimages.Config{Bucket: "notebook-media"}) {
 		t.Errorf("images %+v", c.images)
 	}
-	if c.originSecret != "origin-secret" {
-		t.Errorf("origin secret %q", c.originSecret)
+	if c.originSecret != "origin-secret" || c.recapFunction != "recap" {
+		t.Errorf("origin secret %q, recap function %q", c.originSecret, c.recapFunction)
 	}
 }
 

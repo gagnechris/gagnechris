@@ -147,6 +147,7 @@ export {
   noteResource,
   startDailyNoteBlank,
   useCreateNoteMutation,
+  useCreateWeeklyRecapMutation,
   useDailyNoteDatesQuery,
   useDeleteNoteMutation,
   useNotesByIds,
@@ -154,6 +155,7 @@ export {
   useArchiveNoteMutation,
   useOpenDailyNoteWhenToday,
   usePinNoteMutation,
+  useWeeklyRecapRefresh,
 } from './query/notes.js';
 export {
   useNotebookAreas,

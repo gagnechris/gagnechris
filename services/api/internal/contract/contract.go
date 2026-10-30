@@ -54,6 +54,7 @@ type API struct {
 	OriginVerifyHeader                string     `json:"originVerifyHeader"`
 	ViewerAddressHeader               string     `json:"viewerAddressHeader"`
 	NotebookImageUploadsPerUserPerDay int        `json:"notebookImageUploadsPerUserPerDay"`
+	NotebookRecapsPerUserPerDay       int        `json:"notebookRecapsPerUserPerDay"`
 	Metrics                           APIMetrics `json:"metrics"`
 }
 
@@ -150,6 +151,7 @@ type Notebook struct {
 	DefaultAreas                []AreaEntry       `json:"defaultAreas"`
 	AreaDuplicateIDMessage      string            `json:"areaDuplicateIdMessage"`
 	AreaDuplicateNameMessage    string            `json:"areaDuplicateNameMessage"`
+	WeeklyRecapPendingMarkdown  string            `json:"weeklyRecapPendingMarkdown"`
 }
 
 // AreaEntry is NotebookAreaEntrySchema.

@@ -10,8 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-lambda-go/lambda"
+	lambdastart "github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 
@@ -56,21 +57,27 @@ func main() {
 		mailer = &contact.Outbox{File: conf.outboxFile, Log: logger}
 	}
 
+	// Recaps run in the recap Lambda; anywhere else, in process without a model.
+	var recaps notebook.RecapStarter = lambdaRecaps{client: lambda.NewFromConfig(cfg), function: conf.recapFunction}
+	if !conf.inLambda {
+		recaps = notebook.InProcessRecaps{Recapper: notebook.NewRecapper(table, notebook.LocalRecapModel{}, time.Now), Log: logger}
+	}
+
 	sessions := revocation.New(table, time.Now)
 	app := api.NewApp(
-		api.NewRouter(allRoutes(conf, table, mailer, cfg, sessions), conf.clients).WithRevocations(sessions),
+		api.NewRouter(allRoutes(conf, table, mailer, recaps, cfg, sessions), conf.clients).WithRevocations(sessions),
 		logger,
 		observability.NewMetrics(os.Stdout, c.MetricsNamespace, c.ServiceName),
 		processStart,
 	).WithOriginSecret(conf.originSecret)
 	if conf.inLambda {
-		lambda.Start(app.HandleLambda)
+		lambdastart.Start(app.HandleLambda)
 		return
 	}
 	log.Fatal(serveHTTP(app, conf, logger))
 }
 
-func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Config, sessions users.Sessions) []api.Route {
+func allRoutes(conf config, table *data.Table, mailer contact.Mailer, recaps notebook.RecapStarter, cfg aws.Config, sessions users.Sessions) []api.Route {
 	userDeps := users.Deps{Table: table, Sessions: sessions, AWS: cfg, UserPoolID: conf.userPoolID}
 	if conf.memoryUsers {
 		userDeps.Directory = users.LocalDirectory(time.Now)
@@ -83,6 +90,7 @@ func allRoutes(conf config, table *data.Table, mailer contact.Mailer, cfg aws.Co
 	routes = append(routes, resume.Routes(table, nil)...)
 	routes = append(routes, search.Routes(table, nil)...)
 	routes = append(routes, notebook.Routes(table, nil)...)
+	routes = append(routes, notebook.RecapRoutes(table, recaps, nil)...)
 	routes = append(routes, users.Routes(userDeps)...)
 	presign := s3.NewPresignClient(s3.NewFromConfig(cfg))
 	routes = append(routes, noteimages.Routes(presign, table, conf.images, nil)...)

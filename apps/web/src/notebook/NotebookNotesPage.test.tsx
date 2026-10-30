@@ -2,7 +2,13 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { isOpenTaskStatus, localDayOf } from '@gagnechris/shared';
+import {
+  addDays,
+  isOpenTaskStatus,
+  localDayOf,
+  weekStartOf,
+  WEEKLY_RECAP_PENDING_MARKDOWN,
+} from '@gagnechris/shared';
 import type { Note, Task } from '@gagnechris/app-core';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
 import NotebookLayout from './NotebookLayout';
@@ -12,6 +18,7 @@ const server = vi.hoisted(() => ({
   notes: [] as Note[],
   tasks: [] as Task[],
   created: [] as Record<string, unknown>[],
+  posted: [] as string[],
   createFails: false,
 }));
 
@@ -62,7 +69,8 @@ vi.mock('../workspace/api/client', () => ({
       }
       return { data: undefined, error: {}, response: { status: 404 } };
     },
-    POST: async (_path: string, init?: { body?: Record<string, unknown> }) => {
+    POST: async (path: string, init?: { body?: Record<string, unknown> }) => {
+      server.posted.push(path);
       if (server.createFails) {
         return {
           data: undefined,
@@ -72,6 +80,18 @@ vi.mock('../workspace/api/client', () => ({
       }
       const body = init?.body ?? {};
       server.created.push(body);
+      const recap =
+        path === '/api/notebook/recaps/weekly'
+          ? {
+              id: body.id,
+              area: body.area,
+              type: 'page',
+              title: 'Week of …',
+              bodyMarkdown: WEEKLY_RECAP_PENDING_MARKDOWN,
+              tags: ['recap'],
+              pinned: false,
+            }
+          : body;
       return {
         data: {
           userId: 'u1',
@@ -82,7 +102,7 @@ vi.mock('../workspace/api/client', () => ({
           updatedAt: '2026-10-01T14:00:00.000Z',
           deleted: false,
           archived: false,
-          ...body,
+          ...recap,
         },
         error: undefined,
         response: { status: 201 },
@@ -180,6 +200,7 @@ describe('NotebookNotesPage', () => {
     server.notes = [];
     server.tasks = [];
     server.created = [];
+    server.posted = [];
     server.createFails = false;
     localStorage.clear();
   });
@@ -303,6 +324,31 @@ describe('NotebookNotesPage', () => {
     );
   });
 
+  test('New starts a recap of this week or last week and opens its note', async () => {
+    const user = userEvent.setup();
+    const router = renderNotes();
+    const monday = weekStartOf(localDayOf(new Date().toISOString()));
+
+    await user.click(await screen.findByRole('button', { name: 'New' }));
+    await user.click(screen.getByRole('button', { name: 'Recap this week' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Note editor' }),
+    ).toBeInTheDocument();
+    expect(server.posted).toEqual(['/api/notebook/recaps/weekly']);
+    expect(server.created).toEqual([
+      { id: expect.any(String), area: 'work', weekStart: monday },
+    ]);
+    expect(router.state.location.pathname).toBe(
+      `/notes/${String(server.created[0]!.id)}`,
+    );
+
+    await router.navigate('/notes');
+    await user.click(await screen.findByRole('button', { name: 'New' }));
+    await user.click(screen.getByRole('button', { name: 'Recap last week' }));
+    await screen.findByRole('heading', { name: 'Note editor' });
+    expect(server.created[1]).toMatchObject({ weekStart: addDays(monday, -7) });
+  });
+
   test('New closes on Escape with focus back on it, on a click outside, and when focus leaves', async () => {
     const user = userEvent.setup();
     renderNotes();
@@ -320,7 +366,7 @@ describe('NotebookNotesPage', () => {
     expect(menu()).toBeNull();
 
     await user.click(newButton);
-    within(menu()!).getByRole('button', { name: 'Standing note' }).focus();
+    within(menu()!).getByRole('button', { name: 'Recap last week' }).focus();
     await user.tab();
     expect(menu()).toBeNull();
   });

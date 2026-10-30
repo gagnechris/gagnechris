@@ -49,6 +49,7 @@ export {
   rateDaySk,
   rateHourSk,
   rateNotebookImageUserPk,
+  rateNotebookRecapUserPk,
   rateResumeIpPk,
   rateSesGlobalPk,
   removedUserSk,

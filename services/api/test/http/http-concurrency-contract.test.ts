@@ -340,6 +340,10 @@ const PROBES: Record<string, () => Promise<Target>> = {
     type: 'page',
     title: 'Created',
   })),
+  'POST /api/notebook/recaps/weekly': create(
+    '/api/notebook/recaps/weekly',
+    () => ({ id: ulid(), area: 'work', weekStart: '2026-10-26' }),
+  ),
   'GET /api/notebook/notes/{id}': onEntity(
     note,
     (id) => `/api/notebook/notes/${id}`,

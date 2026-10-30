@@ -25,6 +25,8 @@ type config struct {
 	memoryUsers bool
 	// originSecret proves a request came through CloudFront.
 	originSecret string
+	// recapFunction is the Lambda that writes weekly recaps.
+	recapFunction string
 	// Outside Lambda only.
 	claimsMode api.ClaimsMode
 	port       string
@@ -43,6 +45,7 @@ var lambdaRequired = []string{
 	"CONTACT_TO_EMAIL",
 	"USER_POOL_ID",
 	"API_ORIGIN_SECRET",
+	"NOTEBOOK_RECAP_FUNCTION_NAME",
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -60,10 +63,11 @@ func loadConfig(getenv func(string) string) (config, error) {
 			ToEmail:    env("CONTACT_TO_EMAIL"),
 			ApexDomain: env("SITE_APEX_DOMAIN"),
 		},
-		media:        media.Config{Bucket: env("SITE_BUCKET_NAME")},
-		images:       noteimages.Config{Bucket: env("NOTEBOOK_MEDIA_BUCKET_NAME")},
-		userPoolID:   env("USER_POOL_ID"),
-		originSecret: env("API_ORIGIN_SECRET"),
+		media:         media.Config{Bucket: env("SITE_BUCKET_NAME")},
+		images:        noteimages.Config{Bucket: env("NOTEBOOK_MEDIA_BUCKET_NAME")},
+		userPoolID:    env("USER_POOL_ID"),
+		originSecret:  env("API_ORIGIN_SECRET"),
+		recapFunction: env("NOTEBOOK_RECAP_FUNCTION_NAME"),
 	}
 	if c.inLambda {
 		var missing []string

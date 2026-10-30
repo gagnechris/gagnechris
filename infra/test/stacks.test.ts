@@ -720,5 +720,40 @@ describe('stack Template assertions', () => {
         (a) => /^s3:(Get|List)/.test(a) && a !== 's3:GetObject',
       ),
     ).toEqual([]);
+
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-notebook-recap',
+      Runtime: 'provided.al2023',
+      Architectures: ['arm64'],
+      Timeout: 300,
+      Environment: {
+        Variables: Match.objectLike({
+          POWERTOOLS_SERVICE_NAME: 'gagnechris-notebook-recap',
+          DATA_TABLE_NAME: Match.anyValue(),
+        }),
+      },
+    });
+    template.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
+      MaximumRetryAttempts: 0,
+    });
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-api-go',
+      Environment: {
+        Variables: Match.objectLike({
+          NOTEBOOK_RECAP_FUNCTION_NAME: {
+            Ref: Match.stringLikeRegexp('^NotebookRecapFunction'),
+          },
+        }),
+      },
+    });
+    expect(goPolicies).toContain('lambda:InvokeFunction');
+    expect(goPolicies).toContain('NotebookRecapFunction');
+    const recapPolicies = JSON.stringify(
+      Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes('NotebookRecapFunction'),
+      ),
+    );
+    expect(recapPolicies).toContain('bedrock-mantle:CreateInference');
+    expect(recapPolicies).not.toContain('bedrock:InvokeModel');
   });
 });

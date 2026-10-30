@@ -33,6 +33,7 @@ import {
   API_METRICS,
   API_SERVICE_NAME,
   apiOriginSecretName,
+  NOTEBOOK_RECAP_SERVICE_NAME,
   POWERTOOLS_METRICS_NAMESPACE,
   siteOrigins,
   ssmParameterName,
@@ -69,6 +70,7 @@ export interface ApiStackProps extends StackProps {
 export class ApiStack extends Stack {
   readonly httpApi: HttpApi;
   readonly apiFunction: GoLambda;
+  readonly recapFunction: GoLambda;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -126,6 +128,34 @@ export class ApiStack extends Stack {
       },
     ]);
 
+    // Writes weekly recaps with Claude; the API invokes it asynchronously
+    // because a model call outlasts the API's timeout.
+    this.recapFunction = new GoLambda(this, 'NotebookRecapFunction', {
+      functionName: `gagnechris-${config.name}-notebook-recap`,
+      description: 'Writes Notebook weekly recaps with Claude on Bedrock',
+      cmd: 'notebook-recap',
+      memorySize: 256,
+      timeout: Duration.minutes(5),
+      // A failed recap is written into its note; a retry would only repeat
+      // the model call.
+      retryAttempts: 0,
+      powertoolsServiceName: NOTEBOOK_RECAP_SERVICE_NAME,
+      alertsTopic,
+      alarmNamePrefix: `gagnechris-${config.name}-notebook-recap`,
+      iam5NagReason:
+        'X-Ray tracing wildcards, DynamoDB index/*, and bedrock-mantle:CreateInference, which takes no model resource ARN.',
+      iam5NagAppliesTo: ['Resource::*', { regex: '/^Resource::.*/index*/g' }],
+      environment: { DATA_TABLE_NAME: dataTable.tableName },
+    });
+    dataTable.grantReadWriteData(this.recapFunction);
+    this.recapFunction.addToRolePolicy(
+      new PolicyStatement({
+        sid: 'ClaudeOnBedrock',
+        actions: ['bedrock-mantle:CreateInference'],
+        resources: ['*'],
+      }),
+    );
+
     // Changing the construct id or function name would replace the function.
     this.apiFunction = new GoLambda(this, 'GoApiFunction', {
       functionName: `gagnechris-${config.name}-api-go`,
@@ -160,8 +190,17 @@ export class ApiStack extends Stack {
         IOS_CLIENT_ID: iosClientId,
         USER_POOL_ID: userPool.userPoolId,
         API_ORIGIN_SECRET: originSecret.secretValue.unsafeUnwrap(),
+        NOTEBOOK_RECAP_FUNCTION_NAME: this.recapFunction.functionName,
       },
     });
+    // grantInvoke would also allow every version (`<arn>:*`); the API only
+    // invokes the unqualified function.
+    this.apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['lambda:InvokeFunction'],
+        resources: [this.recapFunction.functionArn],
+      }),
+    );
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only; objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
