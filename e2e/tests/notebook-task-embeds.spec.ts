@@ -20,6 +20,7 @@ test('typing [ ] text in a note creates one task and embeds it', async ({
   // Slow enough that autosave fires while the line is half typed.
   await page.keyboard.type(`[ ] ${title}`, { delay: 60 });
   await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.type('Finance needs the PO');
 
   const editorRow = page
@@ -176,10 +177,12 @@ test('the same [ ] line twice makes two tasks, and a multi-line insert converts 
   const editor = page.getByRole('textbox', { name: 'Note body' });
   await editor.click();
   const same = `Call Sam ${prefix}`;
-  for (let i = 0; i < 2; i += 1) {
-    await page.keyboard.type(`[ ] ${same}`);
-    await page.keyboard.press('Enter');
-  }
+  await page.keyboard.type(`[ ] ${same}`);
+  await page.keyboard.press('Enter');
+  // Enter after a task line starts the next one.
+  await page.keyboard.type(same);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
   await page.keyboard.insertText(`[ ] First ${prefix}\n[ ] Second ${prefix}\n`);
   await page.keyboard.type('done');
 

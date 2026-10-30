@@ -396,6 +396,8 @@ describe('writing [ ] text in a daily note', () => {
     api.dropNextTaskResponse = true;
     typeInto(view, ' Sam');
     pressEnter(view);
+    // The next line starts a task; Enter again makes it plain text.
+    pressEnter(view);
     typeInto(view, 'Finance needs the PO');
 
     // The retry after the lost response, then the autosave that follows it.
@@ -458,7 +460,7 @@ describe('writing [ ] text in a daily note', () => {
     );
     expect([...api.tasks.keys()]).toEqual([id]);
     expect(new Set(api.taskPosts.map((b) => b.id))).toEqual(new Set([id]));
-    expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n`);
+    expect(view.state.doc.toString()).toBe(`${tokenLine(id!)}\n[ ] `);
     expect(api.taskDeletes).toEqual([]);
   }, 15_000);
 
@@ -1066,7 +1068,7 @@ describe('editing an embedded task title in place', () => {
     expect(api.taskPuts).toEqual([]);
   });
 
-  test('Enter saves and puts the caret on a new line under the embed', async () => {
+  test('Enter at the end of a title saves and starts a new task line under the embed', async () => {
     seedTask();
     const body = `Standup\n${tokenLine(TASK_ID)}`;
     const { onChange } = renderNotes(body);
@@ -1082,13 +1084,13 @@ describe('editing an embedded task title in place', () => {
         expect.objectContaining({ title: 'Call Sam back' }),
       ]),
     );
-    expect(view.state.doc.toString()).toBe(`${body}\n`);
+    expect(view.state.doc.toString()).toBe(`${body}\n[ ] `);
     expect(view.state.selection.main.head).toBe(view.state.doc.length);
     expect(view.hasFocus).toBe(true);
-    expect(onChange).toHaveBeenLastCalledWith(`${body}\n`);
+    expect(onChange).toHaveBeenLastCalledWith(`${body}\n[ ] `);
   });
 
-  test('Enter reuses a blank line under the embed instead of adding one', async () => {
+  test('Enter in the middle of a title starts a new task line, keeping the blank line under it', async () => {
     seedTask();
     const body = `${tokenLine(TASK_ID)}\n\nnext`;
     renderNotes(body);
@@ -1097,13 +1099,36 @@ describe('editing an embedded task title in place', () => {
     const view = await editorView(noteA());
 
     await user.click(field);
+    field.setSelectionRange(4, 4);
     await user.keyboard('{Enter}');
 
-    expect(view.state.doc.toString()).toBe(body);
-    expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(
-      2,
+    expect(view.state.doc.toString()).toBe(
+      `${tokenLine(TASK_ID)}\n[ ] \n\nnext`,
     );
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(2).to);
     expect(view.hasFocus).toBe(true);
+    expect(api.taskPuts).toEqual([]);
+  });
+
+  test('Enter at the start of a title moves the task down a line and keeps the caret in it', async () => {
+    seedTask();
+    const body = `Standup\n${tokenLine(TASK_ID)}`;
+    renderNotes(body);
+    const user = userEvent.setup();
+    const field = await titleIn(noteA());
+    const view = await editorView(noteA());
+
+    await user.click(field);
+    field.setSelectionRange(0, 0);
+    await user.keyboard('{Enter}');
+
+    expect(view.state.doc.toString()).toBe(`Standup\n\n${tokenLine(TASK_ID)}`);
+    await waitFor(() =>
+      expect(within(noteA()).getByDisplayValue('Call Sam')).toHaveFocus(),
+    );
+    const moved =
+      within(noteA()).getByDisplayValue<HTMLTextAreaElement>('Call Sam');
+    expect(moved.selectionStart).toBe(0);
     expect(api.taskPuts).toEqual([]);
   });
 
@@ -1908,7 +1933,7 @@ describe('subtasks in a note', () => {
     expect(await screen.findByDisplayValue('Book venue')).toBeInTheDocument();
   });
 
-  test('Enter in a parent or subtask title opens a line after the whole block', async () => {
+  test('Enter in a parent title starts a task after its subtasks', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates' },
       { id: SUB_2, title: 'Book venue' },
@@ -1918,13 +1943,47 @@ describe('subtasks in a note', () => {
 
     await user.click(await screen.findByDisplayValue('Plan offsite'));
     await user.keyboard('{Enter}');
-    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n[ ] \nafter`);
+    const view = await editorView(document.body);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(4).to);
+  });
+
+  test('Enter in a subtask title starts a sibling subtask under it', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
 
     await user.click(await screen.findByDisplayValue('Pick dates'));
     await user.keyboard('{Enter}');
-    expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n\nafter`);
+    expect(body()).toBe(
+      `${tokenLine(PARENT)}\n  ${tokenLine(SUB_1)}\n  [ ] \n  ${tokenLine(SUB_2)}\nafter`,
+    );
     const view = await editorView(document.body);
-    expect(view.state.selection.main.head).toBe(view.state.doc.line(4).from);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(3).to);
+  });
+
+  test('Enter at the start of a subtask title moves it down under the same parent', async () => {
+    seed([
+      { id: SUB_1, title: 'Pick dates' },
+      { id: SUB_2, title: 'Book venue' },
+    ]);
+    const { body } = renderNote(`${nested(SUB_1, SUB_2)}\nafter`);
+    const user = userEvent.setup();
+
+    const field =
+      await screen.findByDisplayValue<HTMLTextAreaElement>('Book venue');
+    await user.click(field);
+    field.setSelectionRange(0, 0);
+    await user.keyboard('{Enter}');
+    expect(body()).toBe(
+      `${tokenLine(PARENT)}\n  ${tokenLine(SUB_1)}\n  [ ] \n  ${tokenLine(SUB_2)}\nafter`,
+    );
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('Book venue')).toHaveFocus(),
+    );
   });
 
   test('checking the last subtask leaves the parent open with All done', async () => {
@@ -2166,7 +2225,7 @@ describe('subtasks in a note', () => {
     expect(body()).toBe(note);
   });
 
-  test('Enter in a folded parent title opens a line after its hidden lines', async () => {
+  test('Enter in a folded parent title starts a task after its hidden lines', async () => {
     seed([
       { id: SUB_1, title: 'Pick dates' },
       { id: SUB_2, title: 'Book venue' },
@@ -2186,10 +2245,10 @@ after`);
     await user.keyboard('{Enter}');
     expect(body()).toBe(`${nested(SUB_1, SUB_2)}
     why
-
+[ ] 
 after`);
     const view = await editorView(document.body);
-    expect(view.state.selection.main.head).toBe(view.state.doc.line(5).from);
+    expect(view.state.selection.main.head).toBe(view.state.doc.line(5).to);
   });
 
   test('Delete above a parent goes into its title, and Backspace under its block into the last subtask', async () => {
@@ -2287,7 +2346,7 @@ after`);
       return editorView(document.body);
     }
 
-    test('Enter beside a parent opens a line after its subtasks', async () => {
+    test('Enter beside a parent starts a task after its subtasks', async () => {
       seed([
         { id: SUB_1, title: 'Pick dates' },
         { id: SUB_2, title: 'Book venue' },
@@ -2299,10 +2358,10 @@ after`);
       press(view, 'Enter');
       typeInto(view, 'Agenda');
 
-      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\n[ ] Agenda\nafter`);
     });
 
-    test('Enter beside a subtask opens a line after the whole block', async () => {
+    test('Enter beside a subtask starts a sibling subtask under it', async () => {
       seed([
         { id: SUB_1, title: 'Pick dates' },
         { id: SUB_2, title: 'Book venue' },
@@ -2313,7 +2372,9 @@ after`);
       press(view, 'Enter');
       typeInto(view, 'Agenda');
 
-      expect(body()).toBe(`${nested(SUB_1, SUB_2)}\nAgenda\nafter`);
+      expect(body()).toBe(
+        `${tokenLine(PARENT)}\n  ${tokenLine(SUB_1)}\n  [ ] Agenda\n  ${tokenLine(SUB_2)}\nafter`,
+      );
     });
 
     test('Backspace beside a subtask deletes only its line', async () => {

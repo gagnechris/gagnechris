@@ -169,5 +169,5 @@ test('[ ] text then Enter makes a task row that never shows its token', async ({
   await expect(page.locator('.markdown-editor')).not.toContainText('{{task:');
   await expect
     .poll(noteBody(seed, note.id))
-    .toMatch(/^\{\{task:[0-9A-Z]{26}\}\}\n$/);
+    .toMatch(/^\{\{task:[0-9A-Z]{26}\}\}\n\[ \] $/);
 });
