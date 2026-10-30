@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures';
+import { areaChoices, expect, pickArea, test } from '../fixtures';
 
 test.use({ timezoneId: 'America/New_York' });
 
@@ -23,12 +23,10 @@ test('an area added in Settings gets its own daily note and tasks, keeps them wh
     'Family',
   );
 
-  const radios = page
-    .getByRole('radiogroup', { name: 'Notebook area' })
-    .getByRole('radio');
-  await expect(radios).toHaveText(['Work', 'Personal', 'Family']);
-
   await page.goto(`${apps.notebook}/today?area=family`);
+  await expect
+    .poll(() => areaChoices(page))
+    .toEqual(['Work', 'Personal', 'Family']);
   await expect(page.getByText('Family notebook · Today')).toBeVisible();
   const editor = page.getByRole('textbox', { name: 'Note body' });
   await editor.click();
@@ -49,8 +47,7 @@ test('an area added in Settings gets its own daily note and tasks, keeps them wh
   await quickAdd.fill(`${prefix} book dentist`);
   await quickAdd.press('Enter');
   await expect(quickAdd).toHaveValue('');
-  const filter = page.getByRole('combobox', { name: 'Filter by area' });
-  await filter.selectOption('family');
+  await pickArea(page, 'Family');
   const open = page.getByRole('list', { name: 'Open tasks' });
   await expect(open.getByText(`${prefix} book dentist`)).toBeVisible();
   await expect(open.getByText('Family')).toBeVisible();
@@ -59,9 +56,12 @@ test('an area added in Settings gets its own daily note and tasks, keeps them wh
   const third = page.getByRole('textbox', { name: 'Area 3' });
   await third.fill('Kids');
   await third.press('Enter');
-  await expect(radios).toHaveText(['Work', 'Personal', 'Kids']);
+  await expect(third).toHaveValue('Kids');
   await page.goto(`${apps.notebook}/tasks`);
-  await filter.selectOption('family');
+  await expect
+    .poll(() => areaChoices(page))
+    .toEqual(['All areas', 'Work', 'Personal', 'Kids']);
+  await pickArea(page, 'Kids');
   await expect(open.getByText(`${prefix} book dentist`)).toBeVisible();
   await expect(open.getByText('Kids')).toBeVisible();
   expect((await familyDaily())?.bodyMarkdown).toBe('School pickup');

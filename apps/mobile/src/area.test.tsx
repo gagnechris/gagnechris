@@ -1,6 +1,6 @@
 import { NOTEBOOK_AREA_STORAGE_KEY } from '@gagnechris/shared';
 import { ActionSheetIOS } from 'react-native';
-import { act, type ReactTestRenderer } from 'react-test-renderer';
+import { act } from 'react-test-renderer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import TasksScreen from '../app/(tabs)/tasks/index';
 import TodayScreen from '../app/(tabs)/today/index';
@@ -29,19 +29,12 @@ const serve = (tasks: ReturnType<typeof makeTask>[] = []) => {
   return server;
 };
 
-const segments = (renderer: ReactTestRenderer, label: string) =>
-  renderer.root
-    .find(
-      (node) =>
-        typeof node.type === 'string' &&
-        node.props.accessibilityRole === 'tablist' &&
-        node.props.accessibilityLabel === label,
-    )
-    .findAll(
-      (node) =>
-        typeof node.type === 'string' && node.props.accessibilityRole === 'tab',
-    )
-    .map((node) => node.props.accessibilityLabel as string);
+const chooseFromSheet = async (index: number) => {
+  const [options, choose] = vi.mocked(ActionSheetIOS.showActionSheetWithOptions)
+    .mock.lastCall!;
+  await act(async () => choose(index));
+  return options.options;
+};
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -75,10 +68,13 @@ describe('area switch', () => {
       </Providers>,
     );
     await settle(10);
-    expect(segments(renderer, 'Area')).toEqual(['Work', 'Personal', 'Family']);
-    expect(byLabel(renderer, 'Work').props.accessibilityState).toEqual({
-      selected: true,
-    });
+    act(() => byLabel(renderer, 'Area: Work').props.onPress());
+    expect(await chooseFromSheet(3)).toEqual([
+      'Work',
+      'Personal',
+      'Family',
+      'Cancel',
+    ]);
     renderer.unmount();
   });
 
@@ -91,17 +87,10 @@ describe('area switch', () => {
       </Providers>,
     );
     await settle(10);
-    expect(byLabel(first, 'Work').props.accessibilityState).toEqual({
-      selected: true,
-    });
-
-    await act(async () => {
-      byLabel(first, 'Family').props.onPress();
-    });
+    act(() => byLabel(first, 'Area: Work').props.onPress());
+    await chooseFromSheet(2);
     expect(data.get(NOTEBOOK_AREA_STORAGE_KEY)).toBe('family');
-    expect(byLabel(first, 'Family').props.accessibilityState).toEqual({
-      selected: true,
-    });
+    expect(byLabel(first, 'Area: Family')).toBeDefined();
     first.unmount();
 
     const relaunched = await render(
@@ -110,12 +99,7 @@ describe('area switch', () => {
       </Providers>,
     );
     await settle(10);
-    expect(byLabel(relaunched, 'Family').props.accessibilityState).toEqual({
-      selected: true,
-    });
-    expect(byLabel(relaunched, 'Work').props.accessibilityState).toEqual({
-      selected: false,
-    });
+    expect(byLabel(relaunched, 'Area: Family')).toBeDefined();
     relaunched.unmount();
   });
 
@@ -151,17 +135,19 @@ describe('area switch', () => {
       </Providers>,
     );
     await settle(15);
-    expect(segments(renderer, 'Area')).toEqual([
-      'All',
-      'Work',
-      'Personal',
-      'Family',
-    ]);
     expect(byLabel(renderer, 'Standup, Work')).toBeDefined();
     expect(byLabel(renderer, 'Dentist, Family')).toBeDefined();
 
-    await act(async () => byLabel(renderer, 'Family').props.onPress());
+    act(() => byLabel(renderer, 'Area: All areas').props.onPress());
+    expect(await chooseFromSheet(3)).toEqual([
+      'All areas',
+      'Work',
+      'Personal',
+      'Family',
+      'Cancel',
+    ]);
     await settle(15);
+    expect(byLabel(renderer, 'Area: Family')).toBeDefined();
     expect(allText(renderer)).toContain('Dentist');
     expect(allText(renderer)).not.toContain('Standup');
 

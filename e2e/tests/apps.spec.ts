@@ -150,9 +150,6 @@ test('on a phone the Notebook nav is a bottom tab bar with a More sheet', async 
   await tabs.getByRole('button', { name: 'More' }).click();
   const sheet = page.getByRole('dialog', { name: 'More' });
   await expect(
-    sheet.getByRole('radiogroup', { name: 'Notebook area' }),
-  ).toBeVisible();
-  await expect(
     sheet.getByRole('button', { name: 'Sign out of Notebook' }),
   ).toBeVisible();
   await tabs.getByRole('link', { name: 'Notes' }).click();

@@ -56,6 +56,8 @@ for (const width of [1440, 390]) {
 
     await page.keyboard.press('Enter');
     await expect(editor.locator('.cm-content')).toBeFocused();
+    // Enter starts a task line under the row; a second Enter makes it text.
+    await page.keyboard.press('Enter');
     await page.keyboard.type('Follow up');
 
     await expect.poll(taskTitle).toBe(renamed);

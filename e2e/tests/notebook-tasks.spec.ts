@@ -1,4 +1,4 @@
-import { expect, test } from '../fixtures';
+import { expect, pickArea, test } from '../fixtures';
 
 test('tasks are added, completed and filtered in each area', async ({
   page,
@@ -21,23 +21,20 @@ test('tasks are added, completed and filtered in each area', async ({
   await expect(open.getByText(`${prefix} work urgent`)).toBeVisible();
   await expect(open.getByText(`${prefix} work later`)).toBeVisible();
 
-  const area = page.getByRole('radiogroup', { name: 'Notebook area' });
-  const personal = area.getByRole('radio', { name: 'Personal' });
-  await personal.click();
+  await pickArea(page, 'Personal');
   await expect(page).toHaveURL(/[?&]area=personal/);
   // The URL changes before the transition renders the new area; adding before
   // then files the task under Work.
-  await expect(personal).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText('New tasks go to Personal')).toBeVisible();
   await add(`${prefix} personal errand`);
-  await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
-  await expect(open.getByText(`${prefix} work urgent`)).toBeVisible();
-
-  const areaFilter = page.getByRole('combobox', { name: 'Filter by area' });
-  await areaFilter.selectOption('personal');
   await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
   await expect(page.getByText(`${prefix} work urgent`)).toHaveCount(0);
 
-  await areaFilter.selectOption('work');
+  await pickArea(page, 'All areas');
+  await expect(open.getByText(`${prefix} personal errand`)).toBeVisible();
+  await expect(open.getByText(`${prefix} work urgent`)).toBeVisible();
+
+  await pickArea(page, 'Work');
   await expect(open.getByText(`${prefix} work later`)).toBeVisible();
   await expect(page.getByText(`${prefix} personal errand`)).toHaveCount(0);
 

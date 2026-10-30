@@ -75,12 +75,14 @@ test('the calendar and area switcher work from the keyboard, and the area rides 
   await page.goto(`${apps.notebook}/today`);
   await expect(page).toHaveURL(/[?&]area=work/);
 
-  const area = page.getByRole('radiogroup', { name: 'Notebook area' });
-  await area.getByRole('radio', { name: 'Work' }).focus();
+  await page.getByRole('button', { name: 'Area: Work' }).focus();
   const personalNote = page.waitForResponse(
     (r) => r.url().includes('/notes/daily/personal/') && r.ok(),
   );
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitemradio', { name: 'Work' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/[?&]area=personal/);
   // The Personal note's editor mounts after the key press; focus has to
   // survive that.
@@ -92,7 +94,9 @@ test('the calendar and area switcher work from the keyboard, and the area rides 
         requestAnimationFrame(() => requestAnimationFrame(done)),
       ),
   );
-  await expect(area.getByRole('radio', { name: 'Personal' })).toBeFocused();
+  await expect(
+    page.getByRole('button', { name: 'Area: Personal' }),
+  ).toBeFocused();
 
   await page.getByText('Calendar', { exact: true }).click();
   await page.getByRole('gridcell', { name: /October 14, 2026/ }).focus();

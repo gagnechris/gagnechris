@@ -393,7 +393,14 @@
   background: var(--primary-700);
 }
 
-.notebook-today__phone-tools,
+.notebook-today__tools {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-left: auto;
+}
+
+.notebook-today__tools .notebook-today__search,
 .notebook-today__strip,
 .notebook-today__calendar-icon {
   display: none;
@@ -440,21 +447,8 @@
     white-space: nowrap;
   }
 
-  .notebook-today__area {
-    min-width: 0;
-    max-width: 7.5rem;
-  }
-
-  .notebook-today__phone-tools {
-    display: flex;
-    gap: var(--space-2);
-    min-width: 0;
-    margin-left: auto;
-  }
-
-  .notebook-today__area {
-    width: auto;
-    min-height: var(--size-tap-target);
+  .notebook-today__tools .notebook-today__search {
+    display: inline-flex;
   }
 
   .notebook-today__strip {

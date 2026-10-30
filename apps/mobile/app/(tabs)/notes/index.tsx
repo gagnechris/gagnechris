@@ -33,6 +33,7 @@ import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { useOpenTaskIds } from '../../../src/notebook/useOpenTaskIds';
 import { createUlid } from '../../../src/ulid';
 import { color, font } from '../../../src/theme';
+import { AreaChip } from '../../../src/ui/AreaChip';
 import { showError } from '../../../src/ui/confirm';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Icon } from '../../../src/ui/Icon';
@@ -238,14 +239,17 @@ const NotesScreen = () => {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <IconButton
-              size="lg"
-              label="New page"
-              disabled={create.isPending}
-              onPress={() => void newPage()}
-            >
-              <Icon name="square.and.pencil" size={22} color={color.accent} />
-            </IconButton>
+            <View style={styles.headerActions}>
+              <AreaChip />
+              <IconButton
+                size="lg"
+                label="New page"
+                disabled={create.isPending}
+                onPress={() => void newPage()}
+              >
+                <Icon name="square.and.pencil" size={22} color={color.accent} />
+              </IconButton>
+            </View>
           ),
         }}
       />
@@ -330,6 +334,11 @@ const NotesScreen = () => {
 export default NotesScreen;
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[1],
+  },
   scroll: { flex: 1, backgroundColor: color.background },
   content: {
     paddingHorizontal: tokens.space[4],

@@ -26,6 +26,7 @@ import { TaskTitleLinks } from '../kit/tasks/TaskTitleLinks';
 import { TaskRowActions } from '../kit/tasks/TaskRowActions';
 import { TaskSyntaxInput } from '../kit/tasks/TaskSyntaxInput';
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 import { TaskParentsProvider } from './TaskParentsProvider';
 import { useLocalToday } from './useLocalToday';
 import { TaskParentLabel } from '../kit/tasks/TaskParentLabel';
@@ -114,6 +115,9 @@ export default function NotebookUpcomingPage() {
               Tasks hidden until their day. Each one shows on Today from that
               day.
             </p>
+          </div>
+          <div className="workspace-panel__actions">
+            <NotebookAreaSwitch />
           </div>
         </div>
 

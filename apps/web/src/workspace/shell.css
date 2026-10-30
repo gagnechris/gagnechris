@@ -162,19 +162,15 @@ button:where(:hover) {
   font-size: 0.6875rem;
 }
 
-/* Up to four user-named areas: wrap to a second row, then ellipsize. */
 .notebook-area-switch {
-  flex-wrap: wrap;
+  display: contents;
 }
 
-.notebook-area-switch .workspace-segmented__option {
-  flex: 1 0 auto;
-  min-width: 0;
-  max-width: 100%;
-  padding: 0 0.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@media (max-width: 767px) {
+  .notebook-area-switch .ui-chip-select {
+    min-height: var(--size-tap-target);
+    padding: 0 0.875rem;
+  }
 }
 
 .workspace-nav,
@@ -362,20 +358,6 @@ button:where(:hover) {
     transition:
       margin-left 160ms ease,
       visibility 0s linear 160ms;
-  }
-
-  /* The area switch moves into Today's date row. */
-  .workspace--sidebar-closed .notebook-today__phone-tools {
-    display: flex;
-    margin-left: auto;
-  }
-
-  .workspace--sidebar-closed .notebook-today__area {
-    width: auto;
-  }
-
-  .workspace--sidebar-closed .notebook-today__search {
-    display: none;
   }
 }
 

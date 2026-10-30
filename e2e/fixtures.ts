@@ -86,6 +86,20 @@ export const afterFrames = (page: Page, count = 2): Promise<void> =>
   );
 
 /** Seeds through the local API so data passes the same validation as the UI. */
+/** Picks an area from the Area chip in the page header. */
+export async function pickArea(page: Page, name: string): Promise<void> {
+  await page.getByRole('button', { name: /^Area: / }).click();
+  await page.getByRole('menuitemradio', { name }).click();
+}
+
+/** The choices the Area chip offers, read from its open menu. */
+export async function areaChoices(page: Page): Promise<string[]> {
+  await page.getByRole('button', { name: /^Area: / }).click();
+  const names = await page.getByRole('menuitemradio').allTextContents();
+  await page.keyboard.press('Escape');
+  return names;
+}
+
 export class Seed {
   readonly api: ApiClient;
 

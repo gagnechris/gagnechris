@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import type { Download, Page } from '@playwright/test';
 import { parse as parseYaml } from 'yaml';
-import { expect, test, type Seed } from '../fixtures';
+import { areaChoices, expect, pickArea, test, type Seed } from '../fixtures';
 
 test.use({ timezoneId: 'America/New_York' });
 
@@ -206,18 +206,15 @@ test('the area switch has only my areas, and the task list spans them until filt
   await seed.task({ title: `${prefix} home thing`, area: 'personal' });
   await signIn();
   await page.goto(`${apps.notebook}/tasks`);
-  const radios = page
-    .getByRole('radiogroup', { name: 'Notebook area' })
-    .getByRole('radio');
-  await expect(radios).toHaveText(['Work', 'Personal']);
+  await expect
+    .poll(() => areaChoices(page))
+    .toEqual(['All areas', 'Work', 'Personal']);
 
   const open = page.getByRole('list', { name: 'Open tasks' });
   await expect(open.getByText(`${prefix} work thing`)).toBeVisible();
   await expect(open.getByText(`${prefix} home thing`)).toBeVisible();
 
-  await page
-    .getByRole('combobox', { name: 'Filter by area' })
-    .selectOption('personal');
+  await pickArea(page, 'Personal');
   await expect(open.getByText(`${prefix} home thing`)).toBeVisible();
   await expect(open.getByText(`${prefix} work thing`)).toHaveCount(0);
 });
