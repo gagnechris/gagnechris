@@ -4391,6 +4391,54 @@ func (e PutAPINotebookNotesID412JSONResponseBodyError) Valid() bool {
 	}
 }
 
+// Defines values for PostAPINotebookRecapsWeekly201JSONResponseBodyType.
+const (
+	PostAPINotebookRecapsWeekly201JSONResponseBodyTypeDaily PostAPINotebookRecapsWeekly201JSONResponseBodyType = "daily"
+	PostAPINotebookRecapsWeekly201JSONResponseBodyTypePage  PostAPINotebookRecapsWeekly201JSONResponseBodyType = "page"
+)
+
+// Valid indicates whether the value is a known member of the PostAPINotebookRecapsWeekly201JSONResponseBodyType enum.
+func (e PostAPINotebookRecapsWeekly201JSONResponseBodyType) Valid() bool {
+	switch e {
+	case PostAPINotebookRecapsWeekly201JSONResponseBodyTypeDaily:
+		return true
+	case PostAPINotebookRecapsWeekly201JSONResponseBodyTypePage:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PostAPINotebookRecapsWeekly409JSONResponseBodyError.
+const (
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorConflict        PostAPINotebookRecapsWeekly409JSONResponseBodyError = "conflict"
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorDailyTaken      PostAPINotebookRecapsWeekly409JSONResponseBodyError = "daily_taken"
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorDeleted         PostAPINotebookRecapsWeekly409JSONResponseBodyError = "deleted"
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorPayloadMismatch PostAPINotebookRecapsWeekly409JSONResponseBodyError = "payload_mismatch"
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorSlugTaken       PostAPINotebookRecapsWeekly409JSONResponseBodyError = "slug_taken"
+	PostAPINotebookRecapsWeekly409JSONResponseBodyErrorVersionConflict PostAPINotebookRecapsWeekly409JSONResponseBodyError = "version_conflict"
+)
+
+// Valid indicates whether the value is a known member of the PostAPINotebookRecapsWeekly409JSONResponseBodyError enum.
+func (e PostAPINotebookRecapsWeekly409JSONResponseBodyError) Valid() bool {
+	switch e {
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorConflict:
+		return true
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorDailyTaken:
+		return true
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorDeleted:
+		return true
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorPayloadMismatch:
+		return true
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorSlugTaken:
+		return true
+	case PostAPINotebookRecapsWeekly409JSONResponseBodyErrorVersionConflict:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for PostAPINotebookSearch200JSONResponseBodyNotesStatus.
 const (
 	PostAPINotebookSearch200JSONResponseBodyNotesStatusDone       PostAPINotebookSearch200JSONResponseBodyNotesStatus = "done"
@@ -11534,6 +11582,106 @@ type PutAPINotebookNotesID503JSONResponseBody struct {
 	Message *string            `json:"message,omitempty"`
 }
 
+// PostAPINotebookRecapsWeeklyJSONBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeeklyJSONBody struct {
+	// Area An area id from the user's area list, such as work or personal
+	Area string `json:"area"`
+
+	// ID Client ULID for the recap note
+	ID string `json:"id"`
+
+	// WeekStart Monday of the week to recap
+	WeekStart string `json:"weekStart"`
+}
+
+// PostAPINotebookRecapsWeekly201JSONResponseBodyType defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly201JSONResponseBodyType string
+
+// PostAPINotebookRecapsWeekly201JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly201JSONResponseBody struct {
+	// Archived Archived page notes leave the sidebar and the default notes list; absent means not archived
+	Archived *bool `json:"archived,omitempty"`
+
+	// Area An area id from the user's area list, such as work or personal
+	Area         string                    `json:"area"`
+	BodyMarkdown string                    `json:"bodyMarkdown"`
+	CreatedAt    string                    `json:"createdAt"`
+	Date         nullable.Nullable[string] `json:"date"`
+	Deleted      bool                      `json:"deleted"`
+	ID           string                    `json:"id"`
+	Pinned       bool                      `json:"pinned"`
+	Tags         []string                  `json:"tags"`
+
+	// TaskIds Tasks embedded in bodyMarkdown, derived by the server on every save
+	TaskIds   []string                                           `json:"taskIds"`
+	Title     string                                             `json:"title"`
+	Type      PostAPINotebookRecapsWeekly201JSONResponseBodyType `json:"type"`
+	UpdatedAt string                                             `json:"updatedAt"`
+	UserID    string                                             `json:"userId"`
+	Version   int                                                `json:"version"`
+}
+
+// PostAPINotebookRecapsWeekly400JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly400JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly401JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly401JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly403JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly403JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly409JSONResponseBodyError defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly409JSONResponseBodyError string
+
+// PostAPINotebookRecapsWeekly409JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly409JSONResponseBody struct {
+	Current        nullable.Nullable[interface{}]                      `json:"current,omitempty"`
+	CurrentVersion *int                                                `json:"currentVersion,omitempty"`
+	Error          PostAPINotebookRecapsWeekly409JSONResponseBodyError `json:"error"`
+	Fields         *map[string]string                                  `json:"fields,omitempty"`
+	Message        *string                                             `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly410JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly410JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly429JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly429JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly500JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly500JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
+// PostAPINotebookRecapsWeekly503JSONResponseBody defines parameters for PostAPINotebookRecapsWeekly.
+type PostAPINotebookRecapsWeekly503JSONResponseBody struct {
+	Error   string             `json:"error"`
+	Fields  *map[string]string `json:"fields,omitempty"`
+	Message *string            `json:"message,omitempty"`
+}
+
 // PostAPINotebookSearchJSONBody defines parameters for PostAPINotebookSearch.
 type PostAPINotebookSearchJSONBody struct {
 	// Area An area id from the user's area list, such as work or personal
@@ -13295,6 +13443,9 @@ type DeleteAPINotebookNotesIDJSONRequestBody DeleteAPINotebookNotesIDJSONBody
 
 // PutAPINotebookNotesIDJSONRequestBody defines body for PutAPINotebookNotesID for application/json ContentType.
 type PutAPINotebookNotesIDJSONRequestBody PutAPINotebookNotesIDJSONBody
+
+// PostAPINotebookRecapsWeeklyJSONRequestBody defines body for PostAPINotebookRecapsWeekly for application/json ContentType.
+type PostAPINotebookRecapsWeeklyJSONRequestBody PostAPINotebookRecapsWeeklyJSONBody
 
 // PostAPINotebookSearchJSONRequestBody defines body for PostAPINotebookSearch for application/json ContentType.
 type PostAPINotebookSearchJSONRequestBody PostAPINotebookSearchJSONBody

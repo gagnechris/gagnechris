@@ -240,6 +240,12 @@ export {
   type NoteTemplate,
 } from './note-templates.js';
 export {
+  isWeeklyRecapPending,
+  weekStartOf,
+  WEEKLY_RECAP_PENDING_MARKDOWN,
+  type CreateWeeklyRecapRequest,
+} from './weekly-recap.js';
+export {
   fenceLineKind,
   scanFences,
   type FenceBlock,

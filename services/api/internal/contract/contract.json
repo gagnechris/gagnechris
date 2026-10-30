@@ -10,6 +10,7 @@
     "originVerifyHeader": "x-origin-verify",
     "viewerAddressHeader": "x-viewer-address",
     "notebookImageUploadsPerUserPerDay": 200,
+    "notebookRecapsPerUserPerDay": 10,
     "metrics": {
       "handlerError": "HandlerError",
       "dataIntegrityError": "DataIntegrityError",
@@ -128,6 +129,7 @@
     "rateContactIpPk({ip})": "RATE#contact#ip#{ip}",
     "rateResumeIpPk({ip})": "RATE#resume#ip#{ip}",
     "rateNotebookImageUserPk({userId})": "RATE#notebook-image#user#{userId}",
+    "rateNotebookRecapUserPk({userId})": "RATE#notebook-recap#user#{userId}",
     "rateSesGlobalPk()": "RATE#ses#global",
     "rateHourSk(2026-01-02T23:04:05.678Z)": "HOUR#2026-01-02T23",
     "rateDaySk(2026-01-02T23:04:05.678Z)": "DAY#2026-01-02",
@@ -384,7 +386,8 @@
       }
     ],
     "areaDuplicateIdMessage": "Two areas have the same id",
-    "areaDuplicateNameMessage": "Two areas have the same name"
+    "areaDuplicateNameMessage": "Two areas have the same name",
+    "weeklyRecapPendingMarkdown": "_Writing your weekly recap…_"
   },
   "sync": {
     "changeTypes": [

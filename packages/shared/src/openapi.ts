@@ -90,6 +90,7 @@ import {
   NoteTemplateSchema,
   UpdateNoteTemplateRequestSchema,
 } from './note-templates.js';
+import { CreateWeeklyRecapRequestSchema } from './weekly-recap.js';
 import {
   InviteUserRequestSchema,
   InviteUserResponseSchema,
@@ -1175,6 +1176,31 @@ export function buildOpenApiRegistry(): OpenAPIRegistry {
       200: ok(NotebookSearchResponseSchema, 'Grouped search hits'),
       400: r400,
       ...adminAuth,
+    },
+  });
+
+  registry.registerPath({
+    method: 'post',
+    path: '/api/notebook/recaps/weekly',
+    summary:
+      'Start a weekly recap: creates a page note tagged recap and writes the recap into it in the background',
+    description:
+      'The note comes back with a placeholder body; the recap replaces it within a minute or two. A repeat with the same id returns the same note.',
+    tags: ['Notebook'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      body: {
+        content: {
+          'application/json': { schema: CreateWeeklyRecapRequestSchema },
+        },
+      },
+    },
+    responses: {
+      201: okWithEtag(NoteSchema, 'The recap note'),
+      400: r400,
+      409: r409,
+      429: r429,
+      ...notebookAuth,
     },
   });
 

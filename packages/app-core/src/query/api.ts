@@ -1,4 +1,5 @@
 import type { ApiClient, components } from '@gagnechris/api-client';
+import type { CreateWeeklyRecapRequest } from '@gagnechris/shared';
 
 export type Post = components['schemas']['Post'];
 export type PostSummary = components['schemas']['PostSummary'];
@@ -481,6 +482,15 @@ export const createNote = async (
 ): Promise<Note> => {
   const result = await client.POST('/api/notebook/notes', { body });
   return unwrap(result, 'Could not create note');
+};
+
+/** The recap note, its body a placeholder until the recap is written. */
+export const createWeeklyRecap = async (
+  client: ApiClient,
+  body: CreateWeeklyRecapRequest,
+): Promise<Note> => {
+  const result = await client.POST('/api/notebook/recaps/weekly', { body });
+  return unwrap(result, 'Could not start the recap');
 };
 
 export const updateNote = async (

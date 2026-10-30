@@ -1,4 +1,9 @@
-import { createUlid, localDateString } from '@gagnechris/shared';
+import {
+  createUlid,
+  isWeeklyRecapPending,
+  localDateString,
+  type CreateWeeklyRecapRequest,
+} from '@gagnechris/shared';
 import { useEffect, useRef } from 'react';
 import {
   useInfiniteQuery,
@@ -10,6 +15,7 @@ import {
 import { useGetApiClient } from '../AppApiProvider.js';
 import {
   createNote,
+  createWeeklyRecap,
   deleteNote,
   fetchDailyNote,
   fetchNote,
@@ -267,6 +273,37 @@ export const useCreateNoteMutation = () => {
       setCachedNote(queryClient, note);
     },
   });
+};
+
+export const useCreateWeeklyRecapMutation = () => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateWeeklyRecapRequest) =>
+      createWeeklyRecap(getClient(), body),
+    onSuccess: (note) => {
+      setCachedNote(queryClient, note);
+    },
+  });
+};
+
+const RECAP_POLL_MS = 3_000;
+
+/** Rereads a recap note until the recap replaces its placeholder. */
+export const useWeeklyRecapRefresh = (note: Note | null | undefined) => {
+  const getClient = useGetApiClient();
+  const queryClient = useQueryClient();
+  const pendingId = note && isWeeklyRecapPending(note) ? note.id : null;
+  useEffect(() => {
+    if (!pendingId) return;
+    const timer = setInterval(() => {
+      fetchNote(getClient(), pendingId).then(
+        (latest) => setCachedNote(queryClient, latest),
+        () => {},
+      );
+    }, RECAP_POLL_MS);
+    return () => clearInterval(timer);
+  }, [getClient, pendingId, queryClient]);
 };
 
 export const useDeleteNoteMutation = () =>

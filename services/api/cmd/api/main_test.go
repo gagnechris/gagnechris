@@ -35,7 +35,7 @@ func TestRoutesMatchOpenAPI(t *testing.T) {
 		}
 	}
 	var served []string
-	for _, r := range allRoutes(config{}, &data.Table{}, nil, aws.Config{Region: "us-east-1"}, nil) {
+	for _, r := range allRoutes(config{}, &data.Table{}, nil, nil, aws.Config{Region: "us-east-1"}, nil) {
 		served = append(served, r.Method+" /api"+patternParam.ReplaceAllString(r.Pattern, "{$1}"))
 	}
 	sort.Strings(spec)
