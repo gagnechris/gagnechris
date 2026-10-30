@@ -24,6 +24,7 @@ import { SaveIndicator } from '../workspace/ui/SaveIndicator';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 import { useLocalToday } from './useLocalToday';
 
 type TemplateDraft = { bodyMarkdown: string; carryOverSection: string | null };
@@ -247,11 +248,14 @@ export default function NotebookTemplatesPage() {
           <p className="notebook-today__kicker">Settings</p>
           <h1>Daily templates</h1>
         </div>
+        <div className="workspace-panel__actions">
+          <NotebookAreaSwitch />
+        </div>
       </div>
       <p className="workspace-panel__lede">
         Each new {areaName} daily note starts from this template. Notes you’ve
-        already started never change. Switch areas in the sidebar to edit
-        another area’s template.
+        already started never change. Switch areas above to edit another area’s
+        template.
       </p>
       <TemplateEditor key={area} area={area} areaName={areaName} />
     </section>

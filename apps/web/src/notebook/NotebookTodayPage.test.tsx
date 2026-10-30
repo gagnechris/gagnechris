@@ -713,7 +713,8 @@ describe('NotebookTodayPage', () => {
     const editor = await screen.findByRole('textbox', { name: 'Note body' });
     await user.type(editor, 'work thoughts');
 
-    await user.click(screen.getByRole('radio', { name: 'Personal' }));
+    await user.click(screen.getByRole('button', { name: 'Area: Work' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Personal' }));
 
     await waitFor(() => {
       expect(state.note?.bodyMarkdown).toBe('work thoughts');

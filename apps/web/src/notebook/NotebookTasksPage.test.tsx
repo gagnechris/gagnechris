@@ -344,6 +344,42 @@ describe('NotebookTasksPage', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  test('the area chip lists every area by default, narrows to one, and quick add files into the current area', async () => {
+    // The sidebar's Today count asks for its own area.
+    const listQueries = () =>
+      state.queries.filter((q) => !('startOnOrBefore' in q));
+    const user = userEvent.setup();
+    renderTasks('/tasks?area=work');
+
+    const chip = await screen.findByRole('button', { name: 'Area: All areas' });
+    await waitFor(() => expect(listQueries().length).toBeGreaterThan(0));
+    expect(listQueries().at(-1)?.area).toBeUndefined();
+
+    await user.click(chip);
+    expect(
+      screen.getAllByRole('menuitemradio').map((r) => r.textContent),
+    ).toEqual(['All areas', 'Work', 'Personal']);
+    await user.click(screen.getByRole('menuitemradio', { name: 'Personal' }));
+    expect(
+      screen.getByRole('button', { name: 'Area: Personal' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/New tasks go to Personal/)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(listQueries().at(-1)).toMatchObject({ area: 'personal' }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Area: Personal' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'All areas' }));
+    await waitFor(() => expect(listQueries().at(-1)?.area).toBeUndefined());
+    await user.type(
+      screen.getByRole('combobox', { name: 'Quick add task' }),
+      'Call Sam{Enter}',
+    );
+    await waitFor(() =>
+      expect(state.created.at(-1)).toMatchObject({ area: 'personal' }),
+    );
+  });
+
   test('quick-adds a task and completes it', async () => {
     const user = userEvent.setup();
     renderTasks();

@@ -33,6 +33,7 @@ import { Button, Field, SegmentedRadio, Select } from '@gagnechris/ui';
 import { useLocalToday } from './useLocalToday';
 
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 
 type TaskChip = 'open' | 'today' | 'upcoming' | 'someday' | 'done';
 
@@ -59,9 +60,9 @@ export default function NotebookTasksPage() {
     areas,
   } = useOutletContext<NotebookOutletContext>();
   const today = useLocalToday();
-  // Every area unless one is picked here; quick-add files into the switch's.
-  const [listArea, setListArea] = useState('');
-  const area = areas.some((a) => a.id === listArea) ? listArea : undefined;
+  // Every area until one is picked; quick-add files into the switch's.
+  const [allAreas, setAllAreas] = useState(true);
+  const area = allAreas ? undefined : current;
 
   const [quickAdd, setQuickAdd] = useState('');
   const [status, setStatus] = useState<TaskStatus | ''>('');
@@ -162,6 +163,11 @@ export default function NotebookTasksPage() {
               and <code>!high</code>
             </p>
           </div>
+          <div className="workspace-panel__actions">
+            <NotebookAreaSwitch
+              all={{ selected: allAreas, onChange: setAllAreas }}
+            />
+          </div>
         </div>
 
         <form
@@ -209,20 +215,6 @@ export default function NotebookTasksPage() {
           }}
         />
         <div className="workspace-toolbar notebook-tasks__filters">
-          <Field label="Area">
-            <Select
-              value={area ?? ''}
-              onChange={(e) => setListArea(e.target.value)}
-              aria-label="Filter by area"
-            >
-              <option value="">All areas</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
           <Field label="Status">
             <Select
               value={status}

@@ -2,7 +2,7 @@
 
 Expo app (expo-router, dev client) for iPhone with two spaces, opened by the
 user's groups: Notebook (`notebook` group: tabs for Today, Upcoming, Notes,
-Tasks and More, with the Work / Personal / All area switch) and Admin
+Tasks and More, with an Area chip on each list tab) and Admin
 (`site-admin` group: Posts, Pages, Projects, Users for `user-admin`, and More).
 A user with neither sees the No access screen. Both More tabs have Add a
 passkey under Cognito sign-in. It runs the monorepo client packages under Metro. The Notebook query

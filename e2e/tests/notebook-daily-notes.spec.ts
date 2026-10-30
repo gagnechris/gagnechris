@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test, type Seed } from '../fixtures';
+import { expect, pickArea, test, type Seed } from '../fixtures';
 
 test.use({ timezoneId: 'America/New_York' });
 
@@ -65,10 +65,7 @@ test('text typed just before picking a calendar day or switching area is saved w
 
   await editor.click();
   await page.keyboard.type('Thursday');
-  await page
-    .getByRole('radiogroup', { name: 'Notebook area' })
-    .getByRole('radio', { name: 'Personal' })
-    .click();
+  await pickArea(page, 'Personal');
   await expect(page).toHaveURL(/[?&]area=personal/);
 
   await expect

@@ -26,6 +26,7 @@ import {
   useDismiss,
 } from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 import { useLocalToday } from './useLocalToday';
 import { useNotebookExport } from './useNotebookExport';
 import { noteHref } from './noteHref';
@@ -125,6 +126,7 @@ export default function NotebookNotesPage() {
           </p>
         </div>
         <div className="workspace-panel__actions">
+          <NotebookAreaSwitch />
           <Button
             onClick={() => void exportZip()}
             disabled={exportBusy}

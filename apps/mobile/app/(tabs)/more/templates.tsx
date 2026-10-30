@@ -15,7 +15,7 @@ import {
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useArea } from '../../../src/area';
 import { nativeRetrySignals, useIsOnline } from '../../../src/net';
@@ -30,8 +30,8 @@ import {
 } from '../../../src/notebook/toolbarEdits';
 import { useSaveOnBackground } from '../../../src/notebook/useSaveOnBackground';
 import { color, font } from '../../../src/theme';
+import { AreaChip } from '../../../src/ui/AreaChip';
 import { nativeConfirm } from '../../../src/ui/confirm';
-import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 
 const TOOLBAR_ID = 'template-keyboard-toolbar';
 
@@ -51,9 +51,11 @@ const BUTTONS: readonly ToolbarButton<TemplateAction | 'reset'>[] = [
 const TemplateEditor = ({
   area,
   label,
+  areaChip,
 }: {
   area: NotebookArea;
   label: string;
+  areaChip: ReactNode;
 }) => {
   const online = useIsOnline();
   const editor = useVersionedDocEditor({
@@ -122,9 +124,12 @@ const TemplateEditor = ({
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Text style={styles.saveState} accessibilityLiveRegion="polite">
-              {saveLabel(saveState, dirty, { offline: !online })}
-            </Text>
+            <View style={styles.headerActions}>
+              <Text style={styles.saveState} accessibilityLiveRegion="polite">
+                {saveLabel(saveState, dirty, { offline: !online })}
+              </Text>
+              {areaChip}
+            </View>
           ),
         }}
       />
@@ -177,17 +182,13 @@ const DailyTemplatesScreen = () => {
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
     >
-      <SegmentedRadio
-        label="Template"
-        options={segmentOptions(
-          areas.map((a) => a.id),
-          labels,
-        )}
-        value={area}
-        onChange={setPicked}
-      />
       <View style={styles.editor}>
-        <TemplateEditor key={area} area={area} label={labels[area] ?? area} />
+        <TemplateEditor
+          key={area}
+          area={area}
+          label={labels[area] ?? area}
+          areaChip={<AreaChip value={area} onPick={setPicked} />}
+        />
       </View>
     </ScrollView>
   );
@@ -196,6 +197,11 @@ const DailyTemplatesScreen = () => {
 export default DailyTemplatesScreen;
 
 const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+  },
   scroll: { flex: 1, backgroundColor: color.surface },
   content: {
     paddingHorizontal: tokens.space[4],
