@@ -326,7 +326,7 @@ describe('daily templates', () => {
     expect(select).toBeDisabled();
   });
 
-  test('the sidebar area switch picks the template', async () => {
+  test('the page’s area chip picks the template', async () => {
     const user = userEvent.setup();
     renderAt('/settings/templates?area=work');
     expect(
@@ -338,11 +338,8 @@ describe('daily templates', () => {
     expect(
       screen.queryByRole('radiogroup', { name: 'Template' }),
     ).not.toBeInTheDocument();
-    await user.click(
-      within(
-        screen.getByRole('radiogroup', { name: 'Notebook area' }),
-      ).getByRole('radio', { name: 'Personal' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Area: Work' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'Personal' }));
     expect(
       await screen.findByRole('textbox', { name: 'Personal template' }),
     ).toBeInTheDocument();

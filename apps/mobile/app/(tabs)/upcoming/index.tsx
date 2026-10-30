@@ -14,6 +14,7 @@ import {
   type TaskLineDraft,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
+import { Stack } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text } from 'react-native';
 import { useArea } from '../../../src/area';
@@ -21,16 +22,16 @@ import { useDetailRoutes } from '../../../src/notebook/detailRoutes';
 import { QuickAddTask } from '../../../src/notebook/QuickAddTask';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font } from '../../../src/theme';
+import { AreaChip } from '../../../src/ui/AreaChip';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { Screen } from '../../../src/ui/Screen';
 import { Section } from '../../../src/ui/Section';
-import { SegmentedRadio, segmentOptions } from '../../../src/ui/SegmentedRadio';
 import { TaskRow } from '../../../src/ui/TaskRow';
 import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
 const UpcomingScreen = () => {
   const { openTask, openNote } = useDetailRoutes();
-  const { area, areas, setArea } = useArea();
+  const { area } = useArea();
   const today = useLocalToday();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -117,16 +118,8 @@ const UpcomingScreen = () => {
         />
       }
     >
+      <Stack.Screen options={{ headerRight: () => <AreaChip /> }} />
       <Text style={styles.subtitle}>Hidden until their day</Text>
-      <SegmentedRadio
-        label="Area"
-        options={segmentOptions(
-          areas.map((a) => a.id),
-          Object.fromEntries(areas.map((a) => [a.id, a.name])),
-        )}
-        value={area}
-        onChange={setArea}
-      />
       <QuickAddTask
         area={area}
         today={today}

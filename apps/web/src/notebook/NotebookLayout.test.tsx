@@ -11,6 +11,7 @@ import {
   useParams,
 } from 'react-router-dom';
 import { QueryClientTestProvider, testAuthUser } from '../test-utils';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 import NotebookLayout, { type NotebookOutletContext } from './NotebookLayout';
 import {
   NOTEBOOK_AREA_STORAGE_KEY,
@@ -71,6 +72,7 @@ const NotebookOutletProbe = () => {
   return (
     <section className="workspace-panel">
       <h1>{section}</h1>
+      <NotebookAreaSwitch />
       <p className="workspace-panel__lede">
         {id
           ? `${areaLabel} · note ${id} (editor arrives in a later ticket).`
@@ -80,6 +82,23 @@ const NotebookOutletProbe = () => {
     </section>
   );
 };
+
+async function areaChoices(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^Area: / }));
+  const choices = screen
+    .getAllByRole('menuitemradio')
+    .map((r) => [r.textContent, r.getAttribute('aria-checked')]);
+  await user.keyboard('{Escape}');
+  return choices;
+}
+
+async function pickArea(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
+  await user.click(screen.getByRole('button', { name: /^Area: / }));
+  await user.click(screen.getByRole('menuitemradio', { name }));
+}
 
 function renderNotebook(initialPath = '/today') {
   return render(
@@ -110,26 +129,17 @@ describe('NotebookLayout', () => {
     localStorage.clear();
   });
 
-  test('shows the area switcher with only the user’s areas and Today / Notes / All tasks in the Notebook nav', async () => {
+  test('the page’s area chip offers only the user’s areas, and the Notebook nav has Today / Notes / All tasks', async () => {
+    const user = userEvent.setup();
     renderNotebook();
 
-    const switcher = screen.getByRole('radiogroup', { name: 'Notebook area' });
     expect(
-      within(switcher)
-        .getAllByRole('radio')
-        .map((r) => r.textContent),
-    ).toEqual(['Work', 'Personal']);
-    expect(screen.getByRole('radio', { name: 'Work' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
-      'aria-checked',
-      'false',
-    );
-    expect(
-      screen.queryByRole('radio', { name: /^All/ }),
+      screen.queryByRole('radiogroup', { name: 'Notebook area' }),
     ).not.toBeInTheDocument();
+    expect(await areaChoices(user)).toEqual([
+      ['Work', 'true'],
+      ['Personal', 'false'],
+    ]);
 
     const nav = screen.getByRole('navigation', { name: 'Notebook' });
     const today = await within(nav).findByRole('link', {
@@ -187,21 +197,19 @@ describe('NotebookLayout', () => {
     const user = userEvent.setup();
     const { unmount } = renderNotebook();
 
-    await user.click(screen.getByRole('radio', { name: 'Personal' }));
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    await pickArea(user, 'Personal');
+    expect(
+      screen.getByRole('button', { name: 'Area: Personal' }),
+    ).toBeInTheDocument();
     expect(localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY)).toBe('personal');
     expect(screen.getByText(/Personal · today UI/i)).toBeInTheDocument();
 
     unmount();
     renderNotebook('/tasks');
 
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(
+      screen.getByRole('button', { name: 'Area: Personal' }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Personal · tasks UI/i)).toBeInTheDocument();
   });
 
@@ -209,10 +217,9 @@ describe('NotebookLayout', () => {
     writeStoredNotebookArea('all');
     renderNotebook('/notes');
 
-    expect(await screen.findByRole('radio', { name: 'Work' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(
+      await screen.findByRole('button', { name: 'Area: Work' }),
+    ).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent(
         '/notes?area=work',
@@ -232,24 +239,18 @@ describe('NotebookLayout', () => {
     const user = userEvent.setup();
     renderNotebook('/today?area=family');
 
-    const switcher = await screen.findByRole('radiogroup', {
-      name: 'Notebook area',
-    });
-    expect(
-      within(switcher)
-        .getAllByRole('radio')
-        .map((r) => r.textContent),
-    ).toEqual(['Work', 'Family', 'Home']);
-    expect(screen.getByRole('radio', { name: 'Family' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    await screen.findByRole('button', { name: 'Area: Family' });
+    expect(await areaChoices(user)).toEqual([
+      ['Work', 'false'],
+      ['Family', 'true'],
+      ['Home', 'false'],
+    ]);
     expect(screen.getByText(/Family · today UI/i)).toBeInTheDocument();
     expect(screen.getByTestId('location')).toHaveTextContent(
       '/today?area=family',
     );
 
-    await user.click(screen.getByRole('radio', { name: 'Home' }));
+    await pickArea(user, 'Home');
     expect(screen.getByTestId('location')).toHaveTextContent(
       '/today?area=personal',
     );
@@ -288,10 +289,9 @@ describe('NotebookLayout', () => {
     writeStoredNotebookArea('work');
     renderNotebook('/notes?area=personal');
 
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(
+      screen.getByRole('button', { name: 'Area: Personal' }),
+    ).toBeInTheDocument();
     expect(localStorage.getItem(NOTEBOOK_AREA_STORAGE_KEY)).toBe('personal');
   });
 
@@ -304,19 +304,19 @@ describe('NotebookLayout', () => {
     );
   });
 
-  test('arrow keys move the area and the URL follows', async () => {
+  test('the area chip works from the keyboard and the URL follows', async () => {
     const user = userEvent.setup();
-    renderNotebook();
+    renderNotebook('/notes');
 
-    screen.getByRole('radio', { name: 'Work' }).focus();
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveFocus();
-    expect(screen.getByRole('radio', { name: 'Personal' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    screen.getByRole('button', { name: 'Area: Work' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('menuitemradio', { name: 'Work' })).toHaveFocus();
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(
+      screen.getByRole('button', { name: 'Area: Personal' }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('location')).toHaveTextContent(
-      '/today?area=personal',
+      '/notes?area=personal',
     );
   });
 

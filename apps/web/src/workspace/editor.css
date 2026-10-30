@@ -1,6 +1,7 @@
 .workspace-panel__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -157,6 +158,10 @@
     justify-content: flex-start;
     gap: 0 var(--space-2);
     padding: 0 0 var(--space-2);
+  }
+
+  .workspace-action-bar > .workspace-panel__actions {
+    margin-left: auto;
   }
 
   /* Ends the nav row, so the status always starts a line of its own. */

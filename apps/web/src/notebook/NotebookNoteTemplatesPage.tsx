@@ -32,6 +32,7 @@ import ShellIcon from '../workspace/ui/ShellIcon';
 import { useWorkspaceDocEditor } from '../workspace/useWorkspaceDocEditor';
 import { NotebookMarkdownBody } from './NotebookMarkdownBody';
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 
 type Scope = 'area' | 'all';
 
@@ -295,12 +296,15 @@ export default function NotebookNoteTemplatesPage() {
           <p className="notebook-today__kicker">Settings</p>
           <h1>Note templates</h1>
         </div>
+        <div className="workspace-panel__actions">
+          <NotebookAreaSwitch />
+        </div>
       </div>
       <p className="workspace-panel__lede">
         Text you reuse in {areaName}, like an interview outline. Type{' '}
         <code>/</code> at the start of a line in a note or task page, or use
-        Insert template… in a note’s ⋯ menu. Switch areas in the sidebar to see
-        another area’s templates.
+        Insert template… in a note’s ⋯ menu. Switch areas above to see another
+        area’s templates.
       </p>
       {templates.error ? (
         <p className="workspace-panel__error" role="alert">

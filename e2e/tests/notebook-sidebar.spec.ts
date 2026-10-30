@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from '../fixtures';
+import { expect, pickArea, test } from '../fixtures';
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -28,11 +28,11 @@ test('hovering the sidebar edge shows a button that collapses it; the window edg
   await page.reload();
   await expect(page.locator('.cm-content')).toBeVisible();
   const dayNav = page.locator('.notebook-today__day-nav');
-  const areaSelect = dayNav.getByRole('combobox', { name: 'Notebook area' });
+  const areaChip = dayNav.getByRole('button', { name: 'Area: Work' });
   await expect(
     page.locator('.workspace-main').getByRole('button', { name: 'Sidebar' }),
   ).toHaveCount(0);
-  await expect(areaSelect).toBeHidden();
+  await expect(areaChip).toBeVisible();
   expect(await sidebarWidth(page)).toBe(280);
 
   const collapse = page
@@ -74,8 +74,8 @@ test('hovering the sidebar edge shows a button that collapses it; the window edg
   ).toEqual({ position: 'fixed', left: 0, width: 12 });
   await page.mouse.move(600, 300);
   await expect.poll(() => opacity(expand)).toBe('0');
-  await expect(areaSelect).toBeVisible();
-  await areaSelect.selectOption('personal');
+  await expect(areaChip).toBeVisible();
+  await pickArea(page, 'Personal');
   await expect(page).toHaveURL(/area=personal/);
 
   await page.mouse.move(4, 300);

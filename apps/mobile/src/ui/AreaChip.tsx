@@ -27,15 +27,35 @@ export function useAreaPicker(): () => void {
   );
 }
 
-export const AreaChip = () => {
+const ALL = '';
+
+type AreaChipProps = {
+  /** Adds an "All areas" choice; picking an area turns it off. */
+  all?: { selected: boolean; onChange: (all: boolean) => void };
+  /** Runs after an area is picked. */
+  onPick?: (area: string) => void;
+  /** Shows this area instead of the current one. */
+  value?: string;
+};
+
+export const AreaChip = ({ all, onPick, value }: AreaChipProps) => {
   const { area, setArea } = useArea();
+  const options = useAreaOptions();
   return (
     <ChipSelect
       label="Area"
       title={SHEET_TITLE}
-      options={useAreaOptions()}
-      value={area}
-      onChange={setArea}
+      options={all ? [{ value: ALL, label: 'All areas' }, ...options] : options}
+      value={all?.selected ? ALL : (value ?? area)}
+      onChange={(next) => {
+        if (next === ALL) {
+          all?.onChange(true);
+          return;
+        }
+        setArea(next);
+        all?.onChange(false);
+        onPick?.(next);
+      }}
     />
   );
 };

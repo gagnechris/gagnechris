@@ -1,13 +1,17 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useOutletContext,
+} from 'react-router-dom';
 import {
   answerConfirms,
   QueryClientTestProvider,
   testAuthUser,
 } from '../test-utils';
-import NotebookLayout from './NotebookLayout';
+import NotebookLayout, { type NotebookOutletContext } from './NotebookLayout';
 import NotebookAreasPage from './NotebookAreasPage';
 
 type Area = { id: string; name: string };
@@ -61,7 +65,17 @@ function renderAt(url: string) {
       {
         path: '/',
         element: <NotebookLayout user={testAuthUser} />,
-        children: [{ path: 'settings/areas', element: <NotebookAreasPage /> }],
+        children: [
+          {
+            path: 'settings/areas',
+            element: (
+              <>
+                <AreasProbe />
+                <NotebookAreasPage />
+              </>
+            ),
+          },
+        ],
       },
     ],
     { initialEntries: [url] },
@@ -74,10 +88,18 @@ function renderAt(url: string) {
   return router;
 }
 
-const switchNames = () =>
-  within(screen.getByRole('radiogroup', { name: 'Notebook area' }))
-    .getAllByRole('radio')
-    .map((r) => r.textContent);
+/** What the area chip on every page offers and shows. */
+const AreasProbe = () => {
+  const { areas, areaName } = useOutletContext<NotebookOutletContext>();
+  return (
+    <>
+      <p data-testid="areas">{areas.map((a) => a.name).join(',')}</p>
+      <p data-testid="area">{areaName}</p>
+    </>
+  );
+};
+
+const switchNames = () => screen.getByTestId('areas').textContent?.split(',');
 
 describe('Settings > Areas', () => {
   beforeEach(() => {
@@ -147,10 +169,7 @@ describe('Settings > Areas', () => {
       { id: 'work', name: 'Work' },
       { id: 'personal', name: 'Home' },
     ]);
-    expect(screen.getByRole('radio', { name: 'Home' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    );
+    expect(screen.getByTestId('area')).toHaveTextContent('Home');
 
     const puts = state.puts.length;
     screen.getByRole('button', { name: 'Reorder Home' }).focus();

@@ -1,6 +1,7 @@
 import { clearPendingFlushes } from '@gagnechris/app-core';
 import { DAILY_TEMPLATE_TASK_MESSAGE } from '@gagnechris/shared';
 import type { ReactElement } from 'react';
+import { ActionSheetIOS } from 'react-native';
 import { act, type ReactTestRenderer } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DailyTemplatesScreen from '../app/(tabs)/more/templates';
@@ -82,8 +83,14 @@ describe('daily templates on iOS', () => {
       { id: 'family', name: 'Family' },
     ];
     const renderer = await launch(<DailyTemplatesScreen />);
-    await act(async () => byLabel(renderer, 'Family').props.onPress());
+    act(() => byLabel(renderer, 'Area: Work').props.onPress());
+    const [options, choose] = vi.mocked(
+      ActionSheetIOS.showActionSheetWithOptions,
+    ).mock.lastCall!;
+    expect(options.options).toEqual(['Work', 'Personal', 'Family', 'Cancel']);
+    await act(async () => choose(2));
     await settle(10);
+    expect(byLabel(renderer, 'Area: Family')).toBeDefined();
     expect(input(renderer, 'Family template').props.value).toBe('');
     expect(allText(renderer)).toContain('New Family notes start like this.');
   });

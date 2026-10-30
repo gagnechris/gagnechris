@@ -15,10 +15,10 @@ import {
   IconButton,
   PanelCollapseButton,
   PanelExpandEdge,
-  Select,
   usePanelEdgeFocus,
 } from '@gagnechris/ui';
 import type { NotebookOutletContext } from './NotebookLayout';
+import NotebookAreaSwitch from './NotebookAreaSwitch';
 import { monthBounds } from '../kit/calendarDates';
 import { NotebookCalendar } from './NotebookCalendar';
 import {
@@ -51,8 +51,7 @@ function resolveDate(param: string | null, today: string): string {
 }
 
 export default function NotebookTodayPage() {
-  const { area, areaName, areas, setArea } =
-    useOutletContext<NotebookOutletContext>();
+  const { area, areaName } = useOutletContext<NotebookOutletContext>();
   const openSearch = useOpenWorkspaceSearch();
   const stripRef = useRef<HTMLButtonElement>(null);
   const calendarRef = useRef<HTMLDetailsElement>(null);
@@ -364,19 +363,8 @@ export default function NotebookTodayPage() {
                   onMonthChange={setCalendarMonth}
                 />
               </details>
-              <span className="notebook-today__phone-tools">
-                <Select
-                  className="notebook-today__area"
-                  aria-label="Notebook area"
-                  value={area}
-                  onChange={(e) => setArea(e.target.value)}
-                >
-                  {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </Select>
+              <span className="notebook-today__tools">
+                <NotebookAreaSwitch />
                 {openSearch ? (
                   <IconButton
                     variant="outline"

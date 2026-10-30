@@ -13,7 +13,6 @@ import {
 } from '@gagnechris/shared';
 import { WorkspaceFrame } from '../workspace/WorkspaceShell';
 import type { AuthUser } from '../workspace/auth/session';
-import { SegmentedRadio } from '@gagnechris/ui';
 import {
   readStoredNotebookArea,
   writeStoredNotebookArea,
@@ -106,15 +105,6 @@ export default function NotebookLayout({ user }: { user: AuthUser }) {
       app="notebook"
       user={user}
       collapsible
-      sidebarTop={
-        <SegmentedRadio
-          className="notebook-area-switch"
-          label="Notebook area"
-          options={areas.map((a) => ({ value: a.id, label: a.name }))}
-          value={area}
-          onChange={setArea}
-        />
-      }
       sections={[
         {
           label: 'Notebook',

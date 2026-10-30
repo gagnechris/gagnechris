@@ -18,7 +18,7 @@ import {
   type TaskShowOnFilter,
 } from '@gagnechris/shared';
 import { tokens } from '@gagnechris/tokens';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActionSheetIOS,
@@ -32,6 +32,7 @@ import { QuickAddTask } from '../../../src/notebook/QuickAddTask';
 import { useLocalToday } from '../../../src/notebook/useLocalToday';
 import { color, font, MIN_TARGET } from '../../../src/theme';
 import { Button } from '../../../src/ui/Button';
+import { AreaChip } from '../../../src/ui/AreaChip';
 import { EmptyState } from '../../../src/ui/EmptyState';
 import { PressArea } from '../../../src/ui/PressArea';
 import { Screen } from '../../../src/ui/Screen';
@@ -41,8 +42,6 @@ import { SwipeRow } from '../../../src/ui/SwipeRow';
 import { TaskRow } from '../../../src/ui/TaskRow';
 import { TaskParentsProvider } from '../../../src/notebook/taskParents';
 
-// Not a valid area id, so it can't collide with one.
-const ALL_AREAS = '*';
 const STATUSES = ['open', 'done', 'dropped'] as const;
 type StatusFilter = (typeof STATUSES)[number];
 const STATUS_LABELS: Record<StatusFilter, string> = {
@@ -71,7 +70,7 @@ const scheduleText = (task: Task) =>
 
 const TasksScreen = () => {
   const router = useRouter();
-  const { area, areaName, areas, setArea } = useArea();
+  const { area, areaName, areas } = useArea();
   const today = useLocalToday();
   // Every area until one is picked; quick add goes to the switch's area.
   const [allAreas, setAllAreas] = useState(true);
@@ -147,16 +146,11 @@ const TasksScreen = () => {
         />
       }
     >
-      <SegmentedRadio
-        label="Area"
-        options={segmentOptions([ALL_AREAS, ...areas.map((a) => a.id)], {
-          [ALL_AREAS]: 'All',
-          ...Object.fromEntries(areas.map((a) => [a.id, a.name])),
-        })}
-        value={listArea ?? ALL_AREAS}
-        onChange={(picked) => {
-          setAllAreas(picked === ALL_AREAS);
-          if (picked !== ALL_AREAS) setArea(picked);
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <AreaChip all={{ selected: allAreas, onChange: setAllAreas }} />
+          ),
         }}
       />
       <QuickAddTask
