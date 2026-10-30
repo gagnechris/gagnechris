@@ -1,4 +1,5 @@
 import {
+  Annotation,
   EditorState,
   Prec,
   StateEffect,
@@ -43,6 +44,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { blockEnd } from './lineMoves';
+import { openAboveTask } from './listContinuation';
 import {
   dragTaskEmbed,
   indentTaskEmbed,
@@ -78,6 +80,9 @@ const typedEffect = StateEffect.define<{
   text: string;
   atStart: boolean;
 }>();
+
+/** An edit that already put its lines where they belong in a task block. */
+const placedLines = Annotation.define<boolean>();
 
 const isProgrammatic = (tr: Transaction) =>
   tr.annotation(Transaction.userEvent) === undefined;
@@ -507,6 +512,7 @@ const focusEmbedTitleSoon = (
 function guardEmbedLines(widgets: StateField<DecorationSet>) {
   return EditorState.transactionFilter.of((tr) => {
     if (!tr.docChanged || !tr.isUserEvent('input')) return tr;
+    if (tr.annotation(placedLines)) return tr;
     const edits: { from: number; to: number; text: string }[] = [];
     tr.changes.iterChanges((from, to, _fromB, _toB, inserted) => {
       edits.push({ from, to, text: inserted.toString() });
@@ -554,8 +560,9 @@ function guardEmbedLines(widgets: StateField<DecorationSet>) {
  * Backspace at the start of the line under an embed, or Delete at the end of
  * the line above one, would join text onto its token: an empty line goes,
  * and the caret moves into the title. With the caret beside a row, Enter
- * leaves its block, Backspace deletes it the way the title's Backspace does,
- * and nothing joins another line onto the row or splits it from its subtasks.
+ * works as it does in the title, Backspace deletes the row the way the
+ * title's Backspace does, and nothing joins another line onto the row or
+ * splits it from its subtasks.
  */
 function embedEdgeKeys(widgets: StateField<DecorationSet>) {
   const onRow = (view: EditorView) => {
@@ -569,11 +576,12 @@ function embedEdgeKeys(widgets: StateField<DecorationSet>) {
   const rowEnter = (view: EditorView) => {
     const row = onRow(view);
     if (!row) return false;
-    // A new line above a top-level row splits nothing.
-    if (row.atStart && indentWidth(row.line.text) === 0) return false;
-    const el = embedWidgetAt(view, row.embed.from);
-    if (!el) return false;
-    leaveTaskEmbed(view, el, true);
+    if (row.atStart) {
+      const at = moveTaskEmbedDown(view, row.line);
+      view.dispatch({ selection: { anchor: at } });
+    } else {
+      newTaskBelowEmbed(view, row.line);
+    }
     return true;
   };
   const rowBackspace = (view: EditorView) => {
@@ -810,6 +818,52 @@ export function leaveTaskEmbed(
   }
 }
 
+function moveTaskEmbedDown(view: EditorView, line: Line): number {
+  const indent = /^[ \t]*/.exec(line.text)![0];
+  const insert = openAboveTask(indent);
+  view.dispatch({
+    changes: { from: line.from, insert },
+    scrollIntoView: true,
+    userEvent: 'input',
+    annotations: placedLines.of(true),
+  });
+  return line.from + insert.length + indent.length;
+}
+
+/** A new task line after the row's own subtasks, so it is the row's sibling. */
+function newTaskBelowEmbed(view: EditorView, line: Line) {
+  const { doc } = view.state;
+  const indent = /^[ \t]*/.exec(line.text)![0];
+  const end = doc.line(blockEnd(doc, line.number));
+  const insert = `\n${indent}[ ] `;
+  view.dispatch({
+    changes: { from: end.to, insert },
+    selection: { anchor: end.to + insert.length },
+    scrollIntoView: true,
+    userEvent: 'input',
+    annotations: placedLines.of(true),
+  });
+}
+
+/**
+ * Enter in an embed's title. At its start the row moves down a line and keeps
+ * the caret; anywhere else a new task line starts below the row.
+ */
+export function enterTaskEmbed(
+  view: EditorView,
+  widget: HTMLElement,
+  atStart: boolean,
+) {
+  const at = view.posAtDOM(widget);
+  view.focus();
+  const line = view.state.doc.lineAt(at);
+  if (atStart) {
+    focusEmbedTitleSoon(view, moveTaskEmbedDown(view, line), true);
+  } else {
+    newTaskBelowEmbed(view, line);
+  }
+}
+
 /**
  * Arrow keys out of an embed's title: into the next embed's title, or onto the
  * end of the line above / the start of the line below (adding one at the end
@@ -894,6 +948,11 @@ const leaveFrom = (el: HTMLElement) => (below: boolean) => {
   if (view) leaveTaskEmbed(view, el, below);
 };
 
+const enterFrom = (el: HTMLElement) => (atStart: boolean) => {
+  const view = viewOf(el);
+  if (view) enterTaskEmbed(view, el, atStart);
+};
+
 const deleteFrom = (el: HTMLElement) => () => {
   const view = viewOf(el);
   if (view) deleteTaskEmbedLine(view, el);
@@ -911,6 +970,7 @@ const controlsFor = (el: HTMLElement): TaskEmbedControls => {
   };
   return {
     leave: leaveFrom(el),
+    enter: enterFrom(el),
     remove: deleteFrom(el),
     move: moveFrom(el),
     shift: (dir, bySection, refocus) =>
@@ -944,6 +1004,8 @@ const controlsFor = (el: HTMLElement): TaskEmbedControls => {
 /** What an embed row does to the note around it. */
 export type TaskEmbedControls = {
   leave: (below: boolean) => void;
+  /** Enter in the title, at its start or not. */
+  enter: (atStart: boolean) => void;
   remove: () => void;
   move: (dir: 'up' | 'down') => void;
   /** Moves the task's block a step or a section; then focuses `refocus` in the row. */

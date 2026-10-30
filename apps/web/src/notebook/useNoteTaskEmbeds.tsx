@@ -292,6 +292,7 @@ export function useNoteTaskEmbeds({
         <TaskEmbedRow
           view={viewOf(id)}
           onLeave={controls?.leave}
+          onEnter={controls?.enter}
           onDelete={controls?.remove}
           onMove={controls?.move}
           details={detailsOf(id, controls)}
