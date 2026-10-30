@@ -13,18 +13,22 @@ export default function NotebookAreaSwitch({ all }: Props) {
   const { area, areas, setArea } = useOutletContext<NotebookOutletContext>();
   const options = areas.map((a) => ({ value: a.id, label: a.name }));
   return (
-    <ChipSelect
-      label="Area"
-      options={all ? [{ value: ALL, label: 'All areas' }, ...options] : options}
-      value={all?.selected ? ALL : area}
-      onChange={(next) => {
-        if (next === ALL) {
-          all?.onChange(true);
-          return;
+    <span className="notebook-area-switch">
+      <ChipSelect
+        label="Area"
+        options={
+          all ? [{ value: ALL, label: 'All areas' }, ...options] : options
         }
-        setArea(next);
-        all?.onChange(false);
-      }}
-    />
+        value={all?.selected ? ALL : area}
+        onChange={(next) => {
+          if (next === ALL) {
+            all?.onChange(true);
+            return;
+          }
+          setArea(next);
+          all?.onChange(false);
+        }}
+      />
+    </span>
   );
 }

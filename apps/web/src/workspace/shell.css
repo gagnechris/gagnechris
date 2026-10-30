@@ -162,6 +162,17 @@ button:where(:hover) {
   font-size: 0.6875rem;
 }
 
+.notebook-area-switch {
+  display: contents;
+}
+
+@media (max-width: 767px) {
+  .notebook-area-switch .ui-chip-select {
+    min-height: var(--size-tap-target);
+    padding: 0 0.875rem;
+  }
+}
+
 .workspace-nav,
 .workspace-nav__section,
 .workspace-apps {
