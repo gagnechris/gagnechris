@@ -193,7 +193,14 @@ export class ApiStack extends Stack {
         NOTEBOOK_RECAP_FUNCTION_NAME: this.recapFunction.functionName,
       },
     });
-    this.recapFunction.grantInvoke(this.apiFunction);
+    // grantInvoke would also allow every version (`<arn>:*`); the API only
+    // invokes the unqualified function.
+    this.apiFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['lambda:InvokeFunction'],
+        resources: [this.recapFunction.functionArn],
+      }),
+    );
     dataTable.grantReadWriteData(this.apiFunction);
     // Presigned PUT only; objects are read via CloudFront OAC.
     siteBucket.grantPut(this.apiFunction, 'media/*');
