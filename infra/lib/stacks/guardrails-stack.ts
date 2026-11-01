@@ -32,6 +32,13 @@ const PROJECT_TAG_KEY = 'project';
 // Every application in the account; each one tags its stacks `project=<name>`.
 const ACCOUNT_PROJECTS = ['gagnechris', 'extracredit'] as const;
 const COST_ALLOCATION_BACKFILL_FROM = '2026-09-01T00:00:00Z';
+// gagnechris charges billed with no resource, so no tag can reach them: alarm
+// monitoring and the per-run restore testing fee. Revisit if another project
+// in the account adds alarms or restore tests.
+const UNTAGGABLE_GAGNECHRIS_USAGE_TYPES = [
+  'CW:AlarmMonitorUsage',
+  'USE1-RT-RecoveryPoint-FixedFee',
+];
 
 export interface GuardrailsStackProps extends StackProps {
   readonly config: EnvironmentConfig;
@@ -261,11 +268,22 @@ export class GuardrailsStack extends Stack {
           unit: 'USD',
         },
         filterExpression: {
-          tags: {
-            key: PROJECT_TAG_KEY,
-            values: ['gagnechris'],
-            matchOptions: ['EQUALS'],
-          },
+          or: [
+            {
+              tags: {
+                key: PROJECT_TAG_KEY,
+                values: ['gagnechris'],
+                matchOptions: ['EQUALS'],
+              },
+            },
+            {
+              dimensions: {
+                key: 'USAGE_TYPE',
+                values: UNTAGGABLE_GAGNECHRIS_USAGE_TYPES,
+                matchOptions: ['EQUALS'],
+              },
+            },
+          ],
         },
       },
       notificationsWithSubscribers,
@@ -300,6 +318,15 @@ export class GuardrailsStack extends Stack {
                 dimensions: {
                   key: 'SERVICE',
                   values: ['Amazon Registrar', 'Tax'],
+                  matchOptions: ['EQUALS'],
+                },
+              },
+            },
+            {
+              not: {
+                dimensions: {
+                  key: 'USAGE_TYPE',
+                  values: UNTAGGABLE_GAGNECHRIS_USAGE_TYPES,
                   matchOptions: ['EQUALS'],
                 },
               },

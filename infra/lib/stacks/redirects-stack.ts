@@ -46,6 +46,7 @@ import type { Construct } from 'constructs';
 import { deployedFunctionCode } from '../cloudfront/deployed-code.js';
 import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 import { suppressDistributionNags } from '../constructs/site-hosting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -84,6 +85,10 @@ export class RedirectsStack extends Stack {
       HostedZone.fromLookup(this, 'LookedUpZone', {
         domainName: LOOKED_UP_ZONE_DOMAIN,
       });
+    new LookedUpZoneTags(this, 'LookedUpZoneTags', {
+      config,
+      zone: lookedUpZone,
+    });
 
     // A new zone gets new nameservers, so the registrar is pointed at them
     // before the certificate needs DNS validation through the zone.

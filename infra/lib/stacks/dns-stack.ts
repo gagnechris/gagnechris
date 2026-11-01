@@ -14,6 +14,7 @@ import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
 import { ADMIN_HOST, APEX_DOMAIN, NOTEBOOK_HOST } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 
 /** @deprecated Import from `../config/constants.js` instead. */
 export { APEX_DOMAIN } from '../config/constants.js';
@@ -38,6 +39,10 @@ export class DnsStack extends Stack {
       HostedZone.fromLookup(this, 'HostedZone', {
         domainName: APEX_DOMAIN,
       });
+    new LookedUpZoneTags(this, 'HostedZoneTags', {
+      config: props.config,
+      zone: this.hostedZone,
+    });
 
     const cfTarget = RecordTarget.fromAlias(
       new CloudFrontTarget(props.distribution),

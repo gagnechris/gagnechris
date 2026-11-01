@@ -48,6 +48,13 @@ function build() {
 
 const { stack, template } = build();
 
+function customResourceCalls(): string[] {
+  return Object.values(template.findResources('Custom::AWS')).map((r) => {
+    const call: unknown = r.Properties.Create ?? r.Properties.Update;
+    return typeof call === 'string' ? call : JSON.stringify(call);
+  });
+}
+
 describe('redirect viewer-request function', () => {
   it('301s to the same path and query on the apex', () => {
     const response = handler({
@@ -118,12 +125,27 @@ describe('RedirectsStack', () => {
       Properties: { Name: 'christophergagne.com.' },
       DeletionPolicy: 'Retain',
     });
-    const create = JSON.stringify(
-      Object.values(template.findResources('Custom::AWS'))[0]!.Properties
-        .Create,
+    const create = customResourceCalls().find((call) =>
+      call.includes('updateDomainNameservers'),
     );
     expect(create).toContain('updateDomainNameservers');
     expect(create).toContain('christophergagne.com');
+  });
+
+  it('tags the looked-up chrisgagne.net zone with the project tags', () => {
+    const create = customResourceCalls().find((call) =>
+      call.includes('changeTagsForResource'),
+    );
+    expect(JSON.parse(create!)).toMatchObject({
+      service: 'Route53',
+      parameters: {
+        ResourceType: 'hostedzone',
+        ResourceId: 'ZNETZONE',
+        AddTags: expect.arrayContaining([
+          { Key: 'project', Value: 'gagnechris' },
+        ]),
+      },
+    });
   });
 
   it('raises no unsuppressed cdk-nag errors', () => {

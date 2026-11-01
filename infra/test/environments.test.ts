@@ -174,7 +174,18 @@ describe('GuardrailsStack', () => {
         TimeUnit: 'MONTHLY',
         BudgetLimit: { Amount: 25, Unit: 'USD' },
         FilterExpression: {
-          Tags: { Key: 'project', Values: ['gagnechris'] },
+          Or: [
+            { Tags: { Key: 'project', Values: ['gagnechris'] } },
+            {
+              Dimensions: {
+                Key: 'USAGE_TYPE',
+                Values: [
+                  'CW:AlarmMonitorUsage',
+                  'USE1-RT-RecoveryPoint-FixedFee',
+                ],
+              },
+            },
+          ],
         },
       },
       NotificationsWithSubscribers: Match.arrayWith([
@@ -219,6 +230,17 @@ describe('GuardrailsStack', () => {
                 Dimensions: {
                   Key: 'SERVICE',
                   Values: ['Amazon Registrar', 'Tax'],
+                },
+              },
+            },
+            {
+              Not: {
+                Dimensions: {
+                  Key: 'USAGE_TYPE',
+                  Values: [
+                    'CW:AlarmMonitorUsage',
+                    'USE1-RT-RecoveryPoint-FixedFee',
+                  ],
                 },
               },
             },
@@ -416,6 +438,22 @@ describe('DnsStack and CertificateStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const dnsTemplate = Template.fromStack(dns);
+    expect(
+      Object.values(dnsTemplate.findResources('Custom::AWS')).map((r) =>
+        JSON.parse(r.Properties.Create as string),
+      ),
+    ).toContainEqual(
+      expect.objectContaining({
+        service: 'Route53',
+        action: 'changeTagsForResource',
+        parameters: expect.objectContaining({
+          ResourceId: 'ZXXXXXXXXXXXX',
+          AddTags: expect.arrayContaining([
+            { Key: 'project', Value: 'gagnechris' },
+          ]),
+        }),
+      }),
+    );
     dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
       Type: 'A',
       Name: 'gagnechris.com.',
