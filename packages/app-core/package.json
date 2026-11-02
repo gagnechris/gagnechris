@@ -30,7 +30,7 @@
     "@tanstack/react-query": "^5.104.2",
     "@types/react": "^19.3.0",
     "react": "^19.3.0",
-    "react-test-renderer": "^19.3.0",
+    "react-test-renderer": "^19.3.1",
     "@types/react-test-renderer": "^19.1.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.3"
