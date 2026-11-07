@@ -55,6 +55,7 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 import { AppHost } from '../constructs/app-host.js';
+import { describeAwsCustomResourceHandler } from '../constructs/provider-descriptions.js';
 import {
   bucketBehavior,
   csp,
@@ -424,6 +425,11 @@ export class SiteStack extends Stack {
       bucketParamKey: 'notebookSiteBucketName',
       distributionParamKey: 'notebookDistributionId',
     });
+
+    describeAwsCustomResourceHandler(
+      this,
+      'writes a placeholder index.html to the admin and Notebook buckets when they are created',
+    );
 
     this.siteBucket.allowCloudFrontListBucket([
       this.distribution,

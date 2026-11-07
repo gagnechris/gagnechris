@@ -33,6 +33,7 @@ import {
 } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
+import { expectEveryFunctionDescribed } from './helpers/function-descriptions.js';
 import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
@@ -159,6 +160,10 @@ describe('GuardrailsStack', () => {
 
     const template = Template.fromStack(stack);
 
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      expect.stringMatching(/^Guardrails-prod CDK AwsCustomResource handler: /),
+    ]);
+
     template.hasResourceProperties('AWS::SNS::Topic', {
       DisplayName: 'gagnechris-prod-alerts',
     });
@@ -264,6 +269,9 @@ describe('CiDeployRoleStack', () => {
     const template = Template.fromStack(stack);
 
     template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 1);
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      'CiDeployRole-prod CDK OpenIdConnectProvider handler: creates and updates the GitHub Actions OIDC identity provider.',
+    ]);
 
     template.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'gagnechris-prod-gha-deploy',

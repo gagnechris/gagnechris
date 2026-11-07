@@ -27,6 +27,7 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { describeAwsCustomResourceHandler } from '../constructs/provider-descriptions.js';
 
 const PROJECT_TAG_KEY = 'project';
 // Every application in the account; each one tags its stacks `project=<name>`.
@@ -394,6 +395,11 @@ export class GuardrailsStack extends Stack {
           ],
         },
       ],
+    );
+
+    describeAwsCustomResourceHandler(
+      this,
+      'activates and backfills the project cost allocation tag and sets account-level S3 Block Public Access',
     );
 
     new CfnAnalyzer(this, 'AccountAccessAnalyzer', {
