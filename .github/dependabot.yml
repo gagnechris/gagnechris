@@ -14,6 +14,9 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: cdk-nag
         update-types: ['version-update:semver-major']
+      # React must match the version the Expo SDK pins in apps/mobile (lockfile parity); bump it with the SDK.
+      - dependency-name: react
+      - dependency-name: react-dom
     groups:
       production-dependencies:
         dependency-type: production
