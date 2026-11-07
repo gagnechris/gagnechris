@@ -33,6 +33,7 @@ import {
 } from '../lib/stacks/ci-deploy-role-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
+import { expectEveryFunctionDescribed } from './helpers/function-descriptions.js';
 import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
@@ -158,6 +159,25 @@ describe('GuardrailsStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const template = Template.fromStack(stack);
+
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      expect.stringMatching(/^Guardrails-prod CDK AwsCustomResource handler: /),
+    ]);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-guardrails-setup',
+      LoggingConfig: {
+        LogGroup: {
+          Ref: Match.stringLikeRegexp('^AwsCustomResourceHandlerLogs'),
+        },
+      },
+    });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-guardrails-setup',
+    });
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/lambda/gagnechris-prod-guardrails-setup',
+      RetentionInDays: 14,
+    });
 
     template.hasResourceProperties('AWS::SNS::Topic', {
       DisplayName: 'gagnechris-prod-alerts',
@@ -286,6 +306,9 @@ describe('CiDeployRoleStack', () => {
     const template = Template.fromStack(stack);
 
     template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 1);
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      'CiDeployRole-prod CDK OpenIdConnectProvider handler: creates and updates the GitHub Actions OIDC identity provider.',
+    ]);
 
     template.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'gagnechris-prod-gha-deploy',
@@ -438,6 +461,9 @@ describe('DnsStack and CertificateStack', () => {
     Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
 
     const dnsTemplate = Template.fromStack(dns);
+    expect(Object.values(expectEveryFunctionDescribed(dnsTemplate))).toEqual([
+      'Dns-prod CDK AwsCustomResource handler: tags the gagnechris.com hosted zone.',
+    ]);
     expect(
       Object.values(dnsTemplate.findResources('Custom::AWS')).map((r) =>
         JSON.parse(r.Properties.Create as string),

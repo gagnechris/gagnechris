@@ -7,6 +7,7 @@ import { FUNCTION_CODE_BUDGET_BYTES } from '../lib/cloudfront/deployed-code.js';
 import { functionSource } from '../lib/cloudfront/harness.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { RedirectsStack } from '../lib/stacks/redirects-stack.js';
+import { expectEveryFunctionDescribed } from './helpers/function-descriptions.js';
 import { testApp } from './helpers/test-app.js';
 
 type Handler = (event: {
@@ -146,6 +147,12 @@ describe('RedirectsStack', () => {
         ]),
       },
     });
+  });
+
+  it('describes the AwsCustomResource handler', () => {
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      "Redirects-prod CDK AwsCustomResource handler: points the christophergagne.com registrar at its hosted zone's nameservers and tags the chrisgagne.net zone.",
+    ]);
   });
 
   it('raises no unsuppressed cdk-nag errors', () => {

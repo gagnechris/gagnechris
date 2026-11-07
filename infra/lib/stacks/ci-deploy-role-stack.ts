@@ -14,6 +14,7 @@ import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { PitrRehearsalRole } from '../constructs/pitr-rehearsal-role.js';
+import { describeOpenIdConnectProviderHandler } from '../constructs/custom-resource-handlers.js';
 
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
@@ -85,6 +86,7 @@ export class CiDeployRoleStack extends Stack {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: ['sts.amazonaws.com'],
     });
+    describeOpenIdConnectProviderHandler(this);
 
     const audienceCondition = {
       'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',

@@ -48,6 +48,7 @@ import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 import { suppressDistributionNags } from '../constructs/site-hosting.js';
+import { describeAwsCustomResourceHandler } from '../constructs/custom-resource-handlers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -150,6 +151,11 @@ export class RedirectsStack extends Stack {
           ],
         },
       ],
+    );
+
+    describeAwsCustomResourceHandler(
+      this,
+      `points the ${OWNED_ZONE_DOMAIN} registrar at its hosted zone's nameservers and tags the ${LOOKED_UP_ZONE_DOMAIN} zone`,
     );
 
     const zones: Array<[string, IHostedZone]> = [
