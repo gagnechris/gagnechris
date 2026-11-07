@@ -170,7 +170,7 @@ for (const width of [375, 393]) {
         expect(box.right).toBeLessThanOrEqual(width);
       }
 
-      const out = page.getByRole('button', { name: /, out\. Activate/ });
+      const out = page.getByRole('button', { name: / (Out|Bear coming!)$/ });
       const startedOut = await out.count();
       expect(startedOut).toBeGreaterThan(0);
       await out.first().tap();

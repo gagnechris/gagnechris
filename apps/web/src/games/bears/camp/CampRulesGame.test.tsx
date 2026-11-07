@@ -72,13 +72,13 @@ describe('CampRulesGame', () => {
     renderGame();
     start();
 
-    const trash = screen.getByRole('button', { name: /^Trash, out/ });
+    const trash = screen.getByRole('button', { name: 'Trash Out' });
     expect(trash).toHaveAttribute('tabindex', '0');
     trash.focus();
     fireEvent.click(trash);
 
     expect(
-      screen.getByRole('button', { name: 'Trash, put away.' }),
+      screen.getByRole('button', { name: 'Trash Trash into the shed' }),
     ).toBeInTheDocument();
   });
 
@@ -86,9 +86,7 @@ describe('CampRulesGame', () => {
     renderGame();
     start();
     for (const kind of ['Trash', 'Cooler', 'Pet food']) {
-      fireEvent.click(
-        screen.getByRole('button', { name: new RegExp(`^${kind}, out`) }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: `${kind} Out` }));
     }
 
     advance(3_000);
