@@ -55,7 +55,10 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 import { AppHost } from '../constructs/app-host.js';
-import { describeAwsCustomResourceHandler } from '../constructs/custom-resource-handlers.js';
+import {
+  awsCustomResourceHandler,
+  describeAwsCustomResourceHandler,
+} from '../constructs/custom-resource-handlers.js';
 import {
   bucketBehavior,
   csp,
@@ -382,6 +385,10 @@ export class SiteStack extends Stack {
 
     const appHostCommon = {
       config,
+      customResourceHandler: awsCustomResourceHandler(
+        this,
+        `gagnechris-${config.name}-site-setup`,
+      ),
       certificate: appHostsCertificate,
       accessLogs,
       alertsTopic,
