@@ -1,4 +1,3 @@
-import { Stack } from 'aws-cdk-lib';
 import type { ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import {
   type BehaviorOptions,
@@ -29,6 +28,7 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { type SsmParamKey, ssmParameterName } from '../config/constants.js';
+import type { AwsCustomResourceHandlerProps } from './custom-resource-handlers.js';
 import {
   bucketBehavior,
   distribution5xxAlarm,
@@ -55,6 +55,7 @@ export interface AppHostProps {
   ) => Record<string, BehaviorOptions>;
   readonly bucketParamKey: SsmParamKey;
   readonly distributionParamKey: SsmParamKey;
+  readonly customResourceHandler: AwsCustomResourceHandlerProps;
 }
 
 /**
@@ -135,30 +136,39 @@ export class AppHost extends Construct {
       'Geo restriction is unnecessary for a single-owner app host.',
     );
 
-    // Create only: later deploys of the real app must not be overwritten.
-    const placeholder = new AwsCustomResource(this, 'PlaceholderIndex', {
-      installLatestAwsSdk: false,
-      onCreate: {
-        service: 'S3',
-        action: 'putObject',
-        parameters: {
-          Bucket: this.bucket.bucketName,
-          Key: 'index.html',
-          ContentType: 'text/html; charset=utf-8',
-          CacheControl: 'no-cache',
-          Body: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${props.domainName}</title></head><body></body></html>\n`,
+    // Only into an empty bucket: the real app's index.html must survive this
+    // resource being created again.
+    const placeholder = new AwsCustomResource(
+      this,
+      'PlaceholderIndexIfMissing',
+      {
+        ...props.customResourceHandler,
+        installLatestAwsSdk: false,
+        onCreate: {
+          service: 'S3',
+          action: 'putObject',
+          parameters: {
+            Bucket: this.bucket.bucketName,
+            Key: 'index.html',
+            IfNoneMatch: '*',
+            ContentType: 'text/html; charset=utf-8',
+            CacheControl: 'no-cache',
+            Body: `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${props.domainName}</title></head><body></body></html>\n`,
+          },
+          physicalResourceId: PhysicalResourceId.of(
+            `${namePrefix}-placeholder-index`,
+          ),
+          ignoreErrorCodesMatching:
+            'PreconditionFailed|ConditionalRequestConflict',
         },
-        physicalResourceId: PhysicalResourceId.of(
-          `${namePrefix}-placeholder-index`,
-        ),
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new PolicyStatement({
+            actions: ['s3:PutObject'],
+            resources: [this.bucket.arnForObjects('index.html')],
+          }),
+        ]),
       },
-      policy: AwsCustomResourcePolicy.fromStatements([
-        new PolicyStatement({
-          actions: ['s3:PutObject'],
-          resources: [this.bucket.arnForObjects('index.html')],
-        }),
-      ]),
-    });
+    );
     NagSuppressions.addResourceSuppressions(
       placeholder,
       [
@@ -169,22 +179,6 @@ export class AppHost extends Construct {
         },
       ],
       true,
-    );
-    // Provider singleton lives at the stack root, outside this construct.
-    const stack = Stack.of(this);
-    NagSuppressions.addResourceSuppressionsByPath(
-      stack,
-      `/${stack.stackName}/AWS${AwsCustomResource.PROVIDER_FUNCTION_UUID.replaceAll('-', '')}/ServiceRole/Resource`,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'AwsCustomResource provider uses AWSLambdaBasicExecutionRole for CloudWatch Logs; scoping further is not supported by the L2.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-      ],
     );
 
     distribution5xxAlarm(this, {

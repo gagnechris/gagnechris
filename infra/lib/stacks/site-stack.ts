@@ -56,6 +56,10 @@ import {
 } from '../config/constants.js';
 import { AppHost } from '../constructs/app-host.js';
 import {
+  awsCustomResourceHandler,
+  describeAwsCustomResourceHandler,
+} from '../constructs/custom-resource-handlers.js';
+import {
   bucketBehavior,
   csp,
   distribution5xxAlarm,
@@ -381,6 +385,10 @@ export class SiteStack extends Stack {
 
     const appHostCommon = {
       config,
+      customResourceHandler: awsCustomResourceHandler(
+        this,
+        `gagnechris-${config.name}-site-setup`,
+      ),
       certificate: appHostsCertificate,
       accessLogs,
       alertsTopic,
@@ -424,6 +432,11 @@ export class SiteStack extends Stack {
       bucketParamKey: 'notebookSiteBucketName',
       distributionParamKey: 'notebookDistributionId',
     });
+
+    describeAwsCustomResourceHandler(
+      this,
+      'writes a placeholder index.html to the admin and Notebook buckets when they are created',
+    );
 
     this.siteBucket.allowCloudFrontListBucket([
       this.distribution,

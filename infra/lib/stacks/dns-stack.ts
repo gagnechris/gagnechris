@@ -7,6 +7,7 @@ import {
   CnameRecord,
   HostedZone,
   type IHostedZone,
+  MxRecord,
   RecordTarget,
   TxtRecord,
 } from 'aws-cdk-lib/aws-route53';
@@ -104,6 +105,17 @@ export class DnsStack extends Stack {
         'v=spf1 include:icloud.com include:amazonses.com ~all',
       ],
       comment: 'Apple domain verification + SPF (iCloud + SES)',
+    });
+
+    new MxRecord(this, 'IcloudMx', {
+      zone: this.hostedZone,
+      recordName: APEX_DOMAIN,
+      ttl: Duration.hours(1),
+      values: [
+        { priority: 10, hostName: 'mx01.mail.icloud.com.' },
+        { priority: 10, hostName: 'mx02.mail.icloud.com.' },
+      ],
+      comment: 'iCloud Mail (custom email domain)',
     });
 
     new CnameRecord(this, 'IcloudDkim', {

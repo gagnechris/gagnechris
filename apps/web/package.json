@@ -31,8 +31,8 @@
     "@gagnechris/ui": "*",
     "@tanstack/react-query": "^5.105.0",
     "aws-amplify": "^6.22.2",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
