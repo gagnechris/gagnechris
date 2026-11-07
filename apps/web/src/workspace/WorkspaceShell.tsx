@@ -405,12 +405,15 @@ export function WorkspaceFrame({
                         )}
                       </span>
                       {item.count ? (
-                        <span
-                          className="workspace-nav__count"
-                          aria-hidden="true"
-                        >
-                          {item.count}
-                        </span>
+                        <>
+                          {' '}
+                          <span
+                            className="workspace-nav__count"
+                            aria-hidden="true"
+                          >
+                            {item.count}
+                          </span>
+                        </>
                       ) : null}
                     </NavLink>
                   );
