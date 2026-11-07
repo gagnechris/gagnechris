@@ -20,6 +20,7 @@ import { EmailStack } from '../lib/stacks/email-stack.js';
 import { PublisherStack } from '../lib/stacks/publisher-stack.js';
 import { SiteStack } from '../lib/stacks/site-stack.js';
 import { alertsTopicAlarmActions } from './helpers/alerts-topic.js';
+import { expectEveryFunctionDescribed } from './helpers/function-descriptions.js';
 import { testApp } from './helpers/test-app.js';
 
 const testEnv = {
@@ -250,6 +251,14 @@ describe('stack Template assertions', () => {
           }),
         ]),
       },
+    );
+  });
+
+  it('SiteStack describes every Lambda, including the AwsCustomResource handler', () => {
+    expect(Object.values(expectEveryFunctionDescribed(siteTemplate()))).toEqual(
+      expect.arrayContaining([
+        'Site-prod CDK AwsCustomResource handler: writes a placeholder index.html to the admin and Notebook buckets when they are created.',
+      ]),
     );
   });
 

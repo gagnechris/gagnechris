@@ -7,6 +7,7 @@ import { FUNCTION_CODE_BUDGET_BYTES } from '../lib/cloudfront/deployed-code.js';
 import { functionSource } from '../lib/cloudfront/harness.js';
 import { getEnvironment } from '../lib/config/environments.js';
 import { RedirectsStack } from '../lib/stacks/redirects-stack.js';
+import { expectEveryFunctionDescribed } from './helpers/function-descriptions.js';
 import { testApp } from './helpers/test-app.js';
 
 type Handler = (event: {
@@ -124,6 +125,25 @@ describe('RedirectsStack', () => {
     );
     expect(create).toContain('updateDomainNameservers');
     expect(create).toContain('christophergagne.com');
+  });
+
+  it('describes the AwsCustomResource handler', () => {
+    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
+      "Redirects-prod CDK AwsCustomResource handler: points the christophergagne.com registrar at its hosted zone's nameservers.",
+    ]);
+  });
+
+  it('names the AwsCustomResource handler, its role and its log group', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-redirects-setup',
+    });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-redirects-setup',
+    });
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/lambda/gagnechris-prod-redirects-setup',
+      RetentionInDays: 14,
+    });
   });
 
   it('raises no unsuppressed cdk-nag errors', () => {

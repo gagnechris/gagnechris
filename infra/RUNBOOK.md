@@ -202,7 +202,7 @@ Both workflows, and nightly drift, publish with `scripts/ci/notify-alerts.sh <su
 
 - Hosted zone for `gagnechris.com` is **looked up** (never recreated).
 - Registration nameservers must match the zone (`aws route53domains get-domain-detail`).
-- Apex/www → the public distribution; `admin.` and `notebook.` (A + AAAA) → their own distributions; `components.` (A + AAAA) → the catalog distribution, in `Components-prod`; iCloud TXT/DKIM and a soft DMARC record (`p=none`) in `Dns-prod`; no MX records.
+- Apex/www → the public distribution; `admin.` and `notebook.` (A + AAAA) → their own distributions; `components.` (A + AAAA) → the catalog distribution, in `Components-prod`; iCloud Mail MX, TXT and DKIM records and a soft DMARC record (`p=none`) in `Dns-prod`.
 - ACM certs in **us-east-1** via `Certificate-prod` (DNS validation; CloudFormation writes the validation CNAMEs into the zone): `SiteCertificateV2` (apex + www), `AuthCertificate` (`auth.gagnechris.com`) and `AppHostsCertificate` (`admin.gagnechris.com` + `notebook.gagnechris.com`). Separate certs avoid replacing one when another changes (cross-stack export). `Components-prod` holds its own cert for `components.gagnechris.com`.
 - Other registered domains 301 to the apex from `Redirects-prod`: `christophergagne.com` (zone owned by the stack, retained on delete; an `AwsCustomResource` sets its registrar nameservers to the zone's) and `chrisgagne.net` (zone looked up), each apex and `www`. One distribution with one certificate for all four hosts; its viewer-request function (`infra/lib/cloudfront/redirect-viewer-request.js`) answers every request with a 301 to the same path and query on `https://gagnechris.com`, over HTTP or HTTPS. Add a domain by listing it in `infra/lib/stacks/redirects-stack.ts`.
 - DNSSEC is not enabled (cost).
@@ -638,7 +638,9 @@ with a long cache. Paste/drop images in the post editor inserts
 `Email-prod`: SES domain identity for `gagnechris.com` (DKIM + MAIL FROM
 `bounce.gagnechris.com`), plus an email identity for `ALERTS_EMAIL` so sandbox
 can deliver to that inbox. `Dns-prod` publishes the apex SPF (includes
-`amazonses.com`) and a soft DMARC (`p=none`); there is no receiving MX.
+`amazonses.com`) and a soft DMARC (`p=none`). Inbound mail for `@gagnechris.com`
+goes to iCloud Mail (custom email domain on Chris's iCloud+ account): MX
+`mx01.mail.icloud.com` and `mx02.mail.icloud.com`, iCloud DKIM `sig1._domainkey`.
 
 `Api-prod` public routes:
 
