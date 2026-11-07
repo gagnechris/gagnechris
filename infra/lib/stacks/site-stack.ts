@@ -55,7 +55,7 @@ import {
   ssmParameterName,
 } from '../config/constants.js';
 import { AppHost } from '../constructs/app-host.js';
-import { describeAwsCustomResourceHandler } from '../constructs/provider-descriptions.js';
+import { describeAwsCustomResourceHandler } from '../constructs/custom-resource-handlers.js';
 import {
   bucketBehavior,
   csp,

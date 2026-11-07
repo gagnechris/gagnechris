@@ -14,7 +14,7 @@ import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { PitrRehearsalRole } from '../constructs/pitr-rehearsal-role.js';
-import { describeOpenIdConnectProviderHandler } from '../constructs/provider-descriptions.js';
+import { describeOpenIdConnectProviderHandler } from '../constructs/custom-resource-handlers.js';
 
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
