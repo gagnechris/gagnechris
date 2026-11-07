@@ -163,6 +163,21 @@ describe('GuardrailsStack', () => {
     expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
       expect.stringMatching(/^Guardrails-prod CDK AwsCustomResource handler: /),
     ]);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-guardrails-setup',
+      LoggingConfig: {
+        LogGroup: {
+          Ref: Match.stringLikeRegexp('^AwsCustomResourceHandlerLogs'),
+        },
+      },
+    });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-guardrails-setup',
+    });
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/lambda/gagnechris-prod-guardrails-setup',
+      RetentionInDays: 14,
+    });
 
     template.hasResourceProperties('AWS::SNS::Topic', {
       DisplayName: 'gagnechris-prod-alerts',

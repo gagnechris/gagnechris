@@ -27,7 +27,10 @@ import { NagSuppressions } from 'cdk-nag';
 import type { Construct } from 'constructs';
 import { ssmParameterName } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { describeAwsCustomResourceHandler } from '../constructs/provider-descriptions.js';
+import {
+  awsCustomResourceHandler,
+  describeAwsCustomResourceHandler,
+} from '../constructs/custom-resource-handlers.js';
 
 const PROJECT_TAG_KEY = 'project';
 // Every application in the account; each one tags its stacks `project=<name>`.
@@ -146,10 +149,15 @@ export class GuardrailsStack extends Stack {
 
     // Budget tag filters only see a tag once it is an active cost allocation
     // tag; there is no CloudFormation type for that account setting.
+    const handler = awsCustomResourceHandler(
+      this,
+      `gagnechris-${config.name}-guardrails-setup`,
+    );
     const costAllocationTag = new AwsCustomResource(
       this,
-      'ProjectCostAllocationTag',
+      'ActivateProjectCostAllocationTag',
       {
+        ...handler,
         installLatestAwsSdk: false,
         onCreate: {
           service: 'CostExplorer',
@@ -189,8 +197,9 @@ export class GuardrailsStack extends Stack {
     // unattributed budget counts the whole current month as untagged.
     const costAllocationBackfill = new AwsCustomResource(
       this,
-      'ProjectCostAllocationBackfill',
+      'BackfillProjectCostAllocationTag',
       {
+        ...handler,
         installLatestAwsSdk: false,
         onCreate: {
           service: 'CostExplorer',
@@ -315,8 +324,9 @@ export class GuardrailsStack extends Stack {
     // No native CFN type for account-level S3 BPA.
     const accountBpa = new AwsCustomResource(
       this,
-      'AccountS3BlockPublicAccess',
+      'EnableAccountS3BlockPublicAccess',
       {
+        ...handler,
         installLatestAwsSdk: false,
         onCreate: {
           service: 'S3Control',
@@ -379,22 +389,6 @@ export class GuardrailsStack extends Stack {
         },
       ],
       true,
-    );
-
-    // Provider singleton lives outside the AwsCustomResource construct tree.
-    NagSuppressions.addResourceSuppressionsByPath(
-      this,
-      `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'AwsCustomResource provider uses AWSLambdaBasicExecutionRole for CloudWatch Logs; scoping further is not supported by the L2.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-      ],
     );
 
     describeAwsCustomResourceHandler(
