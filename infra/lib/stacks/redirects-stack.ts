@@ -89,9 +89,14 @@ export class RedirectsStack extends Stack {
       HostedZone.fromLookup(this, 'LookedUpZone', {
         domainName: LOOKED_UP_ZONE_DOMAIN,
       });
+    const handler = awsCustomResourceHandler(
+      this,
+      `gagnechris-${config.name}-redirects-setup`,
+    );
     new LookedUpZoneTags(this, 'LookedUpZoneTags', {
       config,
       zone: lookedUpZone,
+      handler,
     });
 
     // A new zone gets new nameservers, so the registrar is pointed at them
@@ -100,10 +105,7 @@ export class RedirectsStack extends Stack {
       this,
       'PointRegistrarAtOwnedZone',
       {
-        ...awsCustomResourceHandler(
-          this,
-          `gagnechris-${config.name}-redirects-setup`,
-        ),
+        ...handler,
         installLatestAwsSdk: false,
         onUpdate: {
           service: 'Route53Domains',

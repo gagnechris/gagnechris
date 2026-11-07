@@ -14,7 +14,10 @@ import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
 import { ADMIN_HOST, APEX_DOMAIN, NOTEBOOK_HOST } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
-import { describeAwsCustomResourceHandler } from '../constructs/custom-resource-handlers.js';
+import {
+  awsCustomResourceHandler,
+  describeAwsCustomResourceHandler,
+} from '../constructs/custom-resource-handlers.js';
 import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 
 /** @deprecated Import from `../config/constants.js` instead. */
@@ -43,6 +46,10 @@ export class DnsStack extends Stack {
     new LookedUpZoneTags(this, 'HostedZoneTags', {
       config: props.config,
       zone: this.hostedZone,
+      handler: awsCustomResourceHandler(
+        this,
+        `gagnechris-${props.config.name}-dns-setup`,
+      ),
     });
     describeAwsCustomResourceHandler(
       this,

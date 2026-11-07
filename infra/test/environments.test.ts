@@ -464,6 +464,12 @@ describe('DnsStack and CertificateStack', () => {
     expect(Object.values(expectEveryFunctionDescribed(dnsTemplate))).toEqual([
       'Dns-prod CDK AwsCustomResource handler: tags the gagnechris.com hosted zone.',
     ]);
+    dnsTemplate.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-dns-setup',
+    });
+    dnsTemplate.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-dns-setup',
+    });
     expect(
       Object.values(dnsTemplate.findResources('Custom::AWS')).map((r) =>
         JSON.parse(r.Properties.Create as string),

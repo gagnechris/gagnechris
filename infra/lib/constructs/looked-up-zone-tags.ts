@@ -10,10 +10,12 @@ import { NagSuppressions } from 'cdk-nag';
 import { Construct } from 'constructs';
 import { standardTags } from '../aspects/standard-tags.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import type { AwsCustomResourceHandlerProps } from './custom-resource-handlers.js';
 
 export interface LookedUpZoneTagsProps {
   readonly config: EnvironmentConfig;
   readonly zone: IHostedZone;
+  readonly handler: AwsCustomResourceHandlerProps;
 }
 
 /**
@@ -36,6 +38,7 @@ export class LookedUpZoneTags extends Construct {
       physicalResourceId: PhysicalResourceId.of(`ZoneTags-${zoneId}`),
     };
     const resource = new AwsCustomResource(this, 'Resource', {
+      ...props.handler,
       installLatestAwsSdk: false,
       onCreate: call,
       onUpdate: call,
@@ -60,22 +63,6 @@ export class LookedUpZoneTags extends Construct {
         },
       ],
       true,
-    );
-    const stack = Stack.of(this);
-    // Provider singleton lives outside the AwsCustomResource construct tree.
-    NagSuppressions.addResourceSuppressionsByPath(
-      stack,
-      `/${stack.stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'AwsCustomResource provider uses AWSLambdaBasicExecutionRole for CloudWatch Logs; scoping further is not supported by the L2.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-      ],
     );
   }
 }
