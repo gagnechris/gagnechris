@@ -519,6 +519,11 @@ describe('DnsStack and CertificateStack', () => {
       Type: 'CNAME',
       Name: 'sig1._domainkey.gagnechris.com.',
     });
+    dnsTemplate.hasResourceProperties('AWS::Route53::RecordSet', {
+      Type: 'MX',
+      Name: 'gagnechris.com.',
+      ResourceRecords: ['10 mx01.mail.icloud.com.', '10 mx02.mail.icloud.com.'],
+    });
 
     const certTemplate = Template.fromStack(certificate);
     certTemplate.hasResourceProperties('AWS::CertificateManager::Certificate', {
