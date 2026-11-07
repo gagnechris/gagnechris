@@ -133,6 +133,19 @@ describe('RedirectsStack', () => {
     ]);
   });
 
+  it('names the AwsCustomResource handler, its role and its log group', () => {
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-redirects-setup',
+    });
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-redirects-setup',
+    });
+    template.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/lambda/gagnechris-prod-redirects-setup',
+      RetentionInDays: 14,
+    });
+  });
+
   it('raises no unsuppressed cdk-nag errors', () => {
     const errors = Annotations.fromStack(stack).findError(
       '*',
