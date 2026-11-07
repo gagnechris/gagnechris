@@ -471,7 +471,7 @@ describe('app hosts: CloudFront', () => {
     }
   });
 
-  it('writes a placeholder index.html once, on create only', () => {
+  it('writes a placeholder index.html on create only, and only into an empty bucket', () => {
     const placeholders = Object.values(
       resourcesOf(built.site, 'Custom::AWS'),
     ).filter((r) => JSON.stringify(r.Properties.Create).includes('index.html'));
@@ -481,9 +481,26 @@ describe('app hosts: CloudFront', () => {
       expect(resource.Properties.Delete).toBeUndefined();
       const create = JSON.stringify(resource.Properties.Create);
       expect(create).toContain('putObject');
+      expect(create).toMatch(/IfNoneMatch\\?":\\?"\*/);
+      expect(create).toMatch(
+        /ignoreErrorCodesMatching\\?":\\?"PreconditionFailed\|/,
+      );
       expect(create).not.toMatch(/<script/i);
       expect(create).not.toMatch(/gtag|googletagmanager/);
     }
+  });
+
+  it('names the setup Lambda, its role and its log group', () => {
+    built.site.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'gagnechris-prod-site-setup',
+    });
+    built.site.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-site-setup',
+    });
+    built.site.hasResourceProperties('AWS::Logs::LogGroup', {
+      LogGroupName: '/aws/lambda/gagnechris-prod-site-setup',
+      RetentionInDays: 14,
+    });
   });
 });
 
