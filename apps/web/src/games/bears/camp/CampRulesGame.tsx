@@ -325,11 +325,7 @@ const CampRulesGame = ({
                   .join(' ')}
                 style={{ left: `${x}%`, top: `${y}%` }}
                 aria-disabled={!isOut || screen !== 'playing'}
-                aria-label={
-                  isOut
-                    ? `${label}, ${targeted ? 'a bear is coming' : 'out'}. Activate to put it away: ${CAMP_ITEM_ACTIONS[kind].text.toLowerCase()}.`
-                    : `${label}, put away.`
-                }
+                aria-describedby={isOut ? `camp-item-${kind}-hint` : undefined}
                 tabIndex={screen === 'playing' ? 0 : -1}
                 onClick={() => onPutAway(kind)}
               >
@@ -341,8 +337,14 @@ const CampRulesGame = ({
                   </span>
                 ) : null}
                 <CampItemGlyph kind={kind} />
-                <span className="camp-item__label">{label}</span>
+                <span className="camp-item__label">{label}</span>{' '}
                 <span className="camp-item__badge">{badge}</span>
+                {isOut ? (
+                  <span id={`camp-item-${kind}-hint`} hidden>
+                    Activate to put it away:{' '}
+                    {CAMP_ITEM_ACTIONS[kind].text.toLowerCase()}.
+                  </span>
+                ) : null}
               </button>
             );
           })}
