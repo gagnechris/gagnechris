@@ -48,7 +48,10 @@ import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 import { suppressDistributionNags } from '../constructs/site-hosting.js';
-import { describeAwsCustomResourceHandler } from '../constructs/custom-resource-handlers.js';
+import {
+  awsCustomResourceHandler,
+  describeAwsCustomResourceHandler,
+} from '../constructs/custom-resource-handlers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -95,8 +98,12 @@ export class RedirectsStack extends Stack {
     // before the certificate needs DNS validation through the zone.
     const ownedZoneNameservers = new AwsCustomResource(
       this,
-      'OwnedZoneRegistrarNameservers',
+      'PointRegistrarAtOwnedZone',
       {
+        ...awsCustomResourceHandler(
+          this,
+          `gagnechris-${config.name}-redirects-setup`,
+        ),
         installLatestAwsSdk: false,
         onUpdate: {
           service: 'Route53Domains',
@@ -136,21 +143,6 @@ export class RedirectsStack extends Stack {
         },
       ],
       true,
-    );
-    // Provider singleton lives outside the AwsCustomResource construct tree.
-    NagSuppressions.addResourceSuppressionsByPath(
-      this,
-      `/${Stack.of(this).stackName}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason:
-            'AwsCustomResource provider uses AWSLambdaBasicExecutionRole for CloudWatch Logs; scoping further is not supported by the L2.',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
-          ],
-        },
-      ],
     );
 
     describeAwsCustomResourceHandler(
