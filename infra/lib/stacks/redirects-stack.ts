@@ -47,6 +47,7 @@ import { deployedFunctionCode } from '../cloudfront/deployed-code.js';
 import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { suppressDistributionNags } from '../constructs/site-hosting.js';
+import { describeAwsCustomResourceHandler } from '../constructs/provider-descriptions.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -145,6 +146,11 @@ export class RedirectsStack extends Stack {
           ],
         },
       ],
+    );
+
+    describeAwsCustomResourceHandler(
+      this,
+      `points the ${OWNED_ZONE_DOMAIN} registrar at its hosted zone's nameservers`,
     );
 
     const zones: Array<[string, IHostedZone]> = [
