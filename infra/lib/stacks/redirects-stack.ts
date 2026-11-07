@@ -46,6 +46,7 @@ import type { Construct } from 'constructs';
 import { deployedFunctionCode } from '../cloudfront/deployed-code.js';
 import { APEX_DOMAIN } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
+import { LookedUpZoneTags } from '../constructs/looked-up-zone-tags.js';
 import { suppressDistributionNags } from '../constructs/site-hosting.js';
 import {
   awsCustomResourceHandler,
@@ -88,6 +89,15 @@ export class RedirectsStack extends Stack {
       HostedZone.fromLookup(this, 'LookedUpZone', {
         domainName: LOOKED_UP_ZONE_DOMAIN,
       });
+    const handler = awsCustomResourceHandler(
+      this,
+      `gagnechris-${config.name}-redirects-setup`,
+    );
+    new LookedUpZoneTags(this, 'LookedUpZoneTags', {
+      config,
+      zone: lookedUpZone,
+      handler,
+    });
 
     // A new zone gets new nameservers, so the registrar is pointed at them
     // before the certificate needs DNS validation through the zone.
@@ -95,10 +105,7 @@ export class RedirectsStack extends Stack {
       this,
       'PointRegistrarAtOwnedZone',
       {
-        ...awsCustomResourceHandler(
-          this,
-          `gagnechris-${config.name}-redirects-setup`,
-        ),
+        ...handler,
         installLatestAwsSdk: false,
         onUpdate: {
           service: 'Route53Domains',
@@ -142,7 +149,7 @@ export class RedirectsStack extends Stack {
 
     describeAwsCustomResourceHandler(
       this,
-      `points the ${OWNED_ZONE_DOMAIN} registrar at its hosted zone's nameservers`,
+      `points the ${OWNED_ZONE_DOMAIN} registrar at its hosted zone's nameservers and tags the ${LOOKED_UP_ZONE_DOMAIN} zone`,
     );
 
     const zones: Array<[string, IHostedZone]> = [
