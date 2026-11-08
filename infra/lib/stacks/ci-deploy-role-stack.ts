@@ -1,4 +1,11 @@
-import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CustomResource,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import {
   Effect,
   ManagedPolicy,
@@ -86,6 +93,11 @@ export class CiDeployRoleStack extends Stack {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: ['sts.amazonaws.com'],
     });
+    // Other repos' CI roles trust this provider, so it must outlive its
+    // removal from this stack.
+    (provider.node.defaultChild as CustomResource).applyRemovalPolicy(
+      RemovalPolicy.RETAIN,
+    );
     describeOpenIdConnectProviderHandler(this);
 
     const audienceCondition = {
