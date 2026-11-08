@@ -1,11 +1,4 @@
-import {
-  CfnOutput,
-  CustomResource,
-  Duration,
-  RemovalPolicy,
-  Stack,
-  type StackProps,
-} from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import {
   Effect,
   ManagedPolicy,
@@ -21,7 +14,8 @@ import type { Construct } from 'constructs';
 import { GITHUB_OWNER, GITHUB_REPO } from '../config/constants.js';
 import type { EnvironmentConfig } from '../config/environments.js';
 import { PitrRehearsalRole } from '../constructs/pitr-rehearsal-role.js';
-import { describeOpenIdConnectProviderHandler } from '../constructs/custom-resource-handlers.js';
+
+const GITHUB_OIDC_HOST = 'token.actions.githubusercontent.com';
 
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
@@ -89,16 +83,13 @@ export class CiDeployRoleStack extends Stack {
     const repo = props.githubRepo ?? GITHUB_REPO;
     const repoPath = `${owner}/${repo}`;
 
-    const provider = new OpenIdConnectProvider(this, 'GitHubOidc', {
-      url: 'https://token.actions.githubusercontent.com',
-      clientIds: ['sts.amazonaws.com'],
-    });
-    // Other repos' CI roles trust this provider, so it must outlive its
-    // removal from this stack.
-    (provider.node.defaultChild as CustomResource).applyRemovalPolicy(
-      RemovalPolicy.RETAIN,
+    // Account-wide and shared with other repos' CI roles, so it is referenced
+    // by its fixed ARN rather than owned through a custom resource.
+    const provider = OpenIdConnectProvider.fromOpenIdConnectProviderArn(
+      this,
+      'GitHubOidc',
+      `arn:${this.partition}:iam::${this.account}:oidc-provider/${GITHUB_OIDC_HOST}`,
     );
-    describeOpenIdConnectProviderHandler(this);
 
     const audienceCondition = {
       'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',

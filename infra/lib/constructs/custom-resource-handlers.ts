@@ -1,4 +1,4 @@
-import { CfnResource, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { CfnFunction } from 'aws-cdk-lib/aws-lambda';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
@@ -93,25 +93,6 @@ export function describeAwsCustomResourceHandler(
     throw new Error(`${stack.stackName} has no AwsCustomResource handler`);
   }
   fn.description = handlerDescription(stack, 'AwsCustomResource', purpose);
-}
-
-/** Labels the handler behind the OpenIdConnectProvider L2 in the Lambda console. */
-export function describeOpenIdConnectProviderHandler(scope: IConstruct): void {
-  const stack = Stack.of(scope);
-  const handler = stack.node
-    .tryFindChild('Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider')
-    ?.node.tryFindChild('Handler');
-  if (!(handler instanceof CfnResource)) {
-    throw new Error(`${stack.stackName} has no OpenIdConnectProvider handler`);
-  }
-  handler.addPropertyOverride(
-    'Description',
-    handlerDescription(
-      stack,
-      'OpenIdConnectProvider',
-      'creates and updates the GitHub Actions OIDC identity provider',
-    ),
-  );
 }
 
 function handlerDescription(
