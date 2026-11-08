@@ -138,6 +138,8 @@ Ask before any production change that is not a stack deploy.
 
 CI assumes short-lived roles (no AWS keys in GitHub).
 
+`CiDeployRole-prod` owns the account's GitHub OIDC provider (`AWS::IAM::OIDCProvider` for `token.actions.githubusercontent.com`) with a Retain policy. The CI roles, and other repos' CI roles in the account, trust its fixed ARN `arn:aws:iam::ACCOUNT:oidc-provider/token.actions.githubusercontent.com`. An account holds one provider per URL, so if the provider already exists when the stack is first deployed, adopt it with `AWS_PROFILE=gagnechris-admin npm run cdk -- import CiDeployRole-prod` instead of creating it.
+
 1. Deploy the role stack once (laptop admin), then set repo variables:
 
 ```bash
