@@ -306,6 +306,14 @@ describe('CiDeployRoleStack', () => {
     const template = Template.fromStack(stack);
 
     template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 0);
+    template.hasResource('AWS::IAM::OIDCProvider', {
+      Properties: Match.objectLike({
+        Url: 'https://token.actions.githubusercontent.com',
+        ClientIdList: ['sts.amazonaws.com'],
+      }),
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
     template.resourceCountIs('AWS::Lambda::Function', 0);
     template.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'gagnechris-prod-gha-deploy',

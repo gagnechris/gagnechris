@@ -1,7 +1,14 @@
-import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  Duration,
+  RemovalPolicy,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import {
   Effect,
   ManagedPolicy,
+  OidcProviderNative,
   OpenIdConnectProvider,
   PolicyStatement,
   Role,
@@ -16,6 +23,7 @@ import type { EnvironmentConfig } from '../config/environments.js';
 import { PitrRehearsalRole } from '../constructs/pitr-rehearsal-role.js';
 
 const GITHUB_OIDC_HOST = 'token.actions.githubusercontent.com';
+const GITHUB_OIDC_THUMBPRINT = 'ab9d0263244dd0326eb67015705a667e79cfe998';
 
 export const CDK_DEFAULT_BOOTSTRAP_QUALIFIER = 'hnb659fds' as const;
 
@@ -83,8 +91,14 @@ export class CiDeployRoleStack extends Stack {
     const repo = props.githubRepo ?? GITHUB_REPO;
     const repoPath = `${owner}/${repo}`;
 
-    // Account-wide and shared with other repos' CI roles, so it is referenced
-    // by its fixed ARN rather than owned through a custom resource.
+    // One provider per URL per account, trusted by other repos' CI roles
+    // too: retained, and the roles trust its fixed ARN.
+    new OidcProviderNative(this, 'GitHubOidcProvider', {
+      url: `https://${GITHUB_OIDC_HOST}`,
+      clientIds: ['sts.amazonaws.com'],
+      thumbprints: [GITHUB_OIDC_THUMBPRINT],
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
     const provider = OpenIdConnectProvider.fromOpenIdConnectProviderArn(
       this,
       'GitHubOidc',
