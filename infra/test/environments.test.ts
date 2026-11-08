@@ -305,7 +305,10 @@ describe('CiDeployRoleStack', () => {
 
     const template = Template.fromStack(stack);
 
-    template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 1);
+    template.hasResource('Custom::AWSCDKOpenIdConnectProvider', {
+      DeletionPolicy: 'Retain',
+      UpdateReplacePolicy: 'Retain',
+    });
     expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
       'CiDeployRole-prod CDK OpenIdConnectProvider handler: creates and updates the GitHub Actions OIDC identity provider.',
     ]);
