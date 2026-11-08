@@ -305,13 +305,29 @@ describe('CiDeployRoleStack', () => {
 
     const template = Template.fromStack(stack);
 
-    template.hasResource('Custom::AWSCDKOpenIdConnectProvider', {
-      DeletionPolicy: 'Retain',
-      UpdateReplacePolicy: 'Retain',
+    template.resourceCountIs('Custom::AWSCDKOpenIdConnectProvider', 0);
+    template.resourceCountIs('AWS::Lambda::Function', 0);
+    template.hasResourceProperties('AWS::IAM::Role', {
+      RoleName: 'gagnechris-prod-gha-deploy',
+      AssumeRolePolicyDocument: {
+        Statement: [
+          Match.objectLike({
+            Principal: {
+              Federated: {
+                'Fn::Join': [
+                  '',
+                  [
+                    'arn:',
+                    { Ref: 'AWS::Partition' },
+                    ':iam::123456789012:oidc-provider/token.actions.githubusercontent.com',
+                  ],
+                ],
+              },
+            },
+          }),
+        ],
+      },
     });
-    expect(Object.values(expectEveryFunctionDescribed(template))).toEqual([
-      'CiDeployRole-prod CDK OpenIdConnectProvider handler: creates and updates the GitHub Actions OIDC identity provider.',
-    ]);
 
     template.hasResourceProperties('AWS::IAM::Role', {
       RoleName: 'gagnechris-prod-gha-deploy',
