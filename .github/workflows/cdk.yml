@@ -343,11 +343,13 @@ jobs:
         if: needs.plan.outputs.cdk == 'true'
         run: npm run check:deployed-gsi
 
+      # Stacks with no dependency between them deploy at once. Direct updates
+      # skip the changeset round trip; the PR's CDK diff is the review.
       - name: CDK deploy
         if: needs.plan.outputs.cdk == 'true'
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
-        run: npm run cdk -- deploy --all --require-approval never
+        run: npm run cdk -- deploy --all --require-approval never --concurrency 4 --method=direct --progress events
 
       - name: Download web build
         if: needs.plan.outputs.web == 'true'
