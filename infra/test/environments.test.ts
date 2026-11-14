@@ -224,6 +224,27 @@ describe('GuardrailsStack', () => {
       ]),
     });
 
+    const budgets = template.findResources('AWS::Budgets::Budget');
+    expect(Object.keys(budgets)).toHaveLength(2);
+    for (const budget of Object.values(budgets)) {
+      const notifications = (
+        budget as {
+          Properties: {
+            NotificationsWithSubscribers: { Subscribers: unknown[] }[];
+          };
+        }
+      ).Properties.NotificationsWithSubscribers;
+      expect(notifications).toHaveLength(4);
+      for (const { Subscribers } of notifications) {
+        expect(Subscribers).toEqual([
+          { SubscriptionType: 'EMAIL', Address: 'alerts@example.com' },
+        ]);
+      }
+    }
+    expect(
+      JSON.stringify(template.findResources('AWS::SNS::TopicPolicy')),
+    ).not.toContain('budgets.amazonaws.com');
+
     template.resourceCountIs('AWS::CloudTrail::Trail', 1);
     template.hasResourceProperties('AWS::CloudTrail::Trail', {
       IsMultiRegionTrail: true,

@@ -56,7 +56,7 @@ If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `A
 
 ### Budgets
 
-Guardrails activates `project` as a cost allocation tag (backfilled from 2026-09-01) and owns two monthly cost budgets, both alerting the email and the alerts topic at 50, 80 and 100% actual and 100% forecast:
+Guardrails activates `project` as a cost allocation tag (backfilled from 2026-09-01) and owns two monthly cost budgets, both emailing the alerts address directly (not through the alerts topic) at 50, 80 and 100% actual and 100% forecast:
 
 | Budget                         | Counts                                                                                                                                                                      | Limit |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |

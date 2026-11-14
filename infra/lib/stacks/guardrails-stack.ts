@@ -79,21 +79,6 @@ export class GuardrailsStack extends Stack {
 
     this.alertsTopic.addToResourcePolicy(
       new PolicyStatement({
-        sid: 'AllowAwsBudgetsPublish',
-        principals: [new ServicePrincipal('budgets.amazonaws.com')],
-        actions: ['sns:Publish'],
-        resources: [this.alertsTopic.topicArn],
-        conditions: {
-          StringEquals: { 'aws:SourceAccount': this.account },
-          ArnLike: {
-            'aws:SourceArn': `arn:aws:budgets::${this.account}:*`,
-          },
-        },
-      }),
-    );
-
-    this.alertsTopic.addToResourcePolicy(
-      new PolicyStatement({
         sid: 'AllowCloudWatchAlarmsPublish',
         principals: [new ServicePrincipal('cloudwatch.amazonaws.com')],
         actions: ['sns:Publish'],
@@ -243,10 +228,9 @@ export class GuardrailsStack extends Stack {
 
     const budgetName = `gagnechris-${config.name}-monthly`;
     const unattributedBudgetName = `account-unattributed-monthly`;
-    const subscribers = [
-      { subscriptionType: 'EMAIL', address: email },
-      { subscriptionType: 'SNS', address: this.alertsTopic.topicArn },
-    ];
+    // Email only: an SNS subscriber too would send each alert twice, since
+    // the alerts topic emails the same address.
+    const subscribers = [{ subscriptionType: 'EMAIL', address: email }];
     const notificationsWithSubscribers = [
       ...[50, 80, 100].map((threshold) => ({
         notification: {
