@@ -43,7 +43,7 @@ runs:
       with:
         go-version-file: services/api/go.mod
         cache: ${{ inputs.go-cache != 'false' }}
-        cache-dependency-path: services/api/**/go.sum
+        cache-dependency-path: ${{ inputs.go-cache-dependency-path }}
 
     - name: Install dependencies
       shell: bash

@@ -28,11 +28,10 @@ env:
   VITE_COGNITO_AUTH_DOMAIN: auth.example.com
 
 jobs:
-  build:
-    name: Lint, test, and build
+  lint:
+    name: Lint and format
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,6 +41,28 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: scripts/ci/check-branch-name.sh "$HEAD_REF"
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go: 'false'
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Paths that differ only by case
+        run: npm run check:case-collisions
+
+  typecheck:
+    name: Typecheck and drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -57,15 +78,6 @@ jobs:
       - name: Publish surface drift
         run: npm run publish-surface:check
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
-
-      - name: Go lint
-        run: npm run go:lint
-
       - name: RN-facing package bundle guard
         run: npm run check:rn-bundles
 
@@ -73,23 +85,72 @@ jobs:
         run: npm run check:platform-neutral-lint
       - name: TypeScript project coverage
         run: npm run check:tsconfig-coverage
-      - name: Paths that differ only by case
-        run: npm run check:case-collisions
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
-        # TEST_TZ in scripts/verify.ts: a day ahead of UTC most of the day.
-        env:
-          TZ: Pacific/Kiritimati
+  go:
+    name: Go lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A Go cache key of its own: jobs that only build the API would
+      # otherwise save the shared key first, without the linter build.
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          go-cache-dependency-path: |
+            services/api/**/go.sum
+            services/api/.golangci.yml
+
+      - name: Go lint
+        run: |
+          GOLANGCI_LINT_CACHE="$(go env GOCACHE)/golangci-lint"
+          export GOLANGCI_LINT_CACHE
+          npm run go:lint
 
       - name: Go test
         run: npm run go:test
 
       - name: Go vulnerability check
         run: npm run go:vulncheck
+
+  test:
+    name: Unit tests (${{ matrix.group }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [web 1/2, web 2/2, others]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Test
+        # TEST_TZ in scripts/verify.ts: a day ahead of UTC most of the day.
+        env:
+          TZ: Pacific/Kiritimati
+          GROUP: ${{ matrix.group }}
+        # GROUP is unquoted on purpose: "web 1/2" is two arguments.
+        run: bash scripts/ci/unit-tests.sh ${GROUP}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup
+        uses: ./.github/actions/setup
 
       - name: CDK synth
         env:
@@ -126,6 +187,25 @@ jobs:
         env:
           GA_MEASUREMENT_ID: G-CIPLACEHOLDER
         run: npm run build:public -w @gagnechris/web && npm run check:web-shells
+
+  # The required check, under one name so the ruleset doesn't change when the
+  # jobs above do. Runs even when one failed, since a skipped required check
+  # would count as passing.
+  build-result:
+    name: Lint, test, and build
+    needs: [lint, typecheck, go, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Jobs: ${RESULTS}"
+          for r in ${RESULTS}; do
+            if [ "$r" != 'success' ]; then exit 1; fi
+          done
 
   api-integration:
     name: API integration (DynamoDB Local)
@@ -195,10 +275,10 @@ jobs:
           COMPOSE_PROJECT_NAME: gagnechris-ci
         run: docker compose -f docker-compose.local.yml -f docker-compose.ci.yml down
 
-  # One job per browser so each has a runner to itself; WebKit under the
-  # other browser's load was the main source of flakes.
+  # One job per browser and shard, each with its own runner and stack; WebKit
+  # under the other browser's load was the main source of flakes.
   local-e2e:
-    name: Local E2E smoke (${{ matrix.browser }})
+    name: Local E2E smoke (${{ matrix.browser }} ${{ matrix.shard }}/2)
     # Playwright's WebKit build links the image's own ICU, so a new
     # ubuntu-latest breaks it until Playwright ships a build for that release.
     runs-on: ubuntu-24.04
@@ -207,6 +287,7 @@ jobs:
       fail-fast: false
       matrix:
         browser: [chromium, webkit]
+        shard: [1, 2]
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -299,7 +380,8 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
         env:
           BROWSER: ${{ matrix.browser }}
-        run: npm run e2e:browser -- --project="${BROWSER}"
+          SHARD: ${{ matrix.shard }}
+        run: npm run e2e:browser -- --project="${BROWSER}" --shard="${SHARD}/2"
 
       - name: Flaky test summary
         if: always() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
@@ -309,7 +391,7 @@ jobs:
         if: failure() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report-${{ matrix.browser }}-${{ github.run_attempt }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.run_attempt }}
           path: |
             e2e/playwright-report
             e2e/test-results
@@ -318,8 +400,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  # The required check: one name for both browser jobs, so the ruleset
-  # doesn't change when the browser list does. Runs even when a browser job
+  # The required check: one name for every browser and shard job, so the
+  # ruleset doesn't change when the matrix does. Runs even when a browser job
   # failed, since a skipped required check would count as passing.
   local-e2e-result:
     name: Local E2E smoke
@@ -328,7 +410,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every browser job passed
+      - name: Every browser and shard job passed
         env:
           RESULT: ${{ needs.local-e2e.result }}
         run: |
