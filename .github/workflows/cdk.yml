@@ -3,10 +3,10 @@ name: CDK
 on:
   pull_request:
     branches: [main]
-  # Deploy only after CI succeeds on main (not on push alone).
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  # PRs must be up to date with main and pass CI, so the pushed tree is one
+  # CI already passed.
+  push:
+    branches: [main]
   schedule:
     - cron: '0 8 * * *'
   workflow_dispatch:
@@ -121,10 +121,7 @@ jobs:
   plan:
     name: Plan deploy (main)
     if: >
-      (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && inputs.mode == 'deploy')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -147,9 +144,7 @@ jobs:
       VITE_COGNITO_NOTEBOOK_CLIENT_ID: ${{ steps.cognito.outputs.VITE_COGNITO_NOTEBOOK_CLIENT_ID }}
       VITE_COGNITO_AUTH_DOMAIN: ${{ steps.cognito.outputs.VITE_COGNITO_AUTH_DOMAIN }}
     steps:
-      # Every job checks out github.sha, fixed for the run. For workflow_run it
-      # is main's tip when CI finished, so the superseded check below deploys
-      # it only when it is the commit CI validated.
+      # Every job checks out github.sha, the pushed commit, fixed for the run.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -180,20 +175,12 @@ jobs:
           HEAD_SHA: ${{ steps.base.outputs.head_sha }}
         run: bash scripts/ci/check-deploy-ancestry.sh "${BASE}" "${HEAD_SHA}"
 
-      # main moved on after CI finished: the newer commit's own CI run
-      # triggers the deploy that includes this one.
       - name: Path filter
         id: filter
         env:
           BASE: ${{ steps.base.outputs.base_sha }}
           HEAD_SHA: ${{ steps.base.outputs.head_sha }}
-          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = 'workflow_run' ] && [ "${VALIDATED_SHA}" != "${HEAD_SHA}" ]; then
-            echo "Superseded: CI validated ${VALIDATED_SHA}, main is now ${HEAD_SHA}. Not deploying."
-            printf 'cdk=false\nweb=false\ncomponents=false\n' | tee -a "$GITHUB_OUTPUT"
-            exit 0
-          fi
           if [ "${GITHUB_EVENT_NAME}" = 'workflow_dispatch' ] || [ -z "${BASE}" ]; then
             echo "Manual deploy or no deployed-sha: deploying everything."
             printf 'cdk=true\nweb=true\ncomponents=true\n' | tee -a "$GITHUB_OUTPUT"

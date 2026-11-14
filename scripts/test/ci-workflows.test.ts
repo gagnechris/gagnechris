@@ -435,19 +435,85 @@ describe('path-filtered jobs', () => {
     expect(job.name).toContain(`\${{ matrix.shard }}/${shards.length})`);
   });
 
-  it('runs every filtered step on a push to main', () => {
+  it('filters paths only on PRs and runs every filtered step on main', () => {
     const offenders: string[] = [];
     for (const { path, doc } of workflows) {
       for (const [jobId, job] of Object.entries(doc.jobs)) {
         for (const step of job.steps ?? []) {
+          const where = `${path}#${jobId}/${step.name ?? step.uses}`;
+          if (step.uses?.startsWith('dorny/paths-filter@')) {
+            if (step.if !== "github.event_name == 'pull_request'") {
+              offenders.push(where);
+            }
+          }
           if (!/steps\.filter\.outputs\./.test(step.if ?? '')) continue;
-          if (!step.if!.includes("github.event_name == 'push' ||")) {
-            offenders.push(`${path}#${jobId}/${step.name ?? step.uses}`);
+          if (!step.if!.includes("github.event_name != 'pull_request' ||")) {
+            offenders.push(where);
           }
         }
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('deploy on merge', () => {
+  type Triggers = {
+    push?: { branches?: string[]; paths?: string[] };
+    pull_request?: { branches?: string[]; paths?: string[] };
+    schedule?: { cron: string }[];
+  };
+  const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+  const mobile = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'mobile.yml'));
+  const lines = (value: unknown) =>
+    String(value ?? '')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+  it('deploys on the push to main, not after CI runs there', () => {
+    const on = cdk.on as Triggers & Record<string, unknown>;
+    expect(on.push?.branches).toEqual(['main']);
+    expect(on.push?.paths).toBeUndefined();
+    expect(on.workflow_run).toBeUndefined();
+    expect(cdk.jobs.plan!.if).toContain(
+      "github.event_name == 'push' && github.ref == 'refs/heads/main'",
+    );
+  });
+
+  it('runs CI and Mobile on main only when a cache key input changes, and weekly', () => {
+    const setupWith = (job: Job) =>
+      job.steps?.find((s) => s.uses === './.github/actions/setup')?.with ?? {};
+    const goKeyInputs = lines(
+      setupWith(ci.jobs.go!)['go-cache-dependency-path'],
+    );
+    const mobileKeyInputs = lines(
+      setupWith(mobile.jobs.mobile!)['npm-cache-dependency-path'],
+    );
+    expect(goKeyInputs.length).toBeGreaterThan(0);
+    expect(mobileKeyInputs).toContain('apps/mobile/package-lock.json');
+
+    const cases: [Workflow, string, string[]][] = [
+      [
+        ci,
+        'ci.yml',
+        ['package-lock.json', '.nvmrc', 'services/api/go.mod', ...goKeyInputs],
+      ],
+      [mobile, 'mobile.yml', [...mobileKeyInputs, '.nvmrc']],
+    ];
+    for (const [doc, file, keyInputs] of cases) {
+      const on = doc.on as Triggers;
+      expect(on.pull_request?.paths, file).toBeUndefined();
+      expect(on.push?.branches, file).toEqual(['main']);
+      expect(on.push?.paths, file).toEqual(
+        expect.arrayContaining([
+          ...keyInputs,
+          '.github/actions/setup/**',
+          `.github/workflows/${file}`,
+        ]),
+      );
+      expect(on.schedule?.length, file).toBe(1);
+    }
   });
 });
 
@@ -494,7 +560,7 @@ type WorkflowRunWorkflow = Workflow & {
 };
 type GatedJob = Job & { if?: string; needs?: string; environment?: string };
 
-describe('non-strict branch protection', () => {
+describe('strict branch protection', () => {
   const ruleset = JSON.parse(
     readFileSync(join(ROOT, 'scripts', 'main-branch-ruleset.json'), 'utf8'),
   ) as {
@@ -507,13 +573,11 @@ describe('non-strict branch protection', () => {
     join(WORKFLOWS_DIR, 'main-ci-alert.yml'),
   );
 
-  it('alerts on a red main or a failed deploy because PRs needn’t be up to date', () => {
+  it('requires up-to-date PRs and alerts on a red main or a failed deploy', () => {
     const checks = ruleset.rules.find(
       (r) => r.type === 'required_status_checks',
     );
-    expect(checks?.parameters?.strict_required_status_checks_policy).toBe(
-      false,
-    );
+    expect(checks?.parameters?.strict_required_status_checks_policy).toBe(true);
     expect(alert.on.workflow_run.workflows.sort()).toEqual([
       'CDK',
       'CI',
@@ -549,8 +613,10 @@ describe('main-alert-decision.sh', () => {
     ['Mobile', 'push', 'main', 'timed_out', 'red-main'],
     ['CI', 'push', 'main', 'startup_failure', 'red-main'],
     // e.g. a stack update that rolls back fails the deploy job.
-    ['CDK', 'workflow_run', 'main', 'failure', 'deploy-failed'],
-    ['CDK', 'workflow_run', 'main', 'timed_out', 'deploy-failed'],
+    ['CI', 'schedule', 'main', 'failure', 'red-main'],
+    ['Mobile', 'schedule', 'main', 'failure', 'red-main'],
+    ['CDK', 'push', 'main', 'failure', 'deploy-failed'],
+    ['CDK', 'push', 'main', 'timed_out', 'deploy-failed'],
   ])(
     'alerts: %s %s on %s ended %s',
     (workflow, event, branch, conclusion, kind) => {
@@ -564,10 +630,9 @@ describe('main-alert-decision.sh', () => {
   it.each([
     // A late or replaced run is cancelled; the lag check covers a stall.
     ['CI', 'push', 'main', 'cancelled'],
-    ['CDK', 'workflow_run', 'main', 'cancelled'],
-    // CDK after a PR's CI, or after a red CI, skips every job.
-    ['CDK', 'workflow_run', 'main', 'skipped'],
-    ['CDK', 'workflow_run', 'main', 'success'],
+    ['CDK', 'push', 'main', 'cancelled'],
+    ['CDK', 'push', 'main', 'skipped'],
+    ['CDK', 'push', 'main', 'success'],
     ['CI', 'push', 'main', 'success'],
     ['CI', 'pull_request', 'feature', 'failure'],
     ['CDK', 'pull_request', 'feature', 'failure'],
@@ -668,23 +733,9 @@ describe('deploy job guards', () => {
       return readFileSync(output, 'utf8');
     }
 
-    it('deploys nothing when main moved on after CI validated the commit', () => {
+    it('filters paths on a push to main', () => {
       expect(
-        runFilter({
-          GITHUB_EVENT_NAME: 'workflow_run',
-          VALIDATED_SHA: '1'.repeat(40),
-          HEAD_SHA: '2'.repeat(40),
-        }),
-      ).toBe('cdk=false\nweb=false\ncomponents=false\n');
-    });
-
-    it('filters paths when the run’s commit is the one CI validated', () => {
-      expect(
-        runFilter({
-          GITHUB_EVENT_NAME: 'workflow_run',
-          VALIDATED_SHA: '1'.repeat(40),
-          HEAD_SHA: '1'.repeat(40),
-        }),
+        runFilter({ GITHUB_EVENT_NAME: 'push', HEAD_SHA: '1'.repeat(40) }),
       ).toBe('cdk=true\nweb=true\ncomponents=true\n');
     });
   });
@@ -912,13 +963,11 @@ describe('deploy job guards', () => {
         expect(job.if, `${context} has a job-level if`).toBe('always()');
       }
       expect(doc.on, path).toHaveProperty('pull_request');
-      for (const [event, config] of Object.entries(doc.on ?? {})) {
-        const keys = Object.keys((config as object | null) ?? {});
-        expect(
-          keys.filter((k) => k === 'paths' || k === 'paths-ignore'),
-          `${path} on.${event}`,
-        ).toEqual([]);
-      }
+      const keys = Object.keys((doc.on?.pull_request as object | null) ?? {});
+      expect(
+        keys.filter((k) => k === 'paths' || k === 'paths-ignore'),
+        `${path} on.pull_request`,
+      ).toEqual([]);
     }
   });
 });
