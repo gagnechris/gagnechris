@@ -707,6 +707,13 @@ describe('deploy job guards', () => {
     expect(deploy.steps![gsi]!.if).toBe(deploy.steps![cdkDeploy]!.if);
   });
 
+  it('deploys independent stacks at once and without changesets', () => {
+    const run =
+      deploy.steps!.find((s) => s.run?.includes('cdk -- deploy'))?.run ?? '';
+    expect(run).toMatch(/--concurrency [2-9]\b/);
+    expect(run).toContain('--method=direct');
+  });
+
   it('runs CDK deploy before the web deploy in the same job', () => {
     const cdkDeploy = stepIndex(
       deploy,
