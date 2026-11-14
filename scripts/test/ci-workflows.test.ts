@@ -1520,10 +1520,12 @@ describe('mobile jobs', () => {
     const node = setupAction.runs.steps.find((s) =>
       s.uses?.startsWith('actions/setup-node@'),
     )!;
-    expect(node.with).toMatchObject({
-      cache: 'npm',
-      'cache-dependency-path': '${{ inputs.npm-cache-dependency-path }}',
-    });
+    expect(node.with?.cache).toContain(
+      "inputs.npm-cache-dependency-path != 'package-lock.json') && 'npm'",
+    );
+    expect(node.with?.['cache-dependency-path']).toBe(
+      '${{ inputs.npm-cache-dependency-path }}',
+    );
     expect(setupAction.inputs['npm-cache-dependency-path']?.default).toBe(
       'package-lock.json',
     );
@@ -1532,6 +1534,27 @@ describe('mobile jobs', () => {
     )!;
     expect(go.if).toBe("inputs.go != 'false'");
     expect(setupAction.inputs.go?.default).toBe('true');
+  });
+
+  it('restores and saves node_modules only when install scripts may run', () => {
+    const steps = setupAction.runs.steps;
+    const restore = steps.find((s) =>
+      s.uses?.startsWith('actions/cache/restore@'),
+    )!;
+    const save = steps.find((s) => s.uses?.startsWith('actions/cache/save@'))!;
+    const install = steps.find((s) => s.name === 'Install dependencies')!;
+    expect(restore.if).toBe("inputs.ignore-scripts != 'true'");
+    expect(save.if).toContain("inputs.ignore-scripts != 'true' &&");
+    expect(save.with?.path).toBe(restore.with?.path);
+    expect(save.with?.key).toBe(
+      '${{ steps.modules.outputs.cache-primary-key }}',
+    );
+    expect(restore.with?.key).toContain(
+      "hashFiles('.nvmrc', 'package-lock.json')",
+    );
+    expect(String(restore.with?.path)).toContain('!apps/mobile/node_modules');
+    expect(install.if).toBe("steps.modules.outputs.cache-hit != 'true'");
+    expect(steps.indexOf(save)).toBe(steps.indexOf(install) + 1);
   });
 
   it.each(mobileJobs)(

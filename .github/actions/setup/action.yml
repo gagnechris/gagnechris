@@ -1,5 +1,5 @@
 name: Setup
-description: Node from .nvmrc, Go from services/api/go.mod (unless go is false), npm and Go caches (no Go cache when go-cache is false), and npm ci (run after actions/checkout)
+description: Node from .nvmrc, Go from services/api/go.mod (unless go is false), npm and Go caches (no Go cache when go-cache is false), and npm ci or, in jobs that run install scripts, a cached node_modules (run after actions/checkout)
 inputs:
   ignore-scripts:
     description: >-
@@ -29,11 +29,32 @@ inputs:
 runs:
   using: composite
   steps:
+    # Saved only by jobs that run install scripts, so a job with ignore-scripts
+    # (one with a secret or id-token) never restores it. Node's major version
+    # (.nvmrc) fixes the ABI of native modules.
+    - name: Restore node_modules
+      if: inputs.ignore-scripts != 'true'
+      id: modules
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+          services/*/node_modules
+          services/api/test/node_modules
+          infra/node_modules
+          e2e/node_modules
+          scripts/node_modules
+          !apps/mobile/node_modules
+        key: node-modules-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+
     - name: Setup Node.js
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version-file: .nvmrc
-        cache: npm
+        # Another lockfile's tree (apps/mobile) still installs from the npm cache.
+        cache: ${{ (steps.modules.outputs.cache-hit != 'true' || inputs.npm-cache-dependency-path != 'package-lock.json') && 'npm' || '' }}
         cache-dependency-path: ${{ inputs.npm-cache-dependency-path }}
 
     # Go Lambdas are compiled during CDK synth, so every job that synthesizes needs Go.
@@ -46,6 +67,7 @@ runs:
         cache-dependency-path: ${{ inputs.go-cache-dependency-path }}
 
     - name: Install dependencies
+      if: steps.modules.outputs.cache-hit != 'true'
       shell: bash
       env:
         IGNORE_SCRIPTS: ${{ inputs.ignore-scripts }}
@@ -55,3 +77,21 @@ runs:
         else
           npm ci
         fi
+
+    # Saved right after the install, before any job step adds caches or builds
+    # under node_modules.
+    - name: Save node_modules
+      if: inputs.ignore-scripts != 'true' && steps.modules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+          services/*/node_modules
+          services/api/test/node_modules
+          infra/node_modules
+          e2e/node_modules
+          scripts/node_modules
+          !apps/mobile/node_modules
+        key: ${{ steps.modules.outputs.cache-primary-key }}
