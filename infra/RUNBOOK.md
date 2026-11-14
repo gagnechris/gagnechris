@@ -58,10 +58,10 @@ If `list-subscriptions-by-topic` is empty while CloudFormation still shows an `A
 
 Guardrails activates `project` as a cost allocation tag (backfilled from 2026-09-01) and owns two monthly cost budgets, both emailing the alerts address directly (not through the alerts topic) at 50, 80 and 100% actual and 100% forecast:
 
-| Budget                         | Counts                                                                                                                                                                      | Limit |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| `gagnechris-prod-monthly`      | Spend tagged `project=gagnechris` (every stack here, via `applyStandardTags`), plus the untaggable gagnechris usage types                                                   | $25   |
-| `account-unattributed-monthly` | Spend with no `project` tag of a known application (`ACCOUNT_PROJECTS` in `guardrails-stack.ts`), excluding Amazon Registrar, tax and the untaggable gagnechris usage types | $5    |
+| Budget                              | Counts                                                                                                                                                                      | Limit |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `gagnechris-prod-monthly-cost`      | Spend tagged `project=gagnechris` (every stack here, via `applyStandardTags`), plus the untaggable gagnechris usage types                                                   | $25   |
+| `account-unattributed-monthly-cost` | Spend with no `project` tag of a known application (`ACCOUNT_PROJECTS` in `guardrails-stack.ts`), excluding Amazon Registrar, tax and the untaggable gagnechris usage types | $5    |
 
 Every application in the account tags its stacks `project=<name>`, owns its own budget in its own CDK app and is listed in `ACCOUNT_PROJECTS`. Domain registrations and renewals are left out of every budget. Some charges are billed with no resource, so no tag reaches them even when the resource is tagged: CloudWatch alarm monitoring (`CW:AlarmMonitorUsage`) and the AWS Backup restore testing fee per run (`USE1-RT-RecoveryPoint-FixedFee`). Both come only from gagnechris today, so `UNTAGGABLE_GAGNECHRIS_USAGE_TYPES` in `guardrails-stack.ts` counts them in the gagnechris budget. Stack tags do not reach a hosted zone CDK only looks up, so the DNS and Redirects stacks tag the `gagnechris.com` and `chrisgagne.net` zones with `LookedUpZoneTags`. A newly applied tag counts from the day it is applied; the backfill ran once when the tag was activated.
 

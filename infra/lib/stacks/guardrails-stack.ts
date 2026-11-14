@@ -226,8 +226,10 @@ export class GuardrailsStack extends Stack {
       );
     }
 
-    const budgetName = `gagnechris-${config.name}-monthly`;
-    const unattributedBudgetName = `account-unattributed-monthly`;
+    // A change to a budget's notifications replaces the budget, and
+    // CloudFormation won't replace a named resource under the same name.
+    const budgetName = `gagnechris-${config.name}-monthly-cost`;
+    const unattributedBudgetName = `account-unattributed-monthly-cost`;
     // Email only: an SNS subscriber too would send each alert twice, since
     // the alerts topic emails the same address.
     const subscribers = [{ subscriptionType: 'EMAIL', address: email }];

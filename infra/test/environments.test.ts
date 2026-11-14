@@ -189,7 +189,7 @@ describe('GuardrailsStack', () => {
 
     template.hasResourceProperties('AWS::Budgets::Budget', {
       Budget: {
-        BudgetName: 'gagnechris-prod-monthly',
+        BudgetName: 'gagnechris-prod-monthly-cost',
         BudgetType: 'COST',
         TimeUnit: 'MONTHLY',
         BudgetLimit: { Amount: 25, Unit: 'USD' },
@@ -254,7 +254,7 @@ describe('GuardrailsStack', () => {
 
     template.hasResourceProperties('AWS::Budgets::Budget', {
       Budget: {
-        BudgetName: 'account-unattributed-monthly',
+        BudgetName: 'account-unattributed-monthly-cost',
         BudgetLimit: { Amount: 5, Unit: 'USD' },
         FilterExpression: {
           And: [
