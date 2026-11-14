@@ -227,10 +227,31 @@ describe('GitHub Actions supply chain', () => {
     const runs = (build.steps ?? []).map((s) => s.run ?? '');
     expect(runs).toContain('bash scripts/deploy-web.sh build');
     expect(runs).toContain('bash scripts/deploy-components.sh build');
-    expect((cdk.jobs.deploy as Job & { needs?: string[] }).needs).toEqual([
-      'plan',
-      'build',
-    ]);
+    expect((cdk.jobs.deploy as Job & { needs?: string }).needs).toBe('plan');
+  });
+
+  it('deploys CDK while the web build runs and uploads only once it has passed', () => {
+    const deploy = cdk.jobs.deploy!;
+    const steps = deploy.steps ?? [];
+    const cdkDeploy = stepIndex(
+      deploy,
+      (s) => s.run?.includes('cdk -- deploy') ?? false,
+    );
+    const wait = stepIndex(
+      deploy,
+      (s) => s.run?.includes('scripts/ci/wait-for-job.sh') ?? false,
+    );
+    const downloads = steps
+      .map((s, i) =>
+        s.uses?.startsWith('actions/download-artifact@') ? i : -1,
+      )
+      .filter((i) => i >= 0);
+    expect(wait).toBeGreaterThan(cdkDeploy);
+    expect(downloads.length).toBe(2);
+    for (const i of downloads) expect(i).toBeGreaterThan(wait);
+    expect(steps[wait]!.run).toContain(`'${cdk.jobs.build!.name}'`);
+    expect(steps[wait]!.if).toBe(cdk.jobs.build!.if);
+    expect(deploy.permissions).toMatchObject({ actions: 'read' });
   });
 
   it('never restores the Go build cache in a job that can mint an OIDC token or reads a secret', () => {
@@ -729,7 +750,7 @@ describe('deploy job guards', () => {
 
   it('runs the web deploy only when plan says web, and records every deploy', () => {
     expect(deploy.if).toBe(
-      "always() && needs.plan.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true')",
+      "needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'",
     );
     const web = stepIndex(
       deploy,

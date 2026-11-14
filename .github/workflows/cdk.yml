@@ -270,15 +270,15 @@ jobs:
 
   deploy:
     name: CDK + web deploy (main)
-    needs: [plan, build]
-    # build is skipped for a CDK-only deploy.
+    # Not `needs: build`: CDK deploys while the web build runs, and the job
+    # waits for build only before the uploads.
+    needs: plan
     if: >-
-      always() && needs.plan.result == 'success' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true')
+      needs.plan.outputs.cdk == 'true' || needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
+      actions: read
       contents: read
       id-token: write
     environment: prod
@@ -350,6 +350,12 @@ jobs:
         env:
           ALERTS_EMAIL: ${{ vars.ALERTS_EMAIL }}
         run: npm run cdk -- deploy --all --require-approval never --concurrency 4 --method=direct --progress events
+
+      - name: Wait for the web and catalog build
+        if: needs.plan.outputs.web == 'true' || needs.plan.outputs.components == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/wait-for-job.sh 'Build web and catalog (main)'
 
       - name: Download web build
         if: needs.plan.outputs.web == 'true'
