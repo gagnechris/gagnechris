@@ -69,12 +69,12 @@ describe('check-case-collisions', () => {
     expect(result.status).toBe(0);
   });
 
-  it('runs in the CI build job', () => {
+  it('runs in the CI lint job', () => {
     const ci = parse(
       readFileSync(join(ROOT, '.github', 'workflows', 'ci.yml'), 'utf8'),
-    ) as { jobs: { build: { steps: { run?: string }[] } } };
+    ) as { jobs: { lint: { steps: { run?: string }[] } } };
     expect(
-      ci.jobs.build.steps.some(
+      ci.jobs.lint.steps.some(
         (step) => step.run === 'npm run check:case-collisions',
       ),
     ).toBe(true);

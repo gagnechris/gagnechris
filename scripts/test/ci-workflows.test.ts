@@ -784,7 +784,9 @@ describe('deploy job guards', () => {
 
   it('runs unit tests in the time zone verify uses', () => {
     const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
-    const test = ci.jobs.build!.steps!.find((s) => s.run === 'npm test');
+    const test = ci.jobs.test!.steps!.find((s) =>
+      (s.run ?? '').includes('scripts/ci/unit-tests.sh'),
+    );
     expect(test?.env?.TZ).toBe(TEST_TZ);
     const mobile = readFileSync(
       join(ROOT, 'scripts', 'ci', 'mobile-checks.sh'),
@@ -823,6 +825,26 @@ describe('deploy job guards', () => {
       expect(jobNames).toContain(context);
     }
     expect(cdk.jobs.diff?.name).toBe('CDK diff (PR)');
+  });
+
+  // A job missing from `needs` could fail without failing any required check.
+  it('gates Lint, test, and build on every CI job that has no required check of its own', () => {
+    const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+    const result = Object.entries(ci.jobs).find(
+      ([, job]) => job.name === 'Lint, test, and build',
+    )!;
+    const [resultId, resultJob] = result;
+    const ownCheck = new Set([
+      resultId,
+      'api-integration',
+      'local-e2e',
+      'local-e2e-result',
+    ]);
+    const expected = Object.keys(ci.jobs)
+      .filter((id) => !ownCheck.has(id))
+      .sort();
+    const needs = (resultJob as Job & { needs?: string[] }).needs ?? [];
+    expect([...needs].sort()).toEqual(expected);
   });
 
   // A required check that is skipped never reports, so the PR waits forever;
@@ -1648,7 +1670,7 @@ describe('check-branch-name.sh', () => {
 
   it('runs on every pull request before setup, with the ref in env', () => {
     const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
-    const build = ci.jobs.build!;
+    const build = ci.jobs.lint!;
     const guard = stepIndex(build, (s) =>
       (s.run ?? '').includes('scripts/ci/check-branch-name.sh'),
     );
