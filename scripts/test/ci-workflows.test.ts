@@ -44,6 +44,7 @@ interface Job extends RunDefaults {
   steps?: Step[];
   concurrency?: { group?: string; 'cancel-in-progress'?: boolean };
   outputs?: Record<string, string>;
+  strategy?: { matrix?: Record<string, unknown> };
 }
 
 interface Workflow extends RunDefaults {
@@ -402,6 +403,15 @@ describe('path-filtered jobs', () => {
       (file) => !patterns.some((pattern) => matchesGlob(file, pattern)),
     );
     expect(unmatched).toEqual([]);
+  });
+
+  it('splits each browser into as many e2e shards as the matrix lists', () => {
+    const job = ci.jobs['local-e2e']!;
+    const shards = job.strategy?.matrix?.shard as number[];
+    expect(shards).toEqual(shards.map((_, i) => i + 1));
+    const run = job.steps?.find((s) => s.name === 'Run e2e:browser')?.run;
+    expect(run).toContain(`--shard="\${SHARD}/${shards.length}"`);
+    expect(job.name).toContain(`\${{ matrix.shard }}/${shards.length})`);
   });
 
   it('runs every filtered step on a push to main', () => {

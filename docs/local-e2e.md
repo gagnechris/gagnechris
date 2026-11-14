@@ -150,13 +150,13 @@ action was handled (a later request, a rendered state), or for
 
 ### CI
 
-**Local E2E smoke** runs two shard jobs per browser, such as
-**Local E2E smoke (chromium 1/2)** and **Local E2E smoke (webkit 2/2)**, each
+**Local E2E smoke** runs three shard jobs per browser, such as
+**Local E2E smoke (chromium 1/3)** and **Local E2E smoke (webkit 3/3)**, each
 on its own runner and stack. A small **Local E2E smoke** job passes only when
-every one does; that one is the required check. Each job builds the web app,
+every one does; that one is the required check. Each job builds the public web app,
 installs its cached browser (`~/.cache/ms-playwright`, keyed by browser and
 Playwright version) and runs
-`npm run e2e:browser -- --project=<browser> --shard=<n>/2`, which runs the
+`npm run e2e:browser -- --project=<browser> --shard=<n>/3`, which runs the
 `api` project first in every shard. CI retries a failed test once; a test that passes only on retry is
 flaky, and the job lists it in its summary and as a warning annotation. On
 failure the job uploads the `playwright-report-<browser>-<shard>-<attempt>` artifact:
