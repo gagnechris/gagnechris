@@ -30,10 +30,14 @@ defaults:
 
 jobs:
   # No credentials and no environment, so a run that doesn't alert never
-  # mints a token or records a prod deployment.
+  # mints a token or records a prod deployment. A green run on main starts no
+  # runner at all.
   decide:
     name: Decide
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main'
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.head_branch == 'main' &&
+      contains(fromJSON('["failure","timed_out","startup_failure"]'), github.event.workflow_run.conclusion))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
