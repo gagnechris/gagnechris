@@ -39,6 +39,59 @@ env:
   VITE_COGNITO_AUTH_DOMAIN: auth.example.com
 
 jobs:
+  # Path filters for the jobs below, run once. Off a PR every output is true.
+  # Docs-only means every changed file is Markdown, except the RUNBOOK, which
+  # an infra test reads.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ github.event_name != 'pull_request' || steps.code.outputs.code == 'true' || steps.filter.outputs.runbook == 'true' }}
+      e2e: ${{ github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Path filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            runbook:
+              - 'infra/RUNBOOK.md'
+            e2e:
+              - 'apps/web/**'
+              - 'services/api/**'
+              - 'services/publisher/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig.base.json'
+              - '.nvmrc'
+              - 'scripts/local/**'
+              - 'scripts/package.json'
+              - 'e2e/**'
+              - 'docker-compose.local.yml'
+              - 'infra/lib/cloudfront/**'
+              - 'infra/package.json'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/setup/**'
+
+      - name: Non-Markdown changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: code
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+
   lint:
     name: Lint and format
     runs-on: ubuntu-latest
@@ -67,8 +120,14 @@ jobs:
       - name: Paths that differ only by case
         run: npm run check:case-collisions
 
+      # The rest of the scripts tests skip docs-only PRs; this one reads every file.
+      - name: Ticket ids
+        run: npm run test -w @gagnechris/scripts -- test/no-ticket-ids.test.ts
+
   typecheck:
     name: Typecheck and drift
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -102,6 +161,8 @@ jobs:
 
   go:
     name: Go lint and test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -131,6 +192,8 @@ jobs:
 
   test:
     name: Unit tests (${{ matrix.group }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -154,6 +217,8 @@ jobs:
 
   build:
     name: Build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -204,19 +269,24 @@ jobs:
   # would count as passing.
   build-result:
     name: Lint, test, and build
-    needs: [lint, typecheck, go, test, build]
+    needs: [changes, lint, typecheck, go, test, build]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
       - name: Every job passed
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "Jobs: ${RESULTS}"
-          for r in ${RESULTS}; do
-            if [ "$r" != 'success' ]; then exit 1; fi
-          done
+          CHANGES: ${{ needs.changes.result }}
+          LINT: ${{ needs.lint.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          RESULTS: ${{ needs.typecheck.result }} ${{ needs.go.result }} ${{ needs.test.result }} ${{ needs.build.result }}
+        run: bash scripts/ci/gate-result.sh "${CHANGES}" "${LINT}" "${CODE}" ${RESULTS}
 
   api-integration:
     name: API integration (DynamoDB Local)
@@ -291,6 +361,8 @@ jobs:
   # under the other browser's load was the main source of flakes.
   local-e2e:
     name: Local E2E smoke (${{ matrix.browser }} ${{ matrix.shard }}/3)
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     # Playwright's WebKit build links the image's own ICU, so a new
     # ubuntu-latest breaks it until Playwright ships a build for that release.
     runs-on: ubuntu-24.04
@@ -306,46 +378,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Path filter
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        id: filter
-        with:
-          filters: |
-            e2e:
-              - 'apps/web/**'
-              - 'services/api/**'
-              - 'services/publisher/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig.base.json'
-              - '.nvmrc'
-              - 'scripts/local/**'
-              - 'scripts/package.json'
-              - 'e2e/**'
-              - 'docker-compose.local.yml'
-              - 'infra/lib/cloudfront/**'
-              - 'infra/package.json'
-              - '.github/workflows/ci.yml'
-              - '.github/actions/setup/**'
-
       - name: Setup
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         uses: ./.github/actions/setup
 
       # The stack serves only the public build; it builds its own auth bundles.
       - name: Build web shell
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: npm run build:public -w @gagnechris/web
 
       - name: Playwright version
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         id: browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -355,14 +399,12 @@ jobs:
       # The Azure apt mirror is sometimes slow enough to eat the job timeout,
       # so the browsers' system packages are cached and handed to apt.
       - name: Cache Playwright system packages
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-debs
           key: playwright-debs-${{ runner.os }}-${{ env.ImageOS }}-${{ matrix.browser }}-${{ steps.playwright.outputs.version }}
 
       - name: Seed apt with cached packages
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: |
           echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages
           sudo rm -f /etc/apt/apt.conf.d/docker-clean
@@ -371,19 +413,18 @@ jobs:
           fi
 
       - name: Install Playwright browsers
-        if: (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
+        if: steps.browsers.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps "${BROWSER}"
         env:
           BROWSER: ${{ matrix.browser }}
 
       - name: Install Playwright system deps
-        if: (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
+        if: steps.browsers.outputs.cache-hit == 'true'
         run: npx playwright install-deps "${BROWSER}"
         env:
           BROWSER: ${{ matrix.browser }}
 
       - name: Keep apt packages for the cache
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: |
           mkdir -p "$HOME/apt-debs"
           if compgen -G "/var/cache/apt/archives/*.deb" > /dev/null; then
@@ -391,18 +432,17 @@ jobs:
           fi
 
       - name: Run e2e:browser
-        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         env:
           BROWSER: ${{ matrix.browser }}
           SHARD: ${{ matrix.shard }}
         run: npm run e2e:browser -- --project="${BROWSER}" --shard="${SHARD}/3"
 
       - name: Flaky test summary
-        if: always() && (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true')
+        if: always()
         run: npx tsx scripts/ci/e2e-flaky-summary.ts e2e/results.json
 
       - name: Upload Playwright report
-        if: failure() && (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true')
+        if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -419,14 +459,20 @@ jobs:
   # failed, since a skipped required check would count as passing.
   local-e2e-result:
     name: Local E2E smoke
-    needs: local-e2e
+    needs: [changes, local-e2e]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+          persist-credentials: false
+
       - name: Every browser and shard job passed
         env:
+          CHANGES: ${{ needs.changes.result }}
+          E2E: ${{ needs.changes.outputs.e2e }}
           RESULT: ${{ needs.local-e2e.result }}
-        run: |
-          echo "Browser jobs: ${RESULT}"
-          [ "${RESULT}" = 'success' ]
+        run: bash scripts/ci/gate-result.sh "${CHANGES}" success "${E2E}" "${RESULT}"

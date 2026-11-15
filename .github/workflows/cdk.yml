@@ -1,8 +1,20 @@
 name: CDK
 
 on:
+  # CDK diff is not a required check, so it filters on the trigger: the paths
+  # scripts/ci/deploy-paths.sh deploys CDK for.
   pull_request:
     branches: [main]
+    paths:
+      - 'infra/**'
+      - 'services/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - '.nvmrc'
+      - '.github/workflows/cdk.yml'
+      - '.github/actions/setup/**'
   # PRs must be up to date with main and pass CI, so the pushed tree is one
   # CI already passed.
   push:

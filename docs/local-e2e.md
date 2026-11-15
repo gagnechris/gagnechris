@@ -152,8 +152,9 @@ action was handled (a later request, a rendered state), or for
 
 **Local E2E smoke** runs three shard jobs per browser, such as
 **Local E2E smoke (chromium 1/3)** and **Local E2E smoke (webkit 3/3)**, each
-on its own runner and stack. A small **Local E2E smoke** job passes only when
-every one does; that one is the required check. Each job builds the public web app,
+on its own runner and stack, on a PR only when an e2e path changed (the CI
+**Changes** job decides). A small **Local E2E smoke** job passes only when
+every one passes or all were skipped that way; that one is the required check. Each job builds the public web app,
 installs its cached browser (`~/.cache/ms-playwright`, keyed by browser and
 Playwright version) and runs
 `npm run e2e:browser -- --project=<browser> --shard=<n>/3`, which runs the
