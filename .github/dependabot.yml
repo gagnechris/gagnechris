@@ -1,10 +1,12 @@
 version: 2
+# Monthly, and no rebase when main moves: each rebase re-runs CI. Strict
+# up-to-date PRs need Update branch before merge anyway.
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    rebase-strategy: disabled
     open-pull-requests-limit: 10
     # Majors that need a deliberate PR (API / engine mismatch), not Dependabot.
     ignore:
@@ -32,8 +34,8 @@ updates:
   - package-ecosystem: gomod
     directory: /services/api
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    rebase-strategy: disabled
     open-pull-requests-limit: 5
     groups:
       go-dependencies:
@@ -45,13 +47,13 @@ updates:
   - package-ecosystem: npm
     directory: /apps/mobile
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    rebase-strategy: disabled
     open-pull-requests-limit: 0
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
+    rebase-strategy: disabled
     open-pull-requests-limit: 5
