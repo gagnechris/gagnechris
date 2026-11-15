@@ -679,6 +679,10 @@ describe('strict branch protection', () => {
     expect(alert.on.workflow_run.types).toEqual(['completed']);
 
     const decide = alert.jobs.decide! as GatedJob;
+    for (const conclusion of ['failure', 'timed_out', 'startup_failure']) {
+      expect(decide.if).toContain(`"${conclusion}"`);
+    }
+    expect(decide.if).toContain('github.event.workflow_run.conclusion');
     expect(hasIdToken(decide, alert)).toBe(false);
     expect(decide.environment).toBeUndefined();
     expect(
@@ -750,8 +754,8 @@ describe('deploy lag alert workflow', () => {
   );
   const job = lag.jobs.check! as GatedJob;
 
-  it('runs hourly in prod with the drift role and no npm', () => {
-    expect(lag.on.schedule.map((s) => s.cron)).toEqual(['23 * * * *']);
+  it('runs every 3 hours in prod with the drift role and no npm', () => {
+    expect(lag.on.schedule.map((s) => s.cron)).toEqual(['23 */3 * * *']);
     expect(job.environment).toBe('prod');
     expect(job.permissions).toEqual({ contents: 'read', 'id-token': 'write' });
     expectNoNpm(job);

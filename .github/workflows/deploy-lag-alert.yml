@@ -1,12 +1,12 @@
 name: Deploy lag alert
 
-# Deploys run only after CI succeeds on main, so a CI run GitHub never
-# delivers, or a deploy skipped by mistake, leaves prod behind main with no
-# failure to alert on. scripts/ci/deploy-lag.sh decides from SSM deployed-sha
-# and main; the 2-hour threshold absorbs late CI delivery and normal deploys.
+# A deploy that never starts, or is skipped by mistake, leaves prod behind
+# main with no failure to alert on. scripts/ci/deploy-lag.sh decides from SSM
+# deployed-sha and main. It runs every 3 hours, so a stall alerts within about
+# 5 hours of the merge (the 2-hour threshold plus the interval).
 on:
   schedule:
-    - cron: '23 * * * *'
+    - cron: '23 */3 * * *'
   workflow_dispatch:
     inputs:
       test_alert:
