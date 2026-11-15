@@ -1,16 +1,27 @@
 name: CI
 
+# PRs must be up to date with main, so a merge deploys without CI running
+# again. main still runs it when a cache key input changes, and weekly, because
+# a PR run restores main's caches but saves its own for that PR only.
 on:
   push:
     branches: [main]
+    paths:
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'services/api/go.mod'
+      - 'services/api/**/go.sum'
+      - 'services/api/.golangci.yml'
+      - '.github/actions/setup/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 7 * * 1'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Never cancel main: a cancelled CI never triggers the CDK deploy, so that
-  # commit's infra/web changes would be skipped.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -218,6 +229,7 @@ jobs:
           fetch-depth: 0
 
       - name: Path filter
+        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
@@ -240,25 +252,25 @@ jobs:
               - '.github/actions/setup/**'
 
       - name: Setup
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.api == 'true'
         uses: ./.github/actions/setup
 
       - name: DynamoDB Local
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.api == 'true'
         env:
           COMPOSE_PROJECT_NAME: gagnechris-ci
         run: docker compose -f docker-compose.local.yml -f docker-compose.ci.yml up -d dynamodb
 
       - name: Wait for DynamoDB Local
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.api == 'true'
         run: npx tsx scripts/local/wait-dynamodb.ts http://127.0.0.1:8001
 
       - name: Build the Go API
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.api == 'true'
         run: go -C services/api build -o "$RUNNER_TEMP/gagnechris-api" ./cmd/api
 
       - name: API HTTP suite
-        if: github.event_name == 'push' || steps.filter.outputs.api == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.api == 'true'
         env:
           GO_API_BIN: ${{ runner.temp }}/gagnechris-api
           AWS_ACCESS_KEY_ID: local
@@ -270,7 +282,7 @@ jobs:
         run: npm run test:integration -w @gagnechris/api-tests
 
       - name: Stop CI DynamoDB Local
-        if: always() && (github.event_name == 'push' || steps.filter.outputs.api == 'true')
+        if: always() && (github.event_name != 'pull_request' || steps.filter.outputs.api == 'true')
         env:
           COMPOSE_PROJECT_NAME: gagnechris-ci
         run: docker compose -f docker-compose.local.yml -f docker-compose.ci.yml down
@@ -295,6 +307,7 @@ jobs:
           fetch-depth: 0
 
       - name: Path filter
+        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
@@ -318,21 +331,21 @@ jobs:
               - '.github/actions/setup/**'
 
       - name: Setup
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         uses: ./.github/actions/setup
 
       # The stack serves only the public build; it builds its own auth bundles.
       - name: Build web shell
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: npm run build:public -w @gagnechris/web
 
       - name: Playwright version
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         id: playwright
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         id: browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -342,14 +355,14 @@ jobs:
       # The Azure apt mirror is sometimes slow enough to eat the job timeout,
       # so the browsers' system packages are cached and handed to apt.
       - name: Cache Playwright system packages
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-debs
           key: playwright-debs-${{ runner.os }}-${{ env.ImageOS }}-${{ matrix.browser }}-${{ steps.playwright.outputs.version }}
 
       - name: Seed apt with cached packages
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: |
           echo 'APT::Keep-Downloaded-Packages "true";' | sudo tee /etc/apt/apt.conf.d/99keep-downloaded-packages
           sudo rm -f /etc/apt/apt.conf.d/docker-clean
@@ -358,19 +371,19 @@ jobs:
           fi
 
       - name: Install Playwright browsers
-        if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
+        if: (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps "${BROWSER}"
         env:
           BROWSER: ${{ matrix.browser }}
 
       - name: Install Playwright system deps
-        if: (github.event_name == 'push' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
+        if: (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true') && steps.browsers.outputs.cache-hit == 'true'
         run: npx playwright install-deps "${BROWSER}"
         env:
           BROWSER: ${{ matrix.browser }}
 
       - name: Keep apt packages for the cache
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         run: |
           mkdir -p "$HOME/apt-debs"
           if compgen -G "/var/cache/apt/archives/*.deb" > /dev/null; then
@@ -378,18 +391,18 @@ jobs:
           fi
 
       - name: Run e2e:browser
-        if: github.event_name == 'push' || steps.filter.outputs.e2e == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true'
         env:
           BROWSER: ${{ matrix.browser }}
           SHARD: ${{ matrix.shard }}
         run: npm run e2e:browser -- --project="${BROWSER}" --shard="${SHARD}/3"
 
       - name: Flaky test summary
-        if: always() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
+        if: always() && (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true')
         run: npx tsx scripts/ci/e2e-flaky-summary.ts e2e/results.json
 
       - name: Upload Playwright report
-        if: failure() && (github.event_name == 'push' || steps.filter.outputs.e2e == 'true')
+        if: failure() && (github.event_name != 'pull_request' || steps.filter.outputs.e2e == 'true')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}-${{ github.run_attempt }}

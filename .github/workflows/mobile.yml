@@ -1,12 +1,21 @@
 name: Mobile
 
-# No workflow-level `paths:`: this is a required check, so the job must
-# always report. Path filtering happens inside the job.
+# No `paths:` on pull_request: this is a required check, so the job must
+# always report, and path filtering happens inside the job. On main it runs
+# only to save the npm cache PR runs restore, as CI does.
 on:
   push:
     branches: [main]
+    paths:
+      - 'package-lock.json'
+      - 'apps/mobile/package-lock.json'
+      - '.nvmrc'
+      - '.github/actions/setup/**'
+      - '.github/workflows/mobile.yml'
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 7 * * 1'
 
 permissions:
   contents: read
@@ -31,6 +40,7 @@ jobs:
           fetch-depth: 0
 
       - name: Path filter
+        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
@@ -51,7 +61,7 @@ jobs:
               - '.npmrc'
 
       - name: Setup
-        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.mobile == 'true'
         uses: ./.github/actions/setup
         with:
           npm-cache-dependency-path: |
@@ -62,10 +72,10 @@ jobs:
       # apps/mobile is outside the root workspaces and has its own lockfile, so
       # only the mobile jobs pay for the Expo / RN tree.
       - name: Install mobile
-        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.mobile == 'true'
         working-directory: apps/mobile
         run: npm ci
 
       - name: Typecheck, lint, test and check the bundle
-        if: github.event_name == 'push' || steps.filter.outputs.mobile == 'true'
+        if: github.event_name != 'pull_request' || steps.filter.outputs.mobile == 'true'
         run: bash scripts/ci/mobile-checks.sh

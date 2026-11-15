@@ -1,11 +1,8 @@
 name: Main CI alert
 
-# Branch protection doesn't require PRs to be up to date with main
-# (strict_required_status_checks_policy: false). So two PRs that pass alone
-# can break main together. The deploy only runs after CI succeeds on main,
-# so prod is safe, but a red main must not go unnoticed: email the alerts
-# topic when CI or Mobile fails on a push to main, or when the CI-triggered
-# CDK deploy fails. scripts/ci/main-alert-decision.sh decides.
+# Email the alerts topic when CI or Mobile fails on main (a push that changes
+# a cache key input, or the weekly run), or when the deploy on a push to main
+# fails. scripts/ci/main-alert-decision.sh decides.
 on:
   workflow_run:
     workflows: [CI, Mobile, CDK]
@@ -64,7 +61,7 @@ jobs:
             WORKFLOW="${SIMULATE}"
             BRANCH=main
             CONCLUSION=failure
-            if [ "${SIMULATE}" = 'CDK' ]; then EVENT=workflow_run; else EVENT=push; fi
+            EVENT=push
           fi
           bash scripts/ci/main-alert-decision.sh "${WORKFLOW}" "${EVENT}" "${BRANCH}" "${CONCLUSION}" | tee -a "$GITHUB_OUTPUT"
 
