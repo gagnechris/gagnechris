@@ -71,7 +71,7 @@ e2e/                   Playwright browser tests
 ## Workflow
 
 - One Linear ticket → one branch → one PR into `main` (prefer the issue `gitBranchName`)
-- CI on PRs: lint, typecheck (all workspaces), tests, build, Go lint and test, CDK diff; required checks are **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**
+- CI on PRs: lint, typecheck (all workspaces), tests, build, Go lint and test (all but lint skipped on docs-only PRs), CDK diff when CDK inputs change; required checks are **Lint, test, and build**, **Local E2E smoke**, **API integration (DynamoDB Local)** and **Mobile typecheck, lint, test, bundle**
 - Merge to `main` deploys via OIDC on the push, since PRs must be up to date and green (CDK and/or web sync + CloudFront invalidation + republish; path-filtered by `scripts/ci/deploy-paths.sh` against last deployed SHA in SSM; the deploy job refuses rollbacks, SSM read errors and multi-GSI changes — see `infra/RUNBOOK.md`)
 - Infrastructure only through CDK — no console edits to production
 

@@ -414,7 +414,7 @@ describe('path-filtered jobs', () => {
   }
 
   it('runs Local E2E smoke when a file the local static server loads changes', async () => {
-    const patterns = filters(ci.jobs['local-e2e']!).e2e ?? [];
+    const patterns = filters(ci.jobs.changes!).e2e ?? [];
     const files = await localStaticServerFiles();
     for (const file of files) {
       expect(existsSync(join(ROOT, file)), file).toBe(true);
@@ -454,6 +454,99 @@ describe('path-filtered jobs', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('path-gated CI jobs', () => {
+  const ci = loadYaml<Workflow>(join(WORKFLOWS_DIR, 'ci.yml'));
+  type Gated = Job & { needs?: string | string[]; if?: string };
+
+  it('skips the heavy jobs on docs-only PRs and e2e when no e2e path changed', () => {
+    for (const id of ['typecheck', 'go', 'test', 'build']) {
+      const job = ci.jobs[id] as Gated;
+      expect(job.needs, id).toBe('changes');
+      expect(job.if, id).toBe("needs.changes.outputs.code == 'true'");
+    }
+    const e2e = ci.jobs['local-e2e'] as Gated;
+    expect(e2e.needs).toBe('changes');
+    expect(e2e.if).toBe("needs.changes.outputs.e2e == 'true'");
+    expect((ci.jobs.lint as Gated).needs).toBeUndefined();
+    expect(
+      ci.jobs.lint!.steps?.some((s) =>
+        s.run?.includes('test/no-ticket-ids.test.ts'),
+      ),
+    ).toBe(true);
+  });
+
+  it('counts every non-Markdown file and the RUNBOOK as code', () => {
+    const step = ci.jobs.changes!.steps?.find((s) => s.id === 'code');
+    expect(step?.with?.['predicate-quantifier']).toBe('every');
+    const code = (
+      parse(String(step?.with?.filters)) as Record<string, string[]>
+    ).code!;
+    const matches = (file: string) =>
+      code.every((p) =>
+        p.startsWith('!')
+          ? !matchesGlob(file, p.slice(1))
+          : matchesGlob(file, p),
+      );
+    expect(matches('docs/x.md')).toBe(false);
+    expect(matches('CLAUDE.md')).toBe(false);
+    expect(matches('apps/web/src/a.tsx')).toBe(true);
+    expect(matches('scripts/ci/gate-result.sh')).toBe(true);
+    const runbook = (
+      parse(
+        String(
+          ci.jobs.changes!.steps?.find((s) => s.id === 'filter')?.with?.filters,
+        ),
+      ) as Record<string, string[]>
+    ).runbook;
+    expect(runbook).toEqual(['infra/RUNBOOK.md']);
+  });
+
+  it('feeds the Changes result into both gate jobs', () => {
+    for (const id of ['build-result', 'local-e2e-result']) {
+      const job = ci.jobs[id] as Gated;
+      expect(job.needs, id).toContain('changes');
+      expect(job.if, id).toBe('always()');
+      expect(
+        job.steps?.some((s) => s.run?.includes('scripts/ci/gate-result.sh')),
+        id,
+      ).toBe(true);
+    }
+  });
+});
+
+describe('gate-result.sh', () => {
+  const gate = (...args: string[]) =>
+    runScript('gate-result.sh', args, {}).status;
+
+  it.each([
+    [['success', 'success', 'true', 'success', 'success'], 0],
+    [['success', 'success', 'false', 'skipped', 'skipped'], 0],
+    [['success', 'success', 'true', 'success', 'skipped'], 1],
+    [['success', 'success', 'false', 'failure'], 1],
+    [['success', 'failure', 'false', 'skipped'], 1],
+    [['failure', 'success', '', 'skipped', 'skipped'], 1],
+    [['cancelled', 'success', '', 'skipped'], 1],
+    [['success', 'success', 'true', 'cancelled'], 1],
+  ])('%j exits %i', (args, status) => {
+    expect(gate(...args)).toBe(status);
+  });
+});
+
+describe('CDK diff trigger', () => {
+  it('runs on PRs that change what deploy-paths.sh deploys CDK for', () => {
+    const source = readFileSync(
+      join(ROOT, 'scripts', 'ci', 'deploy-paths.sh'),
+      'utf8',
+    );
+    const block = /CDK_PATTERNS=\(([^)]*)\)/.exec(source)![1]!;
+    const patterns = [...block.matchAll(/'([^']+)'/g)].map((m) =>
+      m[1]!.replace(/\*$/, '**'),
+    );
+    const on = cdk.on as { pull_request?: { paths?: string[] } };
+    expect(on.pull_request?.paths).toEqual(patterns);
   });
 });
 
